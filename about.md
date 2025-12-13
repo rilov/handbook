@@ -1,0 +1,167 @@
+---
+layout: default
+title: About — Rilov Paloly Kulankara
+---
+
+<div class="profile-page">
+  <header class="profile-header">
+    <div class="profile-info">
+      <h1>Rilov Paloly Kulankara</h1>
+      <p class="profile-title">Director, Platform Engineering at RBC Borealis</p>
+      <p class="profile-summary">Technology leader with over 20 years of experience and a proven track record in leading, architecting, building, and delivering highly reliable and scalable systems across enterprise applications, machine learning, e-commerce, finance, and banking.</p>
+      <div class="profile-links">
+        <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="profile-section">
+    <h2>Technologies & Expertise</h2>
+    <div class="skills-grid">
+      <div class="skill-category">
+        <h3>Cloud & Infrastructure</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">AWS</span>
+          <span class="skill-tag">Azure</span>
+          <span class="skill-tag">Docker</span>
+          <span class="skill-tag">Kubernetes</span>
+          <span class="skill-tag">DevOps</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h3>Data & AI</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Apache Spark</span>
+          <span class="skill-tag">Apache Hadoop</span>
+          <span class="skill-tag">Generative AI</span>
+          <span class="skill-tag">LangChain</span>
+          <span class="skill-tag">LlamaIndex</span>
+          <span class="skill-tag">Machine Learning</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h3>Development</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Java</span>
+          <span class="skill-tag">Python</span>
+          <span class="skill-tag">.NET Core</span>
+          <span class="skill-tag">APIs</span>
+          <span class="skill-tag">Microservices</span>
+          <span class="skill-tag">Apache Kafka</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h3>Databases</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">MySQL</span>
+          <span class="skill-tag">SQL Server</span>
+          <span class="skill-tag">PostgreSQL</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="profile-section">
+    <h2>Professional Experience</h2>
+    
+    <div class="experience-item">
+      <div class="experience-header">
+        <h3>Director, Platform Engineering</h3>
+        <span class="experience-company">RBC Borealis</span>
+        <span class="experience-date">Oct 2021 – Present</span>
+      </div>
+      <ul>
+        <li>Leading platform engineering initiatives for RBC Borealis</li>
+        <li>Driving cloud transformation and modernization of multiple applications</li>
+        <li>Innovating platform services to enhance scalability and performance</li>
+      </ul>
+    </div>
+
+    <div class="experience-item">
+      <div class="experience-header">
+        <h3>Senior Manager, System Integration</h3>
+        <span class="experience-company">RBC — Canadian Banking Automation Technologies</span>
+        <span class="experience-date">Feb 2020 – Oct 2021</span>
+      </div>
+      <ul>
+        <li>Oversaw system integration projects within Canadian Banking Automation Technologies</li>
+        <li>Led a team to automate banking processes, improving efficiency by 25%</li>
+      </ul>
+    </div>
+
+    <div class="experience-item">
+      <div class="experience-header">
+        <h3>Senior Technical Systems Analyst</h3>
+        <span class="experience-company">RBC</span>
+        <span class="experience-date">May 2014 – Feb 2020</span>
+      </div>
+      <ul>
+        <li>Developed, architected, and modernized applications for asset and account processing</li>
+        <li>Worked on data visualization teams to provide actionable insights</li>
+        <li>Spearheaded cloud transformation initiatives for multiple applications</li>
+      </ul>
+    </div>
+
+    <div class="experience-item">
+      <div class="experience-header">
+        <h3>Lead Software Developer</h3>
+        <span class="experience-company">Maxxam Analytics</span>
+        <span class="experience-date">Jun 2012 – May 2014</span>
+      </div>
+      <ul>
+        <li>Led the design and development of a new Customer Portal</li>
+        <li>Enabled clients to access current and historical data via a web-based interface</li>
+        <li>Built custom reporting features comparing data to predefined regulatory criteria</li>
+      </ul>
+    </div>
+
+    <div class="experience-item">
+      <div class="experience-header">
+        <h3>Associate Director Software Development</h3>
+        <span class="experience-company">JustParts.com</span>
+        <span class="experience-date">May 2009 – Jun 2012</span>
+      </div>
+      <ul>
+        <li>Developed JustParts.com, a leading automobile buying and selling website</li>
+        <li>Hosted high-traffic websites on Amazon EC2 with load balancing and encryption</li>
+        <li>Implemented seller tools, messaging systems, and data integration services</li>
+        <li>Cloud migration and architecture based on Amazon EC2</li>
+      </ul>
+    </div>
+
+    <div class="experience-item">
+      <div class="experience-header">
+        <h3>Earlier Roles</h3>
+        <span class="experience-company">SAC Capital Advisors, Willis Towers Watson, Travelers, L&T Infotech</span>
+        <span class="experience-date">2004 – 2009</span>
+      </div>
+      <ul>
+        <li>SQL Server Database Tester at SAC Capital Advisors</li>
+        <li>Senior Software Consultant at Willis Towers Watson</li>
+        <li>Software Engineer at Travelers — Business Insurance</li>
+        <li>Senior Software Engineer at Larsen & Toubro Infotech Limited</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="profile-section">
+    <h2>Patents & Publications</h2>
+    <div class="patent-item">
+      <h3>US Patent 8463658</h3>
+      <p>System and method for listing items online</p>
+    </div>
+  </section>
+
+  <section class="profile-section">
+    <h2>Areas of Focus</h2>
+    <ul class="focus-list">
+      <li><strong>Generative AI</strong> — Building intelligent applications with LLMs</li>
+      <li><strong>Big Data</strong> — Large-scale data processing and analytics</li>
+      <li><strong>Cloud Transformation</strong> — Migrating and modernizing enterprise systems</li>
+      <li><strong>Application Modernization</strong> — Updating legacy systems for the cloud era</li>
+      <li><strong>Data Visualization</strong> — Creating actionable insights from complex data</li>
+    </ul>
+  </section>
+</div>
+
