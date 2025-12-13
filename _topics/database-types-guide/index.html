@@ -1,0 +1,923 @@
+<h2 id="the-big-picture">The Big Picture</h2>
+
+<p>Not all data is the same, so not all databases are the same. Choosing the right database is like choosing the right tool for a job.</p>
+
+<div class="mermaid">
+flowchart TD
+    DB["🗄️ Databases"]
+    
+    DB --&gt; REL["📊 Relational (RDBMS)<br />Tables with rows &amp; columns"]
+    DB --&gt; COL["📑 Columnar<br />Optimized for analytics"]
+    DB --&gt; NOSQL["📦 NoSQL<br />Flexible structures"]
+    DB --&gt; VEC["🎯 Vector<br />AI &amp; similarity search"]
+    
+    NOSQL --&gt; DOC["Document"]
+    NOSQL --&gt; KV["Key-Value"]
+    NOSQL --&gt; GRAPH["Graph"]
+    NOSQL --&gt; WIDE["Wide-Column"]
+    
+    style DB fill:#dbeafe,stroke:#2563eb
+    style REL fill:#d1fae5,stroke:#059669
+    style COL fill:#fef3c7,stroke:#d97706
+    style NOSQL fill:#fce7f3,stroke:#db2777
+    style VEC fill:#e0e7ff,stroke:#6366f1
+</div>
+
+<hr />
+
+<h2 id="1-relational-databases-rdbms">1. Relational Databases (RDBMS)</h2>
+
+<h3 id="what-is-it">What is it?</h3>
+
+<p>Data is organized in <strong>tables</strong> with <strong>rows</strong> and <strong>columns</strong>, linked together by <strong>relationships</strong>. Uses SQL (Structured Query Language) to query data.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph customers["👤 Customers Table"]
+        C1["id | name | email"]
+        C2["1 | John | john@email.com"]
+        C3["2 | Jane | jane@email.com"]
+    end
+    
+    subgraph orders["🛒 Orders Table"]
+        O1["id | customer_id | total"]
+        O2["101 | 1 | $50"]
+        O3["102 | 1 | $75"]
+        O4["103 | 2 | $30"]
+    end
+    
+    customers --&gt; |"customer_id<br />links to id"| orders
+    
+    style customers fill:#d1fae5,stroke:#059669
+    style orders fill:#dbeafe,stroke:#2563eb
+</div>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<p>Think of an <strong>Excel spreadsheet</strong> with multiple sheets that reference each other. Customer sheet links to Orders sheet via Customer ID.</p>
+
+<h3 id="key-features">Key Features</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>ACID Compliant</strong></td>
+      <td>Guarantees data consistency</td>
+    </tr>
+    <tr>
+      <td><strong>Structured Schema</strong></td>
+      <td>Must define table structure upfront</td>
+    </tr>
+    <tr>
+      <td><strong>Relationships</strong></td>
+      <td>Tables link via foreign keys</td>
+    </tr>
+    <tr>
+      <td><strong>SQL</strong></td>
+      <td>Standard query language</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="popular-databases">Popular Databases</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>PostgreSQL</strong></td>
+      <td>General purpose, complex queries</td>
+      <td>Open source, feature-rich</td>
+    </tr>
+    <tr>
+      <td><strong>MySQL</strong></td>
+      <td>Web applications</td>
+      <td>Simple, fast, widely used</td>
+    </tr>
+    <tr>
+      <td><strong>SQL Server</strong></td>
+      <td>Enterprise, Microsoft stack</td>
+      <td>Strong BI integration</td>
+    </tr>
+    <tr>
+      <td><strong>Oracle</strong></td>
+      <td>Large enterprises</td>
+      <td>Expensive, powerful</td>
+    </tr>
+    <tr>
+      <td><strong>SQLite</strong></td>
+      <td>Embedded, mobile apps</td>
+      <td>File-based, no server needed</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-to-use-">When to Use ✅</h3>
+
+<ul>
+  <li>Traditional business applications</li>
+  <li>Financial systems (need ACID transactions)</li>
+  <li>E-commerce (orders, inventory, customers)</li>
+  <li>When data has clear relationships</li>
+  <li>When you need complex joins and queries</li>
+</ul>
+
+<h3 id="when-to-avoid-">When to Avoid ❌</h3>
+
+<ul>
+  <li>Rapidly changing schema</li>
+  <li>Massive scale (billions of rows)</li>
+  <li>Unstructured data (logs, documents)</li>
+  <li>Real-time analytics on huge datasets</li>
+</ul>
+
+<hr />
+
+<h2 id="2-columnar-databases">2. Columnar Databases</h2>
+
+<h3 id="what-is-it-1">What is it?</h3>
+
+<p>Instead of storing data row by row, columnar databases store data <strong>column by column</strong>. This makes analytical queries incredibly fast.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph row["Row-Based Storage (RDBMS)"]
+        R1["John, 25, NYC"]
+        R2["Jane, 30, LA"]
+        R3["Bob, 28, Chicago"]
+    end
+    
+    subgraph col["Column-Based Storage"]
+        C1["Names: John, Jane, Bob"]
+        C2["Ages: 25, 30, 28"]
+        C3["Cities: NYC, LA, Chicago"]
+    end
+    
+    style row fill:#fecaca,stroke:#dc2626
+    style col fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="why-does-this-matter">Why Does This Matter?</h3>
+
+<div class="mermaid">
+flowchart TD
+    Q["Query: What's the average age?"]
+    
+    subgraph row_scan["Row Storage"]
+        RS["Must read ALL data<br />John,25,NYC,Jane,30,LA,Bob,28,Chicago<br />😰 Slow for analytics"]
+    end
+    
+    subgraph col_scan["Column Storage"]
+        CS["Only read 'Age' column<br />25, 30, 28<br />🚀 Super fast!"]
+    end
+    
+    Q --&gt; row_scan
+    Q --&gt; col_scan
+    
+    style row_scan fill:#fecaca,stroke:#dc2626
+    style col_scan fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-analogy-1">Real-World Analogy</h3>
+
+<p>Imagine a library. Row storage is like books on shelves (you grab the whole book). Column storage is like an index at the back — you can quickly find all pages mentioning “history” without reading every book.</p>
+
+<h3 id="key-features-1">Key Features</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Benefit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Fast aggregations</strong></td>
+      <td>SUM, AVG, COUNT are blazing fast</td>
+    </tr>
+    <tr>
+      <td><strong>Compression</strong></td>
+      <td>Similar values compress well</td>
+    </tr>
+    <tr>
+      <td><strong>Analytics-optimized</strong></td>
+      <td>Perfect for BI and reporting</td>
+    </tr>
+    <tr>
+      <td><strong>Scan efficiency</strong></td>
+      <td>Only reads columns you need</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="popular-databases-1">Popular Databases</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Amazon Redshift</strong></td>
+      <td>Cloud data warehouse</td>
+      <td>AWS native, scalable</td>
+    </tr>
+    <tr>
+      <td><strong>Google BigQuery</strong></td>
+      <td>Serverless analytics</td>
+      <td>Pay per query, massive scale</td>
+    </tr>
+    <tr>
+      <td><strong>Snowflake</strong></td>
+      <td>Multi-cloud warehouse</td>
+      <td>Separates storage &amp; compute</td>
+    </tr>
+    <tr>
+      <td><strong>ClickHouse</strong></td>
+      <td>Real-time analytics</td>
+      <td>Open source, very fast</td>
+    </tr>
+    <tr>
+      <td><strong>Apache Parquet</strong></td>
+      <td>File format</td>
+      <td>Not a DB, but columnar storage format</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-to-use--1">When to Use ✅</h3>
+
+<ul>
+  <li>Data warehouses</li>
+  <li>Business intelligence / reporting</li>
+  <li>Analytics dashboards</li>
+  <li>Aggregating millions/billions of rows</li>
+  <li>Historical data analysis</li>
+</ul>
+
+<h3 id="when-to-avoid--1">When to Avoid ❌</h3>
+
+<ul>
+  <li>Frequent single-row updates</li>
+  <li>OLTP (transactional) workloads</li>
+  <li>Small datasets</li>
+  <li>Need for real-time writes</li>
+</ul>
+
+<hr />
+
+<h2 id="3-nosql-databases">3. NoSQL Databases</h2>
+
+<h3 id="what-is-it-2">What is it?</h3>
+
+<p>“Not Only SQL” — a family of databases that don’t use traditional tables. Designed for flexibility, scale, and specific use cases.</p>
+
+<div class="mermaid">
+flowchart TD
+    NOSQL["🗄️ NoSQL Types"]
+    
+    NOSQL --&gt; DOC["📄 Document<br />JSON-like documents"]
+    NOSQL --&gt; KV["🔑 Key-Value<br />Simple key → value pairs"]
+    NOSQL --&gt; WIDE["📊 Wide-Column<br />Rows with dynamic columns"]
+    NOSQL --&gt; GRAPH["🕸️ Graph<br />Nodes and relationships"]
+    
+    style NOSQL fill:#fce7f3,stroke:#db2777
+    style DOC fill:#dbeafe,stroke:#2563eb
+    style KV fill:#d1fae5,stroke:#059669
+    style WIDE fill:#fef3c7,stroke:#d97706
+    style GRAPH fill:#e0e7ff,stroke:#6366f1
+</div>
+
+<hr />
+
+<h3 id="3a-document-databases">3a. Document Databases</h3>
+
+<p>Store data as <strong>JSON-like documents</strong>. Each document can have a different structure.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph doc1["Document 1"]
+        D1["{<br />  'name': 'John',<br />  'age': 25,<br />  'hobbies': ['reading']<br />}"]
+    end
+    
+    subgraph doc2["Document 2"]
+        D2["{<br />  'name': 'Jane',<br />  'email': 'jane@mail.com',<br />  'address': {<br />    'city': 'NYC'<br />  }<br />}"]
+    end
+    
+    style doc1 fill:#dbeafe,stroke:#2563eb
+    style doc2 fill:#dbeafe,stroke:#2563eb
+</div>
+
+<p><strong>Notice:</strong> Documents have different fields — that’s okay!</p>
+
+<h4 id="popular-document-databases">Popular Document Databases</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>MongoDB</strong></td>
+      <td>General purpose NoSQL</td>
+      <td>Most popular, flexible</td>
+    </tr>
+    <tr>
+      <td><strong>Couchbase</strong></td>
+      <td>Mobile, edge computing</td>
+      <td>Built-in sync</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon DocumentDB</strong></td>
+      <td>MongoDB-compatible on AWS</td>
+      <td>Managed service</td>
+    </tr>
+    <tr>
+      <td><strong>Firebase Firestore</strong></td>
+      <td>Mobile/web apps</td>
+      <td>Real-time sync</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="when-to-use--2">When to Use ✅</h4>
+
+<ul>
+  <li>Content management systems</li>
+  <li>User profiles with varying attributes</li>
+  <li>Product catalogs</li>
+  <li>Mobile app backends</li>
+  <li>Rapid prototyping</li>
+</ul>
+
+<hr />
+
+<h3 id="3b-key-value-databases">3b. Key-Value Databases</h3>
+
+<p>The simplest database: store a <strong>key</strong> and its <strong>value</strong>. Like a giant dictionary/hashmap.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph kv["Key-Value Store"]
+        K1["user:1001"] --&gt; V1["'{name: John, age: 25}'"]
+        K2["session:abc123"] --&gt; V2["'{user_id: 1001, expires: ...}'"]
+        K3["cache:homepage"] --&gt; V3["'<html>...</html>'"]
+    end
+    
+    style kv fill:#d1fae5,stroke:#059669
+</div>
+
+<h4 id="popular-key-value-databases">Popular Key-Value Databases</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Redis</strong></td>
+      <td>Caching, sessions</td>
+      <td>In-memory, super fast</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon DynamoDB</strong></td>
+      <td>Serverless, scalable</td>
+      <td>Fully managed</td>
+    </tr>
+    <tr>
+      <td><strong>Memcached</strong></td>
+      <td>Simple caching</td>
+      <td>Lightweight</td>
+    </tr>
+    <tr>
+      <td><strong>etcd</strong></td>
+      <td>Configuration storage</td>
+      <td>Used by Kubernetes</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="when-to-use--3">When to Use ✅</h4>
+
+<ul>
+  <li>Caching (sessions, API responses)</li>
+  <li>Real-time leaderboards</li>
+  <li>Shopping carts</li>
+  <li>Rate limiting</li>
+  <li>Pub/sub messaging</li>
+</ul>
+
+<hr />
+
+<h3 id="3c-wide-column-databases">3c. Wide-Column Databases</h3>
+
+<p>Like a table, but each row can have <strong>different columns</strong>. Designed for massive scale.</p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph wide["Wide-Column Store"]
+        R1["Row 1: name='John', age=25, city='NYC'"]
+        R2["Row 2: name='Jane', email='j@mail.com'"]
+        R3["Row 3: name='Bob', age=30, country='USA', zip='10001'"]
+    end
+    
+    style wide fill:#fef3c7,stroke:#d97706
+</div>
+
+<h4 id="popular-wide-column-databases">Popular Wide-Column Databases</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Apache Cassandra</strong></td>
+      <td>Massive scale, high availability</td>
+      <td>Used by Netflix, Apple</td>
+    </tr>
+    <tr>
+      <td><strong>HBase</strong></td>
+      <td>Hadoop ecosystem</td>
+      <td>Built on HDFS</td>
+    </tr>
+    <tr>
+      <td><strong>ScyllaDB</strong></td>
+      <td>Cassandra-compatible</td>
+      <td>Faster, C++ based</td>
+    </tr>
+    <tr>
+      <td><strong>Google Bigtable</strong></td>
+      <td>Huge datasets</td>
+      <td>Powers Google services</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="when-to-use--4">When to Use ✅</h4>
+
+<ul>
+  <li>Time-series data (IoT, metrics)</li>
+  <li>Logging at massive scale</li>
+  <li>Messaging systems</li>
+  <li>Recommendation engines</li>
+  <li>When you need “always-on” availability</li>
+</ul>
+
+<hr />
+
+<h3 id="3d-graph-databases">3d. Graph Databases</h3>
+
+<p>Store data as <strong>nodes</strong> (entities) and <strong>edges</strong> (relationships). Perfect for connected data.</p>
+
+<div class="mermaid">
+flowchart LR
+    A["👤 Alice"] --&gt; |"FRIENDS_WITH"| B["👤 Bob"]
+    B --&gt; |"WORKS_AT"| C["🏢 TechCorp"]
+    A --&gt; |"WORKS_AT"| C
+    B --&gt; |"FRIENDS_WITH"| D["👤 Carol"]
+    D --&gt; |"LIKES"| E["🎬 Inception"]
+    A --&gt; |"LIKES"| E
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style B fill:#dbeafe,stroke:#2563eb
+    style C fill:#d1fae5,stroke:#059669
+    style D fill:#dbeafe,stroke:#2563eb
+    style E fill:#fef3c7,stroke:#d97706
+</div>
+
+<h4 id="popular-graph-databases">Popular Graph Databases</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Neo4j</strong></td>
+      <td>General graph use cases</td>
+      <td>Most popular, Cypher query language</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon Neptune</strong></td>
+      <td>Managed graph on AWS</td>
+      <td>Supports multiple models</td>
+    </tr>
+    <tr>
+      <td><strong>ArangoDB</strong></td>
+      <td>Multi-model (graph + document)</td>
+      <td>Flexible</td>
+    </tr>
+    <tr>
+      <td><strong>TigerGraph</strong></td>
+      <td>Enterprise analytics</td>
+      <td>High performance</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="when-to-use--5">When to Use ✅</h4>
+
+<ul>
+  <li>Social networks (friends, followers)</li>
+  <li>Recommendation engines</li>
+  <li>Fraud detection</li>
+  <li>Knowledge graphs</li>
+  <li>Network/IT infrastructure mapping</li>
+</ul>
+
+<hr />
+
+<h2 id="4-vector-databases">4. Vector Databases</h2>
+
+<h3 id="what-is-it-3">What is it?</h3>
+
+<p>Store data as <strong>vectors</strong> (lists of numbers) that represent meaning. Used for AI/ML applications to find <strong>similar</strong> items.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph embed["Converting to Vectors"]
+        T1["'Happy dog playing'"] --&gt; V1["[0.2, 0.8, 0.1, ...]"]
+        T2["'Joyful puppy running'"] --&gt; V2["[0.21, 0.79, 0.12, ...]"]
+        T3["'Sad cat sleeping'"] --&gt; V3["[0.7, 0.1, 0.9, ...]"]
+    end
+    
+    subgraph similar["Similarity Search"]
+        Q["Query: 'Cheerful pet'"]
+        Q --&gt; R["Most similar:<br />1. Happy dog playing ✅<br />2. Joyful puppy running ✅"]
+    end
+    
+    style V1 fill:#d1fae5,stroke:#059669
+    style V2 fill:#d1fae5,stroke:#059669
+    style V3 fill:#fecaca,stroke:#dc2626
+</div>
+
+<h3 id="real-world-analogy-2">Real-World Analogy</h3>
+
+<p>Imagine a map where similar things are close together. “Happy dog” and “Joyful puppy” are neighbors on the map, while “Sad cat” is far away.</p>
+
+<h3 id="how-it-works">How It Works</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant A as 🤖 AI Model
+    participant V as 🎯 Vector DB
+    
+    U-&gt;&gt;A: "Find similar products to this image"
+    A-&gt;&gt;A: Convert image to vector [0.2, 0.5, ...]
+    A-&gt;&gt;V: Search for nearest vectors
+    V-&gt;&gt;V: Find closest matches
+    V--&gt;&gt;A: Return similar items
+    A--&gt;&gt;U: "Here are similar products!"
+</div>
+
+<h3 id="popular-vector-databases">Popular Vector Databases</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Pinecone</strong></td>
+      <td>Managed vector search</td>
+      <td>Easy to use, serverless</td>
+    </tr>
+    <tr>
+      <td><strong>Weaviate</strong></td>
+      <td>AI-native search</td>
+      <td>Open source, GraphQL API</td>
+    </tr>
+    <tr>
+      <td><strong>Milvus</strong></td>
+      <td>Large-scale similarity</td>
+      <td>Open source, highly scalable</td>
+    </tr>
+    <tr>
+      <td><strong>Qdrant</strong></td>
+      <td>Performance-focused</td>
+      <td>Rust-based, fast</td>
+    </tr>
+    <tr>
+      <td><strong>Chroma</strong></td>
+      <td>LLM applications</td>
+      <td>Simple, Python-native</td>
+    </tr>
+    <tr>
+      <td><strong>pgvector</strong></td>
+      <td>PostgreSQL extension</td>
+      <td>Add vectors to existing Postgres</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-to-use--6">When to Use ✅</h3>
+
+<ul>
+  <li>Semantic search (search by meaning, not keywords)</li>
+  <li>Recommendation systems</li>
+  <li>Image/video similarity</li>
+  <li>LLM applications (ChatGPT-like apps)</li>
+  <li>Duplicate detection</li>
+  <li>Anomaly detection</li>
+</ul>
+
+<h3 id="when-to-avoid--2">When to Avoid ❌</h3>
+
+<ul>
+  <li>Exact match queries</li>
+  <li>Traditional CRUD operations</li>
+  <li>When you don’t have embeddings/vectors</li>
+</ul>
+
+<hr />
+
+<h2 id="comparison-chart">Comparison Chart</h2>
+
+<div class="mermaid">
+flowchart TD
+    subgraph compare["Choose Your Database"]
+        Q1{"What's your<br />primary need?"}
+        
+        Q1 --&gt; |"Transactions &amp;<br />Relationships"| RDBMS["✅ RDBMS<br />PostgreSQL, MySQL"]
+        
+        Q1 --&gt; |"Analytics on<br />huge data"| COLUMNAR["✅ Columnar<br />Snowflake, BigQuery"]
+        
+        Q1 --&gt; |"Flexible schema<br />or specific pattern"| NOSQL["✅ NoSQL<br />(see subtypes)"]
+        
+        Q1 --&gt; |"AI/Similarity<br />Search"| VECTOR["✅ Vector<br />Pinecone, Milvus"]
+    end
+    
+    style RDBMS fill:#d1fae5,stroke:#059669
+    style COLUMNAR fill:#fef3c7,stroke:#d97706
+    style NOSQL fill:#fce7f3,stroke:#db2777
+    style VECTOR fill:#e0e7ff,stroke:#6366f1
+</div>
+
+<hr />
+
+<h2 id="quick-reference-table">Quick Reference Table</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Structure</th>
+      <th>Best For</th>
+      <th>Popular Options</th>
+      <th>Query Language</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>RDBMS</strong></td>
+      <td>Tables, rows, columns</td>
+      <td>Transactions, relationships</td>
+      <td>PostgreSQL, MySQL</td>
+      <td>SQL</td>
+    </tr>
+    <tr>
+      <td><strong>Columnar</strong></td>
+      <td>Column-oriented</td>
+      <td>Analytics, aggregations</td>
+      <td>Snowflake, BigQuery</td>
+      <td>SQL</td>
+    </tr>
+    <tr>
+      <td><strong>Document</strong></td>
+      <td>JSON documents</td>
+      <td>Flexible schemas</td>
+      <td>MongoDB, Firestore</td>
+      <td>Custom/MQL</td>
+    </tr>
+    <tr>
+      <td><strong>Key-Value</strong></td>
+      <td>Key → Value pairs</td>
+      <td>Caching, sessions</td>
+      <td>Redis, DynamoDB</td>
+      <td>Simple get/set</td>
+    </tr>
+    <tr>
+      <td><strong>Wide-Column</strong></td>
+      <td>Flexible columns</td>
+      <td>Time-series, IoT</td>
+      <td>Cassandra, HBase</td>
+      <td>CQL, custom</td>
+    </tr>
+    <tr>
+      <td><strong>Graph</strong></td>
+      <td>Nodes &amp; edges</td>
+      <td>Relationships</td>
+      <td>Neo4j, Neptune</td>
+      <td>Cypher, Gremlin</td>
+    </tr>
+    <tr>
+      <td><strong>Vector</strong></td>
+      <td>Numerical vectors</td>
+      <td>AI, similarity</td>
+      <td>Pinecone, Milvus</td>
+      <td>Custom APIs</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="decision-flowchart">Decision Flowchart</h2>
+
+<div class="mermaid">
+flowchart TD
+    START["🤔 What are you building?"]
+    
+    START --&gt; Q1{"Need ACID<br />transactions?"}
+    Q1 --&gt; |"Yes"| RDBMS["Use RDBMS<br />(PostgreSQL)"]
+    Q1 --&gt; |"No"| Q2
+    
+    Q2{"Analytics on<br />big data?"}
+    Q2 --&gt; |"Yes"| COLUMNAR["Use Columnar<br />(Snowflake/BigQuery)"]
+    Q2 --&gt; |"No"| Q3
+    
+    Q3{"Need caching<br />or sessions?"}
+    Q3 --&gt; |"Yes"| REDIS["Use Key-Value<br />(Redis)"]
+    Q3 --&gt; |"No"| Q4
+    
+    Q4{"Complex<br />relationships?"}
+    Q4 --&gt; |"Yes"| GRAPH["Use Graph<br />(Neo4j)"]
+    Q4 --&gt; |"No"| Q5
+    
+    Q5{"AI/Semantic<br />search?"}
+    Q5 --&gt; |"Yes"| VECTOR["Use Vector<br />(Pinecone)"]
+    Q5 --&gt; |"No"| Q6
+    
+    Q6{"Flexible<br />documents?"}
+    Q6 --&gt; |"Yes"| MONGO["Use Document<br />(MongoDB)"]
+    Q6 --&gt; |"No"| Q7
+    
+    Q7{"Massive scale<br />time-series?"}
+    Q7 --&gt; |"Yes"| CASSANDRA["Use Wide-Column<br />(Cassandra)"]
+    Q7 --&gt; |"No"| DEFAULT["Start with<br />PostgreSQL"]
+    
+    style START fill:#f1f5f9,stroke:#64748b
+    style RDBMS fill:#d1fae5,stroke:#059669
+    style COLUMNAR fill:#fef3c7,stroke:#d97706
+    style REDIS fill:#dbeafe,stroke:#2563eb
+    style GRAPH fill:#fce7f3,stroke:#db2777
+    style VECTOR fill:#e0e7ff,stroke:#6366f1
+    style MONGO fill:#dbeafe,stroke:#2563eb
+    style CASSANDRA fill:#fef3c7,stroke:#d97706
+    style DEFAULT fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="common-combinations">Common Combinations</h2>
+
+<p>In real-world systems, you often use <strong>multiple databases</strong> together:</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph app["🌐 Modern Application"]
+        PG["PostgreSQL<br />Core data"]
+        REDIS["Redis<br />Caching"]
+        MONGO["MongoDB<br />User content"]
+        PINECONE["Pinecone<br />Search"]
+        SNOWFLAKE["Snowflake<br />Analytics"]
+    end
+    
+    API["🔌 API Layer"]
+    
+    API --&gt; PG
+    API --&gt; REDIS
+    API --&gt; MONGO
+    API --&gt; PINECONE
+    PG --&gt; |"ETL"| SNOWFLAKE
+    
+    style PG fill:#d1fae5,stroke:#059669
+    style REDIS fill:#fecaca,stroke:#dc2626
+    style MONGO fill:#dbeafe,stroke:#2563eb
+    style PINECONE fill:#e0e7ff,stroke:#6366f1
+    style SNOWFLAKE fill:#fef3c7,stroke:#d97706
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Role in the Stack</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>PostgreSQL</strong></td>
+      <td>Source of truth for business data</td>
+    </tr>
+    <tr>
+      <td><strong>Redis</strong></td>
+      <td>Cache frequently accessed data</td>
+    </tr>
+    <tr>
+      <td><strong>MongoDB</strong></td>
+      <td>Store user-generated content</td>
+    </tr>
+    <tr>
+      <td><strong>Pinecone</strong></td>
+      <td>Power AI search features</td>
+    </tr>
+    <tr>
+      <td><strong>Snowflake</strong></td>
+      <td>Analytics and reporting</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>If You Need…</th>
+      <th>Use This</th>
+      <th>Example DB</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Transactions &amp; relationships</td>
+      <td>RDBMS</td>
+      <td>PostgreSQL</td>
+    </tr>
+    <tr>
+      <td>Fast analytics on big data</td>
+      <td>Columnar</td>
+      <td>Snowflake</td>
+    </tr>
+    <tr>
+      <td>Flexible JSON documents</td>
+      <td>Document DB</td>
+      <td>MongoDB</td>
+    </tr>
+    <tr>
+      <td>Super fast caching</td>
+      <td>Key-Value</td>
+      <td>Redis</td>
+    </tr>
+    <tr>
+      <td>Massive scale writes</td>
+      <td>Wide-Column</td>
+      <td>Cassandra</td>
+    </tr>
+    <tr>
+      <td>Relationship traversal</td>
+      <td>Graph DB</td>
+      <td>Neo4j</td>
+    </tr>
+    <tr>
+      <td>AI/Similarity search</td>
+      <td>Vector DB</td>
+      <td>Pinecone</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Pro Tip:</strong> When in doubt, start with <strong>PostgreSQL</strong>. It’s versatile, reliable, and can handle most use cases. Add specialized databases as your needs grow!</p>
+
