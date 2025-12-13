@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dimensional Modeling — A Beginner's Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov/handbook" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>Dimensional Modeling — A Beginner's Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h2 id="what-is-dimensional-modeling">What is Dimensional Modeling?</h2>
+
+<p>Dimensional modeling is a way to organize data in a data warehouse so that it’s <strong>easy to understand</strong> and <strong>fast to query</strong>. It was popularized by Ralph Kimball in the 1990s and is still widely used today.</p>
+
+<h3 id="the-core-idea">The Core Idea</h3>
+
+<p>Instead of storing data in complex, normalized tables (like in a regular database), we organize it around <strong>business processes</strong> using two types of tables:</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph dim["Dimension Tables (The Context)"]
+        D1["📅 When?<br />Date"]
+        D2["📦 What?<br />Product"]
+        D3["👤 Who?<br />Customer"]
+        D4["🏪 Where?<br />Store"]
+    end
+    
+    subgraph fact["Fact Table (The Measurements)"]
+        F["💰 Sales<br />• quantity<br />• revenue<br />• cost"]
+    end
+    
+    D1 --&gt; F
+    D2 --&gt; F
+    D3 --&gt; F
+    D4 --&gt; F
+    
+    style F fill:#dbeafe,stroke:#2563eb
+    style D1 fill:#d1fae5,stroke:#059669
+    style D2 fill:#d1fae5,stroke:#059669
+    style D3 fill:#d1fae5,stroke:#059669
+    style D4 fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<p>Think of a <strong>receipt</strong> from a store:</p>
+<ul>
+  <li><strong>Fact</strong> = The numbers on the receipt (quantity, price, total)</li>
+  <li><strong>Dimensions</strong> = The context (what store, what date, what product, which customer)</li>
+</ul>
+
+<hr />
+
+<h2 id="fact-tables-the-numbers">Fact Tables: The Numbers</h2>
+
+<h3 id="what-is-a-fact-table">What is a Fact Table?</h3>
+
+<p>A fact table stores the <strong>measurements</strong> of a business process — things you can count, sum, or average.</p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph fact["📊 Fact Table: Sales"]
+        direction LR
+        F1["date_key<br />(FK)"]
+        F2["product_key<br />(FK)"]
+        F3["customer_key<br />(FK)"]
+        F4["store_key<br />(FK)"]
+        F5["quantity_sold<br />(measure)"]
+        F6["revenue<br />(measure)"]
+        F7["discount<br />(measure)"]
+    end
+    
+    style F1 fill:#fef3c7,stroke:#d97706
+    style F2 fill:#fef3c7,stroke:#d97706
+    style F3 fill:#fef3c7,stroke:#d97706
+    style F4 fill:#fef3c7,stroke:#d97706
+    style F5 fill:#dbeafe,stroke:#2563eb
+    style F6 fill:#dbeafe,stroke:#2563eb
+    style F7 fill:#dbeafe,stroke:#2563eb
+</div>
+
+<h3 id="types-of-facts">Types of Facts</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Additive</strong></td>
+      <td>Can be summed across all dimensions</td>
+      <td>Revenue, Quantity</td>
+    </tr>
+    <tr>
+      <td><strong>Semi-Additive</strong></td>
+      <td>Can be summed across some dimensions</td>
+      <td>Account Balance (can’t sum across time)</td>
+    </tr>
+    <tr>
+      <td><strong>Non-Additive</strong></td>
+      <td>Cannot be summed</td>
+      <td>Ratios, Percentages</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="example-fact-table">Example Fact Table</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>date_key</th>
+      <th>product_key</th>
+      <th>customer_key</th>
+      <th>store_key</th>
+      <th>quantity</th>
+      <th>revenue</th>
+      <th>cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>20240115</td>
+      <td>1001</td>
+      <td>5001</td>
+      <td>10</td>
+      <td>2</td>
+      <td>59.98</td>
+      <td>30.00</td>
+    </tr>
+    <tr>
+      <td>20240115</td>
+      <td>1002</td>
+      <td>5002</td>
+      <td>10</td>
+      <td>1</td>
+      <td>149.99</td>
+      <td>80.00</td>
+    </tr>
+    <tr>
+      <td>20240116</td>
+      <td>1001</td>
+      <td>5001</td>
+      <td>11</td>
+      <td>3</td>
+      <td>89.97</td>
+      <td>45.00</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="dimension-tables-the-context">Dimension Tables: The Context</h2>
+
+<h3 id="what-is-a-dimension-table">What is a Dimension Table?</h3>
+
+<p>A dimension table provides the <strong>descriptive context</strong> for the facts — the who, what, when, and where.</p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph dim["👤 Dimension Table: Customer"]
+        direction TB
+        D1["customer_key (PK)"]
+        D2["customer_name"]
+        D3["email"]
+        D4["city"]
+        D5["state"]
+        D6["country"]
+        D7["signup_date"]
+        D8["customer_segment"]
+    end
+    
+    style D1 fill:#fef3c7,stroke:#d97706
+    style D2 fill:#d1fae5,stroke:#059669
+    style D3 fill:#d1fae5,stroke:#059669
+    style D4 fill:#d1fae5,stroke:#059669
+    style D5 fill:#d1fae5,stroke:#059669
+    style D6 fill:#d1fae5,stroke:#059669
+    style D7 fill:#d1fae5,stroke:#059669
+    style D8 fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="common-dimensions">Common Dimensions</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Dimension</th>
+      <th>Answers</th>
+      <th>Example Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Date</strong></td>
+      <td>When?</td>
+      <td>Year, Quarter, Month, Day, Is_Weekend</td>
+    </tr>
+    <tr>
+      <td><strong>Product</strong></td>
+      <td>What?</td>
+      <td>Name, Category, Brand, Price</td>
+    </tr>
+    <tr>
+      <td><strong>Customer</strong></td>
+      <td>Who?</td>
+      <td>Name, Segment, Location, Loyalty_Level</td>
+    </tr>
+    <tr>
+      <td><strong>Store/Location</strong></td>
+      <td>Where?</td>
+      <td>Address, City, Region, Manager</td>
+    </tr>
+    <tr>
+      <td><strong>Employee</strong></td>
+      <td>By whom?</td>
+      <td>Name, Department, Hire_Date</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="example-dimension-table-product">Example Dimension Table: Product</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>product_key</th>
+      <th>product_name</th>
+      <th>category</th>
+      <th>brand</th>
+      <th>unit_price</th>
+      <th>is_active</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1001</td>
+      <td>Wireless Mouse</td>
+      <td>Electronics</td>
+      <td>TechBrand</td>
+      <td>29.99</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>1002</td>
+      <td>Mechanical Keyboard</td>
+      <td>Electronics</td>
+      <td>KeyMaster</td>
+      <td>149.99</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>1003</td>
+      <td>USB Hub</td>
+      <td>Accessories</td>
+      <td>TechBrand</td>
+      <td>19.99</td>
+      <td>No</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="star-schema-the-classic-design">Star Schema: The Classic Design</h2>
+
+<h3 id="what-is-a-star-schema">What is a Star Schema?</h3>
+
+<p>The most common dimensional model. It’s called a “star” because the diagram looks like a star — one fact table in the center, surrounded by dimension tables.</p>
+
+<div class="mermaid">
+flowchart TD
+    DIM_DATE["📅 dim_date<br />─────────<br />date_key<br />full_date<br />day_name<br />month<br />quarter<br />year"]
+    
+    DIM_PRODUCT["📦 dim_product<br />─────────<br />product_key<br />product_name<br />category<br />brand<br />unit_price"]
+    
+    FACT["💰 fact_sales<br />─────────<br />date_key (FK)<br />product_key (FK)<br />customer_key (FK)<br />store_key (FK)<br />─────────<br />quantity<br />revenue<br />cost"]
+    
+    DIM_CUSTOMER["👤 dim_customer<br />─────────<br />customer_key<br />customer_name<br />email<br />segment<br />country"]
+    
+    DIM_STORE["🏪 dim_store<br />─────────<br />store_key<br />store_name<br />city<br />state<br />manager"]
+    
+    DIM_DATE --&gt; FACT
+    DIM_PRODUCT --&gt; FACT
+    FACT --&gt; DIM_CUSTOMER
+    FACT --&gt; DIM_STORE
+    
+    style FACT fill:#dbeafe,stroke:#2563eb
+    style DIM_DATE fill:#d1fae5,stroke:#059669
+    style DIM_PRODUCT fill:#d1fae5,stroke:#059669
+    style DIM_CUSTOMER fill:#d1fae5,stroke:#059669
+    style DIM_STORE fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="why-star-schema">Why Star Schema?</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Benefit</th>
+      <th>Explanation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Simple to understand</strong></td>
+      <td>Business users can easily read it</td>
+    </tr>
+    <tr>
+      <td><strong>Fast queries</strong></td>
+      <td>Fewer joins = faster performance</td>
+    </tr>
+    <tr>
+      <td><strong>Tool-friendly</strong></td>
+      <td>BI tools (Tableau, Power BI) love it</td>
+    </tr>
+    <tr>
+      <td><strong>Flexible</strong></td>
+      <td>Easy to add new dimensions</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="snowflake-schema-the-normalized-cousin">Snowflake Schema: The Normalized Cousin</h2>
+
+<h3 id="what-is-a-snowflake-schema">What is a Snowflake Schema?</h3>
+
+<p>A variation where dimension tables are <strong>normalized</strong> (split into sub-tables). It looks like a snowflake because of the branching.</p>
+
+<div class="mermaid">
+flowchart TD
+    FACT["💰 fact_sales"]
+    
+    DIM_PRODUCT["📦 dim_product<br />product_key<br />product_name<br />category_key (FK)"]
+    
+    DIM_CATEGORY["🏷️ dim_category<br />category_key<br />category_name<br />department_key (FK)"]
+    
+    DIM_DEPARTMENT["🏢 dim_department<br />department_key<br />department_name"]
+    
+    FACT --&gt; DIM_PRODUCT
+    DIM_PRODUCT --&gt; DIM_CATEGORY
+    DIM_CATEGORY --&gt; DIM_DEPARTMENT
+    
+    style FACT fill:#dbeafe,stroke:#2563eb
+    style DIM_PRODUCT fill:#d1fae5,stroke:#059669
+    style DIM_CATEGORY fill:#fef3c7,stroke:#d97706
+    style DIM_DEPARTMENT fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="star-vs-snowflake">Star vs Snowflake</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Star Schema</th>
+      <th>Snowflake Schema</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Structure</strong></td>
+      <td>Denormalized (flat)</td>
+      <td>Normalized (hierarchical)</td>
+    </tr>
+    <tr>
+      <td><strong>Query Speed</strong></td>
+      <td>⚡ Faster (fewer joins)</td>
+      <td>🐢 Slower (more joins)</td>
+    </tr>
+    <tr>
+      <td><strong>Storage</strong></td>
+      <td>More space (duplicate data)</td>
+      <td>Less space</td>
+    </tr>
+    <tr>
+      <td><strong>Simplicity</strong></td>
+      <td>✅ Easier to understand</td>
+      <td>❌ More complex</td>
+    </tr>
+    <tr>
+      <td><strong>Recommendation</strong></td>
+      <td>✅ Usually preferred</td>
+      <td>Use when storage is critical</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="the-date-dimension-a-special-case">The Date Dimension: A Special Case</h2>
+
+<h3 id="why-is-date-special">Why is Date Special?</h3>
+
+<p>Every data warehouse needs a <strong>date dimension</strong>. It’s pre-built with useful attributes for time-based analysis.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph date_dim["📅 dim_date"]
+        D1["date_key: 20240115"]
+        D2["full_date: 2024-01-15"]
+        D3["day_name: Monday"]
+        D4["day_of_week: 2"]
+        D5["week_of_year: 3"]
+        D6["month: January"]
+        D7["month_number: 1"]
+        D8["quarter: Q1"]
+        D9["year: 2024"]
+        D10["is_weekend: No"]
+        D11["is_holiday: No"]
+        D12["fiscal_year: FY2024"]
+    end
+</div>
+
+<h3 id="example-date-dimension-table">Example Date Dimension Table</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>date_key</th>
+      <th>full_date</th>
+      <th>day_name</th>
+      <th>month</th>
+      <th>quarter</th>
+      <th>year</th>
+      <th>is_weekend</th>
+      <th>is_holiday</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>20240115</td>
+      <td>2024-01-15</td>
+      <td>Monday</td>
+      <td>January</td>
+      <td>Q1</td>
+      <td>2024</td>
+      <td>No</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>20240116</td>
+      <td>2024-01-16</td>
+      <td>Tuesday</td>
+      <td>January</td>
+      <td>Q1</td>
+      <td>2024</td>
+      <td>No</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>20240120</td>
+      <td>2024-01-20</td>
+      <td>Saturday</td>
+      <td>January</td>
+      <td>Q1</td>
+      <td>2024</td>
+      <td>Yes</td>
+      <td>No</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>This lets you easily query things like:</p>
+<ul>
+  <li>“Show me all sales on weekends”</li>
+  <li>“Compare Q1 vs Q2”</li>
+  <li>“What’s the trend for Mondays?”</li>
+</ul>
+
+<hr />
+
+<h2 id="slowly-changing-dimensions-scd">Slowly Changing Dimensions (SCD)</h2>
+
+<h3 id="the-problem">The Problem</h3>
+
+<p>What happens when dimension data changes? A customer moves to a new city. A product gets a new price. How do you track history?</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph before["Before Move"]
+        B["👤 John Smith<br />City: New York"]
+    end
+    
+    subgraph after["After Move"]
+        A["👤 John Smith<br />City: Los Angeles"]
+    end
+    
+    before --&gt; |"Moves!"| after
+    
+    Q["❓ What do we do<br />with old sales in NY?"]
+    
+    style Q fill:#fef3c7,stroke:#d97706
+</div>
+
+<h3 id="scd-types">SCD Types</h3>
+
+<div class="mermaid">
+flowchart TD
+    SCD["Slowly Changing Dimension Types"]
+    
+    SCD --&gt; T0["Type 0<br />Never change<br />(retain original)"]
+    SCD --&gt; T1["Type 1<br />Overwrite<br />(lose history)"]
+    SCD --&gt; T2["Type 2<br />Add new row<br />(keep history)"]
+    SCD --&gt; T3["Type 3<br />Add new column<br />(limited history)"]
+    
+    style T0 fill:#f1f5f9,stroke:#64748b
+    style T1 fill:#fecaca,stroke:#dc2626
+    style T2 fill:#d1fae5,stroke:#059669
+    style T3 fill:#fef3c7,stroke:#d97706
+</div>
+
+<h3 id="scd-type-2-example-most-common">SCD Type 2 Example (Most Common)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>customer_key</th>
+      <th>customer_id</th>
+      <th>name</th>
+      <th>city</th>
+      <th>start_date</th>
+      <th>end_date</th>
+      <th>is_current</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1001</td>
+      <td>C100</td>
+      <td>John Smith</td>
+      <td>New York</td>
+      <td>2020-01-01</td>
+      <td>2024-06-30</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>1002</td>
+      <td>C100</td>
+      <td>John Smith</td>
+      <td>Los Angeles</td>
+      <td>2024-07-01</td>
+      <td>9999-12-31</td>
+      <td>Yes</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Same customer, two rows!</strong> Old sales link to key 1001 (NY), new sales link to key 1002 (LA).</p>
+
+<h3 id="when-to-use-each-type">When to Use Each Type</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Use When</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Type 0</strong></td>
+      <td>Value should never change</td>
+      <td>Original signup date</td>
+    </tr>
+    <tr>
+      <td><strong>Type 1</strong></td>
+      <td>History doesn’t matter</td>
+      <td>Fixing typos</td>
+    </tr>
+    <tr>
+      <td><strong>Type 2</strong></td>
+      <td>Need full history</td>
+      <td>Customer address, product price</td>
+    </tr>
+    <tr>
+      <td><strong>Type 3</strong></td>
+      <td>Only need previous value</td>
+      <td>Previous manager</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="building-a-dimensional-model-step-by-step">Building a Dimensional Model: Step by Step</h2>
+
+<div class="mermaid">
+flowchart TD
+    S1["1️⃣ Select Business Process<br />'What are we measuring?'"]
+    S2["2️⃣ Declare the Grain<br />'What does one row represent?'"]
+    S3["3️⃣ Identify Dimensions<br />'What context do we need?'"]
+    S4["4️⃣ Identify Facts<br />'What numbers do we measure?'"]
+    
+    S1 --&gt; S2 --&gt; S3 --&gt; S4
+    
+    style S1 fill:#dbeafe,stroke:#2563eb
+    style S2 fill:#d1fae5,stroke:#059669
+    style S3 fill:#fef3c7,stroke:#d97706
+    style S4 fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="example-e-commerce-orders">Example: E-Commerce Orders</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Question</th>
+      <th>Answer</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1. Business Process</strong></td>
+      <td>What are we analyzing?</td>
+      <td>Online Orders</td>
+    </tr>
+    <tr>
+      <td><strong>2. Grain</strong></td>
+      <td>What’s one row?</td>
+      <td>One order line item</td>
+    </tr>
+    <tr>
+      <td><strong>3. Dimensions</strong></td>
+      <td>What’s the context?</td>
+      <td>Date, Customer, Product, Promotion</td>
+    </tr>
+    <tr>
+      <td><strong>4. Facts</strong></td>
+      <td>What do we measure?</td>
+      <td>Quantity, Revenue, Discount, Shipping Cost</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="is-dimensional-modeling-still-relevant">Is Dimensional Modeling Still Relevant?</h2>
+
+<p><strong>Yes!</strong> Here’s why it’s still widely used:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Modern Context</th>
+      <th>Why Dimensional Modeling Works</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Cloud Data Warehouses</strong> (Snowflake, BigQuery, Redshift)</td>
+      <td>Still optimized for star schemas</td>
+    </tr>
+    <tr>
+      <td><strong>BI Tools</strong> (Tableau, Power BI, Looker)</td>
+      <td>Expect dimensional models</td>
+    </tr>
+    <tr>
+      <td><strong>Business Users</strong></td>
+      <td>Understand star schemas intuitively</td>
+    </tr>
+    <tr>
+      <td><strong>Performance</strong></td>
+      <td>Denormalized data = fast queries</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="modern-adaptations">Modern Adaptations</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph traditional["Traditional (Kimball)"]
+        T1["ETL → Star Schema"]
+    end
+    
+    subgraph modern["Modern Approach"]
+        M1["ELT → Raw Data"]
+        M2["dbt transforms"]
+        M3["Star Schema"]
+        M1 --&gt; M2 --&gt; M3
+    end
+    
+    style T1 fill:#f1f5f9,stroke:#64748b
+    style M3 fill:#d1fae5,stroke:#059669
+</div>
+
+<p>Tools like <strong>dbt</strong> now help build dimensional models using SQL transformations, making it easier than ever.</p>
+
+<hr />
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="fact-vs-dimension-cheat-sheet">Fact vs Dimension Cheat Sheet</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Question</th>
+      <th>Fact Table</th>
+      <th>Dimension Table</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>What does it store?</td>
+      <td>Measurements</td>
+      <td>Context/Descriptions</td>
+    </tr>
+    <tr>
+      <td>Example columns</td>
+      <td>Revenue, Quantity, Cost</td>
+      <td>Name, Category, Date</td>
+    </tr>
+    <tr>
+      <td>Row count</td>
+      <td>Many (millions+)</td>
+      <td>Fewer (thousands)</td>
+    </tr>
+    <tr>
+      <td>Changes often?</td>
+      <td>New rows added constantly</td>
+      <td>Changes slowly</td>
+    </tr>
+    <tr>
+      <td>Width</td>
+      <td>Narrow (few columns)</td>
+      <td>Wide (many columns)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="key-terms">Key Terms</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>Simple Definition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Grain</strong></td>
+      <td>What one row in a fact table represents</td>
+    </tr>
+    <tr>
+      <td><strong>Surrogate Key</strong></td>
+      <td>System-generated ID (1, 2, 3…) used as primary key</td>
+    </tr>
+    <tr>
+      <td><strong>Natural Key</strong></td>
+      <td>Business ID from source system (SKU, Customer ID)</td>
+    </tr>
+    <tr>
+      <td><strong>Conformed Dimension</strong></td>
+      <td>Same dimension used across multiple fact tables</td>
+    </tr>
+    <tr>
+      <td><strong>Junk Dimension</strong></td>
+      <td>Groups miscellaneous flags/indicators</td>
+    </tr>
+    <tr>
+      <td><strong>Degenerate Dimension</strong></td>
+      <td>Dimension stored in fact table (e.g., Order Number)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<div class="mermaid">
+flowchart TD
+    DM["Dimensional Modeling"]
+    
+    DM --&gt; FACT["📊 Fact Tables<br />Store measurements<br />(revenue, quantity)"]
+    DM --&gt; DIM["📦 Dimension Tables<br />Store context<br />(who, what, when, where)"]
+    DM --&gt; STAR["⭐ Star Schema<br />Simple, fast, popular"]
+    DM --&gt; SCD["🔄 Handle Changes<br />SCD Type 1, 2, 3"]
+    
+    style DM fill:#dbeafe,stroke:#2563eb
+    style FACT fill:#d1fae5,stroke:#059669
+    style DIM fill:#fef3c7,stroke:#d97706
+    style STAR fill:#fce7f3,stroke:#db2777
+    style SCD fill:#e0e7ff,stroke:#6366f1
+</div>
+
+<p><strong>Remember:</strong></p>
+<ul>
+  <li><strong>Fact tables</strong> = The numbers you measure</li>
+  <li><strong>Dimension tables</strong> = The context around those numbers</li>
+  <li><strong>Star schema</strong> = Facts in the center, dimensions around it</li>
+  <li><strong>Keep it simple</strong> = Business users should understand it!</li>
+</ul>
+
+<hr />
+
+<p><em>Inspired by Ralph Kimball’s dimensional modeling methodology. For deeper learning, check out “The Data Warehouse Toolkit” by Ralph Kimball.</em></p>
+
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">data-warehouse</span>, <span class="tag">dimensional-modeling</span>, <span class="tag">kimball</span>, <span class="tag">star-schema</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">&copy; 2025 Handbook</div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>
