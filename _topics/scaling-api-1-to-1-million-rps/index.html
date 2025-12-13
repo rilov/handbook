@@ -1,0 +1,836 @@
+<h2 id="the-journey-1-rps--1000000-rps">The Journey: 1 RPS → 1,000,000 RPS</h2>
+
+<p>Imagine your API is a restaurant. At first, you have one chef (server) handling one order at a time. But what happens when you go viral and suddenly have a million customers waiting?</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph before["😰 Before Scaling"]
+        U1["👤 User"] --&gt; S1["🖥️ 1 Server"]
+        S1 --&gt; D1["🗄️ 1 Database"]
+    end
+    
+    subgraph after["😎 After Scaling"]
+        U2["👥 Millions<br />of Users"] --&gt; LB["⚖️ Load<br />Balancer"]
+        LB --&gt; S2["🖥️ Server 1"]
+        LB --&gt; S3["🖥️ Server 2"]
+        LB --&gt; S4["🖥️ Server N..."]
+        S2 --&gt; C["⚡ Cache"]
+        S3 --&gt; C
+        S4 --&gt; C
+        C --&gt; DB["🗄️ Database<br />Cluster"]
+    end
+</div>
+
+<p>Let’s break down each technique, starting from the simplest to the most advanced.</p>
+
+<hr />
+
+<h2 id="level-1-vertical-scaling-the-easy-start">Level 1: Vertical Scaling (The Easy Start)</h2>
+
+<h3 id="what-is-it">What is it?</h3>
+
+<p>Make your single server bigger and more powerful — more CPU, more RAM, faster disk.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph before["Before"]
+        A["🖥️ Small Server<br />2 CPU, 4GB RAM"]
+    end
+    
+    subgraph after["After"]
+        B["🖥️ Big Server<br />32 CPU, 128GB RAM"]
+    end
+    
+    before --&gt; |"💰 Upgrade"| after
+    
+    style A fill:#fecaca,stroke:#dc2626
+    style B fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<p>Instead of hiring more chefs, you give your one chef a bigger kitchen with better equipment.</p>
+
+<h3 id="limits">Limits</h3>
+
+<ul>
+  <li>❌ There’s a ceiling — servers can only get so big</li>
+  <li>❌ Single point of failure — if it crashes, everything goes down</li>
+  <li>❌ Expensive at the top end</li>
+</ul>
+
+<p><strong>Good for:</strong> 1 → 100 RPS</p>
+
+<hr />
+
+<h2 id="level-2-horizontal-scaling-add-more-servers">Level 2: Horizontal Scaling (Add More Servers)</h2>
+
+<h3 id="what-is-it-1">What is it?</h3>
+
+<p>Instead of one big server, use many smaller servers working together.</p>
+
+<div class="mermaid">
+flowchart TD
+    U["👥 Users"] --&gt; LB["⚖️ Load Balancer"]
+    LB --&gt; S1["🖥️ Server 1"]
+    LB --&gt; S2["🖥️ Server 2"]
+    LB --&gt; S3["🖥️ Server 3"]
+    LB --&gt; S4["🖥️ Server 4"]
+    
+    style LB fill:#dbeafe,stroke:#2563eb
+    style S1 fill:#d1fae5,stroke:#059669
+    style S2 fill:#d1fae5,stroke:#059669
+    style S3 fill:#d1fae5,stroke:#059669
+    style S4 fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-analogy-1">Real-World Analogy</h3>
+
+<p>Hire more chefs! Each chef can work independently, handling their own orders.</p>
+
+<h3 id="benefits">Benefits</h3>
+
+<ul>
+  <li>✅ No ceiling — just add more servers</li>
+  <li>✅ No single point of failure — if one dies, others keep working</li>
+  <li>✅ Cost-effective — use cheaper commodity hardware</li>
+</ul>
+
+<p><strong>Good for:</strong> 100 → 10,000 RPS</p>
+
+<hr />
+
+<h2 id="level-3-load-balancing-traffic-cop">Level 3: Load Balancing (Traffic Cop)</h2>
+
+<h3 id="what-is-it-2">What is it?</h3>
+
+<p>A load balancer distributes incoming requests across multiple servers evenly.</p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph clients["Incoming Requests"]
+        R1["Request 1"]
+        R2["Request 2"]
+        R3["Request 3"]
+        R4["Request 4"]
+        R5["Request 5"]
+        R6["Request 6"]
+    end
+    
+    R1 --&gt; LB
+    R2 --&gt; LB
+    R3 --&gt; LB
+    R4 --&gt; LB
+    R5 --&gt; LB
+    R6 --&gt; LB
+    
+    LB["⚖️ Load Balancer"]
+    
+    LB --&gt; |"1, 4"| S1["🖥️ Server 1"]
+    LB --&gt; |"2, 5"| S2["🖥️ Server 2"]
+    LB --&gt; |"3, 6"| S3["🖥️ Server 3"]
+    
+    style LB fill:#fef3c7,stroke:#d97706
+</div>
+
+<h3 id="common-algorithms">Common Algorithms</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Algorithm</th>
+      <th>How it Works</th>
+      <th>Best For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Round Robin</strong></td>
+      <td>Takes turns: 1→2→3→1→2→3</td>
+      <td>Equal server capacity</td>
+    </tr>
+    <tr>
+      <td><strong>Least Connections</strong></td>
+      <td>Sends to server with fewest active requests</td>
+      <td>Varying request times</td>
+    </tr>
+    <tr>
+      <td><strong>IP Hash</strong></td>
+      <td>Same user always goes to same server</td>
+      <td>Session persistence</td>
+    </tr>
+    <tr>
+      <td><strong>Weighted</strong></td>
+      <td>Stronger servers get more traffic</td>
+      <td>Mixed server sizes</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-analogy-2">Real-World Analogy</h3>
+
+<p>A host at a restaurant who seats customers at different tables to keep all waiters equally busy.</p>
+
+<hr />
+
+<h2 id="level-4-caching-remember--reuse">Level 4: Caching (Remember &amp; Reuse)</h2>
+
+<h3 id="what-is-it-3">What is it?</h3>
+
+<p>Store frequently accessed data in fast memory so you don’t have to compute or fetch it again.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant S as 🖥️ Server
+    participant C as ⚡ Cache (Redis)
+    participant D as 🗄️ Database
+    
+    Note over U,D: First Request (Cache Miss)
+    U-&gt;&gt;S: GET /user/123
+    S-&gt;&gt;C: Check cache
+    C--&gt;&gt;S: ❌ Not found
+    S-&gt;&gt;D: Query database
+    D--&gt;&gt;S: User data
+    S-&gt;&gt;C: Store in cache
+    S--&gt;&gt;U: Response (200ms)
+    
+    Note over U,D: Second Request (Cache Hit)
+    U-&gt;&gt;S: GET /user/123
+    S-&gt;&gt;C: Check cache
+    C--&gt;&gt;S: ✅ Found!
+    S--&gt;&gt;U: Response (5ms) 🚀
+</div>
+
+<h3 id="types-of-caching">Types of Caching</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph layers["Caching Layers"]
+        direction TB
+        B["🌐 Browser Cache<br />Client-side"]
+        CDN["📡 CDN Cache<br />Edge servers"]
+        APP["⚡ App Cache<br />Redis/Memcached"]
+        DB["🗄️ DB Cache<br />Query cache"]
+    end
+    
+    B --&gt; CDN --&gt; APP --&gt; DB
+    
+    style B fill:#dbeafe,stroke:#2563eb
+    style CDN fill:#d1fae5,stroke:#059669
+    style APP fill:#fef3c7,stroke:#d97706
+    style DB fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="what-to-cache">What to Cache</h3>
+
+<ul>
+  <li>✅ API responses that don’t change often</li>
+  <li>✅ Database query results</li>
+  <li>✅ Session data</li>
+  <li>✅ Computed values (totals, aggregations)</li>
+</ul>
+
+<h3 id="real-world-analogy-3">Real-World Analogy</h3>
+
+<p>A chef who preps ingredients in advance. Instead of chopping onions for every order, they chop a big batch and grab from it.</p>
+
+<p><strong>Good for:</strong> 10,000 → 100,000 RPS</p>
+
+<hr />
+
+<h2 id="level-5-content-delivery-network-cdn">Level 5: Content Delivery Network (CDN)</h2>
+
+<h3 id="what-is-it-4">What is it?</h3>
+
+<p>A network of servers spread around the world that cache your content closer to users.</p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph origin["🏠 Your Origin Server<br />(New York)"]
+        O["🖥️ Main Server"]
+    end
+    
+    subgraph cdn["🌍 CDN Edge Servers"]
+        E1["📡 London"]
+        E2["📡 Tokyo"]
+        E3["📡 Sydney"]
+        E4["📡 São Paulo"]
+    end
+    
+    O --&gt; E1
+    O --&gt; E2
+    O --&gt; E3
+    O --&gt; E4
+    
+    U1["👤 UK User"] --&gt; E1
+    U2["👤 Japan User"] --&gt; E2
+    U3["👤 Australia User"] --&gt; E3
+    U4["👤 Brazil User"] --&gt; E4
+    
+    style O fill:#dbeafe,stroke:#2563eb
+    style E1 fill:#d1fae5,stroke:#059669
+    style E2 fill:#d1fae5,stroke:#059669
+    style E3 fill:#d1fae5,stroke:#059669
+    style E4 fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="without-cdn-vs-with-cdn">Without CDN vs With CDN</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Without CDN</th>
+      <th>With CDN</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>User in Tokyo</strong></td>
+      <td>Request travels to New York (200ms)</td>
+      <td>Request goes to Tokyo edge (20ms)</td>
+    </tr>
+    <tr>
+      <td><strong>Server Load</strong></td>
+      <td>Every request hits your server</td>
+      <td>Most requests served by CDN</td>
+    </tr>
+    <tr>
+      <td><strong>Bandwidth Cost</strong></td>
+      <td>You pay for all traffic</td>
+      <td>CDN handles most traffic</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-analogy-4">Real-World Analogy</h3>
+
+<p>Instead of one restaurant in New York, you open franchises worldwide. Customers get the same food from their local branch.</p>
+
+<h3 id="best-for">Best For</h3>
+
+<ul>
+  <li>Static assets (images, CSS, JS)</li>
+  <li>API responses that don’t change per user</li>
+  <li>Video streaming</li>
+</ul>
+
+<hr />
+
+<h2 id="level-6-asynchronous-processing-dont-make-users-wait">Level 6: Asynchronous Processing (Don’t Make Users Wait)</h2>
+
+<h3 id="what-is-it-5">What is it?</h3>
+
+<p>For slow operations, accept the request immediately and process it in the background.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant A as 🖥️ API Server
+    participant Q as 📬 Message Queue
+    participant W as ⚙️ Worker
+    participant E as 📧 Email Service
+    
+    Note over U,E: Synchronous (Slow) ❌
+    U-&gt;&gt;A: POST /send-email
+    A-&gt;&gt;E: Send email (3 seconds)
+    E--&gt;&gt;A: Done
+    A--&gt;&gt;U: 200 OK (waited 3 seconds 😴)
+    
+    Note over U,E: Asynchronous (Fast) ✅
+    U-&gt;&gt;A: POST /send-email
+    A-&gt;&gt;Q: Add to queue
+    A--&gt;&gt;U: 202 Accepted (instant! 🚀)
+    Q-&gt;&gt;W: Process job
+    W-&gt;&gt;E: Send email
+    Note over W: User already moved on!
+</div>
+
+<h3 id="common-use-cases">Common Use Cases</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operation</th>
+      <th>Sync Time</th>
+      <th>Async Benefit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Send email</td>
+      <td>2-5 seconds</td>
+      <td>Instant response</td>
+    </tr>
+    <tr>
+      <td>Generate PDF</td>
+      <td>10+ seconds</td>
+      <td>User doesn’t wait</td>
+    </tr>
+    <tr>
+      <td>Process payment</td>
+      <td>3-5 seconds</td>
+      <td>Faster checkout</td>
+    </tr>
+    <tr>
+      <td>Resize image</td>
+      <td>5-15 seconds</td>
+      <td>Upload feels instant</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="tools">Tools</h3>
+
+<ul>
+  <li><strong>Message Queues:</strong> RabbitMQ, Amazon SQS, Redis</li>
+  <li><strong>Task Processors:</strong> Celery (Python), Sidekiq (Ruby), Bull (Node.js)</li>
+</ul>
+
+<h3 id="real-world-analogy-5">Real-World Analogy</h3>
+
+<p>At a busy restaurant, the waiter takes your order and immediately moves to the next table. The kitchen processes orders in the background.</p>
+
+<hr />
+
+<h2 id="level-7-database-sharding-split-your-data">Level 7: Database Sharding (Split Your Data)</h2>
+
+<h3 id="what-is-it-6">What is it?</h3>
+
+<p>Divide your database into smaller pieces (shards), each handling a portion of the data.</p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph before["❌ Single Database (Bottleneck)"]
+        DB1["🗄️ One Database<br />100M users"]
+    end
+    
+    subgraph after["✅ Sharded Database"]
+        R["🔀 Router"]
+        R --&gt; S1["🗄️ Shard 1<br />Users A-H"]
+        R --&gt; S2["🗄️ Shard 2<br />Users I-P"]
+        R --&gt; S3["🗄️ Shard 3<br />Users Q-Z"]
+    end
+    
+    style DB1 fill:#fecaca,stroke:#dc2626
+    style R fill:#fef3c7,stroke:#d97706
+    style S1 fill:#d1fae5,stroke:#059669
+    style S2 fill:#d1fae5,stroke:#059669
+    style S3 fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="sharding-strategies">Sharding Strategies</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph range["Range-Based"]
+        direction TB
+        R1["Users 1-1M → Shard 1"]
+        R2["Users 1M-2M → Shard 2"]
+    end
+    
+    subgraph hash["Hash-Based"]
+        direction TB
+        H1["user_id % 3 = 0 → Shard 1"]
+        H2["user_id % 3 = 1 → Shard 2"]
+        H3["user_id % 3 = 2 → Shard 3"]
+    end
+    
+    subgraph geo["Geographic"]
+        direction TB
+        G1["US users → US Shard"]
+        G2["EU users → EU Shard"]
+    end
+</div>
+
+<h3 id="trade-offs">Trade-offs</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Benefit</th>
+      <th>Challenge</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>✅ Each shard handles less load</td>
+      <td>❌ Cross-shard queries are complex</td>
+    </tr>
+    <tr>
+      <td>✅ Can scale horizontally</td>
+      <td>❌ Rebalancing shards is hard</td>
+    </tr>
+    <tr>
+      <td>✅ Failure affects only one shard</td>
+      <td>❌ Application logic becomes complex</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-analogy-6">Real-World Analogy</h3>
+
+<p>Instead of one giant warehouse, you have regional warehouses. Each handles orders for their region.</p>
+
+<p><strong>Good for:</strong> 100,000 → 1,000,000+ RPS</p>
+
+<hr />
+
+<h2 id="level-8-rate-limiting-protect-your-system">Level 8: Rate Limiting (Protect Your System)</h2>
+
+<h3 id="what-is-it-7">What is it?</h3>
+
+<p>Limit how many requests a user or client can make in a given time period.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant R as 🚦 Rate Limiter
+    participant A as 🖥️ API
+    
+    U-&gt;&gt;R: Request 1
+    R-&gt;&gt;A: ✅ Allow
+    A--&gt;&gt;U: 200 OK
+    
+    U-&gt;&gt;R: Request 2
+    R-&gt;&gt;A: ✅ Allow
+    A--&gt;&gt;U: 200 OK
+    
+    U-&gt;&gt;R: Request 3
+    R-&gt;&gt;A: ✅ Allow
+    A--&gt;&gt;U: 200 OK
+    
+    Note over U,A: Limit reached (3 req/sec)
+    
+    U-&gt;&gt;R: Request 4
+    R--&gt;&gt;U: ❌ 429 Too Many Requests
+    
+    U-&gt;&gt;R: Request 5
+    R--&gt;&gt;U: ❌ 429 Too Many Requests
+    
+    Note over U,A: Wait 1 second...
+    
+    U-&gt;&gt;R: Request 6
+    R-&gt;&gt;A: ✅ Allow
+    A--&gt;&gt;U: 200 OK
+</div>
+
+<h3 id="common-algorithms-1">Common Algorithms</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Algorithm</th>
+      <th>How it Works</th>
+      <th>Visual</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Token Bucket</strong></td>
+      <td>Tokens added at fixed rate; request consumes a token</td>
+      <td>🪣 Bucket fills up over time</td>
+    </tr>
+    <tr>
+      <td><strong>Sliding Window</strong></td>
+      <td>Count requests in rolling time window</td>
+      <td>📊 Moving window of time</td>
+    </tr>
+    <tr>
+      <td><strong>Fixed Window</strong></td>
+      <td>Reset counter at fixed intervals</td>
+      <td>⏰ Reset every minute</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="rate-limit-headers">Rate Limit Headers</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>HTTP/1.1 200 OK
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 67
+X-RateLimit-Reset: 1640995200
+</code></pre></div></div>
+
+<h3 id="real-world-analogy-7">Real-World Analogy</h3>
+
+<p>A bouncer at a club who only lets in 100 people per hour, no matter how long the line is.</p>
+
+<hr />
+
+<h2 id="level-9-keep-responses-lightweight">Level 9: Keep Responses Lightweight</h2>
+
+<h3 id="what-is-it-8">What is it?</h3>
+
+<p>Send only the data users need, in the most efficient format.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph heavy["❌ Heavy Response (10KB)"]
+        H["Full user object<br />+ nested data<br />+ unused fields"]
+    end
+    
+    subgraph light["✅ Light Response (500B)"]
+        L["Only requested<br />fields"]
+    end
+    
+    heavy --&gt; |"20x smaller"| light
+    
+    style H fill:#fecaca,stroke:#dc2626
+    style L fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="techniques">Techniques</h3>
+
+<h4 id="1-field-selection-graphql--sparse-fields">1. Field Selection (GraphQL / Sparse Fields)</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Instead of getting everything:
+GET /users/123
+
+# Request only what you need:
+GET /users/123?fields=name,email
+</code></pre></div></div>
+
+<h4 id="2-pagination">2. Pagination</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Don't return 10,000 items at once!
+GET /users?page=1&amp;limit=20
+</code></pre></div></div>
+
+<h4 id="3-compression">3. Compression</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Enable gzip compression
+Response: 100KB → 15KB
+</code></pre></div></div>
+
+<h4 id="4-efficient-formats">4. Efficient Formats</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Format</th>
+      <th>Size</th>
+      <th>Speed</th>
+      <th>Use Case</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>JSON</td>
+      <td>Medium</td>
+      <td>Fast</td>
+      <td>Most APIs</td>
+    </tr>
+    <tr>
+      <td>Protocol Buffers</td>
+      <td>Small</td>
+      <td>Fastest</td>
+      <td>High-performance</td>
+    </tr>
+    <tr>
+      <td>MessagePack</td>
+      <td>Small</td>
+      <td>Fast</td>
+      <td>Binary data</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-analogy-8">Real-World Analogy</h3>
+
+<p>Instead of shipping a whole catalog, send just the page the customer asked for.</p>
+
+<hr />
+
+<h2 id="the-complete-picture">The Complete Picture</h2>
+
+<p>Here’s how all these techniques work together at scale:</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph users["🌍 Users Worldwide"]
+        U1["👤"]
+        U2["👤"]
+        U3["👤"]
+    end
+    
+    subgraph edge["Edge Layer"]
+        CDN["📡 CDN"]
+        RL["🚦 Rate Limiter"]
+    end
+    
+    subgraph app["Application Layer"]
+        LB["⚖️ Load Balancer"]
+        S1["🖥️ Server"]
+        S2["🖥️ Server"]
+        S3["🖥️ Server"]
+    end
+    
+    subgraph cache["Cache Layer"]
+        RC["⚡ Redis Cache"]
+    end
+    
+    subgraph async["Async Layer"]
+        Q["📬 Queue"]
+        W["⚙️ Workers"]
+    end
+    
+    subgraph data["Data Layer"]
+        SH1["🗄️ Shard 1"]
+        SH2["🗄️ Shard 2"]
+        SH3["🗄️ Shard 3"]
+    end
+    
+    U1 --&gt; CDN
+    U2 --&gt; CDN
+    U3 --&gt; CDN
+    CDN --&gt; RL
+    RL --&gt; LB
+    LB --&gt; S1
+    LB --&gt; S2
+    LB --&gt; S3
+    S1 --&gt; RC
+    S2 --&gt; RC
+    S3 --&gt; RC
+    S1 --&gt; Q
+    RC --&gt; SH1
+    RC --&gt; SH2
+    RC --&gt; SH3
+    Q --&gt; W
+    W --&gt; SH1
+    
+    style CDN fill:#d1fae5,stroke:#059669
+    style RL fill:#fef3c7,stroke:#d97706
+    style LB fill:#dbeafe,stroke:#2563eb
+    style RC fill:#fce7f3,stroke:#db2777
+    style Q fill:#e0e7ff,stroke:#6366f1
+</div>
+
+<hr />
+
+<h2 id="scaling-roadmap">Scaling Roadmap</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>RPS Target</th>
+      <th>Techniques to Add</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1 → 100</strong></td>
+      <td>Vertical scaling, basic optimization</td>
+    </tr>
+    <tr>
+      <td><strong>100 → 1K</strong></td>
+      <td>Add caching (Redis), optimize database queries</td>
+    </tr>
+    <tr>
+      <td><strong>1K → 10K</strong></td>
+      <td>Horizontal scaling, load balancer, CDN</td>
+    </tr>
+    <tr>
+      <td><strong>10K → 100K</strong></td>
+      <td>Database read replicas, async processing</td>
+    </tr>
+    <tr>
+      <td><strong>100K → 1M</strong></td>
+      <td>Database sharding, microservices, rate limiting</td>
+    </tr>
+    <tr>
+      <td><strong>1M+</strong></td>
+      <td>Multi-region deployment, edge computing</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<div class="mermaid">
+flowchart TD
+    Q["🤔 What's your bottleneck?"]
+    
+    Q --&gt; CPU["CPU maxed out?"]
+    Q --&gt; MEM["Memory full?"]
+    Q --&gt; DB["Database slow?"]
+    Q --&gt; NET["Network saturated?"]
+    
+    CPU --&gt; CPU_S["Add more servers<br />(horizontal scaling)"]
+    MEM --&gt; MEM_S["Add caching<br />(Redis/Memcached)"]
+    DB --&gt; DB_S["Read replicas,<br />sharding, caching"]
+    NET --&gt; NET_S["CDN, compression,<br />lighter responses"]
+    
+    style Q fill:#f1f5f9,stroke:#64748b
+    style CPU_S fill:#d1fae5,stroke:#059669
+    style MEM_S fill:#d1fae5,stroke:#059669
+    style DB_S fill:#d1fae5,stroke:#059669
+    style NET_S fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Technique</th>
+      <th>What It Does</th>
+      <th>When to Use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Vertical Scaling</strong></td>
+      <td>Bigger server</td>
+      <td>Quick fix, low traffic</td>
+    </tr>
+    <tr>
+      <td><strong>Horizontal Scaling</strong></td>
+      <td>More servers</td>
+      <td>Sustained growth</td>
+    </tr>
+    <tr>
+      <td><strong>Load Balancing</strong></td>
+      <td>Distribute traffic</td>
+      <td>Multiple servers</td>
+    </tr>
+    <tr>
+      <td><strong>Caching</strong></td>
+      <td>Remember results</td>
+      <td>Repeated queries</td>
+    </tr>
+    <tr>
+      <td><strong>CDN</strong></td>
+      <td>Serve from edge</td>
+      <td>Global users, static content</td>
+    </tr>
+    <tr>
+      <td><strong>Async Processing</strong></td>
+      <td>Background jobs</td>
+      <td>Slow operations</td>
+    </tr>
+    <tr>
+      <td><strong>Database Sharding</strong></td>
+      <td>Split data</td>
+      <td>Massive datasets</td>
+    </tr>
+    <tr>
+      <td><strong>Rate Limiting</strong></td>
+      <td>Protect system</td>
+      <td>Prevent abuse</td>
+    </tr>
+    <tr>
+      <td><strong>Light Responses</strong></td>
+      <td>Send less data</td>
+      <td>Always!</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Remember:</strong> Start simple, measure everything, and scale based on actual bottlenecks — not imagined ones!</p>
+
