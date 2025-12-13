@@ -18,6 +18,26 @@ Imagine you have a secret message. There are two ways to protect it:
 | **Reversible?** | ❌ No — one-way only | ✅ Yes — with the right key |
 | **Use for** | Verifying things (passwords, file integrity) | Protecting secrets you need to read later |
 
+### Visual Overview
+
+<div class="mermaid">
+flowchart LR
+    subgraph Hashing["🔒 HASHING (One-Way)"]
+        direction LR
+        H1["📄 Original Data"] --> H2["⚙️ Hash Function"]
+        H2 --> H3["🔢 Fixed Hash"]
+        H3 -.-x|"❌ Cannot reverse"| H1
+    end
+    
+    subgraph Encryption["🔐 ENCRYPTION (Two-Way)"]
+        direction LR
+        E1["📄 Original Data"] --> E2["🔑 Encrypt with Key"]
+        E2 --> E3["🔒 Encrypted Data"]
+        E3 --> E4["🔑 Decrypt with Key"]
+        E4 --> E5["📄 Original Data"]
+    end
+</div>
+
 ---
 
 ## Hashing: The One-Way Street
@@ -27,6 +47,16 @@ Imagine you have a secret message. There are two ways to protect it:
 Hashing takes any input (a password, a file, a message) and turns it into a fixed-length string of characters called a "hash" or "digest". 
 
 **The key thing:** You can't reverse it. You can't get the original back from the hash.
+
+<div class="mermaid">
+flowchart LR
+    A["Any Input<br/>(password, file, text)"] --> B["Hash Function<br/>(SHA-256)"]
+    B --> C["Fixed-Length Output<br/>64 characters"]
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style B fill:#fef3c7,stroke:#d97706
+    style C fill:#d1fae5,stroke:#059669
+</div>
 
 ### Real-World Analogy
 
@@ -151,6 +181,28 @@ Stored in database: a4e16a...
 ❌ Wrong password!
 ```
 
+### How Password Verification Works
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant W as 🌐 Website
+    participant D as 🗄️ Database
+    
+    Note over U,D: Registration
+    U->>W: Creates password: "secret123"
+    W->>W: Hash it → "a1b2c3..."
+    W->>D: Store hash (NOT password)
+    
+    Note over U,D: Login Attempt
+    U->>W: Enters password: "secret123"
+    W->>W: Hash it → "a1b2c3..."
+    W->>D: Get stored hash
+    D-->>W: Returns "a1b2c3..."
+    W->>W: Compare hashes
+    W-->>U: ✅ Match! Login successful
+</div>
+
 ### When to Use Hashing
 
 - ✅ Storing passwords (never store actual passwords!)
@@ -167,6 +219,23 @@ Stored in database: a4e16a...
 Encryption scrambles your data so that only someone with the right "key" can unscramble it.
 
 **The key thing:** It's reversible! If you have the key, you can get the original back.
+
+<div class="mermaid">
+flowchart LR
+    subgraph encrypt["Encrypt"]
+        A["📄 Secret Message"] --> B["🔑 + Key"]
+        B --> C["🔒 Encrypted<br/>(Unreadable)"]
+    end
+    
+    subgraph decrypt["Decrypt"]
+        C --> D["🔑 + Key"]
+        D --> E["📄 Secret Message"]
+    end
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style C fill:#fecaca,stroke:#dc2626
+    style E fill:#d1fae5,stroke:#059669
+</div>
 
 ### Real-World Analogy
 
@@ -275,6 +344,26 @@ Encrypted message: gAAAAABl...
 ✅ Alice decrypted: Meet me at noon
 ```
 
+### How Secure Messaging Works
+
+<div class="mermaid">
+sequenceDiagram
+    participant A as 👩 Alice
+    participant B as 👨 Bob
+    participant H as 🕵️ Hacker
+    
+    Note over A,B: Alice wants to send "Meet at 5pm"
+    A->>A: Encrypt with shared key
+    A->>B: Send: "xK9#mP2..."
+    
+    Note over H: Hacker intercepts
+    H->>H: Sees "xK9#mP2..."
+    H->>H: ❌ Can't read without key!
+    
+    B->>B: Decrypt with shared key
+    Note over B: ✅ Reads: "Meet at 5pm"
+</div>
+
 ### When to Use Encryption
 
 - ✅ Storing sensitive data you need to read later (credit cards, personal info)
@@ -317,6 +406,24 @@ print(f"  Can reverse? YES ✅ (with the key)")
 ## Quick Decision Guide
 
 Ask yourself: **"Do I need to get the original data back?"**
+
+<div class="mermaid">
+flowchart TD
+    A["🤔 What do you need to do<br/>with the data?"] --> B{"Do you need the<br/>original data back?"}
+    
+    B -->|"❌ No"| C["Use HASHING"]
+    B -->|"✅ Yes"| D["Use ENCRYPTION"]
+    
+    C --> E["Examples:<br/>• Password storage<br/>• File checksums<br/>• Data verification"]
+    D --> F["Examples:<br/>• Credit card storage<br/>• Private messages<br/>• Secure files"]
+    
+    style A fill:#f1f5f9,stroke:#64748b
+    style B fill:#fef3c7,stroke:#d97706
+    style C fill:#dbeafe,stroke:#2563eb
+    style D fill:#d1fae5,stroke:#059669
+    style E fill:#eff6ff,stroke:#2563eb
+    style F fill:#ecfdf5,stroke:#059669
+</div>
 
 | Your Answer | Use This | Example |
 |------------|----------|---------|
