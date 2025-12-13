@@ -54,9 +54,11 @@ Option C — Host on GitHub Pages with `gh-pages` branch (alternative):
 
 - You can still build locally if you prefer and push `_site` to a `gh-pages` branch and set Pages source to 'gh-pages branch / root' — but this is manual and usually unnecessary when using Actions.
 
-Setting `url` and `baseurl` correctly
-- If your Pages URL will be `https://<your-username>.github.io/<repo-name>` (project site), set `baseurl: "/<repo-name>"` in `_config.yml`. Example: `baseurl: "/handbook.github.io"`.
-- If the site is a user/organization page (repo named `<username>.github.io`), set `baseurl: ""` and `url: "https://<your-username>.github.io"`.
+Setting `url` and `baseurl` correctly (project site under `/handbook`)
+- If you want your site to be available at `https://rilov.github.io/handbook` (recommended), set:
+	- `url: "https://rilov.github.io"`
+	- `baseurl: "/handbook"`
+- Note: For GitHub Pages to serve at `/handbook`, the GitHub repository should be named `handbook`. If this repo is currently named `handbook.github.io`, rename it to `handbook` in the GitHub repository Settings → General → Repository name.
 
 Troubleshooting
 - If the site looks broken or assets 404, check that `baseurl` is set correctly and that links are built with `{{ '/path' | relative_url }}` so Jekyll handles basefolder.
