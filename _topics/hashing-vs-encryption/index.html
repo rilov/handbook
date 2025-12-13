@@ -1,48 +1,431 @@
-<h2 id="hashing">Hashing</h2>
+<h2 id="the-simple-explanation">The Simple Explanation</h2>
 
+<p>Imagine you have a secret message. There are two ways to protect it:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Hashing</th>
+      <th>Encryption</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Analogy</strong></td>
+      <td>A meat grinder — once you grind meat, you can’t un-grind it</td>
+      <td>A lockbox — you lock it, and anyone with the key can unlock it</td>
+    </tr>
+    <tr>
+      <td><strong>Reversible?</strong></td>
+      <td>❌ No — one-way only</td>
+      <td>✅ Yes — with the right key</td>
+    </tr>
+    <tr>
+      <td><strong>Use for</strong></td>
+      <td>Verifying things (passwords, file integrity)</td>
+      <td>Protecting secrets you need to read later</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="hashing-the-one-way-street">Hashing: The One-Way Street</h2>
+
+<h3 id="what-is-it">What is it?</h3>
+
+<p>Hashing takes any input (a password, a file, a message) and turns it into a fixed-length string of characters called a “hash” or “digest”.</p>
+
+<p><strong>The key thing:</strong> You can’t reverse it. You can’t get the original back from the hash.</p>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<p>Think of a <strong>fingerprint</strong>:</p>
 <ul>
-  <li>Hashing is a one-way function that produces a fixed-size digest from arbitrary input.</li>
-  <li>Common algorithms: SHA-256, SHA-3, BLAKE2, MD5 (deprecated).</li>
-  <li>Use-cases: password verification (with salt), data integrity checks, content-addressing (e.g., git), deduplication.</li>
-  <li>Properties:
-    <ul>
-      <li>Deterministic: same input → same digest.</li>
-      <li>Irreversible: you cannot recover original data from the hash.</li>
-      <li>Collision-resistant: hard to find two different inputs with same hash.</li>
-    </ul>
-  </li>
+  <li>Every person has a unique fingerprint</li>
+  <li>You can identify someone by their fingerprint</li>
+  <li>But you can’t recreate the person from their fingerprint!</li>
 </ul>
 
-<h2 id="encryption">Encryption</h2>
+<p>Hashing works the same way — it creates a unique “fingerprint” of your data.</p>
+
+<h3 id="python-example-1-basic-hashing">Python Example 1: Basic Hashing</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">hashlib</span>
+
+<span class="c1"># Let's hash a simple message
+</span><span class="n">message</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Hello, World!</span><span class="sh">"</span>
+
+<span class="c1"># Create a SHA-256 hash
+</span><span class="n">hash_result</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">message</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Original message: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Hash: </span><span class="si">{</span><span class="n">hash_result</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original message: Hello, World!
+Hash: dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f
+</code></pre></div></div>
+
+<p>Notice how the hash is always 64 characters long, no matter how long or short your message is!</p>
+
+<h3 id="python-example-2-same-input--same-hash">Python Example 2: Same Input = Same Hash</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">hashlib</span>
+
+<span class="c1"># Hash the same message twice
+</span><span class="n">message</span> <span class="o">=</span> <span class="sh">"</span><span class="s">secret123</span><span class="sh">"</span>
+
+<span class="n">hash1</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">message</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+<span class="n">hash2</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">message</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">First hash:  </span><span class="si">{</span><span class="n">hash1</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Second hash: </span><span class="si">{</span><span class="n">hash2</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Are they the same? </span><span class="si">{</span><span class="n">hash1</span> <span class="o">==</span> <span class="n">hash2</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>First hash:  5f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953
+Second hash: 5f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953
+Are they the same? True
+</code></pre></div></div>
+
+<p>This is how password verification works! You don’t store the password, you store its hash.</p>
+
+<h3 id="python-example-3-tiny-change--completely-different-hash">Python Example 3: Tiny Change = Completely Different Hash</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">hashlib</span>
+
+<span class="c1"># Two messages that differ by just one character
+</span><span class="n">message1</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Hello</span><span class="sh">"</span>
+<span class="n">message2</span> <span class="o">=</span> <span class="sh">"</span><span class="s">hello</span><span class="sh">"</span>  <span class="c1"># lowercase 'h'
+</span>
+<span class="n">hash1</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">message1</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+<span class="n">hash2</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">message2</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="s">Hello</span><span class="sh">'</span><span class="s"> → </span><span class="si">{</span><span class="n">hash1</span><span class="p">[</span><span class="si">:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="s">hello</span><span class="sh">'</span><span class="s"> → </span><span class="si">{</span><span class="n">hash2</span><span class="p">[</span><span class="si">:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Are they the same? </span><span class="si">{</span><span class="n">hash1</span> <span class="o">==</span> <span class="n">hash2</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>'Hello' → 185f8db32271fe25f5...
+'hello' → 2cf24dba5fb0a30e26...
+Are they the same? False
+</code></pre></div></div>
+
+<p>Even a tiny change produces a completely different hash. This makes it impossible to “guess” the original.</p>
+
+<h3 id="python-example-4-password-verification-how-websites-do-it">Python Example 4: Password Verification (How Websites Do It)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">hashlib</span>
+
+<span class="c1"># ===== When user creates account =====
+</span><span class="n">password</span> <span class="o">=</span> <span class="sh">"</span><span class="s">MySecurePassword123</span><span class="sh">"</span>
+
+<span class="c1"># Store this hash in the database (NOT the password!)
+</span><span class="n">stored_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">password</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Stored in database: </span><span class="si">{</span><span class="n">stored_hash</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ===== When user logs in =====
+</span><span class="n">login_attempt</span> <span class="o">=</span> <span class="sh">"</span><span class="s">MySecurePassword123</span><span class="sh">"</span>
+
+<span class="c1"># Hash what they entered and compare
+</span><span class="n">attempt_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">login_attempt</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">attempt_hash</span> <span class="o">==</span> <span class="n">stored_hash</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Login successful!</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">❌ Wrong password!</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ===== Wrong password attempt =====
+</span><span class="n">wrong_attempt</span> <span class="o">=</span> <span class="sh">"</span><span class="s">wrongpassword</span><span class="sh">"</span>
+<span class="n">wrong_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">wrong_attempt</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">wrong_hash</span> <span class="o">==</span> <span class="n">stored_hash</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Login successful!</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">❌ Wrong password!</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stored in database: a4e16a...
+✅ Login successful!
+❌ Wrong password!
+</code></pre></div></div>
+
+<h3 id="when-to-use-hashing">When to Use Hashing</h3>
 
 <ul>
-  <li>Encryption is a reversible process to protect confidentiality; encrypted data can be decrypted if you have the key.</li>
-  <li>Common algorithms: AES (symmetric), RSA &amp; Elliptic-Curve (asymmetric).</li>
-  <li>Use-cases: protecting data at rest, data in transit (TLS), encrypted backups.</li>
-  <li>Properties:
-    <ul>
-      <li>Reversible with the key.</li>
-      <li>Requires secure key management.</li>
-      <li>Can provide confidentiality and (with MACs) integrity.</li>
-    </ul>
-  </li>
+  <li>✅ Storing passwords (never store actual passwords!)</li>
+  <li>✅ Checking if a file was modified (file integrity)</li>
+  <li>✅ Verifying downloads aren’t corrupted</li>
+  <li>✅ Creating unique IDs from content</li>
 </ul>
 
-<h2 id="when-to-use-what">When to use what</h2>
+<hr />
+
+<h2 id="encryption-the-lockbox">Encryption: The Lockbox</h2>
+
+<h3 id="what-is-it-1">What is it?</h3>
+
+<p>Encryption scrambles your data so that only someone with the right “key” can unscramble it.</p>
+
+<p><strong>The key thing:</strong> It’s reversible! If you have the key, you can get the original back.</p>
+
+<h3 id="real-world-analogy-1">Real-World Analogy</h3>
+
+<p>Think of a <strong>lockbox</strong>:</p>
+<ul>
+  <li>You put your valuables inside and lock it with a key</li>
+  <li>The valuables are safe from anyone who doesn’t have the key</li>
+  <li>With the key, you can open it and get your valuables back</li>
+</ul>
+
+<h3 id="python-example-1-basic-encryption">Python Example 1: Basic Encryption</h3>
+
+<p>First, install the cryptography library:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>cryptography
+</code></pre></div></div>
+
+<p>Then:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">cryptography.fernet</span> <span class="kn">import</span> <span class="n">Fernet</span>
+
+<span class="c1"># Step 1: Generate a secret key (keep this safe!)
+</span><span class="n">key</span> <span class="o">=</span> <span class="n">Fernet</span><span class="p">.</span><span class="nf">generate_key</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Your secret key: </span><span class="si">{</span><span class="n">key</span><span class="p">.</span><span class="nf">decode</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Create a cipher using the key
+</span><span class="n">cipher</span> <span class="o">=</span> <span class="nc">Fernet</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Encrypt a message
+</span><span class="n">original_message</span> <span class="o">=</span> <span class="sh">"</span><span class="s">This is my secret message!</span><span class="sh">"</span>
+<span class="n">encrypted_message</span> <span class="o">=</span> <span class="n">cipher</span><span class="p">.</span><span class="nf">encrypt</span><span class="p">(</span><span class="n">original_message</span><span class="p">.</span><span class="nf">encode</span><span class="p">())</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Original: </span><span class="si">{</span><span class="n">original_message</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Encrypted: </span><span class="si">{</span><span class="n">encrypted_message</span><span class="p">.</span><span class="nf">decode</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Decrypt it back
+</span><span class="n">decrypted_message</span> <span class="o">=</span> <span class="n">cipher</span><span class="p">.</span><span class="nf">decrypt</span><span class="p">(</span><span class="n">encrypted_message</span><span class="p">).</span><span class="nf">decode</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Decrypted: </span><span class="si">{</span><span class="n">decrypted_message</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Your secret key: ZmDfcTF7_60GrrY3vj...
+
+Original: This is my secret message!
+Encrypted: gAAAAABl...long random string...
+Decrypted: This is my secret message!
+</code></pre></div></div>
+
+<h3 id="python-example-2-encrypting-sensitive-data">Python Example 2: Encrypting Sensitive Data</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">cryptography.fernet</span> <span class="kn">import</span> <span class="n">Fernet</span>
+
+<span class="c1"># Imagine you're storing credit card info
+</span><span class="n">key</span> <span class="o">=</span> <span class="n">Fernet</span><span class="p">.</span><span class="nf">generate_key</span><span class="p">()</span>
+<span class="n">cipher</span> <span class="o">=</span> <span class="nc">Fernet</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+<span class="c1"># Sensitive data
+</span><span class="n">credit_card</span> <span class="o">=</span> <span class="sh">"</span><span class="s">4532-1234-5678-9012</span><span class="sh">"</span>
+<span class="n">ssn</span> <span class="o">=</span> <span class="sh">"</span><span class="s">123-45-6789</span><span class="sh">"</span>
+
+<span class="c1"># Encrypt both
+</span><span class="n">encrypted_cc</span> <span class="o">=</span> <span class="n">cipher</span><span class="p">.</span><span class="nf">encrypt</span><span class="p">(</span><span class="n">credit_card</span><span class="p">.</span><span class="nf">encode</span><span class="p">())</span>
+<span class="n">encrypted_ssn</span> <span class="o">=</span> <span class="n">cipher</span><span class="p">.</span><span class="nf">encrypt</span><span class="p">(</span><span class="n">ssn</span><span class="p">.</span><span class="nf">encode</span><span class="p">())</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=== Encrypted (safe to store in database) ===</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Credit Card: </span><span class="si">{</span><span class="n">encrypted_cc</span><span class="p">.</span><span class="nf">decode</span><span class="p">()[</span><span class="si">:</span><span class="mi">50</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">SSN: </span><span class="si">{</span><span class="n">encrypted_ssn</span><span class="p">.</span><span class="nf">decode</span><span class="p">()[</span><span class="si">:</span><span class="mi">50</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">=== Decrypted (when authorized user needs it) ===</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Credit Card: </span><span class="si">{</span><span class="n">cipher</span><span class="p">.</span><span class="nf">decrypt</span><span class="p">(</span><span class="n">encrypted_cc</span><span class="p">).</span><span class="nf">decode</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">SSN: </span><span class="si">{</span><span class="n">cipher</span><span class="p">.</span><span class="nf">decrypt</span><span class="p">(</span><span class="n">encrypted_ssn</span><span class="p">).</span><span class="nf">decode</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="python-example-3-without-the-key-you-cant-decrypt">Python Example 3: Without the Key, You Can’t Decrypt</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">cryptography.fernet</span> <span class="kn">import</span> <span class="n">Fernet</span>
+
+<span class="c1"># Alice encrypts a message
+</span><span class="n">alice_key</span> <span class="o">=</span> <span class="n">Fernet</span><span class="p">.</span><span class="nf">generate_key</span><span class="p">()</span>
+<span class="n">alice_cipher</span> <span class="o">=</span> <span class="nc">Fernet</span><span class="p">(</span><span class="n">alice_key</span><span class="p">)</span>
+<span class="n">secret</span> <span class="o">=</span> <span class="n">alice_cipher</span><span class="p">.</span><span class="nf">encrypt</span><span class="p">(</span><span class="sa">b</span><span class="sh">"</span><span class="s">Meet me at noon</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Encrypted message: </span><span class="si">{</span><span class="n">secret</span><span class="p">.</span><span class="nf">decode</span><span class="p">()[</span><span class="si">:</span><span class="mi">50</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Bob tries to decrypt with a DIFFERENT key
+</span><span class="n">bob_key</span> <span class="o">=</span> <span class="n">Fernet</span><span class="p">.</span><span class="nf">generate_key</span><span class="p">()</span>  <span class="c1"># Different key!
+</span><span class="n">bob_cipher</span> <span class="o">=</span> <span class="nc">Fernet</span><span class="p">(</span><span class="n">bob_key</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">bob_cipher</span><span class="p">.</span><span class="nf">decrypt</span><span class="p">(</span><span class="n">secret</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Bob decrypted it!</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ Bob can</span><span class="sh">'</span><span class="s">t decrypt it: Invalid key!</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Alice can decrypt with her key
+</span><span class="n">decrypted</span> <span class="o">=</span> <span class="n">alice_cipher</span><span class="p">.</span><span class="nf">decrypt</span><span class="p">(</span><span class="n">secret</span><span class="p">).</span><span class="nf">decode</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ Alice decrypted: </span><span class="si">{</span><span class="n">decrypted</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Encrypted message: gAAAAABl...
+❌ Bob can't decrypt it: Invalid key!
+✅ Alice decrypted: Meet me at noon
+</code></pre></div></div>
+
+<h3 id="when-to-use-encryption">When to Use Encryption</h3>
 
 <ul>
-  <li>Use hashing when you only need to verify data or store a digest (e.g., passwords, checksums).</li>
-  <li>Use encryption when you need to keep the original data secret but retrievable for authorized parties.</li>
+  <li>✅ Storing sensitive data you need to read later (credit cards, personal info)</li>
+  <li>✅ Sending private messages</li>
+  <li>✅ Protecting files on your computer</li>
+  <li>✅ Secure communication (HTTPS, email)</li>
 </ul>
 
-<h2 id="practical-tips">Practical tips</h2>
+<hr />
+
+<h2 id="side-by-side-comparison">Side-by-Side Comparison</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">hashlib</span>
+<span class="kn">from</span> <span class="n">cryptography.fernet</span> <span class="kn">import</span> <span class="n">Fernet</span>
+
+<span class="n">message</span> <span class="o">=</span> <span class="sh">"</span><span class="s">My secret data</span><span class="sh">"</span>
+
+<span class="c1"># ===== HASHING =====
+</span><span class="n">hash_result</span> <span class="o">=</span> <span class="n">hashlib</span><span class="p">.</span><span class="nf">sha256</span><span class="p">(</span><span class="n">message</span><span class="p">.</span><span class="nf">encode</span><span class="p">()).</span><span class="nf">hexdigest</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">HASHING</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Input:  </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Output: </span><span class="si">{</span><span class="n">hash_result</span><span class="p">[</span><span class="si">:</span><span class="mi">40</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Can reverse? NO ❌</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ===== ENCRYPTION =====
+</span><span class="n">key</span> <span class="o">=</span> <span class="n">Fernet</span><span class="p">.</span><span class="nf">generate_key</span><span class="p">()</span>
+<span class="n">cipher</span> <span class="o">=</span> <span class="nc">Fernet</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+<span class="n">encrypted</span> <span class="o">=</span> <span class="n">cipher</span><span class="p">.</span><span class="nf">encrypt</span><span class="p">(</span><span class="n">message</span><span class="p">.</span><span class="nf">encode</span><span class="p">())</span>
+<span class="n">decrypted</span> <span class="o">=</span> <span class="n">cipher</span><span class="p">.</span><span class="nf">decrypt</span><span class="p">(</span><span class="n">encrypted</span><span class="p">).</span><span class="nf">decode</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">ENCRYPTION</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Input:     </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Encrypted: </span><span class="si">{</span><span class="n">encrypted</span><span class="p">.</span><span class="nf">decode</span><span class="p">()[</span><span class="si">:</span><span class="mi">40</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Decrypted: </span><span class="si">{</span><span class="n">decrypted</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Can reverse? YES ✅ (with the key)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="quick-decision-guide">Quick Decision Guide</h2>
+
+<p>Ask yourself: <strong>“Do I need to get the original data back?”</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Your Answer</th>
+      <th>Use This</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>No</strong> — I just need to verify</td>
+      <td><strong>Hashing</strong></td>
+      <td>Password login, file checksums</td>
+    </tr>
+    <tr>
+      <td><strong>Yes</strong> — I need the original later</td>
+      <td><strong>Encryption</strong></td>
+      <td>Storing credit cards, private messages</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="for-hashing-passwords">For Hashing Passwords</h3>
+
+<p>Don’t use plain SHA-256 for passwords! Use a specialized password hashing library:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Better for passwords: use bcrypt
+# pip install bcrypt
+</span>
+<span class="kn">import</span> <span class="n">bcrypt</span>
+
+<span class="n">password</span> <span class="o">=</span> <span class="sh">"</span><span class="s">MyPassword123</span><span class="sh">"</span>
+
+<span class="c1"># Hash with salt (automatic)
+</span><span class="n">hashed</span> <span class="o">=</span> <span class="n">bcrypt</span><span class="p">.</span><span class="nf">hashpw</span><span class="p">(</span><span class="n">password</span><span class="p">.</span><span class="nf">encode</span><span class="p">(),</span> <span class="n">bcrypt</span><span class="p">.</span><span class="nf">gensalt</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Hashed: </span><span class="si">{</span><span class="n">hashed</span><span class="p">.</span><span class="nf">decode</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Verify later
+</span><span class="k">if</span> <span class="n">bcrypt</span><span class="p">.</span><span class="nf">checkpw</span><span class="p">(</span><span class="n">password</span><span class="p">.</span><span class="nf">encode</span><span class="p">(),</span> <span class="n">hashed</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Password matches!</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Why bcrypt? It’s intentionally slow, making it harder for attackers to guess passwords.</p>
+
+<h3 id="for-encryption">For Encryption</h3>
 
 <ul>
-  <li>For passwords, use a slow hashing algorithm with salt (bcrypt, scrypt, Argon2) rather than raw SHA-*.</li>
-  <li>Always verify the authenticity/integrity of encrypted data (e.g. use authenticated encryption modes like AES-GCM).</li>
-  <li>Properly manage keys and rotate them as needed when using encryption.</li>
+  <li>🔑 Keep your keys secret and secure</li>
+  <li>🔄 Rotate keys periodically</li>
+  <li>🔒 Use authenticated encryption (the examples above use Fernet, which includes authentication)</li>
 </ul>
 
-<h2 id="short-summary">Short Summary</h2>
+<hr />
 
-<p>Hashing is for irreversible verification and identification; encryption is for reversible confidentiality using keys.</p>
+<h2 id="summary">Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Hashing</th>
+      <th>Encryption</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Direction</strong></td>
+      <td>One-way →</td>
+      <td>Two-way ↔️</td>
+    </tr>
+    <tr>
+      <td><strong>Key needed?</strong></td>
+      <td>No</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Reversible?</strong></td>
+      <td>No</td>
+      <td>Yes (with key)</td>
+    </tr>
+    <tr>
+      <td><strong>Output size</strong></td>
+      <td>Fixed (e.g., 64 chars)</td>
+      <td>Varies with input</td>
+    </tr>
+    <tr>
+      <td><strong>Main use</strong></td>
+      <td>Verify/identify</td>
+      <td>Protect secrets</td>
+    </tr>
+    <tr>
+      <td><strong>Examples</strong></td>
+      <td>Passwords, checksums</td>
+      <td>Messages, files, data</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Remember:</strong></p>
+<ul>
+  <li><strong>Hashing</strong> = fingerprint (can’t recreate the person)</li>
+  <li><strong>Encryption</strong> = lockbox (can open with the key)</li>
+</ul>
