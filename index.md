@@ -11,7 +11,8 @@ title: Handbook — Index
   <input id="topic-search" placeholder="Search topics, tags, or categories..." />
 </div>
 
-<nav class="categories">
+<div class="main-grid">
+  <nav class="categories" aria-label="Categories">
   <h3>Categories</h3>
   <ul>
     {% assign grouped = site.topics | group_by: "category" | sort: "name" %}
@@ -20,9 +21,9 @@ title: Handbook — Index
       <li><a href="{{ '/categories/' | append: cat_slug | relative_url }}">{{ cat.name }} ({{ cat.items | size }})</a></li>
     {% endfor %}
   </ul>
-</nav>
+  </nav>
 
-<section class="topics-list">
+  <section class="topics-list">
   <h3>All Topics</h3>
   {% for topic in site.topics | sort: "title" %}
   {% assign topic_category_slug = topic.category | slugify %}
@@ -38,4 +39,5 @@ title: Handbook — Index
   {% if site.topics == empty %}
     <p>No topics yet — add one under <code>_topics</code> and commit. Example: <code>_topics/hashing-vs-encryption.md</code>.</p>
   {% endif %}
-</section>
+  </section>
+</div>
