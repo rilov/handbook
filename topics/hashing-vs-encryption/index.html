@@ -76,6 +76,26 @@
   </tbody>
 </table>
 
+<h3 id="visual-overview">Visual Overview</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph Hashing["🔒 HASHING (One-Way)"]
+        direction LR
+        H1["📄 Original Data"] --&gt; H2["⚙️ Hash Function"]
+        H2 --&gt; H3["🔢 Fixed Hash"]
+        H3 -.-x|"❌ Cannot reverse"| H1
+    end
+    
+    subgraph Encryption["🔐 ENCRYPTION (Two-Way)"]
+        direction LR
+        E1["📄 Original Data"] --&gt; E2["🔑 Encrypt with Key"]
+        E2 --&gt; E3["🔒 Encrypted Data"]
+        E3 --&gt; E4["🔑 Decrypt with Key"]
+        E4 --&gt; E5["📄 Original Data"]
+    end
+</div>
+
 <hr />
 
 <h2 id="hashing-the-one-way-street">Hashing: The One-Way Street</h2>
@@ -85,6 +105,16 @@
 <p>Hashing takes any input (a password, a file, a message) and turns it into a fixed-length string of characters called a “hash” or “digest”.</p>
 
 <p><strong>The key thing:</strong> You can’t reverse it. You can’t get the original back from the hash.</p>
+
+<div class="mermaid">
+flowchart LR
+    A["Any Input<br />(password, file, text)"] --&gt; B["Hash Function<br />(SHA-256)"]
+    B --&gt; C["Fixed-Length Output<br />64 characters"]
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style B fill:#fef3c7,stroke:#d97706
+    style C fill:#d1fae5,stroke:#059669
+</div>
 
 <h3 id="real-world-analogy">Real-World Analogy</h3>
 
@@ -203,6 +233,28 @@ Are they the same? False
 ❌ Wrong password!
 </code></pre></div></div>
 
+<h3 id="how-password-verification-works">How Password Verification Works</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant W as 🌐 Website
+    participant D as 🗄️ Database
+    
+    Note over U,D: Registration
+    U-&gt;&gt;W: Creates password: "secret123"
+    W-&gt;&gt;W: Hash it → "a1b2c3..."
+    W-&gt;&gt;D: Store hash (NOT password)
+    
+    Note over U,D: Login Attempt
+    U-&gt;&gt;W: Enters password: "secret123"
+    W-&gt;&gt;W: Hash it → "a1b2c3..."
+    W-&gt;&gt;D: Get stored hash
+    D--&gt;&gt;W: Returns "a1b2c3..."
+    W-&gt;&gt;W: Compare hashes
+    W--&gt;&gt;U: ✅ Match! Login successful
+</div>
+
 <h3 id="when-to-use-hashing">When to Use Hashing</h3>
 
 <ul>
@@ -221,6 +273,23 @@ Are they the same? False
 <p>Encryption scrambles your data so that only someone with the right “key” can unscramble it.</p>
 
 <p><strong>The key thing:</strong> It’s reversible! If you have the key, you can get the original back.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph encrypt["Encrypt"]
+        A["📄 Secret Message"] --&gt; B["🔑 + Key"]
+        B --&gt; C["🔒 Encrypted<br />(Unreadable)"]
+    end
+    
+    subgraph decrypt["Decrypt"]
+        C --&gt; D["🔑 + Key"]
+        D --&gt; E["📄 Secret Message"]
+    end
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style C fill:#fecaca,stroke:#dc2626
+    style E fill:#d1fae5,stroke:#059669
+</div>
 
 <h3 id="real-world-analogy-1">Real-World Analogy</h3>
 
@@ -325,6 +394,26 @@ Decrypted: This is my secret message!
 ✅ Alice decrypted: Meet me at noon
 </code></pre></div></div>
 
+<h3 id="how-secure-messaging-works">How Secure Messaging Works</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant A as 👩 Alice
+    participant B as 👨 Bob
+    participant H as 🕵️ Hacker
+    
+    Note over A,B: Alice wants to send "Meet at 5pm"
+    A-&gt;&gt;A: Encrypt with shared key
+    A-&gt;&gt;B: Send: "xK9#mP2..."
+    
+    Note over H: Hacker intercepts
+    H-&gt;&gt;H: Sees "xK9#mP2..."
+    H-&gt;&gt;H: ❌ Can't read without key!
+    
+    B-&gt;&gt;B: Decrypt with shared key
+    Note over B: ✅ Reads: "Meet at 5pm"
+</div>
+
 <h3 id="when-to-use-encryption">When to Use Encryption</h3>
 
 <ul>
@@ -368,6 +457,24 @@ Decrypted: This is my secret message!
 <h2 id="quick-decision-guide">Quick Decision Guide</h2>
 
 <p>Ask yourself: <strong>“Do I need to get the original data back?”</strong></p>
+
+<div class="mermaid">
+flowchart TD
+    A["🤔 What do you need to do<br />with the data?"] --&gt; B{"Do you need the<br />original data back?"}
+    
+    B --&gt;|"❌ No"| C["Use HASHING"]
+    B --&gt;|"✅ Yes"| D["Use ENCRYPTION"]
+    
+    C --&gt; E["Examples:<br />• Password storage<br />• File checksums<br />• Data verification"]
+    D --&gt; F["Examples:<br />• Credit card storage<br />• Private messages<br />• Secure files"]
+    
+    style A fill:#f1f5f9,stroke:#64748b
+    style B fill:#fef3c7,stroke:#d97706
+    style C fill:#dbeafe,stroke:#2563eb
+    style D fill:#d1fae5,stroke:#059669
+    style E fill:#eff6ff,stroke:#2563eb
+    style F fill:#ecfdf5,stroke:#059669
+</div>
 
 <table>
   <thead>
@@ -491,5 +598,20 @@ Decrypted: This is my secret message!
       <div class="container">&copy; 2025 Handbook</div>
     </footer>
     <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
   </body>
 </html>
