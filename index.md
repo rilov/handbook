@@ -25,7 +25,7 @@ title: Handbook — Index
   <h3>All Topics</h3>
   {% for topic in site.topics | sort: "title" %}
   <article class="topic-list-item">
-    <h4><a href="{{ topic.url }}">{{ topic.title }}</a></h4>
+    <h4><a href="{{ topic.url | relative_url }}">{{ topic.title }}</a></h4>
     {% if topic.summary %}
       <p class="summary">{{ topic.summary }}</p>
     {% endif %}
