@@ -73,6 +73,7 @@ A sample topic, `Hashing vs Encryption`, is already added under `_topics`.
 - Prefer using a consistent category naming (capitalization matters in the listing code).
 - For passwords, use Argon2 / bcrypt / scrypt and not fast hashes.
 - Rotate keys and provide a link to the ops runbook for encryption key management.
+ - The site includes a dark mode toggle (top-right) and a small site logo for a better visual experience.
 
 ---
 
