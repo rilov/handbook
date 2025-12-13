@@ -16,7 +16,8 @@ title: Handbook — Index
   <ul>
     {% assign grouped = site.topics | group_by: "category" | sort: "name" %}
     {% for cat in grouped %}
-      <li><a href="{{ '/categories/' | append: cat.name | slugify | relative_url }}">{{ cat.name }} ({{ cat.items | size }})</a></li>
+      {% assign cat_slug = cat.name | slugify %}
+      <li><a href="{{ '/categories/' | append: cat_slug | relative_url }}">{{ cat.name }} ({{ cat.items | size }})</a></li>
     {% endfor %}
   </ul>
 </nav>
@@ -24,12 +25,13 @@ title: Handbook — Index
 <section class="topics-list">
   <h3>All Topics</h3>
   {% for topic in site.topics | sort: "title" %}
+  {% assign topic_category_slug = topic.category | slugify %}
   <article class="topic-list-item">
     <h4><a href="{{ topic.url | relative_url }}">{{ topic.title }}</a></h4>
     {% if topic.summary %}
       <p class="summary">{{ topic.summary }}</p>
     {% endif %}
-    <p class="meta">Category: <a href="{{ '/categories/' | append: topic.category | slugify | relative_url }}">{{ topic.category }}</a> | Tags: {% if topic.tags %}{{ topic.tags | join: ", " }}{% else %}—{% endif %}</p>
+    <p class="meta">Category: <a href="{{ '/categories/' | append: topic_category_slug | relative_url }}">{{ topic.category }}</a> | Tags: {% if topic.tags %}{{ topic.tags | join: ", " }}{% else %}—{% endif %}</p>
   </article>
   {% endfor %}
 
