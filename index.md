@@ -3,9 +3,9 @@ layout: default
 title: Handbook — Index
 ---
 
-# Handbook Index
+# Welcome to My Technical Handbook
 
-<p class="intro">This is a compact, searchable handbook of small tech notes. Add a new topic by creating a Markdown file under <code>_topics</code> with frontmatter: <code>title</code>, <code>category</code>, <code>tags</code>, and an optional <code>summary</code>.</p>
+<p class="intro">Hi! I'm Rilov Paloly Kulankara, and this is where I share everything I'm learning in the world of technology. As a platform engineering leader, I'm constantly exploring new concepts in data engineering, cloud architecture, security, and scalability. This handbook is my way of documenting these learnings in simple, beginner-friendly guides with diagrams and real-world examples. Whether you're a seasoned engineer or just starting out, I hope you find these notes helpful on your own learning journey!</p>
 
 <div class="search-bar">
   <input id="topic-search" placeholder="Search topics, tags, or categories..." />
