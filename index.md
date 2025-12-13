@@ -5,7 +5,7 @@ title: Handbook — Index
 
 # Welcome to My Technical Handbook
 
-<p class="intro">Hi! I'm Rilov Paloly Kulankara, and this is where I share everything I'm learning in the world of technology. As a platform engineering leader, I'm constantly exploring new concepts in data engineering, cloud architecture, security, and scalability. This handbook is my way of documenting these learnings in simple, beginner-friendly guides with diagrams and real-world examples. Whether you're a seasoned engineer or just starting out, I hope you find these notes helpful on your own learning journey!</p>
+<p class="intro">Hi! I'm Rilov Paloly Kulankara, and this is where I share everything I'm learning in the world of technology. As a software engineering leader, I'm constantly exploring new concepts in data engineering, cloud architecture, security, and scalability. This handbook is my way of documenting these learnings in simple, beginner-friendly guides with diagrams and real-world examples. Whether you're a seasoned engineer or just starting out, I hope you find these notes helpful on your own learning journey!</p>
 
 <div class="search-bar">
   <input id="topic-search" placeholder="Search topics, tags, or categories..." />
