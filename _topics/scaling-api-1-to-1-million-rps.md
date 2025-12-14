@@ -13,7 +13,7 @@ related:
 
 > **📚 This is Part 1 of a two-part series on API Scaling**
 > - **Part 1 (this page):** Performance & Infrastructure - Technical techniques to handle millions of requests
-> - **[Part 2: Design & Architecture →](scaling-api-design-architecture-part-2)** - Organizational strategies and API design patterns for large-scale systems
+> - **[Part 2: Design & Architecture →]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** - Organizational strategies and API design patterns for large-scale systems
 
 ## The Journey: 1 RPS → 1,000,000 RPS
 
@@ -1290,7 +1290,7 @@ Build for today's needs with an eye toward tomorrow's scale. When you need the n
 
 This guide covered the **technical and infrastructure** aspects of scaling APIs. But as your organization grows, you'll face a different kind of scaling challenge: **organizational and design complexity**.
 
-**[→ Continue to Part 2: Design & Architecture Strategies](scaling-api-design-architecture-part-2)** to learn about:
+**[→ Continue to Part 2: Design & Architecture Strategies]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** to learn about:
 - API portfolio management
 - Design-first methodologies
 - Organizational patterns for large-scale API development

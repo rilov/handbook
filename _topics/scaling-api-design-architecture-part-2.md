@@ -13,14 +13,14 @@ related:
 ---
 
 > **📚 This is Part 2 of a two-part series on API Scaling**
-> - **[Part 1: Performance & Infrastructure ←](scaling-api-1-to-1-million-rps)** - How to handle more users and traffic
+> - **[Part 1: Performance & Infrastructure ←]({{ site.baseurl }}{% link _topics/scaling-api-1-to-1-million-rps.md %})** - How to handle more users and traffic
 > - **Part 2 (this page):** Design & Architecture - How to organize teams and design better systems
 
 ---
 
 ## What This Guide Is About
 
-In [Part 1](scaling-api-1-to-1-million-rps), we talked about how to make your systems handle more users—like adding more servers and making things faster.
+In [Part 1]({{ site.baseurl }}{% link _topics/scaling-api-1-to-1-million-rps.md %}), we talked about how to make your systems handle more users—like adding more servers and making things faster.
 
 But there's another challenge: **how do you organize hundreds of people and keep everything working together smoothly?**
 
@@ -1082,7 +1082,7 @@ Whether you're managing 10 systems or 1,000, these patterns will help you grow s
 
 ## Continue Learning
 
-- **[← Back to Part 1: Performance & Infrastructure](scaling-api-1-to-1-million-rps)** - Learn about handling more traffic and users
+- **[← Back to Part 1: Performance & Infrastructure]({{ site.baseurl }}{% link _topics/scaling-api-1-to-1-million-rps.md %})** - Learn about handling more traffic and users
 - **Related Topics**:
   - Breaking big systems into smaller pieces
   - Security best practices
