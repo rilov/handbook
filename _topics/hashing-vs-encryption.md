@@ -21,21 +21,22 @@ Imagine you have a secret message. There are two ways to protect it:
 ### Visual Overview
 
 <div class="mermaid">
-flowchart LR
-    subgraph Hashing["🔒 HASHING (One-Way)"]
+flowchart TB
+    subgraph Hashing["🔒 HASHING - One-Way"]
         direction LR
         H1["📄 Original Data"] --> H2["⚙️ Hash Function"]
         H2 --> H3["🔢 Fixed Hash"]
-        H3 -.-x|"❌ Cannot reverse"| H1
     end
     
-    subgraph Encryption["🔐 ENCRYPTION (Two-Way)"]
+    subgraph Encryption["🔐 ENCRYPTION - Two-Way"]
         direction LR
         E1["📄 Original Data"] --> E2["🔑 Encrypt with Key"]
         E2 --> E3["🔒 Encrypted Data"]
         E3 --> E4["🔑 Decrypt with Key"]
         E4 --> E5["📄 Original Data"]
     end
+    
+    Hashing ~~~ Encryption
 </div>
 
 ---

@@ -97,7 +97,7 @@ flowchart LR
         B["🖥️ Big Server<br/>32 CPU, 128GB RAM"]
     end
     
-    before --> |"💰 Upgrade"| after
+    before -->|💰 Upgrade| after
     
     style A fill:#fecaca,stroke:#dc2626
     style B fill:#d1fae5,stroke:#059669
@@ -178,9 +178,9 @@ flowchart TD
     
     LB["⚖️ Load Balancer"]
     
-    LB --> |"1, 4"| S1["🖥️ Server 1"]
-    LB --> |"2, 5"| S2["🖥️ Server 2"]
-    LB --> |"3, 6"| S3["🖥️ Server 3"]
+    LB -->|1, 4| S1["🖥️ Server 1"]
+    LB -->|2, 5| S2["🖥️ Server 2"]
+    LB -->|3, 6| S3["🖥️ Server 3"]
     
     style LB fill:#fef3c7,stroke:#d97706
 </div>
@@ -378,7 +378,7 @@ flowchart LR
         S3["50ms response"]
     end
     
-    problem --> |"40x faster!"| solution
+    problem -->|40x faster| solution
     
     style problem fill:#fecaca,stroke:#dc2626
     style solution fill:#d1fae5,stroke:#059669
@@ -558,7 +558,7 @@ flowchart LR
         F3["10ms"]
     end
     
-    slow --> |"10x faster!"| fast
+    slow -->|10x faster| fast
     
     style slow fill:#fecaca,stroke:#dc2626
     style fast fill:#d1fae5,stroke:#059669
@@ -841,7 +841,7 @@ flowchart LR
         A3["< 1 second"]
     end
     
-    sync --> |"10x faster!"| async
+    sync -->|10x faster| async
     
     style sync fill:#fecaca,stroke:#dc2626
     style async fill:#d1fae5,stroke:#059669

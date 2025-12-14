@@ -47,7 +47,7 @@ flowchart LR
         D3["Let teams work independently"]
     end
     
-    part1 --> |"You are here"| part2
+    part1 -.->|You are here| part2
     
     style part1 fill:#e0e7ff,stroke:#6366f1
     style part2 fill:#d1fae5,stroke:#059669
@@ -213,13 +213,13 @@ flowchart TD
     
     subgraph good["✅ Reflects Customer Need"]
         direction TB
-        I1["'I want to checkout'"]
-        I2["'Show me my orders'"]
+        I1["I want to checkout"]
+        I2["Show me my orders"]
         Note2["Simple and focused on what customer wants"]
     end
     
     Customer["👤 Customer"] --> good
-    Customer -.->|"Not this!"| bad
+    Customer -.->|Not this| bad
     
     style bad fill:#fecaca,stroke:#dc2626
     style good fill:#d1fae5,stroke:#059669
@@ -832,13 +832,13 @@ Find enthusiastic people in each team:
 
 <div class="mermaid">
 flowchart LR
-    Central["🏢 Central Team"] --> |"Train & Support"| C1["🌟 Champion Team A"]
+    Central["🏢 Central Team"] -->|Train & Support| C1["🌟 Champion Team A"]
     Central --> C2["🌟 Champion Team B"]
     Central --> C3["🌟 Champion Team C"]
     
-    C1 --> |"Teach Locally"| D1["👥 Team Members"]
-    C2 --> |"Teach Locally"| D2["👥 Team Members"]
-    C3 --> |"Teach Locally"| D3["👥 Team Members"]
+    C1 -->|Teach Locally| D1["👥 Team Members"]
+    C2 -->|Teach Locally| D2["👥 Team Members"]
+    C3 -->|Teach Locally| D3["👥 Team Members"]
     
     style Central fill:#dbeafe,stroke:#2563eb
     style C1 fill:#fef3c7,stroke:#d97706
@@ -916,7 +916,7 @@ flowchart TB
     strategy --> design
     design --> implementation
     implementation --> culture
-    culture --> |"Feedback"| strategy
+    culture -->|Feedback| strategy
     
     style strategy fill:#dbeafe,stroke:#2563eb
     style design fill:#d1fae5,stroke:#059669
