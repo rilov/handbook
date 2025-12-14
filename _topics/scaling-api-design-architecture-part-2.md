@@ -363,11 +363,11 @@ sequenceDiagram
     
     T->>C: Start building
     C->>C: Build for weeks
-    C->>U: Here's what we made!
-    U-->>T: This doesn't solve our problem
-    T->>C: Start over (ouch!)
+    C->>U: Here is what we made
+    U-->>T: This does not solve our problem
+    T->>C: Start over
     
-    Note over T,U: ❌ Feedback comes too late
+    Note over T,U: Feedback comes too late
 </sequenceDiagram>
 </div>
 
@@ -384,15 +384,15 @@ Create a detailed plan and fake version first:
 <div class="mermaid">
 sequenceDiagram
     participant T as Your Team
-    participant D as Design/Fake Version
+    participant D as Design Plan
     participant U as Users
     participant C as Code
     
     T->>D: Create design
     D->>U: Try this fake version
-    U->>D: Feedback (easy to change!)
-    D->>U: Here's the improved version
-    Note over T,U: ✅ Feedback comes early
+    U->>D: Feedback easy to change
+    D->>U: Here is improved version
+    Note over T,U: Feedback comes early
     D->>C: Now build the real thing
 </sequenceDiagram>
 </div>
