@@ -368,7 +368,7 @@ sequenceDiagram
     T->>C: Start over
     
     Note over T,U: Feedback comes too late
-</sequenceDiagram>
+
 </div>
 
 ### The Better Way (Design First)
@@ -394,7 +394,7 @@ sequenceDiagram
     D->>U: Here is improved version
     Note over T,U: Feedback comes early
     D->>C: Now build the real thing
-</sequenceDiagram>
+
 </div>
 
 ### Why This Is Better
