@@ -19,6 +19,9 @@ related:
 > - **Step 6 (this page):** Build Your Agent Project
 > - **[Step 7: Observability with LangSmith →]({{ site.baseurl }}{% link _topics/langchain-observability.md %})**
 
+> **📓 Hands-On Practice**  
+> **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part6-project-agent.ipynb)** - Build a complete Research Assistant agent with tools, memory, and conversation management.
+
 ---
 
 ## What We're Building

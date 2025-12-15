@@ -19,6 +19,9 @@ related:
 > - **Step 3 (this page):** Tool Calling
 > - **[Step 4: RAG Basics →]({{ site.baseurl }}{% link _topics/langchain-rag-basics.md %})**
 
+> **📓 Hands-On Practice**  
+> **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part3-tool-calling.ipynb)** - Create custom tools and build agents with runnable code examples.
+
 ---
 
 ## The Problem: LLMs Can't DO Things

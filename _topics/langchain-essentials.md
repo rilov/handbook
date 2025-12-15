@@ -18,6 +18,9 @@ related:
 > - **Step 2 (this page):** LangChain Essentials
 > - **[Step 3: Tool Calling →]({{ site.baseurl }}{% link _topics/langchain-tool-calling.md %})**
 
+> **📓 Hands-On Practice**  
+> **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part2-langchain-essentials.ipynb)** - Practice chat models, prompting, structured outputs, and chaining with runnable examples.
+
 ---
 
 ## What You'll Learn

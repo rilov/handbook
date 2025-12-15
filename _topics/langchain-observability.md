@@ -19,6 +19,9 @@ related:
 > - **Step 7 (this page):** Observability with LangSmith
 > - **🎉 Course Complete!**
 
+> **📓 Hands-On Practice**  
+> **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part7-observability.ipynb)** - Set up LangSmith tracing and learn to debug and monitor your AI applications.
+
 ---
 
 ## The Problem: AI is a Black Box

@@ -19,6 +19,9 @@ related:
 > - **Step 4 (this page):** RAG Basics
 > - **[Step 5: LangGraph & Agents →]({{ site.baseurl }}{% link _topics/langgraph-agents.md %})**
 
+> **📓 Hands-On Practice**  
+> **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part4-rag-basics.ipynb)** - Build complete RAG systems with document loading, embeddings, and retrieval.
+
 ---
 
 ## The Problem: LLMs Don't Know Your Data

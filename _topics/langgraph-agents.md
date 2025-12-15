@@ -19,6 +19,9 @@ related:
 > - **Step 5 (this page):** LangGraph & Agents
 > - **[Step 6: Building Your Agent Project →]({{ site.baseurl }}{% link _topics/langchain-project-agent.md %})**
 
+> **📓 Hands-On Practice**  
+> **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part5-langgraph-agents.ipynb)** - Build complex workflows with states, nodes, edges, and conditional logic.
+
 ---
 
 ## Why LangGraph?
