@@ -1,6 +1,7 @@
 ---
 title: "Part 5 - LangGraph & Agents: Building Intelligent Workflows"
 category: Generative AI
+order: 5
 tags:
   - langgraph
   - agents

@@ -1,6 +1,7 @@
 ---
 title: "Part 1 - LangChain Foundations: Understanding LLMs and Orchestration"
 category: Generative AI
+order: 1
 tags:
   - langchain
   - llm

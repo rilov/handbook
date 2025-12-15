@@ -1,6 +1,7 @@
 ---
 title: "Part 2 - LangChain Essentials: Building Blocks of AI Applications"
 category: Generative AI
+order: 2
 tags:
   - langchain
   - chat-models

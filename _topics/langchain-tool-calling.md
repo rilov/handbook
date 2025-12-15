@@ -1,6 +1,7 @@
 ---
 title: "Part 3 - Tool Calling: Giving Your AI Real-World Superpowers"
 category: Generative AI
+order: 3
 tags:
   - langchain
   - tools

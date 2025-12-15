@@ -1,6 +1,7 @@
 ---
 title: "Part 7 - Observability with LangSmith: Debug and Monitor Your AI"
 category: Generative AI
+order: 7
 tags:
   - langsmith
   - debugging

@@ -1,6 +1,7 @@
 ---
 title: "Part 6 - Project: Build Your Own AI Agent"
 category: Generative AI
+order: 6
 tags:
   - langgraph
   - project
