@@ -1,5 +1,5 @@
 ---
-title: "Project: Build Your Own AI Agent"
+title: "Part 6 - Project: Build Your Own AI Agent"
 category: Generative AI
 tags:
   - langgraph

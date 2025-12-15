@@ -1,5 +1,5 @@
 ---
-title: "LangChain Essentials: Building Blocks of AI Applications"
+title: "Part 2 - LangChain Essentials: Building Blocks of AI Applications"
 category: Generative AI
 tags:
   - langchain

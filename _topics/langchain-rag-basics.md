@@ -1,5 +1,5 @@
 ---
-title: "RAG Basics: Teaching AI About Your Documents"
+title: "Part 4 - RAG Basics: Teaching AI About Your Documents"
 category: Generative AI
 tags:
   - langchain

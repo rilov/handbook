@@ -1,5 +1,5 @@
 ---
-title: "LangGraph & Agents: Building Intelligent Workflows"
+title: "Part 5 - LangGraph & Agents: Building Intelligent Workflows"
 category: Generative AI
 tags:
   - langgraph

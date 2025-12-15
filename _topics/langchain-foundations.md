@@ -1,5 +1,5 @@
 ---
-title: "LangChain Foundations: Understanding LLMs and Orchestration"
+title: "Part 1 - LangChain Foundations: Understanding LLMs and Orchestration"
 category: Generative AI
 tags:
   - langchain
