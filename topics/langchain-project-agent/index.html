@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project: Build Your Own AI Agent</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Project: Build Your Own AI Agent</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>🎓 LangChain Learning Path - Step 6 of 7</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/langgraph-agents/">← Step 5: LangGraph &amp; Agents</a></strong></li>
+    <li><strong>Step 6 (this page):</strong> Build Your Agent Project</li>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-observability/">Step 7: Observability with LangSmith →</a></strong></li>
+  </ul>
+</blockquote>
+
+<hr />
+
+<h2 id="what-were-building">What We’re Building</h2>
+
+<p>Let’s build a <strong>Research Assistant Agent</strong> that can:</p>
+<ul>
+  <li>Search the web for information</li>
+  <li>Remember conversation history</li>
+  <li>Take notes in a file</li>
+  <li>Summarize findings</li>
+  <li>Cite sources</li>
+</ul>
+
+<div class="mermaid">
+flowchart TB
+    User["👤 User Request"] --&gt; Agent["🤖 Research Agent"]
+    
+    Agent --&gt; Tools["🔧 Tools"]
+    Tools --&gt; Search["🔍 Web Search"]
+    Tools --&gt; Notes["📝 Take Notes"]
+    Tools --&gt; Read["📄 Read Notes"]
+    
+    Agent --&gt; Memory["🧠 Memory"]
+    Memory --&gt; Short["Short-term:<br />Conversation"]
+    Memory --&gt; Long["Long-term:<br />Saved Notes"]
+    
+    Agent --&gt; Output["💬 Response<br />with Citations"]
+    
+    style Agent fill:#dbeafe,stroke:#2563eb
+    style Tools fill:#fef3c7,stroke:#d97706
+    style Memory fill:#fce7f3,stroke:#db2777
+    style Output fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<h3 id="install-required-packages">Install Required Packages</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>langgraph langchain-openai langchain-community python-dotenv
+</code></pre></div></div>
+
+<h3 id="set-up-environment">Set Up Environment</h3>
+
+<p>Create a <code class="language-plaintext highlighter-rouge">.env</code> file:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>OPENAI_API_KEY=your_api_key_here
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-1-define-our-tools">Step 1: Define Our Tools</h2>
+
+<p>Let’s create three tools for our agent:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># research_agent.py
+</span>
+<span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+<span class="kn">import</span> <span class="n">json</span>
+<span class="kn">from</span> <span class="n">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">web_search</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Search the web for information.
+    
+    Args:
+        query: The search query
+        
+    Returns:
+        Search results with sources
+    </span><span class="sh">"""</span>
+    <span class="c1"># For this example, we'll simulate search results
+</span>    <span class="c1"># In production, use actual search API (SerpAPI, Tavily, etc.)
+</span>    
+    <span class="n">results</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"""</span><span class="s">
+    Search Results for </span><span class="sh">"</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="sh">"</span><span class="s">:
+    
+    1. [Wikipedia] Brief overview of </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s">
+    2. [Research Paper] Detailed analysis of </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s">
+    3. [News] Recent developments about </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s">
+    </span><span class="sh">"""</span>
+    
+    <span class="k">return</span> <span class="n">results</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">save_notes</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Save research notes to a file.
+    
+    Args:
+        content: The note content
+        title: Title/topic of the note
+        
+    Returns:
+        Confirmation message
+    </span><span class="sh">"""</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="nf">strftime</span><span class="p">(</span><span class="sh">"</span><span class="s">%Y-%m-%d %H:%M:%S</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="n">note</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">title</span><span class="sh">"</span><span class="p">:</span> <span class="n">title</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">content</span><span class="sh">"</span><span class="p">:</span> <span class="n">content</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">timestamp</span><span class="sh">"</span><span class="p">:</span> <span class="n">timestamp</span>
+    <span class="p">}</span>
+    
+    <span class="c1"># Save to file
+</span>    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">research_notes.json</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">r</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">notes</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">FileNotFoundError</span><span class="p">:</span>
+        <span class="n">notes</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="n">notes</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">note</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">research_notes.json</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">w</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="p">.</span><span class="nf">dump</span><span class="p">(</span><span class="n">notes</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">✅ Saved note: </span><span class="sh">'</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="sh">'</span><span class="s"> at </span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="sh">"</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">read_notes</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="sh">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Read previously saved research notes.
+    
+    Args:
+        query: Optional search term to filter notes
+        
+    Returns:
+        Matching notes
+    </span><span class="sh">"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">research_notes.json</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">r</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">notes</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">FileNotFoundError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">No notes found. Start taking notes!</span><span class="sh">"</span>
+    
+    <span class="k">if</span> <span class="n">query</span><span class="p">:</span>
+        <span class="c1"># Filter notes by query
+</span>        <span class="n">matching</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">notes</span> <span class="k">if</span> <span class="n">query</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">n</span><span class="p">[</span><span class="sh">"</span><span class="s">title</span><span class="sh">"</span><span class="p">].</span><span class="nf">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="n">query</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">n</span><span class="p">[</span><span class="sh">"</span><span class="s">content</span><span class="sh">"</span><span class="p">].</span><span class="nf">lower</span><span class="p">()]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">matching</span> <span class="o">=</span> <span class="n">notes</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">matching</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">No notes found matching </span><span class="sh">'</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="sh">'"</span>
+    
+    <span class="n">result</span> <span class="o">=</span> <span class="sh">"</span><span class="s">📚 Your Research Notes:</span><span class="se">\n\n</span><span class="sh">"</span>
+    <span class="k">for</span> <span class="n">note</span> <span class="ow">in</span> <span class="n">matching</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">**</span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">title</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="s">** (</span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">timestamp</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="s">)</span><span class="se">\n</span><span class="sh">"</span>
+        <span class="n">result</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">content</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="se">\n\n</span><span class="sh">"</span>
+    
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="c1"># Export tools
+</span><span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">web_search</span><span class="p">,</span> <span class="n">save_notes</span><span class="p">,</span> <span class="n">read_notes</span><span class="p">]</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-2-create-the-agent">Step 2: Create the Agent</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langgraph.prebuilt</span> <span class="kn">import</span> <span class="n">create_react_agent</span>
+<span class="kn">from</span> <span class="n">langgraph.checkpoint.memory</span> <span class="kn">import</span> <span class="n">MemorySaver</span>
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">from</span> <span class="n">dotenv</span> <span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="c1"># Load environment variables
+</span><span class="nf">load_dotenv</span><span class="p">()</span>
+
+<span class="c1"># Create the LLM
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+    <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="sh">"</span><span class="s">OPENAI_API_KEY</span><span class="sh">"</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Define system message
+</span><span class="n">system_message</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">You are a helpful Research Assistant.
+
+Your capabilities:
+- Search the web for information using web_search()
+- Save important findings using save_notes()
+- Recall past notes using read_notes()
+
+Guidelines:
+- Always cite your sources
+- Save key findings to notes
+- Be thorough but concise
+- If asked about past research, check your notes first
+- Break down complex research into steps
+
+Example workflow:
+1. Search for information
+2. Analyze and summarize
+3. Save important points
+4. Provide answer with citations
+</span><span class="sh">"""</span>
+
+<span class="c1"># Create agent with memory
+</span><span class="n">memory</span> <span class="o">=</span> <span class="nc">MemorySaver</span><span class="p">()</span>
+
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_react_agent</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">tools</span><span class="p">,</span>
+    <span class="n">state_modifier</span><span class="o">=</span><span class="n">system_message</span><span class="p">,</span>
+    <span class="n">checkpointer</span><span class="o">=</span><span class="n">memory</span>
+<span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Research Assistant Agent created!</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-3-create-a-user-interface">Step 3: Create a User Interface</h2>
+
+<p>Let’s create a simple chat interface:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">chat</span><span class="p">():</span>
+    <span class="sh">"""</span><span class="s">Interactive chat with the research assistant.</span><span class="sh">"""</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🤖 Research Assistant</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Ask me to research anything!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Type </span><span class="sh">'</span><span class="s">quit</span><span class="sh">'</span><span class="s"> to exit, </span><span class="sh">'</span><span class="s">clear</span><span class="sh">'</span><span class="s"> to start new conversation</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    
+    <span class="c1"># Conversation ID for memory
+</span>    <span class="n">thread_id</span> <span class="o">=</span> <span class="sh">"</span><span class="s">user_session_1</span><span class="sh">"</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="n">thread_id</span><span class="p">}}</span>
+    
+    <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="c1"># Get user input
+</span>        <span class="n">user_input</span> <span class="o">=</span> <span class="nf">input</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">👤 You: </span><span class="sh">"</span><span class="p">).</span><span class="nf">strip</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">user_input</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="o">==</span> <span class="sh">'</span><span class="s">quit</span><span class="sh">'</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Goodbye! 👋</span><span class="sh">"</span><span class="p">)</span>
+            <span class="k">break</span>
+        
+        <span class="k">if</span> <span class="n">user_input</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="o">==</span> <span class="sh">'</span><span class="s">clear</span><span class="sh">'</span><span class="p">:</span>
+            <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">thread_id</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">user_session_</span><span class="si">{</span><span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="nf">timestamp</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="n">thread_id</span><span class="p">}}</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🔄 Started new conversation</span><span class="sh">"</span><span class="p">)</span>
+            <span class="k">continue</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user_input</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+        <span class="c1"># Add user message
+</span>        <span class="n">messages</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="n">user_input</span><span class="p">))</span>
+        
+        <span class="c1"># Get agent response
+</span>        <span class="k">try</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🤔 Thinking...</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span>
+                <span class="p">{</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">},</span>
+                <span class="n">config</span>
+            <span class="p">)</span>
+            
+            <span class="c1"># Get the last message (agent's response)
+</span>            <span class="n">response</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span>
+            
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">🤖 Assistant: </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+            
+            <span class="c1"># Update messages
+</span>            <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">]</span>
+            
+        <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">❌ Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="sh">"</span><span class="s">__main__</span><span class="sh">"</span><span class="p">:</span>
+    <span class="nf">chat</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-4-test-your-agent">Step 4: Test Your Agent</h2>
+
+<h3 id="example-conversation">Example Conversation</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>👤 You: Research the history of artificial intelligence
+
+🤔 Thinking...
+[Agent searches web]
+[Agent saves notes]
+
+🤖 Assistant: I've researched the history of AI for you. Here are the key points:
+
+**Early Foundations (1950s)**
+- Alan Turing proposed the Turing Test in 1950
+- Term "Artificial Intelligence" coined by John McCarthy in 1956
+- First AI conference at Dartmouth College
+
+**Development Phases**
+- 1950s-1970s: Early optimism and symbolic AI
+- 1980s: Rise of expert systems
+- 1990s-2000s: Machine learning emerges
+- 2010s-Present: Deep learning revolution
+
+I've saved these findings to your research notes.
+
+Sources:
+1. Wikipedia - History of Artificial Intelligence
+2. Stanford AI Lab - AI Timeline
+3. MIT Technology Review - AI Evolution
+
+👤 You: What did you save about AI?
+
+🤖 Assistant: Let me check my notes...
+[Agent reads notes]
+
+I have notes on "History of Artificial Intelligence" from just now, covering:
+- Early foundations in the 1950s with Turing and McCarthy
+- Development phases through the decades
+- The recent deep learning revolution
+
+Would you like me to expand on any of these topics?
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-5-add-enhanced-features">Step 5: Add Enhanced Features</h2>
+
+<h3 id="feature-1-streaming-responses">Feature 1: Streaming Responses</h3>
+
+<p>Show the agent’s thinking in real-time:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">chat_with_streaming</span><span class="p">():</span>
+    <span class="sh">"""</span><span class="s">Chat with streaming responses.</span><span class="sh">"""</span>
+    
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user_1</span><span class="sh">"</span><span class="p">}}</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">user_input</span> <span class="o">=</span> <span class="nf">input</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">👤 You: </span><span class="sh">"</span><span class="p">).</span><span class="nf">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">user_input</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="o">==</span> <span class="sh">'</span><span class="s">quit</span><span class="sh">'</span><span class="p">:</span>
+            <span class="k">break</span>
+        
+        <span class="n">messages</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="n">user_input</span><span class="p">))</span>
+        
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🤖 Assistant: </span><span class="sh">"</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="sh">""</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        
+        <span class="c1"># Stream events
+</span>        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">agent</span><span class="p">.</span><span class="nf">stream</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">},</span> <span class="n">config</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">event</span><span class="p">.</span><span class="nf">values</span><span class="p">():</span>
+                <span class="k">if</span> <span class="sh">"</span><span class="s">messages</span><span class="sh">"</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                    <span class="n">last_message</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nf">hasattr</span><span class="p">(</span><span class="n">last_message</span><span class="p">,</span> <span class="sh">'</span><span class="s">content</span><span class="sh">'</span><span class="p">):</span>
+                        <span class="nf">print</span><span class="p">(</span><span class="n">last_message</span><span class="p">.</span><span class="n">content</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="sh">""</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        
+        <span class="nf">print</span><span class="p">()</span>  <span class="c1"># New line
+</span></code></pre></div></div>
+
+<h3 id="feature-2-progress-indicators">Feature 2: Progress Indicators</h3>
+
+<p>Show what the agent is doing:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">chat_with_progress</span><span class="p">():</span>
+    <span class="sh">"""</span><span class="s">Chat with progress indicators.</span><span class="sh">"""</span>
+    
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user_1</span><span class="sh">"</span><span class="p">}}</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">user_input</span> <span class="o">=</span> <span class="nf">input</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">👤 You: </span><span class="sh">"</span><span class="p">).</span><span class="nf">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">user_input</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="o">==</span> <span class="sh">'</span><span class="s">quit</span><span class="sh">'</span><span class="p">:</span>
+            <span class="k">break</span>
+        
+        <span class="n">messages</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="n">user_input</span><span class="p">))</span>
+        
+        <span class="c1"># Track steps
+</span>        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">agent</span><span class="p">.</span><span class="nf">stream</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">},</span> <span class="n">config</span><span class="p">,</span> <span class="n">stream_mode</span><span class="o">=</span><span class="sh">"</span><span class="s">updates</span><span class="sh">"</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">node_name</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">event</span><span class="p">.</span><span class="nf">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">node_name</span> <span class="o">==</span> <span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">:</span>
+                    <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">tool_calls</span> <span class="k">if</span> <span class="n">values</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+                    <span class="k">for</span> <span class="n">tool_call</span> <span class="ow">in</span> <span class="n">tool_calls</span><span class="p">:</span>
+                        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">🔧 Using tool: </span><span class="si">{</span><span class="n">tool_call</span><span class="p">[</span><span class="sh">'</span><span class="s">name</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">node_name</span> <span class="o">==</span> <span class="sh">"</span><span class="s">agent</span><span class="sh">"</span><span class="p">:</span>
+                    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">💭 Agent thinking...</span><span class="sh">"</span><span class="p">)</span>
+        
+        <span class="c1"># Get final response
+</span>        <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">},</span> <span class="n">config</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">🤖 Assistant: </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        
+        <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">]</span>
+</code></pre></div></div>
+
+<h3 id="feature-3-export-research-report">Feature 3: Export Research Report</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">generate_report</span><span class="p">(</span><span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Generate a research report from saved notes.
+    
+    Args:
+        topic: The research topic
+        
+    Returns:
+        Formatted research report
+    </span><span class="sh">"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">research_notes.json</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">r</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">notes</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">FileNotFoundError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">No notes available for report.</span><span class="sh">"</span>
+    
+    <span class="c1"># Filter relevant notes
+</span>    <span class="n">relevant</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">notes</span> <span class="k">if</span> <span class="n">topic</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">n</span><span class="p">[</span><span class="sh">"</span><span class="s">title</span><span class="sh">"</span><span class="p">].</span><span class="nf">lower</span><span class="p">()]</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">relevant</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">No notes found for topic: </span><span class="si">{</span><span class="n">topic</span><span class="si">}</span><span class="sh">"</span>
+    
+    <span class="c1"># Generate report
+</span>    <span class="n">report</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"""</span><span class="s">
+# Research Report: </span><span class="si">{</span><span class="n">topic</span><span class="si">}</span><span class="s">
+Generated: </span><span class="si">{</span><span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="sh">"</span><span class="s">%Y-%m-%d %H</span><span class="si">:</span><span class="o">%</span><span class="n">M</span><span class="si">:</span><span class="o">%</span><span class="n">S</span><span class="sh">"</span><span class="s">)</span><span class="si">}</span><span class="s">
+
+## Summary
+This report compiles </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">relevant</span><span class="p">)</span><span class="si">}</span><span class="s"> notes on </span><span class="si">{</span><span class="n">topic</span><span class="si">}</span><span class="s">.
+
+## Findings
+
+</span><span class="sh">"""</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">note</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">relevant</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">report</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">### </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s">. </span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">title</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span>
+        <span class="n">report</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">*</span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">timestamp</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="s">*</span><span class="se">\n\n</span><span class="sh">"</span>
+        <span class="n">report</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">content</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="se">\n\n</span><span class="sh">"</span>
+    
+    <span class="n">report</span> <span class="o">+=</span> <span class="sh">"</span><span class="se">\n</span><span class="s">## Conclusion</span><span class="se">\n</span><span class="sh">"</span>
+    <span class="n">report</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Research completed with </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">relevant</span><span class="p">)</span><span class="si">}</span><span class="s"> key findings documented.</span><span class="se">\n</span><span class="sh">"</span>
+    
+    <span class="c1"># Save report
+</span>    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">report_</span><span class="si">{</span><span class="n">topic</span><span class="p">.</span><span class="nf">replace</span><span class="p">(</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">_</span><span class="sh">'</span><span class="p">)</span><span class="si">}</span><span class="s">.md</span><span class="sh">"</span>
+    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="sh">"</span><span class="s">w</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">✅ Report saved to </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="sh">"</span>
+
+<span class="c1"># Add to tools
+</span><span class="n">tools</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">generate_report</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-6-add-error-handling">Step 6: Add Error Handling</h2>
+
+<p>Make your agent more robust:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">safe_agent_invoke</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Invoke agent with error handling and retries.</span><span class="sh">"""</span>
+    
+    <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">},</span> <span class="n">config</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+        
+        <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">⚠️  Attempt </span><span class="si">{</span><span class="n">attempt</span> <span class="o">+</span> <span class="mi">1</span><span class="si">}</span><span class="s"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🔄 Retrying...</span><span class="sh">"</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">❌ Max retries reached</span><span class="sh">"</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span> <span class="o">+</span> <span class="p">[</span>
+                        <span class="p">(</span><span class="sh">"</span><span class="s">assistant</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">I encountered an error. Please try rephrasing your question.</span><span class="sh">"</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">}</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="complete-code">Complete Code</h2>
+
+<p>Here’s the complete <code class="language-plaintext highlighter-rouge">research_agent.py</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="sh">"""</span><span class="s">
+Research Assistant Agent
+A complete AI agent with tools, memory, and conversation management.
+</span><span class="sh">"""</span>
+
+<span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+<span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langgraph.prebuilt</span> <span class="kn">import</span> <span class="n">create_react_agent</span>
+<span class="kn">from</span> <span class="n">langgraph.checkpoint.memory</span> <span class="kn">import</span> <span class="n">MemorySaver</span>
+<span class="kn">import</span> <span class="n">json</span>
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">from</span> <span class="n">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="n">dotenv</span> <span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="c1"># Load environment
+</span><span class="nf">load_dotenv</span><span class="p">()</span>
+
+<span class="c1"># ===== TOOLS =====
+</span>
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">web_search</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Search the web for information.</span><span class="sh">"""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Search results for: </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="se">\n</span><span class="s">[Simulated results]</span><span class="sh">"</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">save_notes</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Save research notes.</span><span class="sh">"""</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="nf">strftime</span><span class="p">(</span><span class="sh">"</span><span class="s">%Y-%m-%d %H:%M:%S</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">note</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">title</span><span class="sh">"</span><span class="p">:</span> <span class="n">title</span><span class="p">,</span> <span class="sh">"</span><span class="s">content</span><span class="sh">"</span><span class="p">:</span> <span class="n">content</span><span class="p">,</span> <span class="sh">"</span><span class="s">timestamp</span><span class="sh">"</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">}</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">research_notes.json</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">r</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">notes</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">FileNotFoundError</span><span class="p">:</span>
+        <span class="n">notes</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="n">notes</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">note</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">research_notes.json</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">w</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="p">.</span><span class="nf">dump</span><span class="p">(</span><span class="n">notes</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">✅ Saved: </span><span class="sh">'</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="sh">'"</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">read_notes</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="sh">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Read saved research notes.</span><span class="sh">"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">research_notes.json</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">r</span><span class="sh">"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">notes</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">FileNotFoundError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">No notes found.</span><span class="sh">"</span>
+    
+    <span class="k">if</span> <span class="n">query</span><span class="p">:</span>
+        <span class="n">notes</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">notes</span> <span class="k">if</span> <span class="n">query</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="nf">str</span><span class="p">(</span><span class="n">n</span><span class="p">).</span><span class="nf">lower</span><span class="p">()]</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">notes</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">No matching notes.</span><span class="sh">"</span>
+    
+    <span class="n">result</span> <span class="o">=</span> <span class="sh">"</span><span class="s">📚 Your Notes:</span><span class="se">\n\n</span><span class="sh">"</span>
+    <span class="k">for</span> <span class="n">note</span> <span class="ow">in</span> <span class="n">notes</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:]:</span>  <span class="c1"># Last 5 notes
+</span>        <span class="n">result</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">**</span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">title</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="s">**</span><span class="se">\n</span><span class="si">{</span><span class="n">note</span><span class="p">[</span><span class="sh">'</span><span class="s">content</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="se">\n\n</span><span class="sh">"</span>
+    
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">web_search</span><span class="p">,</span> <span class="n">save_notes</span><span class="p">,</span> <span class="n">read_notes</span><span class="p">]</span>
+
+<span class="c1"># ===== AGENT =====
+</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+    <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="sh">"</span><span class="s">OPENAI_API_KEY</span><span class="sh">"</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">system_message</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">You are a Research Assistant. You can:
+- Search the web
+- Save notes
+- Recall past research
+
+Always cite sources and save key findings.</span><span class="sh">"""</span>
+
+<span class="n">memory</span> <span class="o">=</span> <span class="nc">MemorySaver</span><span class="p">()</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_react_agent</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="n">state_modifier</span><span class="o">=</span><span class="n">system_message</span><span class="p">,</span> <span class="n">checkpointer</span><span class="o">=</span><span class="n">memory</span><span class="p">)</span>
+
+<span class="c1"># ===== INTERFACE =====
+</span>
+<span class="k">def</span> <span class="nf">chat</span><span class="p">():</span>
+    <span class="sh">"""</span><span class="s">Main chat loop.</span><span class="sh">"""</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🤖 Research Assistant (type </span><span class="sh">'</span><span class="s">quit</span><span class="sh">'</span><span class="s"> to exit)</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user_1</span><span class="sh">"</span><span class="p">}}</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">user_input</span> <span class="o">=</span> <span class="nf">input</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">👤 You: </span><span class="sh">"</span><span class="p">).</span><span class="nf">strip</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">user_input</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="o">==</span> <span class="sh">'</span><span class="s">quit</span><span class="sh">'</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Goodbye! 👋</span><span class="sh">"</span><span class="p">)</span>
+            <span class="k">break</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user_input</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+        <span class="n">messages</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="n">user_input</span><span class="p">))</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🤔 Thinking...</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">},</span> <span class="n">config</span><span class="p">)</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">🤖: </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">]</span>
+        <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="sh">"</span><span class="s">__main__</span><span class="sh">"</span><span class="p">:</span>
+    <span class="nf">chat</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="testing-checklist">Testing Checklist</h2>
+
+<p>Test your agent with these scenarios:</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Simple question</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Research request (triggers web_search)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Save information (triggers save_notes)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Recall past research (triggers read_notes)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Multi-step task</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Error handling</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Memory across messages</li>
+</ul>
+
+<hr />
+
+<h2 id="next-steps">Next Steps</h2>
+
+<h3 id="enhancements-you-can-add">Enhancements You Can Add</h3>
+
+<ol>
+  <li><strong>Real Web Search</strong>
+    <ul>
+      <li>Use Tavily API or SerpAPI</li>
+      <li>Parse and format results</li>
+    </ul>
+  </li>
+  <li><strong>Better Note System</strong>
+    <ul>
+      <li>Use a database instead of JSON</li>
+      <li>Add tags and categories</li>
+      <li>Implement search</li>
+    </ul>
+  </li>
+  <li><strong>Export Options</strong>
+    <ul>
+      <li>PDF reports</li>
+      <li>Email summaries</li>
+      <li>Integration with note apps</li>
+    </ul>
+  </li>
+  <li><strong>Advanced Features</strong>
+    <ul>
+      <li>Web scraping for deep research</li>
+      <li>Image analysis</li>
+      <li>Data visualization</li>
+    </ul>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="what-youve-built">What You’ve Built</h2>
+
+<p>✅ A complete AI agent with custom tools<br />
+✅ Memory for conversation context<br />
+✅ Note-taking and retrieval<br />
+✅ Interactive chat interface<br />
+✅ Error handling<br />
+✅ Extensible architecture</p>
+
+<p>You now have a working agent you can customize and extend!</p>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>Learn how to <strong>monitor and debug</strong> your agent with LangSmith:</p>
+<ul>
+  <li>Trace agent decisions</li>
+  <li>Debug tool calls</li>
+  <li>Optimize performance</li>
+  <li>Track costs</li>
+</ul>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-observability/">→ Continue to Step 7: Observability with LangSmith</a></strong></p>
+
+<hr />
+
+<h2 id="resources">Resources</h2>
+
+<ul>
+  <li><a href="https://langchain-ai.github.io/langgraph/">LangGraph Documentation</a></li>
+  <li><a href="https://python.langchain.com/docs/modules/agents/tools/">LangChain Tools</a></li>
+  <li><a href="https://github.com/langchain-ai/langgraph/tree/main/examples">Example Projects</a></li>
+</ul>
+
+<p>Congratulations on building your first agent! 🎉</p>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-observability/">Next: Observability with LangSmith →</a></strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">langgraph</span>, <span class="tag">project</span>, <span class="tag">agents</span>, <span class="tag">hands-on</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>

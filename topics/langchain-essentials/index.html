@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LangChain Essentials: Building Blocks of AI Applications</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>LangChain Essentials: Building Blocks of AI Applications</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>🎓 LangChain Learning Path - Step 2 of 7</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-foundations/">← Step 1: Foundations</a></strong></li>
+    <li><strong>Step 2 (this page):</strong> LangChain Essentials</li>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-tool-calling/">Step 3: Tool Calling →</a></strong></li>
+  </ul>
+</blockquote>
+
+<hr />
+
+<h2 id="what-youll-learn">What You’ll Learn</h2>
+
+<p>In this guide, we’ll cover the four essential building blocks of LangChain:</p>
+
+<div class="mermaid">
+flowchart LR
+    CM["🤖 Chat Models"]
+    PP["💬 Prompting Patterns"]
+    SO["📊 Structured Outputs"]
+    CH["🔗 Chaining (LCEL)"]
+    
+    CM --&gt; PP --&gt; SO --&gt; CH
+    
+    style CM fill:#dbeafe,stroke:#2563eb
+    style PP fill:#fef3c7,stroke:#d97706
+    style SO fill:#fce7f3,stroke:#db2777
+    style CH fill:#d1fae5,stroke:#059669
+</div>
+
+<p>By the end, you’ll be able to build your first LangChain application!</p>
+
+<hr />
+
+<h2 id="part-1-chat-models">Part 1: Chat Models</h2>
+
+<h3 id="what-is-a-chat-model">What is a Chat Model?</h3>
+
+<p>A <strong>chat model</strong> is like having a conversation partner that responds to messages. Unlike older “completion” models that just continue text, chat models understand <strong>roles</strong> and <strong>conversation flow</strong>.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant Y as 👤 You
+    participant C as 🤖 Chat Model
+    
+    Y-&gt;&gt;C: System: You are a helpful teacher
+    Y-&gt;&gt;C: User: Explain gravity
+    C--&gt;&gt;Y: Assistant: Gravity is the force that pulls objects...
+    Y-&gt;&gt;C: User: Can you give an example?
+    C--&gt;&gt;Y: Assistant: Sure! When you drop a ball...
+</div>
+
+<h3 id="the-three-roles">The Three Roles</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph roles["💬 Message Roles"]
+        S["👨‍🏫 System<br />Sets behavior &amp; context"]
+        U["👤 User<br />Your questions/requests"]
+        A["🤖 Assistant<br />Model's responses"]
+    end
+    
+    style S fill:#dbeafe,stroke:#2563eb
+    style U fill:#fef3c7,stroke:#d97706
+    style A fill:#d1fae5,stroke:#059669
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Role</th>
+      <th>Purpose</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>System</strong></td>
+      <td>Gives the AI its instructions and personality</td>
+      <td>“You are a friendly teacher”</td>
+    </tr>
+    <tr>
+      <td><strong>User</strong></td>
+      <td>Your questions or requests</td>
+      <td>“How does photosynthesis work?”</td>
+    </tr>
+    <tr>
+      <td><strong>Assistant</strong></td>
+      <td>The AI’s responses</td>
+      <td>“Photosynthesis is the process…”</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="using-chat-models-in-langchain">Using Chat Models in LangChain</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+
+<span class="c1"># Create a chat model
+</span><span class="n">chat</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+
+<span class="c1"># Send a message
+</span><span class="n">response</span> <span class="o">=</span> <span class="n">chat</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="sh">"</span><span class="s">Explain quantum physics in simple terms</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">content</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Think of quantum physics like a magic show where particles can be 
+in two places at once and instantly know what each other are doing, 
+even from far away...
+</code></pre></div></div>
+
+<h3 id="temperature-creativity-control">Temperature: Creativity Control</h3>
+
+<p>The <strong>temperature</strong> setting controls how creative or predictable the model is:</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph low["🎯 Temperature = 0"]
+        L1["Predictable"]
+        L2["Consistent"]
+        L3["Factual"]
+    end
+    
+    subgraph mid["⚖️ Temperature = 0.7"]
+        M1["Balanced"]
+        M2["Creative but sensible"]
+    end
+    
+    subgraph high["🎨 Temperature = 1.5"]
+        H1["Very creative"]
+        H2["Unpredictable"]
+        H3["Experimental"]
+    end
+    
+    style low fill:#dbeafe,stroke:#2563eb
+    style mid fill:#fef3c7,stroke:#d97706
+    style high fill:#fce7f3,stroke:#db2777
+</div>
+
+<p><strong>When to use what:</strong></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">0.0</code> - Math problems, factual answers, consistent outputs</li>
+  <li><code class="language-plaintext highlighter-rouge">0.7</code> - General conversation, balanced creativity</li>
+  <li><code class="language-plaintext highlighter-rouge">1.5+</code> - Creative writing, brainstorming, experimental ideas</li>
+</ul>
+
+<hr />
+
+<h2 id="part-2-prompting-patterns">Part 2: Prompting Patterns</h2>
+
+<h3 id="what-is-a-prompt">What is a Prompt?</h3>
+
+<p>A <strong>prompt</strong> is how you talk to the AI. Good prompts get good results. Bad prompts get confusing results!</p>
+
+<h3 id="the-anatomy-of-a-good-prompt">The Anatomy of a Good Prompt</h3>
+
+<div class="mermaid">
+flowchart TB
+    P["📝 Complete Prompt"]
+    
+    P --&gt; R["🎭 Role<br />Who should the AI be?"]
+    P --&gt; C["🎯 Context<br />What background info?"]
+    P --&gt; T["✅ Task<br />What to do?"]
+    P --&gt; F["📊 Format<br />How to structure output?"]
+    
+    style P fill:#dbeafe,stroke:#2563eb
+    style R fill:#fef3c7,stroke:#d97706
+    style C fill:#fce7f3,stroke:#db2777
+    style T fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="pattern-1-role-based-prompting">Pattern 1: Role-Based Prompting</h3>
+
+<p>Give the AI a specific role to play:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+
+<span class="c1"># Define a role-based prompt
+</span><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">You are a helpful teacher explaining concepts to a 10-year-old.</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">{question}</span><span class="sh">"</span><span class="p">)</span>
+<span class="p">])</span>
+
+<span class="c1"># Use it
+</span><span class="n">chain</span> <span class="o">=</span> <span class="n">prompt</span> <span class="o">|</span> <span class="n">chat</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">What is DNA?</span><span class="sh">"</span><span class="p">})</span>
+</code></pre></div></div>
+
+<p><strong>Why it works:</strong></p>
+<ul>
+  <li>Gives the AI a clear perspective</li>
+  <li>Makes tone and complexity consistent</li>
+  <li>Helps it know what NOT to do</li>
+</ul>
+
+<h3 id="pattern-2-few-shot-prompting">Pattern 2: Few-Shot Prompting</h3>
+
+<p>Show the AI examples of what you want:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">You are a sentiment analyzer.</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Review: This movie was amazing! → Sentiment: Positive</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Review: Terrible waste of time → Sentiment: Negative</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Review: {review} → Sentiment:</span><span class="sh">"</span><span class="p">)</span>
+<span class="p">])</span>
+</code></pre></div></div>
+
+<div class="mermaid">
+flowchart LR
+    subgraph examples["📚 Examples"]
+        E1["Example 1"]
+        E2["Example 2"]
+        E3["Example 3"]
+    end
+    
+    subgraph new["❓ New Input"]
+        N["Your actual task"]
+    end
+    
+    subgraph ai["🤖 AI"]
+        A["Understands pattern<br />from examples"]
+    end
+    
+    examples --&gt; ai
+    new --&gt; ai
+    
+    style examples fill:#fef3c7,stroke:#d97706
+    style new fill:#dbeafe,stroke:#2563eb
+    style ai fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="pattern-3-chain-of-thought">Pattern 3: Chain-of-Thought</h3>
+
+<p>Ask the AI to think step-by-step:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">You are a math tutor. Show your work step by step.</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"""</span><span class="s">
+    Solve this problem step-by-step:
+    
+    Problem: {problem}
+    
+    Think through it:
+    1. First...
+    2. Then...
+    3. Finally...
+    </span><span class="sh">"""</span><span class="p">)</span>
+<span class="p">])</span>
+</code></pre></div></div>
+
+<p><strong>Why it works:</strong></p>
+<ul>
+  <li>Reduces errors in complex tasks</li>
+  <li>Makes reasoning visible</li>
+  <li>Better results on math and logic</li>
+</ul>
+
+<h3 id="pattern-4-output-format-control">Pattern 4: Output Format Control</h3>
+
+<p>Tell the AI exactly how to format its response:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"""</span><span class="s">
+    You extract company information from text.
+    Always respond in this format:
+    
+    Company Name: [name]
+    Industry: [industry]
+    Founded: [year]
+    </span><span class="sh">"""</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">{text}</span><span class="sh">"</span><span class="p">)</span>
+<span class="p">])</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="part-3-structured-outputs">Part 3: Structured Outputs</h2>
+
+<h3 id="the-problem-with-free-text">The Problem with Free Text</h3>
+
+<p>When you ask an AI a question, it gives you text. But what if you need <strong>data</strong> you can use in your code?</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph problem["❌ Free Text Output"]
+        P1["User: What's the weather?"]
+        P2["AI: It's 72 degrees and sunny!"]
+        P3["Your code: ??? How to extract 72?"]
+    end
+    
+    subgraph solution["✅ Structured Output"]
+        S1["User: What's the weather?"]
+        S2["AI: temperature=72, condition='sunny'"]
+        S3["Your code: weather.temperature → 72"]
+    end
+    
+    style problem fill:#fecaca,stroke:#dc2626
+    style solution fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="using-pydantic-models">Using Pydantic Models</h3>
+
+<p>Pydantic lets you define the structure you want:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+
+<span class="c1"># Define the structure
+</span><span class="k">class</span> <span class="nc">Person</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Person</span><span class="sh">'</span><span class="s">s full name</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">age</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Person</span><span class="sh">'</span><span class="s">s age in years</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">occupation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Person</span><span class="sh">'</span><span class="s">s job</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Create a chat model with structured output
+</span><span class="n">llm</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">structured_llm</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="nf">with_structured_output</span><span class="p">(</span><span class="n">Person</span><span class="p">)</span>
+
+<span class="c1"># Use it
+</span><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">John Smith is a 35-year-old software engineer</span><span class="sh">"</span>
+<span class="n">person</span> <span class="o">=</span> <span class="n">structured_llm</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Extract person info from: </span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">person</span><span class="p">.</span><span class="n">name</span><span class="p">)</span>        <span class="c1"># "John Smith"
+</span><span class="nf">print</span><span class="p">(</span><span class="n">person</span><span class="p">.</span><span class="n">age</span><span class="p">)</span>         <span class="c1"># 35
+</span><span class="nf">print</span><span class="p">(</span><span class="n">person</span><span class="p">.</span><span class="n">occupation</span><span class="p">)</span>  <span class="c1"># "software engineer"
+</span></code></pre></div></div>
+
+<h3 id="real-world-example-invoice-extraction">Real-World Example: Invoice Extraction</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Invoice</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">invoice_number</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">date</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_amount</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+<span class="n">structured_llm</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="nf">with_structured_output</span><span class="p">(</span><span class="n">Invoice</span><span class="p">)</span>
+
+<span class="n">invoice_text</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+Invoice #INV-2024-001
+Date: January 15, 2024
+From: Acme Corp
+Items: Office supplies, Printer paper, Pens
+Total: $247.50
+</span><span class="sh">"""</span>
+
+<span class="n">invoice</span> <span class="o">=</span> <span class="n">structured_llm</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Extract invoice data from:</span><span class="se">\n</span><span class="si">{</span><span class="n">invoice_text</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Now you have structured data!
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Invoice: </span><span class="si">{</span><span class="n">invoice</span><span class="p">.</span><span class="n">invoice_number</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Total: $</span><span class="si">{</span><span class="n">invoice</span><span class="p">.</span><span class="n">total_amount</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="part-4-chaining-with-lcel">Part 4: Chaining with LCEL</h2>
+
+<h3 id="what-is-lcel">What is LCEL?</h3>
+
+<p><strong>LCEL (LangChain Expression Language)</strong> is a way to connect multiple steps together using the <code class="language-plaintext highlighter-rouge">|</code> (pipe) operator.</p>
+
+<p>Think of it like a <strong>factory assembly line</strong> where each step does one thing:</p>
+
+<div class="mermaid">
+flowchart LR
+    I["📥 Input"] --&gt;|pipe| S1["Step 1"]
+    S1 --&gt;|pipe| S2["Step 2"]
+    S2 --&gt;|pipe| S3["Step 3"]
+    S3 --&gt;|pipe| O["📤 Output"]
+    
+    style I fill:#dbeafe,stroke:#2563eb
+    style S1 fill:#fef3c7,stroke:#d97706
+    style S2 fill:#fef3c7,stroke:#d97706
+    style S3 fill:#fef3c7,stroke:#d97706
+    style O fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="simple-chain-example">Simple Chain Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+<span class="kn">from</span> <span class="n">langchain_core.output_parsers</span> <span class="kn">import</span> <span class="n">StrOutputParser</span>
+
+<span class="c1"># Step 1: Create a prompt
+</span><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">You are a helpful assistant.</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">{question}</span><span class="sh">"</span><span class="p">)</span>
+<span class="p">])</span>
+
+<span class="c1"># Step 2: Create a model
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">()</span>
+
+<span class="c1"># Step 3: Create an output parser
+</span><span class="n">parser</span> <span class="o">=</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+
+<span class="c1"># Chain them together!
+</span><span class="n">chain</span> <span class="o">=</span> <span class="n">prompt</span> <span class="o">|</span> <span class="n">model</span> <span class="o">|</span> <span class="n">parser</span>
+
+<span class="c1"># Use the chain
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">What is 2+2?</span><span class="sh">"</span><span class="p">})</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>  <span class="c1"># "2+2 equals 4"
+</span></code></pre></div></div>
+
+<h3 id="how-the-chain-works">How the Chain Works</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant I as 📥 Input
+    participant P as 📝 Prompt
+    participant M as 🤖 Model
+    participant O as 📤 Parser
+    
+    I-&gt;&gt;P: {question: "What is 2+2?"}
+    P-&gt;&gt;M: Formatted prompt
+    M-&gt;&gt;O: AI response object
+    O-&gt;&gt;I: Clean string: "4"
+</div>
+
+<h3 id="multi-step-chain-example">Multi-Step Chain Example</h3>
+
+<p>Let’s build a chain that:</p>
+<ol>
+  <li>Takes a topic</li>
+  <li>Generates a poem about it</li>
+  <li>Translates it to Spanish</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Step 1: Generate poem
+</span><span class="n">poem_prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_template</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">Write a short 2-line poem about {topic}</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 2: Translate
+</span><span class="n">translate_prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_template</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">Translate this to Spanish: {poem}</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="c1"># Create the chain
+</span><span class="n">chain</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">{</span><span class="sh">"</span><span class="s">poem</span><span class="sh">"</span><span class="p">:</span> <span class="n">poem_prompt</span> <span class="o">|</span> <span class="n">model</span> <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()}</span>
+    <span class="o">|</span> <span class="n">translate_prompt</span>
+    <span class="o">|</span> <span class="n">model</span>
+    <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Use it
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">topic</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">mountains</span><span class="sh">"</span><span class="p">})</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Flow:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Topic: "mountains"
+    ↓
+Generate poem: "Mountains high and peaks so grand..."
+    ↓
+Translate: "Montañas altas y picos tan grandes..."
+</code></pre></div></div>
+
+<h3 id="parallel-chains">Parallel Chains</h3>
+
+<p>You can run multiple chains at the same time:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_core.runnables</span> <span class="kn">import</span> <span class="n">RunnableParallel</span>
+
+<span class="c1"># Define multiple chains
+</span><span class="n">summary_chain</span> <span class="o">=</span> <span class="n">summary_prompt</span> <span class="o">|</span> <span class="n">model</span> <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+<span class="n">sentiment_chain</span> <span class="o">=</span> <span class="n">sentiment_prompt</span> <span class="o">|</span> <span class="n">model</span> <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+<span class="n">keywords_chain</span> <span class="o">=</span> <span class="n">keywords_prompt</span> <span class="o">|</span> <span class="n">model</span> <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+
+<span class="c1"># Run them in parallel
+</span><span class="n">parallel_chain</span> <span class="o">=</span> <span class="nc">RunnableParallel</span><span class="p">(</span>
+    <span class="n">summary</span><span class="o">=</span><span class="n">summary_chain</span><span class="p">,</span>
+    <span class="n">sentiment</span><span class="o">=</span><span class="n">sentiment_chain</span><span class="p">,</span>
+    <span class="n">keywords</span><span class="o">=</span><span class="n">keywords_chain</span>
+<span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">parallel_chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">text</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Your article here...</span><span class="sh">"</span><span class="p">})</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">summary</span><span class="sh">"</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">sentiment</span><span class="sh">"</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">keywords</span><span class="sh">"</span><span class="p">])</span>
+</code></pre></div></div>
+
+<div class="mermaid">
+flowchart TB
+    I["📥 Input Text"]
+    
+    I --&gt; C1["Chain 1: Summary"]
+    I --&gt; C2["Chain 2: Sentiment"]
+    I --&gt; C3["Chain 3: Keywords"]
+    
+    C1 --&gt; O["📤 Combined Results"]
+    C2 --&gt; O
+    C3 --&gt; O
+    
+    style I fill:#dbeafe,stroke:#2563eb
+    style C1 fill:#fef3c7,stroke:#d97706
+    style C2 fill:#fef3c7,stroke:#d97706
+    style C3 fill:#fef3c7,stroke:#d97706
+    style O fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="putting-it-all-together-a-complete-example">Putting It All Together: A Complete Example</h2>
+
+<p>Let’s build a <strong>Product Review Analyzer</strong> that:</p>
+<ol>
+  <li>Extracts structured data from reviews</li>
+  <li>Analyzes sentiment</li>
+  <li>Generates a summary</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+<span class="kn">from</span> <span class="n">langchain_core.output_parsers</span> <span class="kn">import</span> <span class="n">StrOutputParser</span>
+<span class="kn">from</span> <span class="n">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+
+<span class="c1"># Step 1: Define structure
+</span><span class="k">class</span> <span class="nc">ReviewData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">product</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Product name</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">rating</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Rating 1-5</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">pros</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Positive points</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">cons</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Negative points</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Create extraction chain
+</span><span class="n">extraction_llm</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">).</span><span class="nf">with_structured_output</span><span class="p">(</span><span class="n">ReviewData</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Create summary chain
+</span><span class="n">summary_prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_template</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">Summarize this review in one sentence: {review}</span><span class="sh">"</span>
+<span class="p">)</span>
+<span class="n">summary_chain</span> <span class="o">=</span> <span class="n">summary_prompt</span> <span class="o">|</span> <span class="nc">ChatOpenAI</span><span class="p">()</span> <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+
+<span class="c1"># Step 4: Combine everything
+</span><span class="kn">from</span> <span class="n">langchain_core.runnables</span> <span class="kn">import</span> <span class="n">RunnableParallel</span>
+
+<span class="n">full_chain</span> <span class="o">=</span> <span class="nc">RunnableParallel</span><span class="p">(</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">extraction_llm</span><span class="p">,</span>
+    <span class="n">summary</span><span class="o">=</span><span class="n">summary_chain</span>
+<span class="p">)</span>
+
+<span class="c1"># Use it!
+</span><span class="n">review</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+I bought the SuperWidget 3000 and I</span><span class="sh">'</span><span class="s">m impressed! The build quality 
+is amazing and it</span><span class="sh">'</span><span class="s">s very easy to use. However, the battery life 
+could be better and it</span><span class="sh">'</span><span class="s">s a bit expensive. Overall, I</span><span class="sh">'</span><span class="s">d give it 4/5 stars.
+</span><span class="sh">"""</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">full_chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">review</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Product:</span><span class="sh">"</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">data</span><span class="sh">"</span><span class="p">].</span><span class="n">product</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Rating:</span><span class="sh">"</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">data</span><span class="sh">"</span><span class="p">].</span><span class="n">rating</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Pros:</span><span class="sh">"</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">data</span><span class="sh">"</span><span class="p">].</span><span class="n">pros</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Cons:</span><span class="sh">"</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">data</span><span class="sh">"</span><span class="p">].</span><span class="n">cons</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Summary:</span><span class="sh">"</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">summary</span><span class="sh">"</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Product: SuperWidget 3000
+Rating: 4
+Pros: ['Amazing build quality', 'Easy to use']
+Cons: ['Battery life could be better', 'A bit expensive']
+Summary: A high-quality, user-friendly product with minor drawbacks in battery and price.
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-start-simple-then-chain">1. Start Simple, Then Chain</h3>
+
+<div class="mermaid">
+flowchart LR
+    A["Test each step<br />separately"] --&gt; B["Combine into<br />simple chain"]
+    B --&gt; C["Add complexity<br />gradually"]
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style B fill:#fef3c7,stroke:#d97706
+    style C fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="2-be-specific-in-prompts">2. Be Specific in Prompts</h3>
+
+<p>❌ Bad: “Analyze this”<br />
+✅ Good: “Extract the key findings and sentiment from this research paper”</p>
+
+<h3 id="3-use-structured-outputs-when-possible">3. Use Structured Outputs When Possible</h3>
+
+<p>Text is flexible but hard to use in code. Structured data is easier to work with.</p>
+
+<h3 id="4-control-temperature-based-on-task">4. Control Temperature Based on Task</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Task Type</th>
+      <th>Temperature</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Extract data</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <td>Answer questions</td>
+      <td>0.3</td>
+    </tr>
+    <tr>
+      <td>Have conversation</td>
+      <td>0.7</td>
+    </tr>
+    <tr>
+      <td>Generate creative content</td>
+      <td>1.0+</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="5-test-with-edge-cases">5. Test with Edge Cases</h3>
+
+<ul>
+  <li>Empty inputs</li>
+  <li>Very long inputs</li>
+  <li>Unusual formatting</li>
+  <li>Multiple languages</li>
+</ul>
+
+<hr />
+
+<h2 id="common-patterns-recap">Common Patterns Recap</h2>
+
+<h3 id="the-building-blocks">The Building Blocks</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># 1. Chat Model
+</span><span class="n">chat</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+
+<span class="c1"># 2. Prompt Template
+</span><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([...])</span>
+
+<span class="c1"># 3. Output Parser
+</span><span class="n">parser</span> <span class="o">=</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+
+<span class="c1"># 4. Chain them
+</span><span class="n">chain</span> <span class="o">=</span> <span class="n">prompt</span> <span class="o">|</span> <span class="n">chat</span> <span class="o">|</span> <span class="n">parser</span>
+</code></pre></div></div>
+
+<h3 id="the-lcel-operators">The LCEL Operators</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operator</th>
+      <th>What It Does</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">\|</code> (pipe)</td>
+      <td>Connect steps sequentially</td>
+      <td><code class="language-plaintext highlighter-rouge">prompt \| model \| parser</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">RunnableParallel</code></td>
+      <td>Run steps in parallel</td>
+      <td><code class="language-plaintext highlighter-rouge">{a: chain1, b: chain2}</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">RunnableLambda</code></td>
+      <td>Add custom functions</td>
+      <td><code class="language-plaintext highlighter-rouge">RunnableLambda(my_function)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="what-youve-learned">What You’ve Learned</h2>
+
+<p>✅ How to use <strong>chat models</strong> with different roles<br />
+✅ <strong>Prompting patterns</strong> that get better results<br />
+✅ Creating <strong>structured outputs</strong> with Pydantic<br />
+✅ <strong>Chaining</strong> components together with LCEL</p>
+
+<p>You now have the core building blocks! Next, we’ll learn how to give your AI <strong>superpowers</strong> by connecting it to tools and APIs.</p>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>In the next section, we’ll learn about <strong>Tool Calling</strong> - how to let your LLM:</p>
+<ul>
+  <li>Search the web</li>
+  <li>Query databases</li>
+  <li>Send emails</li>
+  <li>Call APIs</li>
+  <li>And much more!</li>
+</ul>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-tool-calling/">→ Continue to Step 3: Tool Calling</a></strong></p>
+
+<hr />
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="essential-imports">Essential Imports</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+<span class="kn">from</span> <span class="n">langchain_core.output_parsers</span> <span class="kn">import</span> <span class="n">StrOutputParser</span>
+<span class="kn">from</span> <span class="n">langchain_core.runnables</span> <span class="kn">import</span> <span class="n">RunnableParallel</span>
+<span class="kn">from</span> <span class="n">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+</code></pre></div></div>
+
+<h3 id="basic-chain-template">Basic Chain Template</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Define
+</span><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([...])</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">()</span>
+<span class="n">parser</span> <span class="o">=</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+
+<span class="c1"># Chain
+</span><span class="n">chain</span> <span class="o">=</span> <span class="n">prompt</span> <span class="o">|</span> <span class="n">model</span> <span class="o">|</span> <span class="n">parser</span>
+
+<span class="c1"># Use
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">input</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">...</span><span class="sh">"</span><span class="p">})</span>
+</code></pre></div></div>
+
+<p>Ready to give your AI superpowers? Let’s learn about tools! 🚀</p>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-tool-calling/">Next: Tool Calling →</a></strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">langchain</span>, <span class="tag">chat-models</span>, <span class="tag">prompting</span>, <span class="tag">lcel</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>

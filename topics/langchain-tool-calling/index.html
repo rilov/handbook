@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tool Calling: Giving Your AI Real-World Superpowers</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Tool Calling: Giving Your AI Real-World Superpowers</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>🎓 LangChain Learning Path - Step 3 of 7</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-essentials/">← Step 2: LangChain Essentials</a></strong></li>
+    <li><strong>Step 3 (this page):</strong> Tool Calling</li>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-rag-basics/">Step 4: RAG Basics →</a></strong></li>
+  </ul>
+</blockquote>
+
+<hr />
+
+<h2 id="the-problem-llms-cant-do-things">The Problem: LLMs Can’t DO Things</h2>
+
+<p>Remember from our foundations: LLMs are like super-smart people who have read everything but can’t interact with the world.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph cant["❌ LLM Alone"]
+        L1["🤖 LLM"]
+        N1["Can only generate text"]
+        N2["No real-world access"]
+    end
+    
+    subgraph can["✅ LLM + Tools"]
+        L2["🤖 LLM"]
+        T["🔧 Tools"]
+        A1["Can check weather"]
+        A2["Can send emails"]
+        A3["Can query databases"]
+    end
+    
+    style cant fill:#fecaca,stroke:#dc2626
+    style can fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>This is where Tool Calling comes in!</strong></p>
+
+<hr />
+
+<h2 id="what-is-tool-calling">What is Tool Calling?</h2>
+
+<h3 id="the-simple-explanation">The Simple Explanation</h3>
+
+<p><strong>Tool calling</strong> is like giving your AI a toolbox and teaching it when and how to use each tool.</p>
+
+<div class="mermaid">
+flowchart TB
+    U["👤 User: What's the weather in NYC?"]
+    A["🤖 AI thinks..."]
+    A --&gt; D{"Do I know this?"}
+    D --&gt;|No| T["🔧 Use weather tool"]
+    T --&gt; G["🌐 Get real data"]
+    G --&gt; R["📝 Generate answer with data"]
+    D --&gt;|Yes| R
+    
+    style U fill:#dbeafe,stroke:#2563eb
+    style T fill:#fef3c7,stroke:#d97706
+    style G fill:#fce7f3,stroke:#db2777
+    style R fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<p>Imagine you’re helping someone over the phone:</p>
+
+<p><strong>Without tools:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Them: "What's my account balance?"
+You: "I don't have access to that information."
+</code></pre></div></div>
+
+<p><strong>With tools:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Them: "What's my account balance?"
+You: (checks the computer system)
+You: "Your balance is $1,234.56"
+</code></pre></div></div>
+
+<p>The AI + Tools work the same way!</p>
+
+<hr />
+
+<h2 id="how-tool-calling-works">How Tool Calling Works</h2>
+
+<h3 id="the-process">The Process</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant AI as 🤖 LLM
+    participant TC as 🎯 Tool Controller
+    participant T as 🔧 Tool
+    
+    U-&gt;&gt;AI: "What's the weather in Paris?"
+    AI-&gt;&gt;TC: I need to call: get_weather("Paris")
+    TC-&gt;&gt;T: Execute get_weather("Paris")
+    T--&gt;&gt;TC: {temp: 72, condition: "sunny"}
+    TC--&gt;&gt;AI: Here's the data
+    AI--&gt;&gt;U: "It's 72°F and sunny in Paris!"
+</div>
+
+<h3 id="the-three-steps">The Three Steps</h3>
+
+<ol>
+  <li><strong>Tool Discovery</strong>: AI knows what tools are available</li>
+  <li><strong>Tool Selection</strong>: AI decides which tool to use</li>
+  <li><strong>Tool Execution</strong>: The tool runs and returns data</li>
+</ol>
+
+<hr />
+
+<h2 id="creating-your-first-tool">Creating Your First Tool</h2>
+
+<h3 id="simple-function-as-a-tool">Simple Function as a Tool</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_current_time</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get the current time.</span><span class="sh">"""</span>
+    <span class="kn">from</span> <span class="n">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+    <span class="k">return</span> <span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="nf">strftime</span><span class="p">(</span><span class="sh">"</span><span class="s">%I:%M %p</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># The AI now knows about this tool!
+</span><span class="nf">print</span><span class="p">(</span><span class="n">get_current_time</span><span class="p">.</span><span class="n">name</span><span class="p">)</span>  <span class="c1"># "get_current_time"
+</span><span class="nf">print</span><span class="p">(</span><span class="n">get_current_time</span><span class="p">.</span><span class="n">description</span><span class="p">)</span>  <span class="c1"># "Get the current time."
+</span></code></pre></div></div>
+
+<h3 id="why-the-docstring-matters">Why the Docstring Matters</h3>
+
+<p>The <strong>docstring</strong> (<code class="language-plaintext highlighter-rouge">"""text"""</code>) is crucial! It tells the AI:</p>
+<ul>
+  <li>What the tool does</li>
+  <li>When to use it</li>
+  <li>What parameters it needs</li>
+</ul>
+
+<div class="mermaid">
+flowchart LR
+    DS["📝 Docstring"] --&gt; AI["🤖 AI reads it"]
+    AI --&gt; D["🤔 Decides when<br />to use tool"]
+    
+    style DS fill:#fef3c7,stroke:#d97706
+    style AI fill:#dbeafe,stroke:#2563eb
+    style D fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Good docstrings:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">search_products</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_results</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Search for products in the database.
+    
+    Args:
+        query: The search term (e.g., </span><span class="sh">"</span><span class="s">laptop</span><span class="sh">"</span><span class="s">, </span><span class="sh">"</span><span class="s">shoes</span><span class="sh">"</span><span class="s">)
+        max_results: Maximum number of results to return (default: 5)
+        
+    Returns:
+        List of matching products with name and price
+    </span><span class="sh">"""</span>
+    <span class="c1"># ... implementation
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="common-tool-patterns">Common Tool Patterns</h2>
+
+<h3 id="pattern-1-api-wrapper-tool">Pattern 1: API Wrapper Tool</h3>
+
+<p>Wrap an external API call:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">requests</span>
+<span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_weather</span><span class="p">(</span><span class="n">city</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Get current weather for a city.
+    
+    Args:
+        city: Name of the city (e.g., </span><span class="sh">"</span><span class="s">New York</span><span class="sh">"</span><span class="s">, </span><span class="sh">"</span><span class="s">London</span><span class="sh">"</span><span class="s">)
+    </span><span class="sh">"""</span>
+    <span class="c1"># Call weather API
+</span>    <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="sh">"</span><span class="s">https://api.weather.com/v1/current</span><span class="sh">"</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="sh">"</span><span class="s">city</span><span class="sh">"</span><span class="p">:</span> <span class="n">city</span><span class="p">}</span>
+    <span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="p">.</span><span class="nf">json</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Temperature: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="sh">'</span><span class="s">temp</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="s">°F, Conditions: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="sh">'</span><span class="s">conditions</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<h3 id="pattern-2-database-query-tool">Pattern 2: Database Query Tool</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">search_customers</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Search for customers by name in the database.
+    
+    Args:
+        name: Customer name to search for
+    </span><span class="sh">"""</span>
+    <span class="kn">import</span> <span class="n">sqlite3</span>
+    
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="p">.</span><span class="nf">connect</span><span class="p">(</span><span class="sh">'</span><span class="s">customers.db</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="p">.</span><span class="nf">execute</span><span class="p">(</span>
+        <span class="sh">"</span><span class="s">SELECT * FROM customers WHERE name LIKE ?</span><span class="sh">"</span><span class="p">,</span>
+        <span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">%</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">,)</span>
+    <span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">cursor</span><span class="p">.</span><span class="nf">fetchall</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">results</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">No customers found</span><span class="sh">"</span>
+    
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Found </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s"> customers: </span><span class="si">{</span><span class="n">results</span><span class="si">}</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<h3 id="pattern-3-calculator-tool">Pattern 3: Calculator Tool</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">calculate</span><span class="p">(</span><span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Evaluate a mathematical expression.
+    
+    Args:
+        expression: Math expression like </span><span class="sh">"</span><span class="s">2 + 2</span><span class="sh">"</span><span class="s"> or </span><span class="sh">"</span><span class="s">sqrt(16)</span><span class="sh">"</span><span class="s">
+        
+    Example: calculate(</span><span class="sh">"</span><span class="s">10 * 5 + 2</span><span class="sh">"</span><span class="s">)
+    </span><span class="sh">"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Safe evaluation
+</span>        <span class="n">result</span> <span class="o">=</span> <span class="nf">eval</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="p">{</span><span class="sh">"</span><span class="s">__builtins__</span><span class="sh">"</span><span class="p">:</span> <span class="p">{}})</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Result: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="sh">"</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Error: </span><span class="si">{</span><span class="nf">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="using-tools-with-langchain">Using Tools with LangChain</h2>
+
+<h3 id="binding-tools-to-a-model">Binding Tools to a Model</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+
+<span class="c1"># Define tools
+</span><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_weather</span><span class="p">(</span><span class="n">city</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get weather for a city.</span><span class="sh">"""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Weather in </span><span class="si">{</span><span class="n">city</span><span class="si">}</span><span class="s">: Sunny, 75°F</span><span class="sh">"</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_time</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get current time.</span><span class="sh">"""</span>
+    <span class="kn">from</span> <span class="n">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+    <span class="k">return</span> <span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="nf">strftime</span><span class="p">(</span><span class="sh">"</span><span class="s">%I:%M %p</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Create model and bind tools
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">model_with_tools</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">bind_tools</span><span class="p">([</span><span class="n">get_weather</span><span class="p">,</span> <span class="n">get_time</span><span class="p">])</span>
+
+<span class="c1"># Use it
+</span><span class="n">response</span> <span class="o">=</span> <span class="n">model_with_tools</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s the weather in Seattle?</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="the-ai-decides-which-tool-to-use">The AI Decides Which Tool to Use</h3>
+
+<div class="mermaid">
+flowchart TD
+    Q1["User: What time is it?"]
+    Q2["User: What's the weather?"]
+    Q3["User: What's 2+2?"]
+    
+    AI["🤖 AI Analyzes"]
+    
+    Q1 --&gt; AI
+    Q2 --&gt; AI
+    Q3 --&gt; AI
+    
+    AI --&gt; T1["Use: get_time()"]
+    AI --&gt; T2["Use: get_weather()"]
+    AI --&gt; T3["No tool needed"]
+    
+    style AI fill:#fef3c7,stroke:#d97706
+    style T1 fill:#d1fae5,stroke:#059669
+    style T2 fill:#d1fae5,stroke:#059669
+    style T3 fill:#dbeafe,stroke:#2563eb
+</div>
+
+<hr />
+
+<h2 id="building-a-tool-using-agent">Building a Tool-Using Agent</h2>
+
+<h3 id="creating-an-agent">Creating an Agent</h3>
+
+<p>An <strong>agent</strong> is an AI system that can:</p>
+<ol>
+  <li>Understand your request</li>
+  <li>Decide which tools to use</li>
+  <li>Use multiple tools if needed</li>
+  <li>Combine results into an answer</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.agents</span> <span class="kn">import</span> <span class="n">create_tool_calling_agent</span><span class="p">,</span> <span class="n">AgentExecutor</span>
+<span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+
+<span class="c1"># Define tools
+</span><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_weather</span><span class="p">(</span><span class="n">city</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get weather for a city.</span><span class="sh">"""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Weather in </span><span class="si">{</span><span class="n">city</span><span class="si">}</span><span class="s">: Sunny, 72°F</span><span class="sh">"</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_population</span><span class="p">(</span><span class="n">city</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get population of a city.</span><span class="sh">"""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Population of </span><span class="si">{</span><span class="n">city</span><span class="si">}</span><span class="s">: 8.3 million</span><span class="sh">"</span>
+
+<span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_weather</span><span class="p">,</span> <span class="n">get_population</span><span class="p">]</span>
+
+<span class="c1"># Create agent prompt
+</span><span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">You are a helpful assistant with access to tools.</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">{input}</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">placeholder</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">{agent_scratchpad}</span><span class="sh">"</span><span class="p">),</span>
+<span class="p">])</span>
+
+<span class="c1"># Create agent
+</span><span class="n">llm</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_tool_calling_agent</span><span class="p">(</span><span class="n">llm</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="n">prompt</span><span class="p">)</span>
+<span class="n">agent_executor</span> <span class="o">=</span> <span class="nc">AgentExecutor</span><span class="p">(</span><span class="n">agent</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Use it
+</span><span class="n">response</span> <span class="o">=</span> <span class="n">agent_executor</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span>
+    <span class="sh">"</span><span class="s">input</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s the weather and population of New York?</span><span class="sh">"</span>
+<span class="p">})</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">response</span><span class="p">[</span><span class="sh">"</span><span class="s">output</span><span class="sh">"</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p><strong>What happens:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Thought: I need to get both weather and population
+Action: get_weather("New York")
+Observation: Weather in New York: Sunny, 72°F
+Action: get_population("New York")
+Observation: Population of New York: 8.3 million
+Thought: I have all the information
+Answer: New York has sunny weather at 72°F and a population of 8.3 million.
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="advanced-mcp-model-context-protocol">Advanced: MCP (Model Context Protocol)</h2>
+
+<h3 id="what-is-mcp">What is MCP?</h3>
+
+<p><strong>MCP (Model Context Protocol)</strong> is a standard way for AI models to connect to tools and data sources. Think of it as USB-C for AI - one standard that works everywhere!</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph old["❌ Before MCP"]
+        A1["Custom adapter"]
+        A2["Custom adapter"]
+        A3["Custom adapter"]
+    end
+    
+    subgraph new["✅ With MCP"]
+        M["Standard MCP Interface"]
+        T1["Any tool"]
+        T2["Any database"]
+        T3["Any API"]
+    end
+    
+    old --&gt; new
+    
+    style old fill:#fecaca,stroke:#dc2626
+    style new fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="using-mcp-in-langchain">Using MCP in LangChain</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">MCPAdapter</span>
+
+<span class="c1"># Connect to any MCP-compatible tool
+</span><span class="n">weather_tool</span> <span class="o">=</span> <span class="nc">MCPAdapter</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">weather</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">mcp_server</span><span class="o">=</span><span class="sh">"</span><span class="s">https://mcp.weather.com</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">Get weather information</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="c1"># Use it like any other tool
+</span><span class="n">model_with_tools</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">bind_tools</span><span class="p">([</span><span class="n">weather_tool</span><span class="p">])</span>
+</code></pre></div></div>
+
+<h3 id="why-mcp-matters">Why MCP Matters</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Without MCP</th>
+      <th>With MCP</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Write custom code for each tool</td>
+      <td>Use standard interface</td>
+    </tr>
+    <tr>
+      <td>Breaks when tools update</td>
+      <td>Automatically compatible</td>
+    </tr>
+    <tr>
+      <td>Hard to share tools</td>
+      <td>Tools work everywhere</td>
+    </tr>
+    <tr>
+      <td>Limited to specific frameworks</td>
+      <td>Framework-agnostic</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="real-world-example-customer-service-bot">Real-World Example: Customer Service Bot</h2>
+
+<p>Let’s build a bot that can:</p>
+<ul>
+  <li>Check order status</li>
+  <li>Look up customer info</li>
+  <li>Process refunds</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+<span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.agents</span> <span class="kn">import</span> <span class="n">AgentExecutor</span><span class="p">,</span> <span class="n">create_tool_calling_agent</span>
+<span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+
+<span class="c1"># Define tools
+</span><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">check_order_status</span><span class="p">(</span><span class="n">order_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Check the status of an order.
+    
+    Args:
+        order_id: The order ID (e.g., </span><span class="sh">"</span><span class="s">ORD-12345</span><span class="sh">"</span><span class="s">)
+    </span><span class="sh">"""</span>
+    <span class="c1"># Simulate database lookup
+</span>    <span class="n">orders</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">ORD-12345</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Shipped - Arriving Tuesday</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">ORD-67890</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Processing - Will ship tomorrow</span><span class="sh">"</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">orders</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">order_id</span><span class="p">,</span> <span class="sh">"</span><span class="s">Order not found</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_customer_info</span><span class="p">(</span><span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Get customer information by email.
+    
+    Args:
+        email: Customer</span><span class="sh">'</span><span class="s">s email address
+    </span><span class="sh">"""</span>
+    <span class="c1"># Simulate database lookup
+</span>    <span class="n">customers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">john@example.com</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">John Smith, Premium Member since 2020</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">jane@example.com</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Jane Doe, Standard Member since 2023</span><span class="sh">"</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">customers</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">email</span><span class="p">,</span> <span class="sh">"</span><span class="s">Customer not found</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">process_refund</span><span class="p">(</span><span class="n">order_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Process a refund for an order.
+    
+    Args:
+        order_id: The order ID to refund
+        reason: Reason for the refund
+    </span><span class="sh">"""</span>
+    <span class="c1"># Simulate refund processing
+</span>    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Refund processed for </span><span class="si">{</span><span class="n">order_id</span><span class="si">}</span><span class="s">. Reason: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s">. Amount will be credited in 3-5 days.</span><span class="sh">"</span>
+
+<span class="c1"># Create agent
+</span><span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">check_order_status</span><span class="p">,</span> <span class="n">get_customer_info</span><span class="p">,</span> <span class="n">process_refund</span><span class="p">]</span>
+
+<span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"""</span><span class="s">You are a helpful customer service agent. 
+    You can check orders, look up customer info, and process refunds.
+    Always be polite and helpful.</span><span class="sh">"""</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">{input}</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">placeholder</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">{agent_scratchpad}</span><span class="sh">"</span><span class="p">),</span>
+<span class="p">])</span>
+
+<span class="n">llm</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_tool_calling_agent</span><span class="p">(</span><span class="n">llm</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="n">prompt</span><span class="p">)</span>
+<span class="n">agent_executor</span> <span class="o">=</span> <span class="nc">AgentExecutor</span><span class="p">(</span><span class="n">agent</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
+
+<span class="c1"># Test it
+</span><span class="nf">print</span><span class="p">(</span><span class="n">agent_executor</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span>
+    <span class="sh">"</span><span class="s">input</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Hi, I</span><span class="sh">'</span><span class="s">m john@example.com and I want to know about order ORD-12345</span><span class="sh">"</span>
+<span class="p">})[</span><span class="sh">"</span><span class="s">output</span><span class="sh">"</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Hello! I found your account - you're John Smith, a Premium Member since 2020.
+Your order ORD-12345 has been shipped and should arrive on Tuesday!
+Is there anything else I can help you with?
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-write-clear-tool-descriptions">1. Write Clear Tool Descriptions</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph bad["❌ Bad"]
+        B["def search(q): ..."<br />No description!"]
+    end
+    
+    subgraph good["✅ Good"]
+        G["def search(query: str):<br />\"\"\"Search products<br />by name or keyword\"\"\""]
+    end
+    
+    style bad fill:#fecaca,stroke:#dc2626
+    style good fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="2-keep-tools-focused">2. Keep Tools Focused</h3>
+
+<p>Each tool should do <strong>one thing well</strong>:</p>
+
+<p>❌ Bad: <code class="language-plaintext highlighter-rouge">manage_order()</code> - too broad<br />
+✅ Good: <code class="language-plaintext highlighter-rouge">check_order_status()</code>, <code class="language-plaintext highlighter-rouge">cancel_order()</code>, <code class="language-plaintext highlighter-rouge">update_address()</code></p>
+
+<h3 id="3-handle-errors-gracefully">3. Handle Errors Gracefully</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_stock_price</span><span class="p">(</span><span class="n">ticker</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get current stock price.</span><span class="sh">"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># API call
+</span>        <span class="n">price</span> <span class="o">=</span> <span class="nf">fetch_price</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">ticker</span><span class="si">}</span><span class="s">: $</span><span class="si">{</span><span class="n">price</span><span class="si">}</span><span class="sh">"</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Could not fetch price for </span><span class="si">{</span><span class="n">ticker</span><span class="si">}</span><span class="s">. Error: </span><span class="si">{</span><span class="nf">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<h3 id="4-use-type-hints">4. Use Type Hints</h3>
+
+<p>Type hints help the AI understand what data to provide:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">schedule_meeting</span><span class="p">(</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">date</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">duration_minutes</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">attendees</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Schedule a meeting.</span><span class="sh">"""</span>
+    <span class="c1"># Implementation
+</span></code></pre></div></div>
+
+<h3 id="5-test-tools-independently">5. Test Tools Independently</h3>
+
+<p>Before giving tools to the AI, test them yourself:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Test the tool directly
+</span><span class="n">result</span> <span class="o">=</span> <span class="nf">get_weather</span><span class="p">(</span><span class="sh">"</span><span class="s">London</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>  <span class="c1"># Make sure it works!
+</span>
+<span class="c1"># Then give to AI
+</span><span class="n">model_with_tools</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">bind_tools</span><span class="p">([</span><span class="n">get_weather</span><span class="p">])</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="common-tool-categories">Common Tool Categories</h2>
+
+<h3 id="1-information-retrieval">1. Information Retrieval</h3>
+<ul>
+  <li>Search databases</li>
+  <li>Query APIs</li>
+  <li>Read files</li>
+  <li>Web search</li>
+</ul>
+
+<h3 id="2-data-manipulation">2. Data Manipulation</h3>
+<ul>
+  <li>Calculate numbers</li>
+  <li>Transform data</li>
+  <li>Generate reports</li>
+  <li>Parse documents</li>
+</ul>
+
+<h3 id="3-external-actions">3. External Actions</h3>
+<ul>
+  <li>Send emails</li>
+  <li>Post to social media</li>
+  <li>Create calendar events</li>
+  <li>Make purchases</li>
+</ul>
+
+<h3 id="4-system-integration">4. System Integration</h3>
+<ul>
+  <li>Database operations</li>
+  <li>File system access</li>
+  <li>API calls</li>
+  <li>Service integrations</li>
+</ul>
+
+<hr />
+
+<h2 id="debugging-tools">Debugging Tools</h2>
+
+<h3 id="enable-verbose-mode">Enable Verbose Mode</h3>
+
+<p>See what the agent is doing:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">agent_executor</span> <span class="o">=</span> <span class="nc">AgentExecutor</span><span class="p">(</span>
+    <span class="n">agent</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span>  <span class="c1"># Shows agent's thinking!
+</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&gt; Entering new AgentExecutor chain...
+
+Thought: I need to check the weather
+Action: get_weather
+Action Input: {'city': 'Boston'}
+Observation: Weather in Boston: Rainy, 65°F
+
+Thought: I have the answer
+Final Answer: It's rainy and 65°F in Boston.
+
+&gt; Finished chain.
+</code></pre></div></div>
+
+<h3 id="log-tool-calls">Log Tool Calls</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">my_tool</span><span class="p">(</span><span class="n">param</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Does something.</span><span class="sh">"""</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">[TOOL CALLED] my_tool(</span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nf">do_something</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">[TOOL RESULT] </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="what-youve-learned">What You’ve Learned</h2>
+
+<p>✅ What tool calling is and why it’s powerful<br />
+✅ How to create tools with the <code class="language-plaintext highlighter-rouge">@tool</code> decorator<br />
+✅ Binding tools to models<br />
+✅ Building agents that use multiple tools<br />
+✅ Using MCP adapters for standard integrations<br />
+✅ Best practices for tool design</p>
+
+<p>You can now give your AI real-world capabilities! Next, we’ll learn about RAG - how to give your AI knowledge of your documents.</p>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>In the next section, we’ll learn about <strong>RAG (Retrieval Augmented Generation)</strong>:</p>
+<ul>
+  <li>Loading documents</li>
+  <li>Creating vector stores</li>
+  <li>Building retrievers</li>
+  <li>Wiring everything together</li>
+</ul>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-rag-basics/">→ Continue to Step 4: RAG Basics</a></strong></p>
+
+<hr />
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="basic-tool-template">Basic Tool Template</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">tool_name</span><span class="p">(</span><span class="n">param</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Clear description of what this tool does.
+    
+    Args:
+        param: Description of parameter
+    </span><span class="sh">"""</span>
+    <span class="c1"># Do something
+</span>    <span class="k">return</span> <span class="n">result</span>
+</code></pre></div></div>
+
+<h3 id="agent-template">Agent Template</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.agents</span> <span class="kn">import</span> <span class="n">create_tool_calling_agent</span><span class="p">,</span> <span class="n">AgentExecutor</span>
+
+<span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">tool1</span><span class="p">,</span> <span class="n">tool2</span><span class="p">,</span> <span class="n">tool3</span><span class="p">]</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_tool_calling_agent</span><span class="p">(</span><span class="n">llm</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="n">prompt</span><span class="p">)</span>
+<span class="n">agent_executor</span> <span class="o">=</span> <span class="nc">AgentExecutor</span><span class="p">(</span><span class="n">agent</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">agent_executor</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">input</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Your question</span><span class="sh">"</span><span class="p">})</span>
+</code></pre></div></div>
+
+<p>Ready to learn about RAG? Let’s go! 🚀</p>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-rag-basics/">Next: RAG Basics →</a></strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">langchain</span>, <span class="tag">tools</span>, <span class="tag">function-calling</span>, <span class="tag">mcp</span>, <span class="tag">apis</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>

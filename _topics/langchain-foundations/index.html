@@ -1,0 +1,571 @@
+<blockquote>
+  <p><strong>🎓 LangChain Learning Path - Step 1 of 7</strong></p>
+  <ul>
+    <li><strong>Step 1 (this page):</strong> Foundations &amp; Language Models</li>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-essentials/">Step 2: LangChain Essentials →</a></strong></li>
+  </ul>
+</blockquote>
+
+<hr />
+
+<h2 id="what-are-we-building-towards">What Are We Building Towards?</h2>
+
+<p>Imagine you want to build an AI assistant that can:</p>
+<ul>
+  <li>Answer questions about your company’s documents</li>
+  <li>Book appointments by checking your calendar</li>
+  <li>Send emails based on conversations</li>
+  <li>Remember what you talked about yesterday</li>
+</ul>
+
+<p>This is more complex than just asking ChatGPT a question. You need to <strong>orchestrate</strong> multiple steps, tools, and data sources. That’s where LangChain and LangGraph come in!</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph simple["🤖 Simple AI"]
+        U1["You ask a question"] --&gt; AI1["AI answers"]
+    end
+    
+    subgraph complex["🧠 Orchestrated AI"]
+        U2["You ask a question"] --&gt; O["Orchestration Layer<br />(LangChain/LangGraph)"]
+        O --&gt; D["Check documents"]
+        O --&gt; T["Use tools"]
+        O --&gt; M["Access memory"]
+        O --&gt; AI2["Generate response"]
+    end
+    
+    style simple fill:#fef3c7,stroke:#d97706
+    style complex fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="what-is-an-llm">What is an LLM?</h2>
+
+<h3 id="the-simple-explanation">The Simple Explanation</h3>
+
+<p>An <strong>LLM (Large Language Model)</strong> is like a super-smart autocomplete system trained on massive amounts of text from the internet.</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph training["📚 Training"]
+        B["Books"]
+        W["Websites"]
+        C["Code"]
+        A["Articles"]
+    end
+    
+    subgraph llm["🤖 LLM"]
+        M["Pattern Recognition<br />Machine"]
+    end
+    
+    subgraph output["💬 Can Now..."]
+        T1["Answer questions"]
+        T2["Write text"]
+        T3["Translate"]
+        T4["Summarize"]
+    end
+    
+    training --&gt; llm
+    llm --&gt; output
+    
+    style training fill:#dbeafe,stroke:#2563eb
+    style llm fill:#fef3c7,stroke:#d97706
+    style output fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<p>Think of an LLM like a person who has <strong>read millions of books</strong> but has <strong>never experienced the real world</strong>:</p>
+
+<ul>
+  <li>✅ Can tell you how to bake a cake (read about it)</li>
+  <li>❌ Can’t actually bake a cake (no hands!)</li>
+  <li>✅ Can explain how a calendar works</li>
+  <li>❌ Can’t check your actual calendar (no access!)</li>
+  <li>✅ Can write an email</li>
+  <li>❌ Can’t send it (no email account!)</li>
+</ul>
+
+<p><strong>This is the problem LangChain solves!</strong></p>
+
+<hr />
+
+<h2 id="the-problem-llms-have-limitations">The Problem: LLMs Have Limitations</h2>
+
+<h3 id="limitation-1-no-real-world-access">Limitation 1: No Real-World Access</h3>
+
+<p>LLMs are just text predictors. They can’t:</p>
+<ul>
+  <li>Read files on your computer</li>
+  <li>Access databases</li>
+  <li>Call APIs</li>
+  <li>Check the weather</li>
+  <li>Send emails</li>
+</ul>
+
+<div class="mermaid">
+flowchart TD
+    U["👤 User: What's the weather in New York?"]
+    L["🤖 LLM"]
+    R1["❌ Can't check real weather"]
+    R2["✅ Can only guess based on training data"]
+    
+    U --&gt; L
+    L --&gt; R1
+    L --&gt; R2
+    
+    style L fill:#fecaca,stroke:#dc2626
+</div>
+
+<h3 id="limitation-2-no-memory">Limitation 2: No Memory</h3>
+
+<p>Each conversation is isolated. The LLM doesn’t remember:</p>
+<ul>
+  <li>What you said 5 minutes ago</li>
+  <li>Your preferences</li>
+  <li>Past conversations</li>
+</ul>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant L as 🤖 LLM
+    
+    U-&gt;&gt;L: My name is Alice
+    L--&gt;&gt;U: Nice to meet you, Alice!
+    
+    Note over U,L: New conversation
+    
+    U-&gt;&gt;L: What's my name?
+    L--&gt;&gt;U: I don't know your name
+    
+    Note over L: No memory between conversations!
+</div>
+
+<h3 id="limitation-3-cant-follow-complex-workflows">Limitation 3: Can’t Follow Complex Workflows</h3>
+
+<p>LLMs generate one response at a time. They can’t:</p>
+<ul>
+  <li>Follow multi-step processes</li>
+  <li>Make decisions based on intermediate results</li>
+  <li>Loop until a task is complete</li>
+</ul>
+
+<hr />
+
+<h2 id="what-is-langchain">What is LangChain?</h2>
+
+<h3 id="the-simple-explanation-1">The Simple Explanation</h3>
+
+<p><strong>LangChain</strong> is like a <strong>toolbox and instruction manual</strong> that helps you connect LLMs to the real world.</p>
+
+<p>Think of it as:</p>
+<ul>
+  <li>🔌 <strong>Connectors</strong> - Plug the LLM into databases, files, APIs</li>
+  <li>🧰 <strong>Tools</strong> - Give the LLM hands to do things</li>
+  <li>📝 <strong>Templates</strong> - Pre-built patterns for common tasks</li>
+  <li>🔗 <strong>Chains</strong> - String multiple steps together</li>
+</ul>
+
+<div class="mermaid">
+flowchart TB
+    subgraph without["❌ Without LangChain"]
+        L1["🤖 LLM"]
+        N1["Can only chat"]
+    end
+    
+    subgraph with["✅ With LangChain"]
+        L2["🤖 LLM"]
+        LC["LangChain Layer"]
+        T1["📁 Read files"]
+        T2["🗄️ Query databases"]
+        T3["🌐 Call APIs"]
+        T4["📧 Send emails"]
+        T5["🧠 Remember context"]
+        
+        L2 --&gt; LC
+        LC --&gt; T1
+        LC --&gt; T2
+        LC --&gt; T3
+        LC --&gt; T4
+        LC --&gt; T5
+    end
+    
+    style without fill:#fecaca,stroke:#dc2626
+    style with fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-example">Real-World Example</h3>
+
+<p><strong>Without LangChain:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>You: "Send an email to John about tomorrow's meeting"
+LLM: "Here's a draft email you could send to John..."
+You: (You have to copy, open email, paste, send manually)
+</code></pre></div></div>
+
+<p><strong>With LangChain:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>You: "Send an email to John about tomorrow's meeting"
+LLM + LangChain:
+  1. Generates the email content
+  2. Looks up John's email address
+  3. Connects to your email service
+  4. Sends the email
+  5. Confirms: "Email sent to john@company.com!"
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="what-is-langgraph">What is LangGraph?</h2>
+
+<h3 id="the-simple-explanation-2">The Simple Explanation</h3>
+
+<p>If <strong>LangChain</strong> is like having tools, then <strong>LangGraph</strong> is like having a <strong>workflow blueprint</strong> that shows how to use those tools in order.</p>
+
+<div class="mermaid">
+flowchart TB
+    Start["📥 User Request"] --&gt; Check{"Need more info?"}
+    Check --&gt;|Yes| Tool["🔧 Use Tool"]
+    Tool --&gt; Think["🤔 LLM Thinks"]
+    Think --&gt; Check
+    Check --&gt;|No| Done["✅ Generate Answer"]
+    
+    style Start fill:#dbeafe,stroke:#2563eb
+    style Tool fill:#fef3c7,stroke:#d97706
+    style Think fill:#fce7f3,stroke:#db2777
+    style Done fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="the-key-difference">The Key Difference</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>LangChain</th>
+      <th>LangGraph</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Linear chains (A → B → C)</td>
+      <td>Complex workflows with branches and loops</td>
+    </tr>
+    <tr>
+      <td>Good for simple tasks</td>
+      <td>Good for agents that need to “think” and plan</td>
+    </tr>
+    <tr>
+      <td>Like a recipe</td>
+      <td>Like a flowchart</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-analogy-1">Real-World Analogy</h3>
+
+<p><strong>LangChain</strong> is like a <strong>recipe</strong>:</p>
+<ol>
+  <li>Mix ingredients</li>
+  <li>Bake for 30 minutes</li>
+  <li>Serve</li>
+</ol>
+
+<p><strong>LangGraph</strong> is like a <strong>cooking show host</strong> who:</p>
+<ol>
+  <li>Checks the recipe</li>
+  <li>Realizes they’re missing an ingredient</li>
+  <li>Decides to substitute with something else</li>
+  <li>Tastes along the way</li>
+  <li>Adjusts based on results</li>
+  <li>Makes decisions about next steps</li>
+</ol>
+
+<hr />
+
+<h2 id="how-they-work-together">How They Work Together</h2>
+
+<div class="mermaid">
+flowchart TB
+    subgraph foundation["🏗️ Foundation"]
+        LLM["🤖 LLM<br />(GPT-4, Claude, etc.)"]
+    end
+    
+    subgraph langchain["🔧 LangChain Layer"]
+        Tools["Tools &amp; Integrations"]
+        Memory["Memory Systems"]
+        Prompts["Prompt Templates"]
+    end
+    
+    subgraph langgraph["🌊 LangGraph Layer"]
+        Workflow["Workflow Logic"]
+        States["State Management"]
+        Decision["Decision Making"]
+    end
+    
+    subgraph app["✨ Your AI Application"]
+        A1["Smart Assistant"]
+        A2["Document Q&amp;A"]
+        A3["Automated Workflows"]
+    end
+    
+    LLM --&gt; Tools
+    Tools --&gt; Workflow
+    Memory --&gt; States
+    Prompts --&gt; Decision
+    Workflow --&gt; A1
+    States --&gt; A2
+    Decision --&gt; A3
+    
+    style foundation fill:#dbeafe,stroke:#2563eb
+    style langchain fill:#fef3c7,stroke:#d97706
+    style langgraph fill:#fce7f3,stroke:#db2777
+    style app fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="understanding-orchestration">Understanding Orchestration</h2>
+
+<h3 id="what-is-orchestration">What is Orchestration?</h3>
+
+<p><strong>Orchestration</strong> means coordinating multiple components to work together smoothly.</p>
+
+<p>Think of a <strong>symphony orchestra</strong>:</p>
+<ul>
+  <li>🎻 Violins (LLM generating text)</li>
+  <li>🎺 Trumpets (Tools accessing data)</li>
+  <li>🥁 Drums (Memory systems)</li>
+  <li>🎼 Conductor (LangChain/LangGraph coordinating everything)</li>
+</ul>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant O as 🎼 Orchestrator
+    participant L as 🤖 LLM
+    participant T as 🔧 Tools
+    participant M as 🧠 Memory
+    
+    U-&gt;&gt;O: "Schedule a meeting with Sarah"
+    O-&gt;&gt;M: Check: Who is Sarah?
+    M--&gt;&gt;O: sarah@company.com
+    O-&gt;&gt;T: Check calendar availability
+    T--&gt;&gt;O: Free: Today 2-3pm
+    O-&gt;&gt;L: Generate meeting invite text
+    L--&gt;&gt;O: "Meeting invitation text"
+    O-&gt;&gt;T: Send calendar invite
+    T--&gt;&gt;O: Sent!
+    O--&gt;&gt;U: ✅ Meeting scheduled for today at 2pm
+
+</div>
+<h3 id="why-we-need-orchestration">Why We Need Orchestration</h3>
+
+<p>Without orchestration, you’d have to:</p>
+<ol>
+  <li>Ask the LLM to generate a response</li>
+  <li>Manually extract any tool calls</li>
+  <li>Call the tools yourself</li>
+  <li>Feed results back to the LLM</li>
+  <li>Repeat until done</li>
+</ol>
+
+<p><strong>With orchestration</strong>, it all happens automatically!</p>
+
+<hr />
+
+<h2 id="the-challenges-langchain-solves">The Challenges LangChain Solves</h2>
+
+<h3 id="challenge-1-connecting-to-data-sources">Challenge 1: Connecting to Data Sources</h3>
+
+<p><strong>Problem:</strong> LLMs can’t access your data
+<strong>Solution:</strong> LangChain provides connectors</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># LangChain makes this easy
+</span><span class="kn">from</span> <span class="n">langchain.document_loaders</span> <span class="kn">import</span> <span class="n">PDFLoader</span>
+
+<span class="n">loader</span> <span class="o">=</span> <span class="nc">PDFLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">company_handbook.pdf</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">documents</span> <span class="o">=</span> <span class="n">loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>  <span class="c1"># Now LLM can use this!
+</span></code></pre></div></div>
+
+<h3 id="challenge-2-managing-context">Challenge 2: Managing Context</h3>
+
+<p><strong>Problem:</strong> LLMs have limited context windows
+<strong>Solution:</strong> LangChain manages what information to send</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph data["📚 All Your Data"]
+        D1["1000 documents"]
+    end
+    
+    subgraph langchain["🔧 LangChain"]
+        S["Smart Selection"]
+    end
+    
+    subgraph llm["🤖 LLM"]
+        L["Only sees<br />relevant parts"]
+    end
+    
+    data --&gt; S
+    S --&gt; L
+    
+    style data fill:#fecaca,stroke:#dc2626
+    style langchain fill:#fef3c7,stroke:#d97706
+    style llm fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="challenge-3-chaining-operations">Challenge 3: Chaining Operations</h3>
+
+<p><strong>Problem:</strong> Complex tasks need multiple steps
+<strong>Solution:</strong> LangChain lets you chain operations</p>
+
+<p><strong>Example: Answering from documents</strong></p>
+<ol>
+  <li>Understand the question</li>
+  <li>Find relevant documents</li>
+  <li>Extract key information</li>
+  <li>Generate answer</li>
+  <li>Cite sources</li>
+</ol>
+
+<p>All automated with LangChain!</p>
+
+<hr />
+
+<h2 id="when-to-use-what">When to Use What</h2>
+
+<div class="mermaid">
+flowchart TD
+    Q["❓ What do you need?"]
+    
+    Q --&gt; S{"Simple one-shot<br />generation?"}
+    S --&gt;|Yes| RAW["Use LLM directly<br />(OpenAI API, Claude)"]
+    S --&gt;|No| C{"Need to connect<br />to data/tools?"}
+    
+    C --&gt;|Yes| LC{"Linear workflow?"}
+    LC --&gt;|Yes| LCHAIN["Use LangChain"]
+    LC --&gt;|No| LGRAPH["Use LangGraph"]
+    C --&gt;|No| RAW
+    
+    style RAW fill:#dbeafe,stroke:#2563eb
+    style LCHAIN fill:#fef3c7,stroke:#d97706
+    style LGRAPH fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="decision-guide">Decision Guide</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use Case</th>
+      <th>Best Tool</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Generate a poem</td>
+      <td>Raw LLM API</td>
+    </tr>
+    <tr>
+      <td>Answer questions from PDFs</td>
+      <td>LangChain (RAG)</td>
+    </tr>
+    <tr>
+      <td>Customer support bot that uses multiple tools</td>
+      <td>LangGraph (Agent)</td>
+    </tr>
+    <tr>
+      <td>Translate text</td>
+      <td>Raw LLM API</td>
+    </tr>
+    <tr>
+      <td>Research assistant that browses web and takes notes</td>
+      <td>LangGraph (Agent)</td>
+    </tr>
+    <tr>
+      <td>Summarize an article</td>
+      <td>LangChain (Simple chain)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="key-concepts-to-remember">Key Concepts to Remember</h2>
+
+<h3 id="1-llms-are-just-text-predictors">1. LLMs are Just Text Predictors</h3>
+<ul>
+  <li>They’re incredibly good at language</li>
+  <li>But they can’t DO things without help</li>
+  <li>They have no memory between conversations</li>
+</ul>
+
+<h3 id="2-langchain-is-the-connection-layer">2. LangChain is the Connection Layer</h3>
+<ul>
+  <li>Connects LLMs to the real world</li>
+  <li>Provides tools, memory, and data access</li>
+  <li>Makes building AI apps easier</li>
+</ul>
+
+<h3 id="3-langgraph-is-for-complex-workflows">3. LangGraph is for Complex Workflows</h3>
+<ul>
+  <li>When you need loops, branches, and decisions</li>
+  <li>For building “agents” that can plan and adapt</li>
+  <li>Think flowcharts, not recipes</li>
+</ul>
+
+<h3 id="4-orchestration-is-key">4. Orchestration is Key</h3>
+<ul>
+  <li>Coordinating all the pieces</li>
+  <li>Making them work together smoothly</li>
+  <li>Hiding complexity from the end user</li>
+</ul>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>Now that you understand the foundations, let’s start building! In the next section, we’ll learn about:</p>
+
+<ul>
+  <li><strong>Chat models</strong> and how to use them</li>
+  <li><strong>Prompting patterns</strong> to get better results</li>
+  <li><strong>Structured outputs</strong> to get data in formats you need</li>
+  <li><strong>Chaining</strong> with LCEL (LangChain Expression Language)</li>
+</ul>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-essentials/">→ Continue to Step 2: LangChain Essentials</a></strong></p>
+
+<hr />
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="the-stack">The Stack</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────┐
+│   Your Application      │
+├─────────────────────────┤
+│   LangGraph (Workflows) │
+├─────────────────────────┤
+│   LangChain (Tools)     │
+├─────────────────────────┤
+│   LLM (GPT-4/Claude)    │
+└─────────────────────────┘
+</code></pre></div></div>
+
+<h3 id="key-terms">Key Terms</h3>
+
+<ul>
+  <li><strong>LLM</strong>: Large Language Model - AI that understands and generates text</li>
+  <li><strong>Orchestration</strong>: Coordinating multiple AI components</li>
+  <li><strong>Chain</strong>: A sequence of steps</li>
+  <li><strong>Agent</strong>: An AI system that can plan and use tools</li>
+  <li><strong>Tool</strong>: External function the LLM can call</li>
+  <li><strong>Memory</strong>: System for remembering past conversations</li>
+</ul>
+
+<hr />
+
+<p>Ready to dive in? Let’s learn the essentials! 🚀</p>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-essentials/">Next: LangChain Essentials →</a></strong></p>

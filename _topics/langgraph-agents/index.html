@@ -1,0 +1,750 @@
+<blockquote>
+  <p><strong>🎓 LangChain Learning Path - Step 5 of 7</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-rag-basics/">← Step 4: RAG Basics</a></strong></li>
+    <li><strong>Step 5 (this page):</strong> LangGraph &amp; Agents</li>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-project-agent/">Step 6: Building Your Agent Project →</a></strong></li>
+  </ul>
+</blockquote>
+
+<hr />
+
+<h2 id="why-langgraph">Why LangGraph?</h2>
+
+<p>Remember from our foundations: <strong>LangChain</strong> is great for linear workflows, but what about complex scenarios that need:</p>
+<ul>
+  <li>Loops and conditionals</li>
+  <li>Multiple decision points</li>
+  <li>State management across steps</li>
+  <li>Human-in-the-loop interactions</li>
+</ul>
+
+<div class="mermaid">
+flowchart TB
+    subgraph chain["🔗 LangChain - Linear"]
+        C1["Step 1"] --&gt; C2["Step 2"] --&gt; C3["Step 3"] --&gt; C4["Done"]
+    end
+    
+    subgraph graph["🌊 LangGraph - Complex"]
+        G1["Start"] --&gt; G2{"Check State"}
+        G2 --&gt;|Need more info| G3["Use Tool"]
+        G3 --&gt; G2
+        G2 --&gt;|Ready| G4["Generate"]
+        G4 --&gt; G5{"Review"}
+        G5 --&gt;|Not good| G2
+        G5 --&gt;|Good| G6["Done"]
+    end
+    
+    style chain fill:#fef3c7,stroke:#d97706
+    style graph fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>LangGraph gives you the flexibility to build agents that can think, plan, and adapt!</strong></p>
+
+<hr />
+
+<h2 id="core-concepts">Core Concepts</h2>
+
+<h3 id="1-state">1. State</h3>
+
+<p><strong>State</strong> is like a notepad that gets passed between steps and keeps track of information.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">typing</span> <span class="kn">import</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">Annotated</span>
+<span class="kn">from</span> <span class="n">langgraph.graph</span> <span class="kn">import</span> <span class="n">add_messages</span>
+
+<span class="k">class</span> <span class="nc">AgentState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">messages</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">add_messages</span><span class="p">]</span>
+    <span class="n">user_info</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="n">next_action</span><span class="p">:</span> <span class="nb">str</span>
+</code></pre></div></div>
+
+<div class="mermaid">
+flowchart LR
+    Node1["Node 1<br />Reads &amp; Updates State"] --&gt; State["📝 State<br />messages: []<br />user_info: {}<br />next_action: 'search'"]
+    State --&gt; Node2["Node 2<br />Reads &amp; Updates State"]
+    
+    style State fill:#fef3c7,stroke:#d97706
+    style Node1 fill:#dbeafe,stroke:#2563eb
+    style Node2 fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Real-world analogy:</strong> Like a relay race baton that each runner passes along, but this baton can hold notes that each runner adds to!</p>
+
+<h3 id="2-nodes">2. Nodes</h3>
+
+<p><strong>Nodes</strong> are functions that do work and update the state.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">search_node</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">AgentState</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Search for information.</span><span class="sh">"""</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="nf">search_tool</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="nc">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="sa">f</span><span class="sh">"</span><span class="s">Found: </span><span class="si">{</span><span class="n">results</span><span class="si">}</span><span class="sh">"</span><span class="p">)],</span>
+        <span class="sh">"</span><span class="s">next_action</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">analyze</span><span class="sh">"</span>
+    <span class="p">}</span>
+</code></pre></div></div>
+
+<div class="mermaid">
+flowchart TB
+    subgraph node["🔵 Node = Function"]
+        N1["1. Receives state"]
+        N2["2. Does work"]
+        N3["3. Returns updates"]
+    end
+    
+    style node fill:#dbeafe,stroke:#2563eb
+</div>
+
+<h3 id="3-edges">3. Edges</h3>
+
+<p><strong>Edges</strong> connect nodes and determine the flow.</p>
+
+<div class="mermaid">
+flowchart LR
+    A["Node A"] --&gt;|Normal Edge| B["Node B"]
+    B --&gt;|Conditional Edge| C{"Decision"}
+    C --&gt;|Path 1| D["Node D"]
+    C --&gt;|Path 2| E["Node E"]
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style B fill:#fef3c7,stroke:#d97706
+    style C fill:#fce7f3,stroke:#db2777
+    style D fill:#d1fae5,stroke:#059669
+    style E fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Types of edges:</strong></p>
+<ul>
+  <li><strong>Normal edge:</strong> Always go to the same next node</li>
+  <li><strong>Conditional edge:</strong> Choose next node based on state</li>
+</ul>
+
+<hr />
+
+<h2 id="building-your-first-graph">Building Your First Graph</h2>
+
+<h3 id="simple-example-search--analyze--respond">Simple Example: Search → Analyze → Respond</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langgraph.graph</span> <span class="kn">import</span> <span class="n">StateGraph</span><span class="p">,</span> <span class="n">END</span>
+<span class="kn">from</span> <span class="n">typing</span> <span class="kn">import</span> <span class="n">TypedDict</span>
+
+<span class="c1"># Define state
+</span><span class="k">class</span> <span class="nc">State</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">search_results</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">answer</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="c1"># Define nodes
+</span><span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Search for information.</span><span class="sh">"""</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Results for: </span><span class="si">{</span><span class="n">state</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span>
+    <span class="k">return</span> <span class="p">{</span><span class="sh">"</span><span class="s">search_results</span><span class="sh">"</span><span class="p">:</span> <span class="n">results</span><span class="p">}</span>
+
+<span class="k">def</span> <span class="nf">analyze</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Analyze results.</span><span class="sh">"""</span>
+    <span class="n">analysis</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Analyzed: </span><span class="si">{</span><span class="n">state</span><span class="p">[</span><span class="sh">'</span><span class="s">search_results</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span>
+    <span class="k">return</span> <span class="p">{</span><span class="sh">"</span><span class="s">answer</span><span class="sh">"</span><span class="p">:</span> <span class="n">analysis</span><span class="p">}</span>
+
+<span class="c1"># Build the graph
+</span><span class="n">workflow</span> <span class="o">=</span> <span class="nc">StateGraph</span><span class="p">(</span><span class="n">State</span><span class="p">)</span>
+
+<span class="c1"># Add nodes
+</span><span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">search</span><span class="sh">"</span><span class="p">,</span> <span class="n">search</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">analyze</span><span class="sh">"</span><span class="p">,</span> <span class="n">analyze</span><span class="p">)</span>
+
+<span class="c1"># Add edges
+</span><span class="n">workflow</span><span class="p">.</span><span class="nf">add_edge</span><span class="p">(</span><span class="sh">"</span><span class="s">search</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">analyze</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_edge</span><span class="p">(</span><span class="sh">"</span><span class="s">analyze</span><span class="sh">"</span><span class="p">,</span> <span class="n">END</span><span class="p">)</span>
+
+<span class="c1"># Set entry point
+</span><span class="n">workflow</span><span class="p">.</span><span class="nf">set_entry_point</span><span class="p">(</span><span class="sh">"</span><span class="s">search</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Compile
+</span><span class="n">app</span> <span class="o">=</span> <span class="n">workflow</span><span class="p">.</span><span class="nf">compile</span><span class="p">()</span>
+
+<span class="c1"># Use it!
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">app</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">query</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">What is LangGraph?</span><span class="sh">"</span><span class="p">})</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">answer</span><span class="sh">"</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p><strong>Flow:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Start → search → analyze → End
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="adding-conditional-logic">Adding Conditional Logic</h2>
+
+<h3 id="example-search-only-if-needed">Example: Search Only If Needed</h3>
+
+<div class="mermaid">
+flowchart TB
+    Start["Start"] --&gt; Check{"Can answer<br />directly?"}
+    Check --&gt;|Yes| Answer["Generate Answer"]
+    Check --&gt;|No| Search["Search Info"]
+    Search --&gt; Answer
+    Answer --&gt; End["End"]
+    
+    style Start fill:#dbeafe,stroke:#2563eb
+    style Check fill:#fef3c7,stroke:#d97706
+    style Search fill:#fce7f3,stroke:#db2777
+    style Answer fill:#d1fae5,stroke:#059669
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langgraph.graph</span> <span class="kn">import</span> <span class="n">StateGraph</span><span class="p">,</span> <span class="n">END</span>
+
+<span class="c1"># Define router function
+</span><span class="k">def</span> <span class="nf">should_search</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Decide if we need to search.</span><span class="sh">"""</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="sh">"</span><span class="s">query</span><span class="sh">"</span><span class="p">]</span>
+    
+    <span class="c1"># Simple heuristic: search for questions
+</span>    <span class="k">if</span> <span class="sh">"</span><span class="s">?</span><span class="sh">"</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">search</span><span class="sh">"</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">answer</span><span class="sh">"</span>
+
+<span class="c1"># Build graph
+</span><span class="n">workflow</span> <span class="o">=</span> <span class="nc">StateGraph</span><span class="p">(</span><span class="n">State</span><span class="p">)</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">check</span><span class="sh">"</span><span class="p">,</span> <span class="n">check_node</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">search</span><span class="sh">"</span><span class="p">,</span> <span class="n">search_node</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">answer</span><span class="sh">"</span><span class="p">,</span> <span class="n">answer_node</span><span class="p">)</span>
+
+<span class="c1"># Conditional edge from check
+</span><span class="n">workflow</span><span class="p">.</span><span class="nf">add_conditional_edges</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">check</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">should_search</span><span class="p">,</span>  <span class="c1"># Router function
+</span>    <span class="p">{</span>
+        <span class="sh">"</span><span class="s">search</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">search</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">answer</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">answer</span><span class="sh">"</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_edge</span><span class="p">(</span><span class="sh">"</span><span class="s">search</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">answer</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_edge</span><span class="p">(</span><span class="sh">"</span><span class="s">answer</span><span class="sh">"</span><span class="p">,</span> <span class="n">END</span><span class="p">)</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">set_entry_point</span><span class="p">(</span><span class="sh">"</span><span class="s">check</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">workflow</span><span class="p">.</span><span class="nf">compile</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="building-an-agent-with-tools">Building an Agent with Tools</h2>
+
+<h3 id="the-react-pattern">The ReAct Pattern</h3>
+
+<p>Agents use the <strong>ReAct</strong> (Reasoning + Acting) pattern:</p>
+
+<div class="mermaid">
+flowchart TB
+    Start["User Request"] --&gt; Think["🤔 Think:<br />What do I need?"]
+    Think --&gt; Act{"Act:<br />Use tool?"}
+    Act --&gt;|Yes| Tool["🔧 Use Tool"]
+    Tool --&gt; Observe["👀 Observe Results"]
+    Observe --&gt; Think
+    Act --&gt;|No, ready| Respond["💬 Respond to User"]
+    Respond --&gt; End["End"]
+    
+    style Think fill:#dbeafe,stroke:#2563eb
+    style Tool fill:#fef3c7,stroke:#d97706
+    style Observe fill:#fce7f3,stroke:#db2777
+    style Respond fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="complete-agent-example">Complete Agent Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+<span class="kn">from</span> <span class="n">langgraph.prebuilt</span> <span class="kn">import</span> <span class="n">create_react_agent</span>
+
+<span class="c1"># Define tools
+</span><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_weather</span><span class="p">(</span><span class="n">city</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get weather for a city.</span><span class="sh">"""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Weather in </span><span class="si">{</span><span class="n">city</span><span class="si">}</span><span class="s">: Sunny, 72°F</span><span class="sh">"</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">get_time</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Get current time.</span><span class="sh">"""</span>
+    <span class="kn">from</span> <span class="n">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+    <span class="k">return</span> <span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="nf">strftime</span><span class="p">(</span><span class="sh">"</span><span class="s">%I:%M %p</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_weather</span><span class="p">,</span> <span class="n">get_time</span><span class="p">]</span>
+
+<span class="c1"># Create model
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Create agent (LangGraph does the heavy lifting!)
+</span><span class="n">agent</span> <span class="o">=</span> <span class="nf">create_react_agent</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">tools</span><span class="p">)</span>
+
+<span class="c1"># Use it
+</span><span class="n">response</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span>
+    <span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s the weather in Boston and what time is it?</span><span class="sh">"</span><span class="p">)]</span>
+<span class="p">})</span>
+
+<span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">message</span><span class="p">.</span><span class="nb">type</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">message</span><span class="p">.</span><span class="n">content</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>What happens behind the scenes:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>User: "What's the weather in Boston and what time is it?"
+
+Agent thinks: "I need two tools"
+
+Step 1:
+  Thought: Get weather first
+  Action: get_weather("Boston")
+  Observation: "Weather in Boston: Sunny, 72°F"
+
+Step 2:
+  Thought: Now get time
+  Action: get_time()
+  Observation: "2:30 PM"
+
+Step 3:
+  Thought: I have everything
+  Final Answer: "It's sunny and 72°F in Boston, and the current time is 2:30 PM."
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="advanced-custom-agent-loop">Advanced: Custom Agent Loop</h2>
+
+<p>Let’s build a custom agent from scratch to understand how it works:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langgraph.graph</span> <span class="kn">import</span> <span class="n">StateGraph</span><span class="p">,</span> <span class="n">END</span>
+<span class="kn">from</span> <span class="n">langgraph.prebuilt</span> <span class="kn">import</span> <span class="n">ToolNode</span>
+<span class="kn">from</span> <span class="n">typing</span> <span class="kn">import</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="k">class</span> <span class="nc">AgentState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span>
+    <span class="n">next_action</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="c1"># Node 1: Agent decides what to do
+</span><span class="k">def</span> <span class="nf">agent_node</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">AgentState</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Agent thinks and decides.</span><span class="sh">"""</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">]</span>
+    
+    <span class="c1"># Call LLM to decide
+</span>    <span class="n">response</span> <span class="o">=</span> <span class="n">model_with_tools</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+    
+    <span class="c1"># Check if it wants to use tools
+</span>    <span class="k">if</span> <span class="n">response</span><span class="p">.</span><span class="n">tool_calls</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="n">response</span><span class="p">],</span>
+            <span class="sh">"</span><span class="s">next_action</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">tools</span><span class="sh">"</span>
+        <span class="p">}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="n">response</span><span class="p">],</span>
+            <span class="sh">"</span><span class="s">next_action</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">end</span><span class="sh">"</span>
+        <span class="p">}</span>
+
+<span class="c1"># Node 2: Execute tools
+</span><span class="n">tool_node</span> <span class="o">=</span> <span class="nc">ToolNode</span><span class="p">(</span><span class="n">tools</span><span class="p">)</span>
+
+<span class="c1"># Router: Decide next step
+</span><span class="k">def</span> <span class="nf">should_continue</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">AgentState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Literal</span><span class="p">[</span><span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">end</span><span class="sh">"</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="n">state</span><span class="p">[</span><span class="sh">"</span><span class="s">next_action</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="c1"># Build the graph
+</span><span class="n">workflow</span> <span class="o">=</span> <span class="nc">StateGraph</span><span class="p">(</span><span class="n">AgentState</span><span class="p">)</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">agent</span><span class="sh">"</span><span class="p">,</span> <span class="n">agent_node</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">,</span> <span class="n">tool_node</span><span class="p">)</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">set_entry_point</span><span class="p">(</span><span class="sh">"</span><span class="s">agent</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_conditional_edges</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">agent</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">should_continue</span><span class="p">,</span>
+    <span class="p">{</span>
+        <span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">end</span><span class="sh">"</span><span class="p">:</span> <span class="n">END</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_edge</span><span class="p">(</span><span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">agent</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># Loop back!
+</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">workflow</span><span class="p">.</span><span class="nf">compile</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p><strong>The flow:</strong></p>
+
+<div class="mermaid">
+flowchart TB
+    Start["User Message"] --&gt; Agent["🤖 Agent<br />Thinks &amp; Decides"]
+    Agent --&gt; Check{"Needs tools?"}
+    Check --&gt;|Yes| Tools["🔧 Execute Tools"]
+    Tools --&gt; Agent
+    Check --&gt;|No| End["📝 Final Answer"]
+    
+    style Agent fill:#dbeafe,stroke:#2563eb
+    style Tools fill:#fef3c7,stroke:#d97706
+    style End fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="human-in-the-loop">Human-in-the-Loop</h2>
+
+<p>Sometimes you want the agent to ask for human approval before taking actions.</p>
+
+<h3 id="adding-interrupts">Adding Interrupts</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langgraph.checkpoint.memory</span> <span class="kn">import</span> <span class="n">MemorySaver</span>
+
+<span class="c1"># Add checkpointing for interrupts
+</span><span class="n">memory</span> <span class="o">=</span> <span class="nc">MemorySaver</span><span class="p">()</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="nc">StateGraph</span><span class="p">(</span><span class="n">AgentState</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">agent</span><span class="sh">"</span><span class="p">,</span> <span class="n">agent_node</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">,</span> <span class="n">tool_node</span><span class="p">)</span>
+
+<span class="c1"># ... add edges ...
+</span>
+<span class="c1"># Compile with checkpointer
+</span><span class="n">app</span> <span class="o">=</span> <span class="n">workflow</span><span class="p">.</span><span class="nf">compile</span><span class="p">(</span>
+    <span class="n">checkpointer</span><span class="o">=</span><span class="n">memory</span><span class="p">,</span>
+    <span class="n">interrupt_before</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">tools</span><span class="sh">"</span><span class="p">]</span>  <span class="c1"># Pause before using tools!
+</span><span class="p">)</span>
+
+<span class="c1"># First run - will pause
+</span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">1</span><span class="sh">"</span><span class="p">}}</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">app</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Send email to boss</span><span class="sh">"</span><span class="p">)]},</span> <span class="n">config</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Agent wants to use tools. Approve?</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Show what tools it wants to use
+</span><span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+<span class="c1"># If approved, continue
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">app</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>  <span class="c1"># Resume from checkpoint
+</span></code></pre></div></div>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant A as 🤖 Agent
+    participant H as 🛑 Human Approval
+    participant T as 🔧 Tools
+    
+    U-&gt;&gt;A: Send email to boss
+    A-&gt;&gt;A: Plans to use email tool
+    A-&gt;&gt;H: Request approval
+    H--&gt;&gt;A: ✅ Approved
+    A-&gt;&gt;T: Execute email tool
+    T--&gt;&gt;U: Email sent!
+</div>
+
+<hr />
+
+<h2 id="real-world-example-customer-support-agent">Real-World Example: Customer Support Agent</h2>
+
+<p>Let’s build a complete customer support agent:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.tools</span> <span class="kn">import</span> <span class="n">tool</span>
+<span class="kn">from</span> <span class="n">langgraph.prebuilt</span> <span class="kn">import</span> <span class="n">create_react_agent</span>
+<span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+
+<span class="c1"># Define tools
+</span><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">check_order_status</span><span class="p">(</span><span class="n">order_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Check order status.</span><span class="sh">"""</span>
+    <span class="n">orders</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">123</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Shipped - Arriving Tuesday</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">456</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Processing</span><span class="sh">"</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">orders</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">order_id</span><span class="p">,</span> <span class="sh">"</span><span class="s">Order not found</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">check_account_balance</span><span class="p">(</span><span class="n">customer_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Check account balance.</span><span class="sh">"""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Balance for </span><span class="si">{</span><span class="n">customer_id</span><span class="si">}</span><span class="s">: $1,234.56</span><span class="sh">"</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">create_ticket</span><span class="p">(</span><span class="n">issue</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">Create support ticket.</span><span class="sh">"""</span>
+    <span class="n">ticket_id</span> <span class="o">=</span> <span class="sh">"</span><span class="s">TICK-</span><span class="sh">"</span> <span class="o">+</span> <span class="nf">str</span><span class="p">(</span><span class="nf">hash</span><span class="p">(</span><span class="n">issue</span><span class="p">))[:</span><span class="mi">6</span><span class="p">]</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Created ticket </span><span class="si">{</span><span class="n">ticket_id</span><span class="si">}</span><span class="s"> for: </span><span class="si">{</span><span class="n">issue</span><span class="si">}</span><span class="sh">"</span>
+
+<span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">check_order_status</span><span class="p">,</span> <span class="n">check_account_balance</span><span class="p">,</span> <span class="n">create_ticket</span><span class="p">]</span>
+
+<span class="c1"># Create agent with system message
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">system_message</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">You are a helpful customer support agent.
+
+Guidelines:
+- Be polite and professional
+- Use tools to look up information
+- If you can</span><span class="sh">'</span><span class="s">t help, create a ticket
+- Always confirm actions with the customer
+</span><span class="sh">"""</span>
+
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_react_agent</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">tools</span><span class="p">,</span>
+    <span class="n">state_modifier</span><span class="o">=</span><span class="n">system_message</span>
+<span class="p">)</span>
+
+<span class="c1"># Test it
+</span><span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Hi, can you check my order 123?</span><span class="sh">"</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">})</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span><span class="p">)</span>
+
+<span class="c1"># Continue conversation
+</span><span class="n">messages</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="sh">"</span><span class="s">assistant</span><span class="sh">"</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span><span class="p">))</span>
+<span class="n">messages</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Great! Can you also check my account balance? My ID is CUST-789</span><span class="sh">"</span><span class="p">))</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="n">messages</span><span class="p">})</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="managing-agent-memory">Managing Agent Memory</h2>
+
+<h3 id="short-term-memory-within-conversation">Short-Term Memory (Within Conversation)</h3>
+
+<p>This is automatic - the <code class="language-plaintext highlighter-rouge">messages</code> in state act as memory:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Message 1
+</span><span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">My name is Alice</span><span class="sh">"</span><span class="p">)]})</span>
+<span class="c1"># Response: "Nice to meet you, Alice!"
+</span>
+<span class="c1"># Message 2 - Agent remembers!
+</span><span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span>
+    <span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">My name is Alice</span><span class="sh">"</span><span class="p">),</span>
+        <span class="p">(</span><span class="sh">"</span><span class="s">assistant</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Nice to meet you, Alice!</span><span class="sh">"</span><span class="p">),</span>
+        <span class="p">(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s my name?</span><span class="sh">"</span><span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">})</span>
+<span class="c1"># Response: "Your name is Alice!"
+</span></code></pre></div></div>
+
+<h3 id="long-term-memory-across-conversations">Long-Term Memory (Across Conversations)</h3>
+
+<p>Use checkpointing to save state:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langgraph.checkpoint.memory</span> <span class="kn">import</span> <span class="n">MemorySaver</span>
+
+<span class="n">memory</span> <span class="o">=</span> <span class="nc">MemorySaver</span><span class="p">()</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_react_agent</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="n">checkpointer</span><span class="o">=</span><span class="n">memory</span><span class="p">)</span>
+
+<span class="c1"># Conversation 1
+</span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user_123</span><span class="sh">"</span><span class="p">}}</span>
+<span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">My favorite color is blue</span><span class="sh">"</span><span class="p">)]},</span> <span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># Later conversation - remembers!
+</span><span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s my favorite color?</span><span class="sh">"</span><span class="p">)]},</span> <span class="n">config</span><span class="p">)</span>
+<span class="c1"># Response: "Your favorite color is blue!"
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="advanced-patterns">Advanced Patterns</h2>
+
+<h3 id="pattern-1-multi-agent-system">Pattern 1: Multi-Agent System</h3>
+
+<p>Multiple specialized agents working together:</p>
+
+<div class="mermaid">
+flowchart TB
+    User["👤 User"] --&gt; Router["🎯 Router Agent"]
+    Router --&gt; Check{"What kind<br />of request?"}
+    Check --&gt;|Technical| Tech["🔧 Tech Agent"]
+    Check --&gt;|Billing| Bill["💰 Billing Agent"]
+    Check --&gt;|General| Gen["💬 General Agent"]
+    Tech --&gt; Response["📝 Response"]
+    Bill --&gt; Response
+    Gen --&gt; Response
+    
+    style Router fill:#dbeafe,stroke:#2563eb
+    style Tech fill:#fef3c7,stroke:#d97706
+    style Bill fill:#fce7f3,stroke:#db2777
+    style Gen fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="pattern-2-planning-agent">Pattern 2: Planning Agent</h3>
+
+<p>Agent that plans before acting:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Plan: Break down task into steps
+2. Execute: Do step 1
+3. Review: Did it work?
+4. Replan if needed
+5. Continue to next step
+</code></pre></div></div>
+
+<h3 id="pattern-3-reflection-agent">Pattern 3: Reflection Agent</h3>
+
+<p>Agent that critiques its own work:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Generate answer
+2. Critique: "Is this good?"
+3. If not good: Revise
+4. If good: Done
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="debugging--visualization">Debugging &amp; Visualization</h2>
+
+<h3 id="print-state-at-each-step">Print State at Each Step</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">debug_node</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Current state:</span><span class="sh">"</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">state</span>
+
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">debug</span><span class="sh">"</span><span class="p">,</span> <span class="n">debug_node</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="visualize-your-graph">Visualize Your Graph</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">IPython.display</span> <span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">display</span>
+
+<span class="nf">display</span><span class="p">(</span><span class="nc">Image</span><span class="p">(</span><span class="n">app</span><span class="p">.</span><span class="nf">get_graph</span><span class="p">().</span><span class="nf">draw_mermaid_png</span><span class="p">()))</span>
+</code></pre></div></div>
+
+<h3 id="stream-events">Stream Events</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">app</span><span class="p">.</span><span class="nf">stream</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Hello</span><span class="sh">"</span><span class="p">)]}):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-keep-nodes-focused">1. Keep Nodes Focused</h3>
+
+<p>Each node should do one thing:</p>
+
+<p>❌ Bad: <code class="language-plaintext highlighter-rouge">process_everything_node()</code><br />
+✅ Good: <code class="language-plaintext highlighter-rouge">search_node()</code>, <code class="language-plaintext highlighter-rouge">analyze_node()</code>, <code class="language-plaintext highlighter-rouge">format_node()</code></p>
+
+<h3 id="2-use-type-hints">2. Use Type Hints</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">State</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span>  <span class="c1"># Clear what type
+</span>    <span class="n">count</span><span class="p">:</span> <span class="nb">int</span>      <span class="c1"># Clear what type
+</span>    <span class="n">ready</span><span class="p">:</span> <span class="nb">bool</span>     <span class="c1"># Clear what type
+</span></code></pre></div></div>
+
+<h3 id="3-handle-errors-gracefully">3. Handle Errors Gracefully</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">tool_node</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nf">risky_operation</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">{</span><span class="sh">"</span><span class="s">result</span><span class="sh">"</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">:</span> <span class="nf">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="sh">"</span><span class="s">next_action</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">handle_error</span><span class="sh">"</span><span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="4-test-individual-nodes">4. Test Individual Nodes</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Test nodes independently first
+</span><span class="n">test_state</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">test</span><span class="sh">"</span><span class="p">)]}</span>
+<span class="n">result</span> <span class="o">=</span> <span class="nf">agent_node</span><span class="p">(</span><span class="n">test_state</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>  <span class="c1"># Make sure it works!
+</span></code></pre></div></div>
+
+<h3 id="5-start-simple-add-complexity">5. Start Simple, Add Complexity</h3>
+
+<ol>
+  <li>Build linear flow first</li>
+  <li>Add conditional edges</li>
+  <li>Add loops if needed</li>
+  <li>Add human-in-the-loop last</li>
+</ol>
+
+<hr />
+
+<h2 id="common-patterns-recap">Common Patterns Recap</h2>
+
+<div class="mermaid">
+flowchart TB
+    subgraph patterns["🎯 Common Patterns"]
+        P1["Linear Chain<br />A → B → C"]
+        P2["Conditional Branch<br />A → {B or C}"]
+        P3["Loop<br />A → B → A"]
+        P4["Human Approval<br />A → 🛑 → B"]
+    end
+    
+    style P1 fill:#dbeafe,stroke:#2563eb
+    style P2 fill:#fef3c7,stroke:#d97706
+    style P3 fill:#fce7f3,stroke:#db2777
+    style P4 fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="what-youve-learned">What You’ve Learned</h2>
+
+<p>✅ Core concepts: States, Nodes, Edges<br />
+✅ Building basic and conditional graphs<br />
+✅ Creating agents with the ReAct pattern<br />
+✅ Using tools in agents<br />
+✅ Human-in-the-loop workflows<br />
+✅ Memory management<br />
+✅ Advanced patterns and best practices</p>
+
+<p>You can now build sophisticated agentic systems that can think, plan, and adapt! Next, you’ll put it all together in a project.</p>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>In the next section, you’ll <strong>build your own agentic application</strong> from scratch, combining everything you’ve learned:</p>
+<ul>
+  <li>Tool calling</li>
+  <li>RAG for knowledge</li>
+  <li>LangGraph for workflow</li>
+  <li>Memory for context</li>
+</ul>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-project-agent/">→ Continue to Step 6: Build Your Agent Project</a></strong></p>
+
+<hr />
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="basic-graph-template">Basic Graph Template</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langgraph.graph</span> <span class="kn">import</span> <span class="n">StateGraph</span><span class="p">,</span> <span class="n">END</span>
+<span class="kn">from</span> <span class="n">typing</span> <span class="kn">import</span> <span class="n">TypedDict</span>
+
+<span class="k">class</span> <span class="nc">State</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">field1</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">field2</span><span class="p">:</span> <span class="nb">int</span>
+
+<span class="k">def</span> <span class="nf">node_a</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span><span class="sh">"</span><span class="s">field1</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">updated</span><span class="sh">"</span><span class="p">}</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="nc">StateGraph</span><span class="p">(</span><span class="n">State</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_node</span><span class="p">(</span><span class="sh">"</span><span class="s">a</span><span class="sh">"</span><span class="p">,</span> <span class="n">node_a</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">add_edge</span><span class="p">(</span><span class="sh">"</span><span class="s">a</span><span class="sh">"</span><span class="p">,</span> <span class="n">END</span><span class="p">)</span>
+<span class="n">workflow</span><span class="p">.</span><span class="nf">set_entry_point</span><span class="p">(</span><span class="sh">"</span><span class="s">a</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">workflow</span><span class="p">.</span><span class="nf">compile</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">app</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">field1</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">initial</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">field2</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+</code></pre></div></div>
+
+<h3 id="agent-template">Agent Template</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langgraph.prebuilt</span> <span class="kn">import</span> <span class="n">create_react_agent</span>
+
+<span class="n">agent</span> <span class="o">=</span> <span class="nf">create_react_agent</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">tools</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">)]})</span>
+</code></pre></div></div>
+
+<p>Ready to build your own agent? Let’s do it! 🚀</p>
+
+<p><strong><a href="/handbook/handbook/_topics/langchain-project-agent/">Next: Build Your Agent Project →</a></strong></p>

@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RAG Basics: Teaching AI About Your Documents</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>RAG Basics: Teaching AI About Your Documents</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>🎓 LangChain Learning Path - Step 4 of 7</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-tool-calling/">← Step 3: Tool Calling</a></strong></li>
+    <li><strong>Step 4 (this page):</strong> RAG Basics</li>
+    <li><strong><a href="/handbook/handbook/_topics/langgraph-agents/">Step 5: LangGraph &amp; Agents →</a></strong></li>
+  </ul>
+</blockquote>
+
+<hr />
+
+<h2 id="the-problem-llms-dont-know-your-data">The Problem: LLMs Don’t Know Your Data</h2>
+
+<p>LLMs are trained on public internet data, but they don’t know about:</p>
+<ul>
+  <li>Your company’s internal documents</li>
+  <li>Your personal notes</li>
+  <li>Recent information (after their training cutoff)</li>
+  <li>Proprietary data</li>
+</ul>
+
+<div class="mermaid">
+flowchart LR
+    subgraph knows["✅ LLM Knows"]
+        K1["Public facts"]
+        K2["General knowledge"]
+        K3["Common patterns"]
+    end
+    
+    subgraph unknown["❌ LLM Doesn't Know"]
+        U1["Your documents"]
+        U2["Recent events"]
+        U3["Private data"]
+    end
+    
+    style knows fill:#d1fae5,stroke:#059669
+    style unknown fill:#fecaca,stroke:#dc2626
+</div>
+
+<p><strong>RAG solves this problem!</strong></p>
+
+<hr />
+
+<h2 id="what-is-rag">What is RAG?</h2>
+
+<h3 id="the-simple-explanation">The Simple Explanation</h3>
+
+<p><strong>RAG (Retrieval Augmented Generation)</strong> is like giving an AI a library card and teaching it to look things up before answering.</p>
+
+<div class="mermaid">
+flowchart TB
+    Q["👤 User: What's our refund policy?"]
+    R["🔍 Search Documents"]
+    F["📄 Find relevant info"]
+    AI["🤖 LLM + Found Info"]
+    A["💬 Answer with citations"]
+    
+    Q --&gt; R --&gt; F --&gt; AI --&gt; A
+    
+    style Q fill:#dbeafe,stroke:#2563eb
+    style R fill:#fef3c7,stroke:#d97706
+    style F fill:#fce7f3,stroke:#db2777
+    style AI fill:#d1fae5,stroke:#059669
+    style A fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<p>Imagine asking a librarian a question:</p>
+
+<p><strong>Without RAG (Bad Librarian):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>You: "What does our employee handbook say about vacation days?"
+Librarian: "I think it's probably 10-15 days? That seems normal..."
+</code></pre></div></div>
+<p><em>(Making it up!)</em></p>
+
+<p><strong>With RAG (Good Librarian):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>You: "What does our employee handbook say about vacation days?"
+Librarian: (pulls out handbook, reads page 23)
+Librarian: "According to page 23, employees get 15 vacation days annually."
+</code></pre></div></div>
+<p><em>(Looks it up first!)</em></p>
+
+<hr />
+
+<h2 id="how-rag-works-the-four-steps">How RAG Works: The Four Steps</h2>
+
+<div class="mermaid">
+flowchart TD
+    S1["1️⃣ Load Documents"]
+    S2["2️⃣ Create Embeddings<br />&amp; Store in Vector DB"]
+    S3["3️⃣ Retrieve Relevant Docs<br />for Question"]
+    S4["4️⃣ Generate Answer<br />Using Retrieved Docs"]
+    
+    S1 --&gt; S2 --&gt; S3 --&gt; S4
+    
+    style S1 fill:#dbeafe,stroke:#2563eb
+    style S2 fill:#fef3c7,stroke:#d97706
+    style S3 fill:#fce7f3,stroke:#db2777
+    style S4 fill:#d1fae5,stroke:#059669
+</div>
+
+<p>Let’s break down each step!</p>
+
+<hr />
+
+<h2 id="step-1-loading-documents">Step 1: Loading Documents</h2>
+
+<h3 id="what-is-document-loading">What is Document Loading?</h3>
+
+<p>Reading files and breaking them into manageable chunks.</p>
+
+<div class="mermaid">
+flowchart LR
+    F["📄 Large File<br />(100 pages)"]
+    L["Document Loader"]
+    C["📚 Many Chunks<br />(Each ~500 words)"]
+    
+    F --&gt; L --&gt; C
+    
+    style F fill:#fecaca,stroke:#dc2626
+    style L fill:#fef3c7,stroke:#d97706
+    style C fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="loading-different-file-types">Loading Different File Types</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.document_loaders</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TextLoader</span><span class="p">,</span>
+    <span class="n">PDFLoader</span><span class="p">,</span>
+    <span class="n">WebBaseLoader</span><span class="p">,</span>
+    <span class="n">DirectoryLoader</span>
+<span class="p">)</span>
+
+<span class="c1"># Load a text file
+</span><span class="n">text_loader</span> <span class="o">=</span> <span class="nc">TextLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">company_policy.txt</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">text_docs</span> <span class="o">=</span> <span class="n">text_loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+
+<span class="c1"># Load a PDF
+</span><span class="n">pdf_loader</span> <span class="o">=</span> <span class="nc">PDFLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">manual.pdf</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">pdf_docs</span> <span class="o">=</span> <span class="n">pdf_loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+
+<span class="c1"># Load from a website
+</span><span class="n">web_loader</span> <span class="o">=</span> <span class="nc">WebBaseLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">https://example.com/docs</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">web_docs</span> <span class="o">=</span> <span class="n">web_loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+
+<span class="c1"># Load all files in a directory
+</span><span class="n">dir_loader</span> <span class="o">=</span> <span class="nc">DirectoryLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">./documents</span><span class="sh">"</span><span class="p">,</span> <span class="n">glob</span><span class="o">=</span><span class="sh">"</span><span class="s">**/*.txt</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">all_docs</span> <span class="o">=</span> <span class="n">dir_loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h3 id="why-split-documents">Why Split Documents?</h3>
+
+<p>Documents are split into chunks because:</p>
+<ol>
+  <li>LLMs have token limits (can’t read entire book at once)</li>
+  <li>Smaller chunks = more precise retrieval</li>
+  <li>Better performance and cost</li>
+</ol>
+
+<div class="mermaid">
+flowchart TB
+    subgraph wrong["❌ Whole Document"]
+        W["Send entire<br />100-page document<br />to LLM"]
+        P1["Expensive"]
+        P2["Slow"]
+        P3["Hits token limit"]
+    end
+    
+    subgraph right["✅ Smart Chunks"]
+        C["Send only<br />relevant paragraphs"]
+        B1["Cheap"]
+        B2["Fast"]
+        B3["Focused"]
+    end
+    
+    style wrong fill:#fecaca,stroke:#dc2626
+    style right fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="splitting-documents">Splitting Documents</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.text_splitter</span> <span class="kn">import</span> <span class="n">RecursiveCharacterTextSplitter</span>
+
+<span class="c1"># Load documents
+</span><span class="n">loader</span> <span class="o">=</span> <span class="nc">TextLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">big_document.txt</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">documents</span> <span class="o">=</span> <span class="n">loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+
+<span class="c1"># Split into chunks
+</span><span class="n">text_splitter</span> <span class="o">=</span> <span class="nc">RecursiveCharacterTextSplitter</span><span class="p">(</span>
+    <span class="n">chunk_size</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>      <span class="c1"># ~500 characters per chunk
+</span>    <span class="n">chunk_overlap</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>    <span class="c1"># 50 character overlap between chunks
+</span><span class="p">)</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">text_splitter</span><span class="p">.</span><span class="nf">split_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Split into </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s"> chunks</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Why overlap?</strong>
+Overlap ensures important information at chunk boundaries isn’t lost.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Chunk 1: "...employees get 15 vacation days. This includes..."
+                                            ↓ overlap
+Chunk 2: "...This includes holidays and sick leave..."
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-2-embeddings--vector-stores">Step 2: Embeddings &amp; Vector Stores</h2>
+
+<h3 id="what-are-embeddings">What are Embeddings?</h3>
+
+<p><strong>Embeddings</strong> convert text into numbers that capture meaning. Similar meanings = similar numbers!</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph text["📝 Text"]
+        T1["dog"]
+        T2["puppy"]
+        T3["car"]
+    end
+    
+    subgraph embed["🔢 Embeddings"]
+        E1["[0.8, 0.9, 0.1]"]
+        E2["[0.7, 0.85, 0.15]"]
+        E3["[0.1, 0.2, 0.9]"]
+    end
+    
+    T1 --&gt; E1
+    T2 --&gt; E2
+    T3 --&gt; E3
+    
+    Note["dog &amp; puppy are close<br />car is far away"]
+    
+    style text fill:#dbeafe,stroke:#2563eb
+    style embed fill:#fef3c7,stroke:#d97706
+</div>
+
+<h3 id="real-world-analogy-1">Real-World Analogy</h3>
+
+<p>Think of embeddings like a <strong>coordinate system for meanings</strong>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Coordinates on a map:
+- New York:  (40.7°N, 74.0°W)
+- Boston:    (42.4°N, 71.1°W)  ← Close to New York!
+- Los Angeles: (34.1°N, 118.2°W)  ← Far from New York
+
+Embeddings for words:
+- "king":   [0.8, 0.5, 0.1]
+- "queen":  [0.75, 0.48, 0.12]  ← Close to "king"!
+- "apple":  [0.2, 0.9, 0.7]  ← Far from "king"
+</code></pre></div></div>
+
+<h3 id="creating-embeddings">Creating Embeddings</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">OpenAIEmbeddings</span>
+
+<span class="n">embeddings</span> <span class="o">=</span> <span class="nc">OpenAIEmbeddings</span><span class="p">()</span>
+
+<span class="c1"># Embed some text
+</span><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog</span><span class="sh">"</span>
+<span class="n">vector</span> <span class="o">=</span> <span class="n">embeddings</span><span class="p">.</span><span class="nf">embed_query</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Embedding has </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span><span class="si">}</span><span class="s"> dimensions</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Output: Embedding has 1536 dimensions
+</span></code></pre></div></div>
+
+<h3 id="vector-stores">Vector Stores</h3>
+
+<p>A <strong>vector store</strong> is like a library catalog but for embeddings. It stores documents and lets you search by meaning!</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph docs["📚 Documents"]
+        D1["Doc 1"]
+        D2["Doc 2"]
+        D3["Doc 3"]
+    end
+    
+    E["Create Embeddings"]
+    
+    subgraph vs["🗄️ Vector Store"]
+        V1["Vector 1"]
+        V2["Vector 2"]
+        V3["Vector 3"]
+    end
+    
+    docs --&gt; E --&gt; vs
+    
+    style docs fill:#dbeafe,stroke:#2563eb
+    style E fill:#fef3c7,stroke:#d97706
+    style vs fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="creating-a-vector-store">Creating a Vector Store</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.vectorstores</span> <span class="kn">import</span> <span class="n">FAISS</span>
+<span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">OpenAIEmbeddings</span>
+<span class="kn">from</span> <span class="n">langchain.text_splitter</span> <span class="kn">import</span> <span class="n">RecursiveCharacterTextSplitter</span>
+<span class="kn">from</span> <span class="n">langchain.document_loaders</span> <span class="kn">import</span> <span class="n">TextLoader</span>
+
+<span class="c1"># 1. Load documents
+</span><span class="n">loader</span> <span class="o">=</span> <span class="nc">TextLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">company_handbook.txt</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">documents</span> <span class="o">=</span> <span class="n">loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+
+<span class="c1"># 2. Split into chunks
+</span><span class="n">text_splitter</span> <span class="o">=</span> <span class="nc">RecursiveCharacterTextSplitter</span><span class="p">(</span>
+    <span class="n">chunk_size</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="n">chunk_overlap</span><span class="o">=</span><span class="mi">50</span>
+<span class="p">)</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">text_splitter</span><span class="p">.</span><span class="nf">split_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="c1"># 3. Create embeddings
+</span><span class="n">embeddings</span> <span class="o">=</span> <span class="nc">OpenAIEmbeddings</span><span class="p">()</span>
+
+<span class="c1"># 4. Create vector store
+</span><span class="n">vectorstore</span> <span class="o">=</span> <span class="n">FAISS</span><span class="p">.</span><span class="nf">from_documents</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Created vector store with </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s"> documents</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="step-3-retrieval">Step 3: Retrieval</h2>
+
+<h3 id="what-is-a-retriever">What is a Retriever?</h3>
+
+<p>A <strong>retriever</strong> searches the vector store for documents relevant to a question.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 Question
+    participant R as 🔍 Retriever
+    participant V as 🗄️ Vector Store
+    
+    U-&gt;&gt;R: "What's the vacation policy?"
+    R-&gt;&gt;R: Convert to embedding
+    R-&gt;&gt;V: Find similar embeddings
+    V--&gt;&gt;R: Top 3 matching chunks
+    R--&gt;&gt;U: Return relevant documents
+</div>
+
+<h3 id="creating-a-retriever">Creating a Retriever</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Turn the vector store into a retriever
+</span><span class="n">retriever</span> <span class="o">=</span> <span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">(</span>
+    <span class="n">search_type</span><span class="o">=</span><span class="sh">"</span><span class="s">similarity</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">search_kwargs</span><span class="o">=</span><span class="p">{</span><span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>  <span class="c1"># Return top 3 matches
+</span><span class="p">)</span>
+
+<span class="c1"># Test it
+</span><span class="n">question</span> <span class="o">=</span> <span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s the vacation policy?</span><span class="sh">"</span>
+<span class="n">relevant_docs</span> <span class="o">=</span> <span class="n">retriever</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">question</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">relevant_docs</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">page_content</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">---</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="how-similarity-search-works">How Similarity Search Works</h3>
+
+<div class="mermaid">
+flowchart TB
+    Q["❓ Question:<br />What's the refund policy?"]
+    QE["Convert to embedding"]
+    
+    subgraph vs["🗄️ All Documents"]
+        D1["Vacation policy<br />❌ Not similar"]
+        D2["Refund policy<br />✅ Very similar!"]
+        D3["Hiring policy<br />❌ Not similar"]
+        D4["Return process<br />✅ Similar"]
+    end
+    
+    R["Return top matches"]
+    
+    Q --&gt; QE --&gt; vs --&gt; R
+    
+    style Q fill:#dbeafe,stroke:#2563eb
+    style QE fill:#fef3c7,stroke:#d97706
+    style D2 fill:#d1fae5,stroke:#059669
+    style D4 fill:#d1fae5,stroke:#059669
+    style R fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="step-4-generation-putting-it-together">Step 4: Generation (Putting It Together)</h2>
+
+<h3 id="creating-a-rag-chain">Creating a RAG Chain</h3>
+
+<p>Now we combine everything:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+<span class="kn">from</span> <span class="n">langchain_core.output_parsers</span> <span class="kn">import</span> <span class="n">StrOutputParser</span>
+<span class="kn">from</span> <span class="n">langchain_core.runnables</span> <span class="kn">import</span> <span class="n">RunnablePassthrough</span>
+
+<span class="c1"># Create the prompt
+</span><span class="n">template</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">Answer the question based only on the following context:
+
+Context:
+{context}
+
+Question: {question}
+
+Answer: </span><span class="sh">"""</span>
+
+<span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_template</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+
+<span class="c1"># Create the chain
+</span><span class="k">def</span> <span class="nf">format_docs</span><span class="p">(</span><span class="n">docs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="sh">"</span><span class="se">\n\n</span><span class="sh">"</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">page_content</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">)</span>
+
+<span class="n">rag_chain</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">{</span>
+        <span class="sh">"</span><span class="s">context</span><span class="sh">"</span><span class="p">:</span> <span class="n">retriever</span> <span class="o">|</span> <span class="n">format_docs</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="nc">RunnablePassthrough</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="o">|</span> <span class="n">prompt</span>
+    <span class="o">|</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span>
+    <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Use it!
+</span><span class="n">answer</span> <span class="o">=</span> <span class="n">rag_chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s our vacation policy?</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">answer</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="how-the-chain-works">How the Chain Works</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant R as 🔍 Retriever
+    participant F as 📋 Format
+    participant P as 📝 Prompt
+    participant L as 🤖 LLM
+    
+    U-&gt;&gt;R: Question
+    R-&gt;&gt;F: Relevant documents
+    F-&gt;&gt;P: Formatted context
+    P-&gt;&gt;L: Prompt with context + question
+    L-&gt;&gt;U: Generated answer
+</div>
+
+<hr />
+
+<h2 id="complete-rag-example">Complete RAG Example</h2>
+
+<p>Let’s build a complete Q&amp;A system for company policies:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.document_loaders</span> <span class="kn">import</span> <span class="n">DirectoryLoader</span>
+<span class="kn">from</span> <span class="n">langchain.text_splitter</span> <span class="kn">import</span> <span class="n">RecursiveCharacterTextSplitter</span>
+<span class="kn">from</span> <span class="n">langchain.vectorstores</span> <span class="kn">import</span> <span class="n">FAISS</span>
+<span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">OpenAIEmbeddings</span><span class="p">,</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langchain.prompts</span> <span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+<span class="kn">from</span> <span class="n">langchain_core.output_parsers</span> <span class="kn">import</span> <span class="n">StrOutputParser</span>
+<span class="kn">from</span> <span class="n">langchain_core.runnables</span> <span class="kn">import</span> <span class="n">RunnablePassthrough</span>
+
+<span class="c1"># Step 1: Load all company policy documents
+</span><span class="n">loader</span> <span class="o">=</span> <span class="nc">DirectoryLoader</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">./company_policies</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">glob</span><span class="o">=</span><span class="sh">"</span><span class="s">**/*.txt</span><span class="sh">"</span>
+<span class="p">)</span>
+<span class="n">documents</span> <span class="o">=</span> <span class="n">loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Loaded </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span><span class="si">}</span><span class="s"> documents</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Split into chunks
+</span><span class="n">text_splitter</span> <span class="o">=</span> <span class="nc">RecursiveCharacterTextSplitter</span><span class="p">(</span>
+    <span class="n">chunk_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">chunk_overlap</span><span class="o">=</span><span class="mi">100</span>
+<span class="p">)</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">text_splitter</span><span class="p">.</span><span class="nf">split_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Split into </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s"> chunks</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Create vector store
+</span><span class="n">embeddings</span> <span class="o">=</span> <span class="nc">OpenAIEmbeddings</span><span class="p">()</span>
+<span class="n">vectorstore</span> <span class="o">=</span> <span class="n">FAISS</span><span class="p">.</span><span class="nf">from_documents</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Create retriever
+</span><span class="n">retriever</span> <span class="o">=</span> <span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">(</span>
+    <span class="n">search_type</span><span class="o">=</span><span class="sh">"</span><span class="s">similarity</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">search_kwargs</span><span class="o">=</span><span class="p">{</span><span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 5: Create RAG chain
+</span><span class="n">template</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">You are a helpful assistant answering questions about company policies.
+
+Use the following context to answer the question. If you can</span><span class="sh">'</span><span class="s">t find the answer in the context, say </span><span class="sh">"</span><span class="s">I don</span><span class="sh">'</span><span class="s">t have that information in the company policies.</span><span class="sh">"</span><span class="s">
+
+Context:
+{context}
+
+Question: {question}
+
+Answer:</span><span class="sh">"""</span>
+
+<span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="p">.</span><span class="nf">from_template</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">format_docs</span><span class="p">(</span><span class="n">docs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="sh">"</span><span class="se">\n\n</span><span class="sh">"</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">page_content</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">)</span>
+
+<span class="n">rag_chain</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">{</span>
+        <span class="sh">"</span><span class="s">context</span><span class="sh">"</span><span class="p">:</span> <span class="n">retriever</span> <span class="o">|</span> <span class="n">format_docs</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="nc">RunnablePassthrough</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="o">|</span> <span class="n">prompt</span>
+    <span class="o">|</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 6: Use it!
+</span><span class="n">questions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">How many vacation days do employees get?</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s the work from home policy?</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">How do I request time off?</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">questions</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Q: </span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">A: </span><span class="si">{</span><span class="n">rag_chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="advanced-adding-citations">Advanced: Adding Citations</h2>
+
+<h3 id="why-citations-matter">Why Citations Matter</h3>
+
+<p>Users should know where answers come from!</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph bad["❌ Without Citations"]
+        B["Answer: You get 15 days<br />(Where from?)"]
+    end
+    
+    subgraph good["✅ With Citations"]
+        G["Answer: You get 15 days<br />(Source: Employee Handbook, p.12)"]
+    end
+    
+    style bad fill:#fecaca,stroke:#dc2626
+    style good fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="implementing-citations">Implementing Citations</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_core.runnables</span> <span class="kn">import</span> <span class="n">RunnableParallel</span>
+
+<span class="c1"># Modified chain that returns both answer and sources
+</span><span class="n">rag_chain_with_sources</span> <span class="o">=</span> <span class="nc">RunnableParallel</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="sh">"</span><span class="s">context</span><span class="sh">"</span><span class="p">:</span> <span class="n">retriever</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="nc">RunnablePassthrough</span><span class="p">()</span>
+    <span class="p">}</span>
+<span class="p">).</span><span class="nf">assign</span><span class="p">(</span>
+    <span class="n">answer</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span>
+        <span class="n">prompt</span> 
+        <span class="o">|</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span> 
+        <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+    <span class="p">).</span><span class="nf">invoke</span><span class="p">({</span>
+        <span class="sh">"</span><span class="s">context</span><span class="sh">"</span><span class="p">:</span> <span class="nf">format_docs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">"</span><span class="s">context</span><span class="sh">"</span><span class="p">]),</span>
+        <span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">]</span>
+    <span class="p">})</span>
+<span class="p">)</span>
+
+<span class="c1"># Use it
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">rag_chain_with_sources</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s the vacation policy?</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Answer:</span><span class="sh">"</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">answer</span><span class="sh">"</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Sources:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">context</span><span class="sh">"</span><span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">- </span><span class="si">{</span><span class="n">doc</span><span class="p">.</span><span class="n">metadata</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">source</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Unknown</span><span class="sh">'</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="common-rag-patterns">Common RAG Patterns</h2>
+
+<h3 id="pattern-1-multi-query">Pattern 1: Multi-Query</h3>
+
+<p>Generate multiple versions of the question for better retrieval:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.retrievers</span> <span class="kn">import</span> <span class="n">MultiQueryRetriever</span>
+
+<span class="n">retriever</span> <span class="o">=</span> <span class="n">MultiQueryRetriever</span><span class="p">.</span><span class="nf">from_llm</span><span class="p">(</span>
+    <span class="n">retriever</span><span class="o">=</span><span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">(),</span>
+    <span class="n">llm</span><span class="o">=</span><span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># This will:
+# 1. Generate variations of your question
+# 2. Retrieve for each variation
+# 3. Combine and deduplicate results
+</span></code></pre></div></div>
+
+<h3 id="pattern-2-contextual-compression">Pattern 2: Contextual Compression</h3>
+
+<p>Only keep the most relevant parts of retrieved documents:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.retrievers</span> <span class="kn">import</span> <span class="n">ContextualCompressionRetriever</span>
+<span class="kn">from</span> <span class="n">langchain.retrievers.document_compressors</span> <span class="kn">import</span> <span class="n">LLMChainExtractor</span>
+
+<span class="n">compressor</span> <span class="o">=</span> <span class="n">LLMChainExtractor</span><span class="p">.</span><span class="nf">from_llm</span><span class="p">(</span><span class="nc">ChatOpenAI</span><span class="p">())</span>
+<span class="n">compression_retriever</span> <span class="o">=</span> <span class="nc">ContextualCompressionRetriever</span><span class="p">(</span>
+    <span class="n">base_compressor</span><span class="o">=</span><span class="n">compressor</span><span class="p">,</span>
+    <span class="n">base_retriever</span><span class="o">=</span><span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Returns shorter, more focused results
+</span></code></pre></div></div>
+
+<h3 id="pattern-3-conversational-rag">Pattern 3: Conversational RAG</h3>
+
+<p>Remember chat history:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain.chains</span> <span class="kn">import</span> <span class="n">create_history_aware_retriever</span>
+
+<span class="c1"># Reformulate questions based on chat history
+</span><span class="n">history_retriever</span> <span class="o">=</span> <span class="nf">create_history_aware_retriever</span><span class="p">(</span>
+    <span class="n">llm</span><span class="o">=</span><span class="nc">ChatOpenAI</span><span class="p">(),</span>
+    <span class="n">retriever</span><span class="o">=</span><span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">(),</span>
+    <span class="n">prompt</span><span class="o">=</span><span class="n">history_prompt</span>
+<span class="p">)</span>
+
+<span class="c1"># User: "What's the vacation policy?"
+# Bot: "15 days per year"
+# User: "Can I roll them over?"  ← Uses history to understand "them" = "vacation days"
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-chunk-size-matters">1. Chunk Size Matters</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph small["Chunks Too Small"]
+        S1["Chunk: 'vacation'"]
+        S2["Missing context"]
+    end
+    
+    subgraph large["Chunks Too Large"]
+        L1["Chunk: entire handbook"]
+        L2["Too much noise"]
+    end
+    
+    subgraph right["Just Right"]
+        R1["Chunk: full paragraph<br />about vacation policy"]
+        R2["Complete context"]
+    end
+    
+    style small fill:#fecaca,stroke:#dc2626
+    style large fill:#fecaca,stroke:#dc2626
+    style right fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Guidelines:</strong></p>
+<ul>
+  <li>General text: 500-1000 characters</li>
+  <li>Code: 100-300 lines</li>
+  <li>Tables: Keep rows together</li>
+</ul>
+
+<h3 id="2-test-retrieval-quality">2. Test Retrieval Quality</h3>
+
+<p>Before building the full chain, test your retriever:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Test if retrieval works
+</span><span class="n">test_questions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">vacation policy</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">remote work</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">sick leave</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">test_questions</span><span class="p">:</span>
+    <span class="n">docs</span> <span class="o">=</span> <span class="n">retriever</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Question: </span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Retrieved </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span><span class="si">}</span><span class="s"> docs</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">page_content</span><span class="p">[:</span><span class="mi">200</span><span class="p">])</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">---</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="3-use-appropriate-search-parameters">3. Use Appropriate Search Parameters</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">retriever</span> <span class="o">=</span> <span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">(</span>
+    <span class="n">search_type</span><span class="o">=</span><span class="sh">"</span><span class="s">similarity</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">search_kwargs</span><span class="o">=</span><span class="p">{</span>
+        <span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>  <span class="c1"># Return top 3 results
+</span>        <span class="sh">"</span><span class="s">score_threshold</span><span class="sh">"</span><span class="p">:</span> <span class="mf">0.7</span>  <span class="c1"># Only return if similarity &gt; 0.7
+</span>    <span class="p">}</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="4-keep-prompt-instructions-clear">4. Keep Prompt Instructions Clear</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">template</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">Rules:
+1. Only answer from the provided context
+2. If information isn</span><span class="sh">'</span><span class="s">t in context, say </span><span class="sh">"</span><span class="s">I don</span><span class="sh">'</span><span class="s">t know</span><span class="sh">"</span><span class="s">
+3. Cite your sources
+4. Be concise
+
+Context: {context}
+Question: {question}
+Answer:</span><span class="sh">"""</span>
+</code></pre></div></div>
+
+<h3 id="5-monitor-and-improve">5. Monitor and Improve</h3>
+
+<p>Track:</p>
+<ul>
+  <li>Questions that fail to find answers</li>
+  <li>Low-quality retrievals</li>
+  <li>User feedback</li>
+</ul>
+
+<hr />
+
+<h2 id="common-issues--solutions">Common Issues &amp; Solutions</h2>
+
+<h3 id="issue-1-poor-retrieval-quality">Issue 1: Poor Retrieval Quality</h3>
+
+<p><strong>Problem:</strong> Retriever returns irrelevant documents</p>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+  <li>Adjust chunk size and overlap</li>
+  <li>Try different embedding models</li>
+  <li>Use metadata filtering</li>
+  <li>Implement hybrid search (keyword + semantic)</li>
+</ul>
+
+<h3 id="issue-2-hallucinations">Issue 2: Hallucinations</h3>
+
+<p><strong>Problem:</strong> AI makes up answers not in documents</p>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+  <li>Make prompt more strict</li>
+  <li>Lower temperature (0-0.3)</li>
+  <li>Add explicit instructions to only use context</li>
+  <li>Implement citation requirements</li>
+</ul>
+
+<h3 id="issue-3-slow-performance">Issue 3: Slow Performance</h3>
+
+<p><strong>Problem:</strong> Takes too long to answer</p>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+  <li>Reduce number of retrieved documents (k parameter)</li>
+  <li>Use faster embedding models</li>
+  <li>Implement caching</li>
+  <li>Use local vector stores</li>
+</ul>
+
+<hr />
+
+<h2 id="rag-architecture-overview">RAG Architecture Overview</h2>
+
+<div class="mermaid">
+flowchart TB
+    subgraph ingest["📥 Ingestion (One-Time)"]
+        I1["Load Documents"]
+        I2["Split Chunks"]
+        I3["Create Embeddings"]
+        I4["Store in Vector DB"]
+        
+        I1 --&gt; I2 --&gt; I3 --&gt; I4
+    end
+    
+    subgraph query["❓ Query (Every Request)"]
+        Q1["User Question"]
+        Q2["Retrieve Relevant Docs"]
+        Q3["Generate Answer"]
+        
+        Q1 --&gt; Q2 --&gt; Q3
+    end
+    
+    I4 -.-&gt;|"Data ready"| Q2
+    
+    style ingest fill:#fef3c7,stroke:#d97706
+    style query fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="what-youve-learned">What You’ve Learned</h2>
+
+<p>✅ What RAG is and why it’s useful<br />
+✅ Loading and splitting documents<br />
+✅ Understanding embeddings and vector stores<br />
+✅ Creating retrievers<br />
+✅ Building complete RAG chains<br />
+✅ Adding citations and advanced features<br />
+✅ Best practices and troubleshooting</p>
+
+<p>You can now build AI systems that answer questions from your own documents! Next, we’ll learn about LangGraph - building complex agentic workflows.</p>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>In the next section, we’ll learn about <strong>LangGraph &amp; Agents</strong>:</p>
+<ul>
+  <li>Building workflows with states and nodes</li>
+  <li>Creating agents that can plan and adapt</li>
+  <li>Using tools in agentic systems</li>
+  <li>Managing complex decision flows</li>
+</ul>
+
+<p><strong><a href="/handbook/handbook/_topics/langgraph-agents/">→ Continue to Step 5: LangGraph &amp; Agents</a></strong></p>
+
+<hr />
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="basic-rag-setup">Basic RAG Setup</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># 1. Load &amp; split
+</span><span class="n">loader</span> <span class="o">=</span> <span class="nc">TextLoader</span><span class="p">(</span><span class="sh">"</span><span class="s">docs.txt</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">docs</span> <span class="o">=</span> <span class="n">loader</span><span class="p">.</span><span class="nf">load</span><span class="p">()</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">text_splitter</span><span class="p">.</span><span class="nf">split_documents</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span>
+
+<span class="c1"># 2. Create vector store
+</span><span class="n">vectorstore</span> <span class="o">=</span> <span class="n">FAISS</span><span class="p">.</span><span class="nf">from_documents</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">)</span>
+
+<span class="c1"># 3. Create retriever
+</span><span class="n">retriever</span> <span class="o">=</span> <span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">(</span><span class="n">search_kwargs</span><span class="o">=</span><span class="p">{</span><span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
+
+<span class="c1"># 4. Create chain
+</span><span class="n">rag_chain</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">{</span><span class="sh">"</span><span class="s">context</span><span class="sh">"</span><span class="p">:</span> <span class="n">retriever</span> <span class="o">|</span> <span class="n">format_docs</span><span class="p">,</span> <span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="nc">RunnablePassthrough</span><span class="p">()}</span>
+    <span class="o">|</span> <span class="n">prompt</span>
+    <span class="o">|</span> <span class="nc">ChatOpenAI</span><span class="p">()</span>
+    <span class="o">|</span> <span class="nc">StrOutputParser</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># 5. Use it
+</span><span class="n">answer</span> <span class="o">=</span> <span class="n">rag_chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="sh">"</span><span class="s">Your question</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Ready to build agents? Let’s go! 🚀</p>
+
+<p><strong><a href="/handbook/handbook/_topics/langgraph-agents/">Next: LangGraph &amp; Agents →</a></strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">langchain</span>, <span class="tag">rag</span>, <span class="tag">vector-stores</span>, <span class="tag">embeddings</span>, <span class="tag">retrieval</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>

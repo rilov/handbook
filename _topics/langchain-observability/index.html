@@ -1,0 +1,697 @@
+<blockquote>
+  <p><strong>🎓 LangChain Learning Path - Step 7 of 7</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/langchain-project-agent/">← Step 6: Build Your Agent Project</a></strong></li>
+    <li><strong>Step 7 (this page):</strong> Observability with LangSmith</li>
+    <li><strong>🎉 Course Complete!</strong></li>
+  </ul>
+</blockquote>
+
+<hr />
+
+<h2 id="the-problem-ai-is-a-black-box">The Problem: AI is a Black Box</h2>
+
+<p>When your AI agent doesn’t work as expected, it’s hard to know why:</p>
+
+<div class="mermaid">
+flowchart LR
+    Q["❓ User Question"] --&gt; BB["⬛ Black Box<br />Agent"] --&gt; R["❌ Wrong Answer"]
+    
+    Note["What happened inside?<br />- Which tools were called?<br />- What did the LLM see?<br />- Where did it go wrong?"]
+    
+    style BB fill:#fecaca,stroke:#dc2626
+    style Note fill:#fef3c7,stroke:#d97706
+</div>
+
+<p><strong>Common problems:</strong></p>
+<ul>
+  <li>Agent uses wrong tool</li>
+  <li>LLM hallucinates</li>
+  <li>Slow performance</li>
+  <li>Unexpected errors</li>
+  <li>High costs</li>
+</ul>
+
+<p><strong>LangSmith solves this by making everything visible!</strong></p>
+
+<hr />
+
+<h2 id="what-is-langsmith">What is LangSmith?</h2>
+
+<p><strong>LangSmith</strong> is like a video replay system for your AI - it records every step so you can see exactly what happened.</p>
+
+<div class="mermaid">
+flowchart TB
+    A["🤖 Your Agent"] --&gt; LS["📹 LangSmith<br />Records Everything"]
+    
+    LS --&gt; T["📊 Traces<br />See each step"]
+    LS --&gt; D["🔍 Debugging<br />Find issues"]
+    LS --&gt; P["⚡ Performance<br />Optimize speed"]
+    LS --&gt; C["💰 Costs<br />Track spending"]
+    
+    style A fill:#dbeafe,stroke:#2563eb
+    style LS fill:#fef3c7,stroke:#d97706
+    style T fill:#d1fae5,stroke:#059669
+    style D fill:#fce7f3,stroke:#db2777
+    style P fill:#e0e7ff,stroke:#6366f1
+    style C fill:#fef3c7,stroke:#d97706
+</div>
+
+<p><strong>Real-world analogy:</strong> Like a sports replay - you can see every play, slow it down, and understand what went wrong.</p>
+
+<hr />
+
+<h2 id="getting-started">Getting Started</h2>
+
+<h3 id="step-1-sign-up">Step 1: Sign Up</h3>
+
+<ol>
+  <li>Go to <a href="https://smith.langchain.com">smith.langchain.com</a></li>
+  <li>Sign up for free account</li>
+  <li>Create a new project</li>
+</ol>
+
+<h3 id="step-2-get-api-key">Step 2: Get API Key</h3>
+
+<ol>
+  <li>Go to Settings → API Keys</li>
+  <li>Create new API key</li>
+  <li>Copy it</li>
+</ol>
+
+<h3 id="step-3-configure-your-code">Step 3: Configure Your Code</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add to .env file</span>
+<span class="nv">LANGCHAIN_TRACING_V2</span><span class="o">=</span><span class="nb">true
+</span><span class="nv">LANGCHAIN_API_KEY</span><span class="o">=</span>your_langsmith_api_key
+<span class="nv">LANGCHAIN_PROJECT</span><span class="o">=</span>your_project_name
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">os</span>
+<span class="kn">from</span> <span class="n">dotenv</span> <span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="nf">load_dotenv</span><span class="p">()</span>
+
+<span class="c1"># That's it! LangSmith is now tracking your agent
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="understanding-traces">Understanding Traces</h2>
+
+<h3 id="what-is-a-trace">What is a Trace?</h3>
+
+<p>A <strong>trace</strong> is a complete record of one interaction with your agent.</p>
+
+<div class="mermaid">
+flowchart TB
+    Start["👤 User: What's the weather?"] --&gt; Trace["📹 Trace Starts"]
+    
+    Trace --&gt; Step1["🤖 LLM Call 1:<br />Decides to use tool"]
+    Step1 --&gt; Step2["🔧 Tool Call:<br />get_weather('NYC')"]
+    Step2 --&gt; Step3["🤖 LLM Call 2:<br />Formats answer"]
+    Step3 --&gt; End["💬 Response:<br />It's sunny, 72°F"]
+    
+    style Trace fill:#fef3c7,stroke:#d97706
+    style Step1 fill:#dbeafe,stroke:#2563eb
+    style Step2 fill:#fce7f3,stroke:#db2777
+    style Step3 fill:#dbeafe,stroke:#2563eb
+    style End fill:#d1fae5,stroke:#059669
+</div>
+
+<p>Each trace shows:</p>
+<ul>
+  <li><strong>Inputs</strong>: What went in</li>
+  <li><strong>Outputs</strong>: What came out</li>
+  <li><strong>Steps</strong>: Everything in between</li>
+  <li><strong>Timing</strong>: How long each step took</li>
+  <li><strong>Costs</strong>: How much each call cost</li>
+</ul>
+
+<hr />
+
+<h2 id="viewing-traces-in-langsmith">Viewing Traces in LangSmith</h2>
+
+<h3 id="the-trace-view">The Trace View</h3>
+
+<p>When you open a trace, you see a timeline:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Trace: "What's the weather in New York?"
+├─ 🤖 ChatOpenAI (230ms, $0.002)
+│  ├─ Input: "What's the weather in New York?"
+│  └─ Output: [calls get_weather tool]
+│
+├─ 🔧 get_weather (45ms, $0.000)
+│  ├─ Input: {"city": "New York"}
+│  └─ Output: "Sunny, 72°F"
+│
+└─ 🤖 ChatOpenAI (180ms, $0.001)
+   ├─ Input: [tool result + original question]
+   └─ Output: "It's sunny and 72°F in New York!"
+
+Total: 455ms, $0.003
+</code></pre></div></div>
+
+<h3 id="what-you-can-see">What You Can See</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph info["📊 Trace Information"]
+        I1["Inputs &amp; Outputs"]
+        I2["Token usage"]
+        I3["Latency"]
+        I4["Costs"]
+        I5["Errors"]
+    end
+    
+    style info fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="common-debugging-scenarios">Common Debugging Scenarios</h2>
+
+<h3 id="scenario-1-agent-uses-wrong-tool">Scenario 1: Agent Uses Wrong Tool</h3>
+
+<p><strong>Problem:</strong> Agent calls <code class="language-plaintext highlighter-rouge">send_email</code> instead of <code class="language-plaintext highlighter-rouge">search_email</code></p>
+
+<p><strong>How to debug:</strong></p>
+
+<ol>
+  <li>Open trace in LangSmith</li>
+  <li>Find the LLM call before tool use</li>
+  <li>Check the <strong>Prompt</strong> tab</li>
+  <li>See what the LLM saw</li>
+</ol>
+
+<p><strong>What you might find:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Available tools:
+- send_email: Send an email    ← Tool description unclear!
+- search_email: Find emails
+
+User: "Find my emails from Bob"
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Improve tool description:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@tool</span>
+<span class="k">def</span> <span class="nf">search_email</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    SEARCH for existing emails (does NOT send).
+    Use this to FIND or LOOKUP emails.
+    </span><span class="sh">"""</span>
+</code></pre></div></div>
+
+<h3 id="scenario-2-llm-hallucination">Scenario 2: LLM Hallucination</h3>
+
+<p><strong>Problem:</strong> Agent makes up information not in the retrieved documents</p>
+
+<p><strong>How to debug:</strong></p>
+
+<ol>
+  <li>Find the generation step</li>
+  <li>Check the <strong>Context</strong> provided</li>
+  <li>Compare to the output</li>
+</ol>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Context provided:
+"Employee handbook says: 15 vacation days"
+
+LLM output:
+"You get 20 vacation days and unlimited sick leave"
+                ↑ Made up!        ↑ Not in context!
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Add stricter prompt:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">prompt</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+CRITICAL: Only use information from the provided context.
+If info is not in context, say </span><span class="sh">"</span><span class="s">I don</span><span class="sh">'</span><span class="s">t have that information.</span><span class="sh">"</span><span class="s">
+Do NOT make up or infer information.
+
+Context: {context}
+</span><span class="sh">"""</span>
+</code></pre></div></div>
+
+<h3 id="scenario-3-slow-performance">Scenario 3: Slow Performance</h3>
+
+<p><strong>Problem:</strong> Agent takes 10 seconds to respond</p>
+
+<p><strong>How to debug:</strong></p>
+
+<ol>
+  <li>Look at timing for each step</li>
+  <li>Find the bottleneck</li>
+</ol>
+
+<p><strong>Example trace:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>├─ Retrieval (50ms) ✅ Fast
+├─ LLM Call 1 (8000ms) ❌ SLOW!
+└─ LLM Call 2 (100ms) ✅ Fast
+
+Total: 8150ms
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Reduce input size for slow LLM call:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Before: Sending entire document (10,000 tokens)
+# After: Send only relevant chunks (500 tokens)
+</span></code></pre></div></div>
+
+<h3 id="scenario-4-high-costs">Scenario 4: High Costs</h3>
+
+<p><strong>Problem:</strong> $50 bill for 100 requests</p>
+
+<p><strong>How to debug:</strong></p>
+
+<ol>
+  <li>Click “Analytics” in LangSmith</li>
+  <li>See cost breakdown</li>
+  <li>Find expensive calls</li>
+</ol>
+
+<p><strong>What you might find:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GPT-4 calls: $45 (10,000 requests with 4,000 tokens each)
+GPT-3.5 calls: $5 (1,000 requests)
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Use cheaper model when possible:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># For simple tasks
+</span><span class="n">cheap_model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-3.5-turbo</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># For complex tasks only
+</span><span class="n">expensive_model</span> <span class="o">=</span> <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="monitoring-patterns">Monitoring Patterns</h2>
+
+<h3 id="pattern-1-testing-changes">Pattern 1: Testing Changes</h3>
+
+<p>Compare before and after:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Tag your runs
+</span><span class="kn">from</span> <span class="n">langsmith</span> <span class="kn">import</span> <span class="n">traceable</span>
+
+<span class="nd">@traceable</span><span class="p">(</span><span class="n">run_type</span><span class="o">=</span><span class="sh">"</span><span class="s">chain</span><span class="sh">"</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">version-1</span><span class="sh">"</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">old_chain</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="c1"># Old implementation
+</span>    <span class="k">pass</span>
+
+<span class="nd">@traceable</span><span class="p">(</span><span class="n">run_type</span><span class="o">=</span><span class="sh">"</span><span class="s">chain</span><span class="sh">"</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">version-2</span><span class="sh">"</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">new_chain</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="c1"># New improved implementation
+</span>    <span class="k">pass</span>
+
+<span class="c1"># In LangSmith, filter by tags and compare metrics
+</span></code></pre></div></div>
+
+<h3 id="pattern-2-quality-monitoring">Pattern 2: Quality Monitoring</h3>
+
+<p>Track quality metrics:</p>
+
+<div class="mermaid">
+flowchart TB
+    Prod["🚀 Production Agent"] --&gt; Track["📊 Track Metrics"]
+    
+    Track --&gt; M1["✅ Success rate"]
+    Track --&gt; M2["⏱️ Response time"]
+    Track --&gt; M3["💰 Cost per request"]
+    Track --&gt; M4["😊 User satisfaction"]
+    
+    Track --&gt; Alert{"Metrics<br />drop?"}
+    Alert --&gt;|Yes| Notify["🔔 Alert team"]
+    
+    style Prod fill:#dbeafe,stroke:#2563eb
+    style Track fill:#fef3c7,stroke:#d97706
+    style Alert fill:#fce7f3,stroke:#db2777
+    style Notify fill:#fecaca,stroke:#dc2626
+</div>
+
+<h3 id="pattern-3-error-tracking">Pattern 3: Error Tracking</h3>
+
+<p>Automatically detect issues:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langsmith</span> <span class="kn">import</span> <span class="n">Client</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="nc">Client</span><span class="p">()</span>
+
+<span class="c1"># Get failed runs
+</span><span class="n">failed_runs</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="nf">list_runs</span><span class="p">(</span>
+    <span class="n">project_name</span><span class="o">=</span><span class="sh">"</span><span class="s">my-project</span><span class="sh">"</span><span class="p">,</span>
+    <span class="nb">filter</span><span class="o">=</span><span class="sh">"</span><span class="s">error eq true</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">start_time</span><span class="o">=</span><span class="n">yesterday</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">failed_runs</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Error: </span><span class="si">{</span><span class="n">run</span><span class="p">.</span><span class="n">error</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Input: </span><span class="si">{</span><span class="n">run</span><span class="p">.</span><span class="n">inputs</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="c1"># Alert or fix automatically
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="advanced-features">Advanced Features</h2>
+
+<h3 id="1-datasets--testing">1. Datasets &amp; Testing</h3>
+
+<p>Create test sets to ensure quality:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langsmith</span> <span class="kn">import</span> <span class="n">Client</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="nc">Client</span><span class="p">()</span>
+
+<span class="c1"># Create dataset
+</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="nf">create_dataset</span><span class="p">(</span><span class="sh">"</span><span class="s">customer-service-tests</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Add examples
+</span><span class="n">client</span><span class="p">.</span><span class="nf">create_examples</span><span class="p">(</span>
+    <span class="n">dataset_id</span><span class="o">=</span><span class="n">dataset</span><span class="p">.</span><span class="nb">id</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">What</span><span class="sh">'</span><span class="s">s my order status?</span><span class="sh">"</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">question</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">How do I return an item?</span><span class="sh">"</span><span class="p">},</span>
+    <span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">should_use_tool</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">check_order</span><span class="sh">"</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">should_use_tool</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">return_policy</span><span class="sh">"</span><span class="p">},</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Run tests
+</span><span class="k">def</span> <span class="nf">test_agent</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">.</span><span class="n">examples</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">example</span><span class="p">.</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="c1"># Validate result matches expected output
+</span></code></pre></div></div>
+
+<h3 id="2-feedback--ratings">2. Feedback &amp; Ratings</h3>
+
+<p>Collect user feedback:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langsmith</span> <span class="kn">import</span> <span class="n">Client</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="nc">Client</span><span class="p">()</span>
+
+<span class="c1"># User gives feedback
+</span><span class="n">client</span><span class="p">.</span><span class="nf">create_feedback</span><span class="p">(</span>
+    <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="sh">"</span><span class="s">helpfulness</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">score</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>  <span class="c1"># 1-5 stars
+</span>    <span class="n">comment</span><span class="o">=</span><span class="sh">"</span><span class="s">Very helpful!</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="c1"># View feedback in LangSmith dashboard
+</span></code></pre></div></div>
+
+<h3 id="3-playground-testing">3. Playground Testing</h3>
+
+<p>Test prompts interactively:</p>
+
+<ol>
+  <li>Go to LangSmith Playground</li>
+  <li>Paste your prompt</li>
+  <li>Try different inputs</li>
+  <li>See results immediately</li>
+  <li>Compare versions side-by-side</li>
+</ol>
+
+<hr />
+
+<h2 id="real-world-example">Real-World Example</h2>
+
+<p>Let’s add full observability to our Research Assistant:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">os</span>
+<span class="kn">from</span> <span class="n">dotenv</span> <span class="kn">import</span> <span class="n">load_dotenv</span>
+<span class="kn">from</span> <span class="n">langsmith</span> <span class="kn">import</span> <span class="n">traceable</span>
+<span class="kn">from</span> <span class="n">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span> <span class="n">langgraph.prebuilt</span> <span class="kn">import</span> <span class="n">create_react_agent</span>
+
+<span class="c1"># Enable tracing
+</span><span class="nf">load_dotenv</span><span class="p">()</span>
+<span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">[</span><span class="sh">"</span><span class="s">LANGCHAIN_TRACING_V2</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="sh">"</span><span class="s">true</span><span class="sh">"</span>
+<span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">[</span><span class="sh">"</span><span class="s">LANGCHAIN_PROJECT</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="sh">"</span><span class="s">research-assistant</span><span class="sh">"</span>
+
+<span class="c1"># Tools with better descriptions for debugging
+</span><span class="nd">@traceable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">web_search_tool</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">web_search</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Search the web for information.
+    
+    WHEN TO USE: User asks about current info, facts, or research topics.
+    DO NOT USE: For personal info, past conversations, or saved notes.
+    </span><span class="sh">"""</span>
+    <span class="c1"># Implementation
+</span>    <span class="k">pass</span>
+
+<span class="nd">@traceable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">save_notes_tool</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">save_notes</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sh">"""</span><span class="s">
+    Save research findings to notes.
+    
+    WHEN TO USE: After finding important information worth remembering.
+    DO NOT USE: For every small detail.
+    </span><span class="sh">"""</span>
+    <span class="c1"># Implementation
+</span>    <span class="k">pass</span>
+
+<span class="c1"># Create agent with metadata
+</span><span class="n">agent</span> <span class="o">=</span> <span class="nf">create_react_agent</span><span class="p">(</span>
+    <span class="nc">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span><span class="p">),</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">web_search</span><span class="p">,</span> <span class="n">save_notes</span><span class="p">],</span>
+    <span class="n">state_modifier</span><span class="o">=</span><span class="sh">"</span><span class="s">You are a research assistant...</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="c1"># Track user sessions
+</span><span class="nd">@traceable</span><span class="p">(</span>
+    <span class="n">run_type</span><span class="o">=</span><span class="sh">"</span><span class="s">chain</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">research_session</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">production</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">v2.0</span><span class="sh">"</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="k">def</span> <span class="nf">handle_user_query</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Handle user query with full tracing.</span><span class="sh">"""</span>
+    
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">configurable</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">thread_id</span><span class="sh">"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">},</span>
+        <span class="sh">"</span><span class="s">metadata</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">environment</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">production</span><span class="sh">"</span>
+        <span class="p">},</span>
+        <span class="sh">"</span><span class="s">tags</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">user_query</span><span class="sh">"</span><span class="p">]</span>
+    <span class="p">}</span>
+    
+    <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">:</span> <span class="p">[(</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span> <span class="n">query</span><span class="p">)]},</span> <span class="n">config</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">messages</span><span class="sh">"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">content</span>
+
+<span class="c1"># Use it
+</span><span class="n">response</span> <span class="o">=</span> <span class="nf">handle_user_query</span><span class="p">(</span><span class="sh">"</span><span class="s">user_123</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Research quantum computing</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>What you get in LangSmith:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Session: research_session
+├─ Metadata: user_id=user_123, environment=production
+├─ Tags: production, v2.0, user_query
+│
+├─ 🔧 web_search_tool (234ms, $0.000)
+│  └─ Output: "Quantum computing uses..."
+│
+├─ 🤖 ChatOpenAI (890ms, $0.005)
+│  └─ Decides to save notes
+│
+└─ 🔧 save_notes_tool (45ms, $0.000)
+   └─ Saved: "Quantum Computing Basics"
+
+Total: 1169ms, $0.005
+✅ Success
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-add-meaningful-tags">1. Add Meaningful Tags</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">tags</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">environment:production</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">user_type:premium</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">feature:research</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">version:2.1</span><span class="sh">"</span>
+<span class="p">]</span>
+</code></pre></div></div>
+
+<h3 id="2-include-metadata">2. Include Metadata</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">12345</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">session_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">abc</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">feature_flags</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">new_ui</span><span class="sh">"</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">model_version</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">gpt-4</span><span class="sh">"</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="3-name-your-traces">3. Name Your Traces</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@traceable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">generate_report</span><span class="sh">"</span><span class="p">,</span> <span class="n">run_type</span><span class="o">=</span><span class="sh">"</span><span class="s">chain</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">generate_report</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="c1"># Clear name in dashboard
+</span>    <span class="k">pass</span>
+</code></pre></div></div>
+
+<h3 id="4-monitor-key-metrics">4. Monitor Key Metrics</h3>
+
+<p>Set up alerts for:</p>
+<ul>
+  <li>Error rate &gt; 5%</li>
+  <li>Average latency &gt; 2s</li>
+  <li>Cost per request &gt; $0.10</li>
+  <li>Success rate &lt; 95%</li>
+</ul>
+
+<h3 id="5-regular-reviews">5. Regular Reviews</h3>
+
+<p>Weekly:</p>
+<ul>
+  <li>Check failed runs</li>
+  <li>Review slow traces</li>
+  <li>Analyze cost trends</li>
+  <li>Read user feedback</li>
+</ul>
+
+<hr />
+
+<h2 id="troubleshooting-tips">Troubleshooting Tips</h2>
+
+<h3 id="traces-not-showing-up">Traces Not Showing Up?</h3>
+
+<p>Check:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># 1. Environment variables set?
+</span><span class="nf">print</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="sh">"</span><span class="s">LANGCHAIN_TRACING_V2</span><span class="sh">"</span><span class="p">))</span>  <span class="c1"># Should be "true"
+</span><span class="nf">print</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="sh">"</span><span class="s">LANGCHAIN_API_KEY</span><span class="sh">"</span><span class="p">))</span>     <span class="c1"># Should have value
+</span>
+<span class="c1"># 2. Internet connection working?
+</span>
+<span class="c1"># 3. Project name correct?
+</span><span class="nf">print</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="sh">"</span><span class="s">LANGCHAIN_PROJECT</span><span class="sh">"</span><span class="p">))</span>
+
+<span class="c1"># 4. Try manual trace
+</span><span class="kn">from</span> <span class="n">langsmith</span> <span class="kn">import</span> <span class="n">Client</span>
+<span class="n">client</span> <span class="o">=</span> <span class="nc">Client</span><span class="p">()</span>
+<span class="n">client</span><span class="p">.</span><span class="nf">create_run</span><span class="p">(...)</span>  <span class="c1"># Test connection
+</span></code></pre></div></div>
+
+<h3 id="too-many-traces">Too Many Traces?</h3>
+
+<p>Filter traces:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Only trace in development
+</span><span class="k">if</span> <span class="n">os</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="sh">"</span><span class="s">ENVIRONMENT</span><span class="sh">"</span><span class="p">)</span> <span class="o">==</span> <span class="sh">"</span><span class="s">development</span><span class="sh">"</span><span class="p">:</span>
+    <span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">[</span><span class="sh">"</span><span class="s">LANGCHAIN_TRACING_V2</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="sh">"</span><span class="s">true</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<h3 id="need-to-hide-sensitive-data">Need to Hide Sensitive Data?</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@traceable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">process_payment</span><span class="sh">"</span><span class="p">,</span> 
+          <span class="n">hide_inputs</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>   <span class="c1"># Don't log input
+</span>          <span class="n">hide_outputs</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>  <span class="c1"># Don't log output
+</span><span class="k">def</span> <span class="nf">process_payment</span><span class="p">(</span><span class="n">card_number</span><span class="p">,</span> <span class="n">cvv</span><span class="p">):</span>
+    <span class="c1"># Sensitive operation
+</span>    <span class="k">pass</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="the-debugging-workflow">The Debugging Workflow</h2>
+
+<div class="mermaid">
+flowchart TB
+    Issue["🐛 Issue Reported"] --&gt; Find["🔍 Find Trace<br />in LangSmith"]
+    Find --&gt; Analyze["📊 Analyze Steps"]
+    Analyze --&gt; Root["🎯 Find Root Cause"]
+    Root --&gt; Fix["🔧 Fix Code"]
+    Fix --&gt; Test["✅ Test with<br />Same Input"]
+    Test --&gt; Verify["📹 Compare<br />New Trace"]
+    Verify --&gt; Deploy["🚀 Deploy Fix"]
+    
+    style Issue fill:#fecaca,stroke:#dc2626
+    style Find fill:#fef3c7,stroke:#d97706
+    style Analyze fill:#dbeafe,stroke:#2563eb
+    style Root fill:#fce7f3,stroke:#db2777
+    style Fix fill:#d1fae5,stroke:#059669
+    style Deploy fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="what-youve-learned">What You’ve Learned</h2>
+
+<p>✅ Why observability matters for AI<br />
+✅ Setting up LangSmith<br />
+✅ Reading and understanding traces<br />
+✅ Debugging common issues<br />
+✅ Monitoring production systems<br />
+✅ Testing and quality assurance<br />
+✅ Best practices for tracing</p>
+
+<p>You now have the tools to build, debug, and monitor production AI systems!</p>
+
+<hr />
+
+<h2 id="-congratulations">🎉 Congratulations!</h2>
+
+<p>You’ve completed the LangChain Learning Path! You now know:</p>
+
+<ol>
+  <li><strong>Foundations</strong> - LLM orchestration concepts</li>
+  <li><strong>Essentials</strong> - Chat models, prompting, LCEL</li>
+  <li><strong>Tool Calling</strong> - Extending LLMs with capabilities</li>
+  <li><strong>RAG</strong> - Teaching AI about your documents</li>
+  <li><strong>LangGraph</strong> - Building complex agent workflows</li>
+  <li><strong>Projects</strong> - Building complete applications</li>
+  <li><strong>Observability</strong> - Debugging and monitoring</li>
+</ol>
+
+<h3 id="whats-next">What’s Next?</h3>
+
+<ul>
+  <li><strong>Build your own projects</strong> using what you’ve learned</li>
+  <li><strong>Explore advanced patterns</strong> in the LangChain docs</li>
+  <li><strong>Join the community</strong> on Discord</li>
+  <li><strong>Share your creations</strong> on GitHub</li>
+</ul>
+
+<hr />
+
+<h2 id="resources">Resources</h2>
+
+<ul>
+  <li><a href="https://docs.smith.langchain.com/">LangSmith Documentation</a></li>
+  <li><a href="https://blog.langchain.dev/tag/langsmith/">LangSmith Blog</a></li>
+  <li><a href="https://docs.smith.langchain.com/concepts/tracing#best-practices">Best Practices Guide</a></li>
+  <li><a href="https://discord.gg/langchain">LangChain Community</a></li>
+</ul>
+
+<hr />
+
+<h2 id="keep-learning">Keep Learning</h2>
+
+<p><strong>More Topics to Explore:</strong></p>
+<ul>
+  <li>Advanced prompting techniques</li>
+  <li>Multi-modal AI (images, audio)</li>
+  <li>Fine-tuning custom models</li>
+  <li>Scaling to production</li>
+  <li>Security and privacy</li>
+</ul>
+
+<p><strong>Other Resources:</strong></p>
+<ul>
+  <li><strong><a href="/handbook/handbook/_topics/langchain-foundations/">← Back to Foundations</a></strong> to review</li>
+  <li>Explore other topics in the handbook</li>
+  <li>Try building your own agent variations</li>
+</ul>
+
+<hr />
+
+<p><strong>Thank you for learning with us!</strong> 🚀</p>
+
+<p>Now go build amazing AI applications! 🎯</p>
