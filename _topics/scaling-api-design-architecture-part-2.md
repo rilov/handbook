@@ -11,12 +11,16 @@ summary: Simple strategies for organizing and designing APIs as your company gro
 related:
   - scaling-api-1-to-1-million-rps
   - choosing-the-right-database
+  - scaling-api-load-balancing-part-4
+  - scaling-api-monitoring-part-5
 ---
 
 > **📚 This is Part 2 of the "Scaling Your API" Series**
 > - **[Part 1: Performance & Infrastructure ←]({{ site.baseurl }}{% link _topics/scaling-api-1-to-1-million-rps.md %})** - How to handle more users and traffic
 > - **Part 2 (this page):** Design & Architecture - How to organize teams and design better systems
 > - **[Part 3: Choosing the Right Database →]({{ site.baseurl }}{% link _topics/choosing-the-right-database.md %})** - Database selection for your API
+> - **[Part 4: Load Balancing & High Availability →]({{ site.baseurl }}{% link _topics/scaling-api-load-balancing-part-4.md %})** - Keeping your API always available
+> - **[Part 5: Monitoring & Performance →]({{ site.baseurl }}{% link _topics/scaling-api-monitoring-part-5.md %})** - Tracking and improving API performance
 
 ---
 

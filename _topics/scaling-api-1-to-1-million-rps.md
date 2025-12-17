@@ -10,12 +10,16 @@ summary: A beginner-friendly guide to scaling your API from handling 1 request p
 related:
   - scaling-api-design-architecture-part-2
   - choosing-the-right-database
+  - scaling-api-load-balancing-part-4
+  - scaling-api-monitoring-part-5
 ---
 
 > **📚 This is Part 1 of the "Scaling Your API" Series**
 > - **Part 1 (this page):** Performance & Infrastructure - Technical techniques to handle millions of requests
 > - **[Part 2: Design & Architecture →]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** - Organizational strategies and API design patterns for large-scale systems
 > - **[Part 3: Choosing the Right Database →]({{ site.baseurl }}{% link _topics/choosing-the-right-database.md %})** - Database selection for your API
+> - **[Part 4: Load Balancing & High Availability →]({{ site.baseurl }}{% link _topics/scaling-api-load-balancing-part-4.md %})** - Keeping your API always available
+> - **[Part 5: Monitoring & Performance →]({{ site.baseurl }}{% link _topics/scaling-api-monitoring-part-5.md %})** - Tracking and improving API performance
 
 ## The Journey: 1 RPS → 1,000,000 RPS
 
