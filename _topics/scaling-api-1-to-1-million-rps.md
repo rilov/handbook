@@ -9,11 +9,13 @@ tags:
 summary: A beginner-friendly guide to scaling your API from handling 1 request per second to 1 million, with diagrams and simple explanations.
 related:
   - scaling-api-design-architecture-part-2
+  - choosing-the-right-database
 ---
 
-> **📚 This is Part 1 of a two-part series on API Scaling**
+> **📚 This is Part 1 of the "Scaling Your API" Series**
 > - **Part 1 (this page):** Performance & Infrastructure - Technical techniques to handle millions of requests
 > - **[Part 2: Design & Architecture →]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** - Organizational strategies and API design patterns for large-scale systems
+> - **[Part 3: Choosing the Right Database →]({{ site.baseurl }}{% link _topics/choosing-the-right-database.md %})** - Database selection for your API
 
 ## The Journey: 1 RPS → 1,000,000 RPS
 
