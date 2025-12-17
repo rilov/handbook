@@ -685,3 +685,5 @@ result = chain.invoke({"input": "..."})
 Ready to give your AI superpowers? Let's learn about tools! 🚀
 
 **[Next: Tool Calling →]({{ site.baseurl }}{% link _topics/langchain-tool-calling.md %})**
+
+

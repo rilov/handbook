@@ -35,6 +35,8 @@ flowchart TD
     style TABLE fill:#e0e7ff,stroke:#6366f1
 </div>
 
+> **🎓 Want to go deeper?** This guide covers the essentials. For in-depth technical details, check out our deep dive articles on [Parquet](parquet-deep-dive.md), [ORC](orc-deep-dive.md), [Avro](avro-deep-dive.md), and [Delta Lake](delta-lake-deep-dive.md).
+
 ---
 
 ## Text-Based Formats (Human-Readable)
@@ -308,6 +310,8 @@ flowchart LR
 
 **Real-World Analogy:** Instead of reading entire books to find all mentions of "data," you have an index that lists every page with "data."
 
+📖 **[Deep dive into Parquet →](parquet-deep-dive.md)** Learn how Parquet actually stores data, encoding schemes, and performance optimization.
+
 ---
 
 ### ORC (Optimized Row Columnar)
@@ -338,6 +342,8 @@ flowchart TD
 | **Use In** | Most cases | Hadoop-heavy environments |
 
 **Which to choose?** Use Parquet unless you're deep in the Hadoop ecosystem.
+
+📖 **[Deep dive into ORC →](orc-deep-dive.md)** Explore ORC's three-level indexing, Bloom filters, and when it beats Parquet.
 
 ---
 
@@ -382,6 +388,8 @@ flowchart LR
 - ✅ Kafka / event streaming
 - ✅ Schema evolution (adding fields over time)
 - ❌ Analytics (use Parquet instead)
+
+📖 **[Deep dive into Avro →](avro-deep-dive.md)** Understand schema evolution, Schema Registry, and why Kafka uses Avro.
 
 ---
 
@@ -593,6 +601,8 @@ ALTER TABLE users ADD COLUMN email STRING;
 | **Updates** | ✅ Efficient UPDATE/DELETE |
 | **Ecosystem** | Databricks, Spark |
 
+📖 **[Deep dive into Delta Lake →](delta-lake-deep-dive.md)** Learn about transaction logs, time travel, ACID guarantees, and optimization strategies.
+
 ---
 
 ### Apache Iceberg
@@ -666,6 +676,12 @@ flowchart LR
 - **Delta Lake:** Using Databricks or want easiest option
 - **Iceberg:** Need multi-engine support (Spark + Trino)
 - **Hudi:** Heavy streaming workloads
+
+**📚 Deep Dive Articles:**
+- **[Parquet Deep Dive →](parquet-deep-dive.md)** — Columnar storage, encoding schemes, compression
+- **[ORC Deep Dive →](orc-deep-dive.md)** — Three-level indexing, Bloom filters, Hadoop optimization
+- **[Avro Deep Dive →](avro-deep-dive.md)** — Schema evolution, streaming, Kafka integration
+- **[Delta Lake Deep Dive →](delta-lake-deep-dive.md)** — ACID transactions, time travel, optimization
 
 ---
 
@@ -771,6 +787,8 @@ data.csv → data.csv.gz  # 10x smaller
 ### 3. Parquet for Everything
 If unsure, use Parquet. It's fast, small, and widely supported.
 
+**→ [Learn how Parquet works under the hood](parquet-deep-dive.md)**
+
 ### 4. Never Use Pickle for Long-Term Storage
 ```
 ❌ model.pkl  (can't read in 2 years)
@@ -811,4 +829,15 @@ flowchart TD
 </div>
 
 **Remember:** The best format is the one that solves your problem simply. Start with CSV or JSON, upgrade when you need speed or features!
+
+---
+
+## Further Reading
+
+Want to understand how these formats work under the hood? Check out our in-depth technical guides:
+
+- **[Parquet Deep Dive](parquet-deep-dive.md)** — How columnar storage actually works, encoding schemes, compression strategies, and performance tips
+- **[ORC Deep Dive](orc-deep-dive.md)** — Three-level indexing, Bloom filters, ACID support in Hive, and why it's optimized for Hadoop
+- **[Avro Deep Dive](avro-deep-dive.md)** — Schema evolution, Schema Registry, variable-length encoding, and Kafka integration
+- **[Delta Lake Deep Dive](delta-lake-deep-dive.md)** — Transaction logs, ACID guarantees, time travel, MERGE operations, and optimization strategies
 

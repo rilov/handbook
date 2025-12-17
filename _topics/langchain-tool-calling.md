@@ -708,3 +708,5 @@ result = agent_executor.invoke({"input": "Your question"})
 Ready to learn about RAG? Let's go! 🚀
 
 **[Next: RAG Basics →]({{ site.baseurl }}{% link _topics/langchain-rag-basics.md %})**
+
+
