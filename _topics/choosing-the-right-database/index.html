@@ -1,0 +1,1329 @@
+<blockquote>
+  <p><strong>📚 This is Part 3 of the “Scaling Your API” Series</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-1-to-1-million-rps/">Part 1: Performance &amp; Infrastructure ←</a></strong> - Technical techniques to handle millions of requests</li>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-design-architecture-part-2/">Part 2: Design &amp; Architecture ←</a></strong> - Organizational strategies and API design patterns</li>
+    <li><strong>Part 3 (this page):</strong> Choosing the Right Database - Database selection for your API</li>
+  </ul>
+
+  <p>You’ve designed your API and thought about scaling strategies. Now comes the most critical decision: <strong>choosing the right database.</strong> Your database choice will determine your API’s speed, scalability, and reliability.</p>
+
+  <p><strong>Think of it like this:</strong> Your API is a restaurant’s waitstaff, and your database is the kitchen. Even the best waiters can’t serve food fast if the kitchen is slow!</p>
+</blockquote>
+
+<h2 id="why-database-selection-matters-for-apis">Why Database Selection Matters for APIs</h2>
+
+<p>When building APIs, your database directly impacts:</p>
+
+<ul>
+  <li><strong>Response Time:</strong> Can you respond in &lt; 100ms?</li>
+  <li><strong>Throughput:</strong> Can you handle 10,000 requests/second?</li>
+  <li><strong>Concurrency:</strong> Can 1,000 users access data simultaneously?</li>
+  <li><strong>Scalability:</strong> Can you grow from 1K to 1M users?</li>
+  <li><strong>Reliability:</strong> What happens if your database crashes?</li>
+</ul>
+
+<p><strong>The harsh truth:</strong> A bad database choice can kill your API’s performance, no matter how well-designed your code is.</p>
+
+<h2 id="the-api-database-landscape">The API Database Landscape</h2>
+
+<div class="mermaid">
+flowchart TD
+    START["🚀 What's your API serving?"]
+    
+    START --&gt; REST["REST API<br />(CRUD operations)"]
+    START --&gt; REALTIME["Real-time API<br />(live updates)"]
+    START --&gt; SEARCH["Search API<br />(text queries)"]
+    START --&gt; ANALYTICS["Analytics API<br />(aggregations)"]
+    
+    REST --&gt; SQL["SQL Database<br />(PostgreSQL)"]
+    REALTIME --&gt; COMBO["NoSQL + Cache<br />(MongoDB + Redis)"]
+    SEARCH --&gt; ELASTIC["Search Engine<br />(Elasticsearch)"]
+    ANALYTICS --&gt; COLUMNAR["Column Store<br />(Cassandra/ClickHouse)"]
+    
+    style START fill:#dbeafe,stroke:#2563eb
+    style SQL fill:#d1fae5,stroke:#059669
+    style COMBO fill:#fef3c7,stroke:#d97706
+    style ELASTIC fill:#fce7f3,stroke:#db2777
+    style COLUMNAR fill:#e0e7ff,stroke:#6366f1
+</div>
+
+<h2 id="api-performance-requirements">API Performance Requirements</h2>
+
+<p>Before choosing a database, understand your API’s performance needs:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Low Volume</th>
+      <th>Medium Volume</th>
+      <th>High Volume</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Requests/sec</strong></td>
+      <td>&lt; 100</td>
+      <td>100 - 10,000</td>
+      <td>&gt; 10,000</td>
+    </tr>
+    <tr>
+      <td><strong>Response Time</strong></td>
+      <td>&lt; 500ms</td>
+      <td>&lt; 200ms</td>
+      <td>&lt; 100ms</td>
+    </tr>
+    <tr>
+      <td><strong>Concurrent Users</strong></td>
+      <td>&lt; 1,000</td>
+      <td>1,000 - 100,000</td>
+      <td>&gt; 100,000</td>
+    </tr>
+    <tr>
+      <td><strong>Data Size</strong></td>
+      <td>&lt; 10 GB</td>
+      <td>10 GB - 1 TB</td>
+      <td>&gt; 1 TB</td>
+    </tr>
+    <tr>
+      <td><strong>Database Choice</strong></td>
+      <td>Any SQL</td>
+      <td>SQL + Cache</td>
+      <td>NoSQL + Cache + CDN</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Key Insight:</strong> Most APIs start in “Low Volume” and need to scale. Choose a database that can grow with you!</p>
+
+<hr />
+
+<h2 id="1-relational-databases-sql--the-api-workhorse">1. Relational Databases (SQL) — The API Workhorse</h2>
+
+<blockquote>
+  <p><strong>For APIs:</strong> The default choice for 90% of REST APIs. Reliable, proven, and powerful.</p>
+</blockquote>
+
+<h3 id="perfect-for-these-api-endpoints">Perfect For These API Endpoints</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET  /api/users/:id          → Fast single record lookup
+GET  /api/orders?userId=123  → Filtered queries with relationships
+POST /api/checkout           → Transactions (all-or-nothing)
+PUT  /api/users/:id          → Updates with validation
+</code></pre></div></div>
+
+<h3 id="api-performance-characteristics">API Performance Characteristics</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Performance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Read Latency</strong></td>
+      <td>1-10ms (with proper indexes)</td>
+    </tr>
+    <tr>
+      <td><strong>Write Latency</strong></td>
+      <td>5-50ms</td>
+    </tr>
+    <tr>
+      <td><strong>Concurrent Connections</strong></td>
+      <td>100-1,000 (single server)</td>
+    </tr>
+    <tr>
+      <td><strong>Throughput</strong></td>
+      <td>1,000-10,000 req/sec</td>
+    </tr>
+    <tr>
+      <td><strong>Scalability</strong></td>
+      <td>Vertical (bigger server)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-to-use-for-your-api">When to Use for Your API</h3>
+
+<ul>
+  <li>✅ Your API serves structured data (users, orders, products)</li>
+  <li>✅ You need ACID transactions (payments, bookings)</li>
+  <li>✅ Your data has relationships (users → orders → products)</li>
+  <li>✅ You need complex queries (filtering, sorting, joining)</li>
+  <li>✅ Your API handles &lt; 10,000 requests/second</li>
+</ul>
+
+<h3 id="when-to-consider-alternatives">When to Consider Alternatives</h3>
+
+<ul>
+  <li>❌ You need &gt; 100,000 requests/second</li>
+  <li>❌ Your API response time &gt; 100ms even with optimization</li>
+  <li>❌ Your data model changes every week</li>
+  <li>❌ You need to scale horizontally across 100+ servers</li>
+</ul>
+
+<h3 id="popular-options-for-apis">Popular Options for APIs</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>API Response Time</th>
+      <th>Scaling</th>
+      <th>Best For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>PostgreSQL</strong></td>
+      <td>5-20ms</td>
+      <td>Vertical (10K req/s)</td>
+      <td>Most REST APIs, complex queries</td>
+    </tr>
+    <tr>
+      <td><strong>MySQL</strong></td>
+      <td>3-15ms</td>
+      <td>Vertical (15K req/s)</td>
+      <td>Simple CRUD APIs, read-heavy</td>
+    </tr>
+    <tr>
+      <td><strong>CockroachDB</strong></td>
+      <td>10-50ms</td>
+      <td>Horizontal (100K+ req/s)</td>
+      <td>Global APIs, multi-region</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon Aurora</strong></td>
+      <td>5-20ms</td>
+      <td>Auto-scaling</td>
+      <td>AWS-based APIs, serverless</td>
+    </tr>
+    <tr>
+      <td><strong>PlanetScale</strong></td>
+      <td>5-15ms</td>
+      <td>Serverless scaling</td>
+      <td>Modern APIs, easy scaling</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 API Recommendation:</strong> Start with PostgreSQL. Migrate to CockroachDB/Aurora when you outgrow a single server.</p>
+
+<h3 id="api-code-example">API Code Example</h3>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Express.js API with PostgreSQL</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/users/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span>
+    <span class="dl">'</span><span class="s1">SELECT * FROM users WHERE id = $1</span><span class="dl">'</span><span class="p">,</span>
+    <span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">]</span>
+  <span class="p">);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">user</span><span class="p">);</span> <span class="c1">// Typical response time: 5-20ms</span>
+<span class="p">});</span>
+
+<span class="c1">// With proper indexing + connection pooling:</span>
+<span class="c1">// - Handles 5,000-10,000 requests/second</span>
+<span class="c1">// - 95th percentile latency &lt; 50ms</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="2-document-databases-nosql--flexible--fast">2. Document Databases (NoSQL) — Flexible &amp; Fast</h2>
+
+<blockquote>
+  <p><strong>For APIs:</strong> Choose when your API needs flexibility and high write throughput.</p>
+</blockquote>
+
+<h3 id="what-they-store">What They Store</h3>
+
+<p>Documents (usually JSON format) that can have different fields.</p>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">User</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="err">(has</span><span class="w"> </span><span class="err">address)</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"John"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"email"</span><span class="p">:</span><span class="w"> </span><span class="s2">"john@example.com"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"address"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"city"</span><span class="p">:</span><span class="w"> </span><span class="s2">"NYC"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"country"</span><span class="p">:</span><span class="w"> </span><span class="s2">"USA"</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">User</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="err">(no</span><span class="w"> </span><span class="err">address,</span><span class="w"> </span><span class="err">has</span><span class="w"> </span><span class="err">phone)</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Jane"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"email"</span><span class="p">:</span><span class="w"> </span><span class="s2">"jane@example.com"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"phone"</span><span class="p">:</span><span class="w"> </span><span class="s2">"+1-555-0123"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="api-performance-characteristics-1">API Performance Characteristics</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Performance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Read Latency</strong></td>
+      <td>1-5ms</td>
+    </tr>
+    <tr>
+      <td><strong>Write Latency</strong></td>
+      <td>1-10ms</td>
+    </tr>
+    <tr>
+      <td><strong>Concurrent Connections</strong></td>
+      <td>10,000+</td>
+    </tr>
+    <tr>
+      <td><strong>Throughput</strong></td>
+      <td>50,000-500,000 req/sec</td>
+    </tr>
+    <tr>
+      <td><strong>Scalability</strong></td>
+      <td>Horizontal (add servers)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-to-use-for-your-api-1">When to Use for Your API</h3>
+
+<ul>
+  <li>✅ Your API serves flexible data (user profiles, product catalogs)</li>
+  <li>✅ You need high write throughput (logging, analytics)</li>
+  <li>✅ Your API needs to scale horizontally</li>
+  <li>✅ Your data is naturally nested (user → settings → preferences)</li>
+  <li>✅ You’re building fast and iterating quickly</li>
+</ul>
+
+<h3 id="when-to-stick-with-sql">When to Stick with SQL</h3>
+
+<ul>
+  <li>❌ You need complex joins across tables</li>
+  <li>❌ You need strong ACID transactions (payments)</li>
+  <li>❌ Your team is unfamiliar with NoSQL</li>
+  <li>❌ Your data is highly relational</li>
+</ul>
+
+<h3 id="popular-options-for-apis-1">Popular Options for APIs</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>API Response Time</th>
+      <th>Scaling</th>
+      <th>Best For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>MongoDB</strong></td>
+      <td>2-10ms</td>
+      <td>Horizontal</td>
+      <td>General-purpose APIs, flexible data</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon DynamoDB</strong></td>
+      <td>1-5ms</td>
+      <td>Auto-scaling</td>
+      <td>Serverless APIs, AWS Lambda</td>
+    </tr>
+    <tr>
+      <td><strong>Firebase/Firestore</strong></td>
+      <td>50-200ms</td>
+      <td>Auto-scaling</td>
+      <td>Mobile APIs, real-time sync</td>
+    </tr>
+    <tr>
+      <td><strong>Couchbase</strong></td>
+      <td>1-5ms</td>
+      <td>Horizontal</td>
+      <td>High-performance APIs, caching</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 API Recommendation:</strong> MongoDB for self-hosted, DynamoDB for serverless AWS APIs.</p>
+
+<h3 id="api-code-example-1">API Code Example</h3>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Express.js API with MongoDB</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/products/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">product</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">Product</span><span class="p">.</span><span class="nf">findById</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">product</span><span class="p">);</span> <span class="c1">// Response time: 2-10ms</span>
+<span class="p">});</span>
+
+<span class="c1">// Benefits for APIs:</span>
+<span class="c1">// - Schema flexibility (add fields anytime)</span>
+<span class="c1">// - Fast reads/writes (1-10ms)</span>
+<span class="c1">// - Easy horizontal scaling</span>
+<span class="c1">// - Handles 50K+ requests/second</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-key-value-stores--api-speed-boost">3. Key-Value Stores — API Speed Boost</h2>
+
+<blockquote>
+  <p><strong>For APIs:</strong> Essential for caching and reducing database load. Can turn 50ms responses into 1ms responses!</p>
+</blockquote>
+
+<h3 id="what-theyre-good-for">What They’re Good For</h3>
+
+<p>Lightning-fast storage and retrieval of simple data.</p>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Key: "session:abc123"
+Value: {"user_id": 456, "logged_in": true}
+
+Key: "cart:user456"
+Value: ["item1", "item2", "item3"]
+</code></pre></div></div>
+
+<h3 id="api-performance-characteristics-2">API Performance Characteristics</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Performance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Read Latency</strong></td>
+      <td>&lt; 1ms (sub-millisecond)</td>
+    </tr>
+    <tr>
+      <td><strong>Write Latency</strong></td>
+      <td>&lt; 1ms</td>
+    </tr>
+    <tr>
+      <td><strong>Concurrent Connections</strong></td>
+      <td>100,000+</td>
+    </tr>
+    <tr>
+      <td><strong>Throughput</strong></td>
+      <td>1,000,000+ req/sec</td>
+    </tr>
+    <tr>
+      <td><strong>Scalability</strong></td>
+      <td>Horizontal</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-to-use-for-your-api-2">When to Use for Your API</h3>
+
+<ul>
+  <li>✅ <strong>Caching:</strong> Store frequently accessed data (80% of API calls hit cache)</li>
+  <li>✅ <strong>Session Management:</strong> Store user sessions, JWT tokens</li>
+  <li>✅ <strong>Rate Limiting:</strong> Track API request counts per user</li>
+  <li>✅ <strong>Real-time Features:</strong> Leaderboards, counters, live updates</li>
+  <li>✅ <strong>Reduce Database Load:</strong> Cache database query results</li>
+</ul>
+
+<h3 id="when-not-to-use-as-primary-database">When NOT to Use as Primary Database</h3>
+
+<ul>
+  <li>❌ You need to query/filter data</li>
+  <li>❌ You need data persistence guarantees</li>
+  <li>❌ You need complex queries</li>
+</ul>
+
+<h3 id="popular-options-for-apis-2">Popular Options for APIs</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>API Response Time</th>
+      <th>Use Case</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Redis</strong></td>
+      <td>&lt; 1ms</td>
+      <td>API caching, sessions, rate limiting</td>
+    </tr>
+    <tr>
+      <td><strong>Memcached</strong></td>
+      <td>&lt; 1ms</td>
+      <td>Simple API caching only</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon ElastiCache</strong></td>
+      <td>&lt; 1ms</td>
+      <td>AWS API caching</td>
+    </tr>
+    <tr>
+      <td><strong>Dragonfly</strong></td>
+      <td>&lt; 0.5ms</td>
+      <td>Drop-in Redis replacement (faster)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 API Recommendation:</strong> Every API should use Redis for caching. Period.</p>
+
+<h3 id="api-code-example-2">API Code Example</h3>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// API with Redis caching</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/products/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// Try cache first</span>
+  <span class="kd">const</span> <span class="nx">cached</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">redis</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="s2">`product:</span><span class="p">${</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+  <span class="k">if </span><span class="p">(</span><span class="nx">cached</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="nx">cached</span><span class="p">));</span> <span class="c1">// 1ms response!</span>
+  <span class="p">}</span>
+  
+  <span class="c1">// Cache miss: query database</span>
+  <span class="kd">const</span> <span class="nx">product</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM products WHERE id = $1</span><span class="dl">'</span><span class="p">);</span>
+  
+  <span class="c1">// Store in cache for 5 minutes</span>
+  <span class="k">await</span> <span class="nx">redis</span><span class="p">.</span><span class="nf">setex</span><span class="p">(</span><span class="s2">`product:</span><span class="p">${</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">}</span><span class="s2">`</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="nx">JSON</span><span class="p">.</span><span class="nf">stringify</span><span class="p">(</span><span class="nx">product</span><span class="p">));</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">product</span><span class="p">);</span> <span class="c1">// 20ms first time, 1ms afterwards</span>
+<span class="p">});</span>
+
+<span class="c1">// Result: 80% of requests served from cache = 20x faster!</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-column-family-stores">4. Column-Family Stores</h2>
+
+<blockquote>
+  <p><strong>Think of it like:</strong> Instead of storing entire rows together, you store columns together. Great for reading specific columns from billions of rows.</p>
+</blockquote>
+
+<h3 id="what-theyre-good-for-1">What They’re Good For</h3>
+
+<p>Massive amounts of data where you read specific columns.</p>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Instead of storing:
+[John, 25, NYC] [Jane, 30, LA] [Bob, 28, CHI]
+
+Store like:
+Names: [John, Jane, Bob]
+Ages:  [25, 30, 28]
+Cities: [NYC, LA, CHI]
+</code></pre></div></div>
+
+<h3 id="when-to-use">When to Use</h3>
+
+<ul>
+  <li>✅ You have billions of rows</li>
+  <li>✅ You query specific columns (not full rows)</li>
+  <li>✅ Time-series data (sensor readings, logs)</li>
+  <li>✅ You need to write massive amounts of data fast</li>
+</ul>
+
+<h3 id="when-not-to-use">When NOT to Use</h3>
+
+<ul>
+  <li>❌ You frequently need entire rows</li>
+  <li>❌ You have complex queries with joins</li>
+  <li>❌ Your data fits in memory</li>
+</ul>
+
+<h3 id="popular-options">Popular Options</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Used By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Apache Cassandra</strong></td>
+      <td>Massive scale, always available</td>
+      <td>Netflix, Apple, Discord</td>
+    </tr>
+    <tr>
+      <td><strong>HBase</strong></td>
+      <td>Hadoop ecosystem</td>
+      <td>Adobe, Salesforce</td>
+    </tr>
+    <tr>
+      <td><strong>ScyllaDB</strong></td>
+      <td>High performance Cassandra alternative</td>
+      <td>Discord, Comcast</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon Keyspaces</strong></td>
+      <td>Managed Cassandra on AWS</td>
+      <td>AWS customers</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 Best for:</strong> Massive scale applications like Netflix or Uber.</p>
+
+<hr />
+
+<h2 id="5-search-engines">5. Search Engines</h2>
+
+<blockquote>
+  <p><strong>Think of it like:</strong> Google for your data. You can search text, filter, aggregate, and find things super fast.</p>
+</blockquote>
+
+<h3 id="what-theyre-good-for-2">What They’re Good For</h3>
+
+<p>Full-text search, log analysis, complex queries.</p>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Search: "smartphone under $500"
+Results: All phones matching criteria, sorted by relevance
+
+Search logs: "ERROR" in the last hour
+Results: All error logs with context
+</code></pre></div></div>
+
+<h3 id="when-to-use-1">When to Use</h3>
+
+<ul>
+  <li>✅ You need full-text search (search boxes on websites)</li>
+  <li>✅ You need to analyze logs (find errors, patterns)</li>
+  <li>✅ You need faceted search (filters on e-commerce sites)</li>
+  <li>✅ You need autocomplete, fuzzy matching, suggestions</li>
+</ul>
+
+<h3 id="when-not-to-use-1">When NOT to Use</h3>
+
+<ul>
+  <li>❌ As your primary database (use it alongside one)</li>
+  <li>❌ For transactional data</li>
+  <li>❌ When you don’t need search features</li>
+</ul>
+
+<h3 id="popular-options-1">Popular Options</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Used By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Elasticsearch</strong></td>
+      <td>Modern choice, great features</td>
+      <td>Netflix, Uber, Microsoft</td>
+    </tr>
+    <tr>
+      <td><strong>Apache Solr</strong></td>
+      <td>Enterprise search</td>
+      <td>Apple, Netflix, AT&amp;T</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon OpenSearch</strong></td>
+      <td>Managed Elasticsearch on AWS</td>
+      <td>AWS customers</td>
+    </tr>
+    <tr>
+      <td><strong>Algolia</strong></td>
+      <td>Instant search-as-a-service</td>
+      <td>Twitch, Stripe, Slack</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 Most popular:</strong> Elasticsearch — powerful, scalable, great ecosystem.</p>
+
+<hr />
+
+<h2 id="6-graph-databases">6. Graph Databases</h2>
+
+<blockquote>
+  <p><strong>Think of it like:</strong> Facebook’s friend network. It’s all about relationships — who knows who, what’s connected to what.</p>
+</blockquote>
+
+<h3 id="what-theyre-good-for-3">What They’re Good For</h3>
+
+<p>Data where relationships are as important as the data itself.</p>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>John --[FRIENDS_WITH]--&gt; Jane
+Jane --[WORKS_AT]--&gt; Google
+Google --[LOCATED_IN]--&gt; California
+John --[LIKES]--&gt; Pizza
+Jane --[LIKES]--&gt; Pizza
+</code></pre></div></div>
+
+<h3 id="when-to-use-2">When to Use</h3>
+
+<ul>
+  <li>✅ Social networks (who knows who)</li>
+  <li>✅ Recommendation engines (people who bought X also bought Y)</li>
+  <li>✅ Fraud detection (finding suspicious patterns)</li>
+  <li>✅ Knowledge graphs (how concepts relate)</li>
+</ul>
+
+<h3 id="when-not-to-use-2">When NOT to Use</h3>
+
+<ul>
+  <li>❌ Simple data without complex relationships</li>
+  <li>❌ You just need to store and retrieve records</li>
+  <li>❌ You don’t need to traverse relationships</li>
+</ul>
+
+<h3 id="popular-options-2">Popular Options</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Used By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Neo4j</strong></td>
+      <td>Most popular, great tools</td>
+      <td>eBay, Walmart, NASA</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon Neptune</strong></td>
+      <td>Managed graph on AWS</td>
+      <td>AWS customers</td>
+    </tr>
+    <tr>
+      <td><strong>ArangoDB</strong></td>
+      <td>Multi-model (graph + document)</td>
+      <td>Startups</td>
+    </tr>
+    <tr>
+      <td><strong>TigerGraph</strong></td>
+      <td>Large-scale analytics</td>
+      <td>Banks, healthcare</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 Start here:</strong> Neo4j — excellent documentation and community.</p>
+
+<hr />
+
+<h2 id="7-time-series-databases">7. Time-Series Databases</h2>
+
+<blockquote>
+  <p><strong>Think of it like:</strong> A database optimized for data that changes over time — like temperature readings every minute or stock prices every second.</p>
+</blockquote>
+
+<h3 id="what-theyre-good-for-4">What They’re Good For</h3>
+
+<p>Data that’s timestamped and constantly arriving.</p>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2024-01-01 10:00:00 | Temperature: 72°F
+2024-01-01 10:01:00 | Temperature: 72.5°F
+2024-01-01 10:02:00 | Temperature: 73°F
+</code></pre></div></div>
+
+<h3 id="when-to-use-3">When to Use</h3>
+
+<ul>
+  <li>✅ IoT sensor data (temperature, pressure, motion)</li>
+  <li>✅ Application metrics (CPU, memory, requests)</li>
+  <li>✅ Financial data (stock prices, trades)</li>
+  <li>✅ You need to analyze trends over time</li>
+</ul>
+
+<h3 id="when-not-to-use-3">When NOT to Use</h3>
+
+<ul>
+  <li>❌ Your data isn’t timestamped</li>
+  <li>❌ You don’t analyze time-based patterns</li>
+  <li>❌ You rarely query by time ranges</li>
+</ul>
+
+<h3 id="popular-options-3">Popular Options</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Used By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>InfluxDB</strong></td>
+      <td>General purpose, easy to use</td>
+      <td>Cisco, IBM, eBay</td>
+    </tr>
+    <tr>
+      <td><strong>TimescaleDB</strong></td>
+      <td>PostgreSQL extension</td>
+      <td>Comcast, IBM, Walmart</td>
+    </tr>
+    <tr>
+      <td><strong>Prometheus</strong></td>
+      <td>Monitoring and alerting</td>
+      <td>SoundCloud, Docker</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon Timestream</strong></td>
+      <td>Managed on AWS</td>
+      <td>AWS customers</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 Best choice:</strong> InfluxDB for IoT, TimescaleDB if you already use PostgreSQL.</p>
+
+<hr />
+
+<h2 id="8-vector-databases">8. Vector Databases</h2>
+
+<blockquote>
+  <p><strong>Think of it like:</strong> A database for AI. Stores data as numbers (vectors) and finds similar items super fast.</p>
+</blockquote>
+
+<h3 id="what-theyre-good-for-5">What They’re Good For</h3>
+
+<p>AI/ML applications, similarity search, recommendations.</p>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Find images similar to this photo"
+"Find products similar to what this user liked"
+"Find documents related to this topic"
+</code></pre></div></div>
+
+<h3 id="when-to-use-4">When to Use</h3>
+
+<ul>
+  <li>✅ Building AI-powered search (ChatGPT-like features)</li>
+  <li>✅ Recommendation systems (similar products/content)</li>
+  <li>✅ Image/video similarity search</li>
+  <li>✅ Semantic search (search by meaning, not keywords)</li>
+</ul>
+
+<h3 id="when-not-to-use-4">When NOT to Use</h3>
+
+<ul>
+  <li>❌ You’re not building AI features</li>
+  <li>❌ You don’t need similarity search</li>
+  <li>❌ Traditional keyword search is enough</li>
+</ul>
+
+<h3 id="popular-options-4">Popular Options</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Used By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Pinecone</strong></td>
+      <td>Easiest, fully managed</td>
+      <td>AI startups</td>
+    </tr>
+    <tr>
+      <td><strong>Weaviate</strong></td>
+      <td>Open source, flexible</td>
+      <td>Enterprises</td>
+    </tr>
+    <tr>
+      <td><strong>Milvus</strong></td>
+      <td>High performance, scalable</td>
+      <td>AI companies</td>
+    </tr>
+    <tr>
+      <td><strong>Qdrant</strong></td>
+      <td>Fast, modern</td>
+      <td>ML applications</td>
+    </tr>
+    <tr>
+      <td><strong>pgvector</strong></td>
+      <td>PostgreSQL extension</td>
+      <td>Existing Postgres users</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 Trending:</strong> Pinecone for ease of use, pgvector if you want to stay in PostgreSQL.</p>
+
+<hr />
+
+<h2 id="9-in-memory-databases">9. In-Memory Databases</h2>
+
+<blockquote>
+  <p><strong>Think of it like:</strong> Everything stored in RAM (super fast memory) instead of disk. Like keeping your tools in your hand instead of in the garage.</p>
+</blockquote>
+
+<h3 id="what-theyre-good-for-6">What They’re Good For</h3>
+
+<p>Extreme speed when you need microsecond response times.</p>
+
+<h3 id="when-to-use-5">When to Use</h3>
+
+<ul>
+  <li>✅ High-frequency trading (stocks)</li>
+  <li>✅ Real-time bidding (ads)</li>
+  <li>✅ Gaming leaderboards</li>
+  <li>✅ Fraud detection (real-time)</li>
+</ul>
+
+<h3 id="when-not-to-use-5">When NOT to Use</h3>
+
+<ul>
+  <li>❌ You have huge amounts of data (RAM is expensive)</li>
+  <li>❌ Speed isn’t critical</li>
+  <li>❌ You need data to persist long-term</li>
+</ul>
+
+<h3 id="popular-options-5">Popular Options</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database</th>
+      <th>Best For</th>
+      <th>Used By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Redis</strong></td>
+      <td>Caching, data structures</td>
+      <td>Twitter, GitHub</td>
+    </tr>
+    <tr>
+      <td><strong>Memcached</strong></td>
+      <td>Simple caching</td>
+      <td>Facebook, Wikipedia</td>
+    </tr>
+    <tr>
+      <td><strong>Apache Ignite</strong></td>
+      <td>Distributed computing</td>
+      <td>Banks, retail</td>
+    </tr>
+    <tr>
+      <td><strong>VoltDB</strong></td>
+      <td>High-speed transactions</td>
+      <td>Telecom, finance</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>💡 Most common:</strong> Redis (it’s both key-value AND in-memory).</p>
+
+<hr />
+
+<h2 id="quick-decision-tree">Quick Decision Tree</h2>
+
+<div class="mermaid">
+flowchart TD
+    START["🤔 Choose Your Database"]
+    
+    START --&gt; Q1{"Is your data<br />structured in tables?"}
+    
+    Q1 --&gt; |"Yes"| Q2{"Need to scale<br />to billions of records?"}
+    Q2 --&gt; |"No"| SQL["PostgreSQL<br />or MySQL"]
+    Q2 --&gt; |"Yes"| SCALE["Cassandra<br />or CockroachDB"]
+    
+    Q1 --&gt; |"No"| Q3{"What type of data?"}
+    
+    Q3 --&gt; |"Flexible documents"| MONGO["MongoDB"]
+    Q3 --&gt; |"Just key-value pairs"| REDIS["Redis"]
+    Q3 --&gt; |"Time-series"| INFLUX["InfluxDB"]
+    Q3 --&gt; |"Relationships/Network"| NEO4J["Neo4j"]
+    Q3 --&gt; |"Text/logs to search"| ELASTIC["Elasticsearch"]
+    Q3 --&gt; |"AI/embeddings"| VECTOR["Pinecone"]
+    
+    style START fill:#dbeafe,stroke:#2563eb
+    style SQL fill:#d1fae5,stroke:#059669
+    style MONGO fill:#fef3c7,stroke:#d97706
+    style ELASTIC fill:#fce7f3,stroke:#db2777
+</div>
+
+<hr />
+
+<h2 id="real-world-api-architectures">Real-World API Architectures</h2>
+
+<h3 id="scenario-1-e-commerce-api-10000-reqs">Scenario 1: E-Commerce API (10,000 req/s)</h3>
+
+<p><strong>API Endpoints:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET  /api/products          → List products
+GET  /api/products/:id      → Get product details
+POST /api/checkout          → Process order
+GET  /api/search?q=laptop   → Search products
+</code></pre></div></div>
+
+<p><strong>Database Stack:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PostgreSQL:     Store products, users, orders
+                - Response time: 10-20ms
+                - Connection pool: 100
+                
+Redis:          Cache product details, shopping carts
+                - Response time: 1ms
+                - Hit rate: 80%
+                
+Elasticsearch:  Product search API
+                - Response time: 50-100ms
+                - Handles complex queries
+
+Result: Average API response time: 5-15ms
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="scenario-2-social-media-api-100000-reqs">Scenario 2: Social Media API (100,000 req/s)</h3>
+
+<p><strong>API Endpoints:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET  /api/feed              → Get user feed
+POST /api/posts             → Create post
+GET  /api/users/:id         → Get profile
+GET  /api/notifications     → Get notifications
+</code></pre></div></div>
+
+<p><strong>Database Stack:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>MongoDB:        User profiles, posts (flexible schema)
+                - Write: 2-5ms
+                - Read: 2-10ms
+                - Sharded across 10 servers
+                
+Redis:          Real-time notifications, session cache
+                - Response time: &lt; 1ms
+                - Pub/sub for live updates
+                
+Cassandra:      Activity logs (high write volume)
+                - Write: 1-2ms
+                - Handles 500K writes/sec
+
+Result: API handles 100K+ requests/second
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="scenario-3-analytics-api-high-volume-reads">Scenario 3: Analytics API (High Volume Reads)</h3>
+
+<p><strong>API Endpoints:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET  /api/metrics?timeRange=7d    → Get metrics
+GET  /api/reports/:id             → Get report
+POST /api/events                  → Log event
+</code></pre></div></div>
+
+<p><strong>Database Stack:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ClickHouse:     Time-series analytics
+                - Query time: 100-500ms
+                - Billion rows in seconds
+                
+PostgreSQL:     Metadata, user accounts
+                - Response time: 5-15ms
+                
+Redis:          Cache aggregated results
+                - Response time: 1ms
+                - Cache for 5 minutes
+
+Result: Complex analytics served in &lt; 200ms
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="scenario-4-banking-api-acid-critical">Scenario 4: Banking API (ACID Critical)</h3>
+
+<p><strong>API Endpoints:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>POST /api/transfer          → Transfer money
+GET  /api/balance           → Get balance
+GET  /api/transactions      → Transaction history
+</code></pre></div></div>
+
+<p><strong>Database Stack:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PostgreSQL:     Primary database (ACID guarantee)
+                - All transactions in DB transactions
+                - Response time: 20-50ms
+                - Read replicas for scaling
+                
+Redis:          Session management only
+                - No financial data in cache!
+                
+TimescaleDB:    Transaction history analysis
+                - Fast time-series queries
+
+Result: 100% data integrity, 10K req/s
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="comparison-table">Comparison Table</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Database Type</th>
+      <th>Speed</th>
+      <th>Scalability</th>
+      <th>Complexity</th>
+      <th>Best Use Case</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>SQL (PostgreSQL)</strong></td>
+      <td>Medium</td>
+      <td>Medium</td>
+      <td>Low</td>
+      <td>Most applications</td>
+    </tr>
+    <tr>
+      <td><strong>Document (MongoDB)</strong></td>
+      <td>Fast</td>
+      <td>High</td>
+      <td>Medium</td>
+      <td>Flexible data</td>
+    </tr>
+    <tr>
+      <td><strong>Key-Value (Redis)</strong></td>
+      <td>Very Fast</td>
+      <td>High</td>
+      <td>Very Low</td>
+      <td>Caching</td>
+    </tr>
+    <tr>
+      <td><strong>Column (Cassandra)</strong></td>
+      <td>Fast</td>
+      <td>Very High</td>
+      <td>High</td>
+      <td>Massive scale</td>
+    </tr>
+    <tr>
+      <td><strong>Search (Elasticsearch)</strong></td>
+      <td>Fast</td>
+      <td>High</td>
+      <td>Medium</td>
+      <td>Search &amp; logs</td>
+    </tr>
+    <tr>
+      <td><strong>Graph (Neo4j)</strong></td>
+      <td>Medium</td>
+      <td>Medium</td>
+      <td>Medium</td>
+      <td>Relationships</td>
+    </tr>
+    <tr>
+      <td><strong>Time-Series (InfluxDB)</strong></td>
+      <td>Fast</td>
+      <td>High</td>
+      <td>Low</td>
+      <td>Sensor data</td>
+    </tr>
+    <tr>
+      <td><strong>Vector (Pinecone)</strong></td>
+      <td>Fast</td>
+      <td>High</td>
+      <td>Medium</td>
+      <td>AI features</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="common-mistakes-to-avoid">Common Mistakes to Avoid</h2>
+
+<h3 id="-mistake-1-using-mongodb-when-you-need-postgresql">❌ Mistake 1: Using MongoDB When You Need PostgreSQL</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: Using MongoDB for highly structured, relational data
+Good: Use PostgreSQL when data has clear relationships
+</code></pre></div></div>
+
+<p><strong>Why:</strong> MongoDB is great for flexibility, but if your data is structured, SQL databases are simpler and more powerful.</p>
+
+<h3 id="-mistake-2-using-postgresql-as-a-cache">❌ Mistake 2: Using PostgreSQL as a Cache</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: Caching frequently accessed data in PostgreSQL
+Good: Use Redis for caching, PostgreSQL for persistent data
+</code></pre></div></div>
+
+<p><strong>Why:</strong> Redis is 10-100x faster for caching.</p>
+
+<h3 id="-mistake-3-using-elasticsearch-as-primary-database">❌ Mistake 3: Using Elasticsearch as Primary Database</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: Storing all your data only in Elasticsearch
+Good: Store in PostgreSQL/MongoDB, sync to Elasticsearch for search
+</code></pre></div></div>
+
+<p><strong>Why:</strong> Elasticsearch is a search engine, not a database. Use it alongside your primary database.</p>
+
+<h3 id="-mistake-4-choosing-based-on-hype">❌ Mistake 4: Choosing Based on Hype</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: "Everyone uses MongoDB, let's use it!"
+Good: Analyze your actual needs and choose accordingly
+</code></pre></div></div>
+
+<p><strong>Why:</strong> Popular doesn’t mean right for your use case.</p>
+
+<hr />
+
+<h2 id="the-safe-default-api-stack">The Safe Default API Stack</h2>
+
+<p>If you’re just starting your API and unsure, this stack works for 90% of APIs:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Primary Database:   PostgreSQL
+                   - All your main data
+                   - Response time: 5-20ms
+                   - Handles 5,000-10,000 req/s
+
+Cache Layer:       Redis
+                   - Cache hot data (80% hit rate)
+                   - API sessions, rate limiting
+                   - Response time: &lt; 1ms
+
+Search (optional): Elasticsearch
+                   - Only if you need search endpoints
+                   - Response time: 50-100ms
+</code></pre></div></div>
+
+<p><strong>Why this works for APIs:</strong></p>
+<ul>
+  <li>✅ PostgreSQL handles complex queries, transactions, relationships</li>
+  <li>✅ Redis reduces database load by 80% and speeds up responses 20x</li>
+  <li>✅ Together they handle 10,000+ requests/second easily</li>
+  <li>✅ Can scale vertically (bigger servers) to 50,000 req/s</li>
+  <li>✅ Battle-tested by thousands of companies</li>
+</ul>
+
+<p><strong>Performance with this stack:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Without Redis:    50ms average response time
+With Redis:       5ms average response time (10x faster!)
+Database load:    Reduced by 80%
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="api-scaling-path-when-to-addswitch-databases">API Scaling Path: When to Add/Switch Databases</h2>
+
+<p><strong>Grow your database stack as your API scales:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Phase 1: Starting Out (0-100 req/s)
+└── PostgreSQL
+    Performance: 10-50ms response time
+    Complexity: Low
+    Cost: $20-50/month
+
+Phase 2: Getting Traction (100-5,000 req/s)
+├── PostgreSQL (add indexes, connection pooling)
+└── Redis (cache hot data)
+    Performance: 5-15ms response time
+    Complexity: Medium
+    Cost: $100-300/month
+
+Phase 3: Growing Fast (5,000-50,000 req/s)
+├── PostgreSQL (read replicas, bigger server)
+├── Redis (cache + session management)
+└── Elasticsearch (if you have search endpoints)
+    Performance: 2-10ms response time
+    Complexity: Medium-High
+    Cost: $500-2,000/month
+
+Phase 4: High Scale (50,000-500,000 req/s)
+├── PostgreSQL (for critical transactional data)
+├── MongoDB or Cassandra (for high-volume data)
+├── Redis (distributed cache)
+└── Elasticsearch (for search)
+    Performance: 1-5ms response time
+    Complexity: High
+    Cost: $5,000-20,000/month
+
+Phase 5: Massive Scale (500,000+ req/s)
+├── PostgreSQL / CockroachDB (critical data)
+├── Cassandra / ScyllaDB (high-volume writes)
+├── Redis Cluster (distributed caching)
+├── Elasticsearch Cluster (search)
+└── ClickHouse (analytics)
+    Performance: &lt; 1ms response time
+    Complexity: Very High
+    Cost: $50,000+/month
+</code></pre></div></div>
+
+<p><strong>Key principle for APIs:</strong> Only add complexity when your current setup can’t handle the load!</p>
+
+<hr />
+
+<h2 id="summary-database-selection-for-apis">Summary: Database Selection for APIs</h2>
+
+<blockquote>
+  <p><strong>Quick Takeaways for API Developers:</strong></p>
+
+  <ul>
+    <li><strong>Starting your API?</strong> → PostgreSQL + Redis (handles 10K req/s)</li>
+    <li><strong>Need search endpoints?</strong> → Add Elasticsearch</li>
+    <li><strong>Flexible data model?</strong> → Consider MongoDB</li>
+    <li><strong>Need 100K+ req/s?</strong> → Add Cassandra or MongoDB sharding</li>
+    <li><strong>Real-time features?</strong> → Redis pub/sub</li>
+    <li><strong>Analytics endpoints?</strong> → Consider ClickHouse or TimescaleDB</li>
+    <li><strong>AI-powered API?</strong> → Add pgvector or Pinecone</li>
+  </ul>
+</blockquote>
+
+<h3 id="the-golden-rule-for-apis">The Golden Rule for APIs</h3>
+
+<p><strong>Start with PostgreSQL + Redis. This combo handles 95% of APIs up to 10,000 requests/second. Only add more databases when you hit specific bottlenecks.</strong></p>
+
+<h3 id="api-performance-checklist">API Performance Checklist</h3>
+
+<p>Before adding another database, optimize what you have:</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Added database indexes on filtered/sorted columns</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Implemented Redis caching (80% hit rate = 5x faster)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Using connection pooling (100-200 connections)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Optimized slow queries (use EXPLAIN)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Added read replicas for read-heavy endpoints</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Implemented API rate limiting</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Using CDN for static data</li>
+</ul>
+
+<p><strong>Most slow APIs have poorly optimized databases, not the wrong database!</strong></p>
+
+<hr />
+
+<h2 id="continue-the-series">Continue the Series</h2>
+
+<p>This is <strong>Part 3</strong> of the “Scaling Your API” series:</p>
+
+<ul>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-1-to-1-million-rps/">Part 1: Performance &amp; Infrastructure →</a></strong> - Technical techniques to handle millions of requests</li>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-design-architecture-part-2/">Part 2: Design &amp; Architecture →</a></strong> - Organizational strategies and API design patterns for large-scale systems</li>
+  <li><strong>Part 3:</strong> Choosing the Right Database ← You are here</li>
+  <li><strong>Part 4:</strong> Load Balancing &amp; High Availability (coming soon)</li>
+  <li><strong>Part 5:</strong> Monitoring &amp; Performance (coming soon)</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><strong><a href="https://www.postgresql.org/docs/">PostgreSQL Official Docs</a></strong> — Learn the most versatile database</li>
+  <li><strong><a href="https://university.mongodb.com/">MongoDB University</a></strong> — Free courses on document databases</li>
+  <li><strong><a href="https://redis.io/documentation">Redis Documentation</a></strong> — Master caching and real-time data</li>
+  <li><strong><a href="https://www.elastic.co/guide/">Elasticsearch Guide</a></strong> — Learn search and analytics</li>
+  <li><strong><a href="https://db-engines.com/en/ranking">Database Rankings</a></strong> — See popularity trends</li>
+</ul>
+
+<hr />
+
+<p><strong>Remember:</strong> The best database for your API is the one that meets your performance requirements simply. Premature optimization is the root of all evil — but so is choosing the wrong database!</p>
