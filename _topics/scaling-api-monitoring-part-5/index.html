@@ -1,0 +1,1066 @@
+<blockquote>
+  <p><strong>📚 This is Part 5 of the “Scaling Your API” Series</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-1-to-1-million-rps/">Part 1: Performance &amp; Infrastructure ←</a></strong> - Technical techniques to handle millions of requests</li>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-design-architecture-part-2/">Part 2: Design &amp; Architecture ←</a></strong> - Organizational strategies and API design patterns</li>
+    <li><strong><a href="/handbook/handbook/_topics/choosing-the-right-database/">Part 3: Choosing the Right Database ←</a></strong> - Database selection for your API</li>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-load-balancing-part-4/">Part 4: Load Balancing &amp; High Availability ←</a></strong> - Keeping your API always available</li>
+    <li><strong>Part 5 (this page):</strong> Monitoring &amp; Performance - Tracking and improving API performance</li>
+  </ul>
+</blockquote>
+
+<h2 id="why-monitor-your-api">Why Monitor Your API?</h2>
+
+<blockquote>
+  <p><strong>Think of it like this:</strong> Monitoring your API is like having a dashboard in your car. You need to know your speed, fuel level, and engine temperature — before problems happen!</p>
+</blockquote>
+
+<h3 id="without-monitoring-">Without Monitoring ❌</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>User: "Your API is down!"
+You: "What? Since when?"
+User: "For the last 2 hours!"
+You: *panic* 😱
+
+Problem: You didn't know there was an issue until users complained
+</code></pre></div></div>
+
+<h3 id="with-monitoring-">With Monitoring ✅</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>11:00 AM - Monitor detects high error rate
+11:01 AM - Alert sent to your phone 📱
+11:02 AM - You start investigating
+11:05 AM - Problem fixed
+
+Problem: Caught and fixed in 5 minutes, most users didn't even notice!
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="the-4-golden-signals-what-to-monitor">The 4 Golden Signals (What to Monitor)</h2>
+
+<blockquote>
+  <p><strong>These 4 metrics tell you everything about your API’s health:</strong></p>
+</blockquote>
+
+<div class="mermaid">
+flowchart TD
+    MONITOR["📊 Monitor Your API"]
+    
+    LATENCY["⏱️ Latency<br />(How fast?)"]
+    TRAFFIC["📈 Traffic<br />(How busy?)"]
+    ERRORS["❌ Errors<br />(What's broken?)"]
+    SATURATION["🔥 Saturation<br />(How full?)"]
+    
+    MONITOR --&gt; LATENCY
+    MONITOR --&gt; TRAFFIC
+    MONITOR --&gt; ERRORS
+    MONITOR --&gt; SATURATION
+    
+    style MONITOR fill:#dbeafe,stroke:#2563eb
+    style LATENCY fill:#d1fae5,stroke:#059669
+    style TRAFFIC fill:#fef3c7,stroke:#d97706
+    style ERRORS fill:#fee,stroke:#f00
+    style SATURATION fill:#fce7f3,stroke:#db2777
+</div>
+
+<hr />
+
+<h3 id="1-latency-how-fast-is-your-api">1. Latency (How Fast Is Your API?)</h3>
+
+<blockquote>
+  <p><strong>Latency = How long it takes to respond to a request</strong></p>
+</blockquote>
+
+<p><strong>Good API:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>User makes request at 10:00:00.000
+API responds at     10:00:00.050  (50ms later)
+
+Latency: 50ms ✅ (Very fast!)
+</code></pre></div></div>
+
+<p><strong>Slow API:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>User makes request at 10:00:00.000
+API responds at     10:00:02.500  (2.5 seconds later)
+
+Latency: 2,500ms ❌ (Too slow!)
+</code></pre></div></div>
+
+<p><strong>What to Aim For:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Excellent:   &lt; 100ms
+Good:        100-300ms
+Acceptable:  300-1000ms
+Slow:        &gt; 1000ms (need to optimize!)
+</code></pre></div></div>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Measure latency in your API</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/users/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">startTime</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">();</span>
+  
+  <span class="kd">const</span> <span class="nx">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">database</span><span class="p">.</span><span class="nf">getUser</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+  
+  <span class="kd">const</span> <span class="nx">latency</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">()</span> <span class="o">-</span> <span class="nx">startTime</span><span class="p">;</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="s2">`Request took </span><span class="p">${</span><span class="nx">latency</span><span class="p">}</span><span class="s2">ms`</span><span class="p">);</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">user</span><span class="p">);</span>
+<span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="c1">// Request took 45ms ✅</span>
+<span class="c1">// Request took 52ms ✅</span>
+<span class="c1">// Request took 1200ms ❌ (Something is wrong!)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="2-traffic-how-busy-is-your-api">2. Traffic (How Busy Is Your API?)</h3>
+
+<blockquote>
+  <p><strong>Traffic = Number of requests your API receives</strong></p>
+</blockquote>
+
+<p><strong>Why it matters:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal day:     1,000 requests/second
+Black Friday:   10,000 requests/second
+
+If you don't monitor traffic, you won't know when to add more servers!
+</code></pre></div></div>
+
+<p><strong>Example Traffic Patterns:</strong></p>
+
+<div class="mermaid">
+graph LR
+    A[Morning: 1000 req/s] --&gt; B[Noon: 5000 req/s]
+    B --&gt; C[Evening: 3000 req/s]
+    C --&gt; D[Night: 500 req/s]
+    
+    style A fill:#d1fae5
+    style B fill:#fef3c7
+    style C fill:#fef3c7
+    style D fill:#d1fae5
+</div>
+
+<p><strong>What to Track:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>- Requests per second (RPS)
+- Requests per minute (RPM)
+- Most popular endpoints
+- Peak traffic times
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="3-errors-whats-breaking">3. Errors (What’s Breaking?)</h3>
+
+<blockquote>
+  <p><strong>Errors = Requests that fail</strong></p>
+</blockquote>
+
+<p><strong>Types of Errors:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>200 OK           ✅ Success! Everything worked
+400 Bad Request  ⚠️  User sent invalid data
+401 Unauthorized ⚠️  User not logged in
+404 Not Found    ⚠️  Endpoint doesn't exist
+500 Server Error ❌ YOUR API IS BROKEN!
+503 Unavailable  ❌ Server overloaded!
+</code></pre></div></div>
+
+<p><strong>Error Rate Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Total Requests: 1,000
+Errors: 10
+Error Rate: 1% (acceptable)
+
+Total Requests: 1,000
+Errors: 500
+Error Rate: 50% (CRITICAL PROBLEM! 🚨)
+</code></pre></div></div>
+
+<p><strong>What Good Looks Like:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Target Error Rate: &lt; 0.1% (1 error per 1,000 requests)
+Acceptable: &lt; 1%
+Problem: &gt; 5%
+Critical: &gt; 10%
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="4-saturation-how-full-is-your-system">4. Saturation (How Full Is Your System?)</h3>
+
+<blockquote>
+  <p><strong>Saturation = How close to maximum capacity</strong></p>
+</blockquote>
+
+<p><strong>Think of it like a highway:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10 cars on highway   = 10% saturation  ✅ (Fast and smooth)
+50 cars on highway   = 50% saturation  ✅ (Still good)
+80 cars on highway   = 80% saturation  ⚠️  (Slowing down)
+100 cars on highway  = 100% saturation ❌ (Traffic jam!)
+</code></pre></div></div>
+
+<p><strong>What to Monitor:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>CPU Usage:
+- 30% = Healthy ✅
+- 70% = Getting busy ⚠️
+- 90% = Near limit! ❌
+- 100% = SLOW! Need more servers!
+
+Memory Usage:
+- 40% = Good ✅
+- 80% = Watch carefully ⚠️
+- 95% = Critical! ❌
+
+Database Connections:
+- 20/100 = Plenty available ✅
+- 90/100 = Running out! ⚠️
+- 100/100 = Requests failing! ❌
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="simple-monitoring-setup-step-by-step">Simple Monitoring Setup (Step-by-Step)</h2>
+
+<h3 id="option-1-basic-logging-free-10-minutes">Option 1: Basic Logging (Free, 10 Minutes)</h3>
+
+<p><strong>Step 1: Add logging to your API</strong></p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Log every request</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">use</span><span class="p">((</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">startTime</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">();</span>
+  
+  <span class="c1">// When response finishes</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">on</span><span class="p">(</span><span class="dl">'</span><span class="s1">finish</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">duration</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">()</span> <span class="o">-</span> <span class="nx">startTime</span><span class="p">;</span>
+    
+    <span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">({</span>
+      <span class="na">method</span><span class="p">:</span> <span class="nx">req</span><span class="p">.</span><span class="nx">method</span><span class="p">,</span>
+      <span class="na">path</span><span class="p">:</span> <span class="nx">req</span><span class="p">.</span><span class="nx">path</span><span class="p">,</span>
+      <span class="na">status</span><span class="p">:</span> <span class="nx">res</span><span class="p">.</span><span class="nx">statusCode</span><span class="p">,</span>
+      <span class="na">duration</span><span class="p">:</span> <span class="s2">`</span><span class="p">${</span><span class="nx">duration</span><span class="p">}</span><span class="s2">ms`</span><span class="p">,</span>
+      <span class="na">timestamp</span><span class="p">:</span> <span class="k">new</span> <span class="nc">Date</span><span class="p">().</span><span class="nf">toISOString</span><span class="p">()</span>
+    <span class="p">});</span>
+  <span class="p">});</span>
+  
+  <span class="nf">next</span><span class="p">();</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Step 2: Check your logs</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># View recent logs</span>
+<span class="nb">tail</span> <span class="nt">-f</span> /var/log/myapi.log
+
+<span class="c"># Output:</span>
+<span class="o">{</span> method: <span class="s1">'GET'</span>, path: <span class="s1">'/api/users/123'</span>, status: 200, duration: <span class="s1">'45ms'</span>, timestamp: <span class="s1">'2024-01-01T10:00:00Z'</span> <span class="o">}</span>
+<span class="o">{</span> method: <span class="s1">'POST'</span>, path: <span class="s1">'/api/orders'</span>, status: 201, duration: <span class="s1">'120ms'</span>, timestamp: <span class="s1">'2024-01-01T10:00:01Z'</span> <span class="o">}</span>
+<span class="o">{</span> method: <span class="s1">'GET'</span>, path: <span class="s1">'/api/users/456'</span>, status: 500, duration: <span class="s1">'5000ms'</span>, timestamp: <span class="s1">'2024-01-01T10:00:02Z'</span> <span class="o">}</span>
+                                            ↑ ERROR! Took 5 seconds!
+</code></pre></div></div>
+
+<p><strong>You now know:</strong></p>
+<ul>
+  <li>✅ Which requests are slow</li>
+  <li>✅ Which requests are failing</li>
+  <li>✅ When problems happen</li>
+</ul>
+
+<hr />
+
+<h3 id="option-2-simple-dashboard-free-30-minutes">Option 2: Simple Dashboard (Free, 30 Minutes)</h3>
+
+<p><strong>Tools:</strong> Express + Simple Stats Endpoint</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Track stats in memory</span>
+<span class="kd">let</span> <span class="nx">stats</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="na">totalRequests</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="na">successfulRequests</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="na">failedRequests</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="na">totalDuration</span><span class="p">:</span> <span class="mi">0</span>
+<span class="p">};</span>
+
+<span class="c1">// Update stats for each request</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">use</span><span class="p">((</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">startTime</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">();</span>
+  
+  <span class="nx">stats</span><span class="p">.</span><span class="nx">totalRequests</span><span class="o">++</span><span class="p">;</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">on</span><span class="p">(</span><span class="dl">'</span><span class="s1">finish</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">duration</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">()</span> <span class="o">-</span> <span class="nx">startTime</span><span class="p">;</span>
+    <span class="nx">stats</span><span class="p">.</span><span class="nx">totalDuration</span> <span class="o">+=</span> <span class="nx">duration</span><span class="p">;</span>
+    
+    <span class="k">if </span><span class="p">(</span><span class="nx">res</span><span class="p">.</span><span class="nx">statusCode</span> <span class="o">&lt;</span> <span class="mi">400</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">stats</span><span class="p">.</span><span class="nx">successfulRequests</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">stats</span><span class="p">.</span><span class="nx">failedRequests</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">});</span>
+  
+  <span class="nf">next</span><span class="p">();</span>
+<span class="p">});</span>
+
+<span class="c1">// Dashboard endpoint</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/admin/stats</span><span class="dl">'</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">avgDuration</span> <span class="o">=</span> <span class="nx">stats</span><span class="p">.</span><span class="nx">totalDuration</span> <span class="o">/</span> <span class="nx">stats</span><span class="p">.</span><span class="nx">totalRequests</span><span class="p">;</span>
+  <span class="kd">const</span> <span class="nx">errorRate</span> <span class="o">=</span> <span class="p">(</span><span class="nx">stats</span><span class="p">.</span><span class="nx">failedRequests</span> <span class="o">/</span> <span class="nx">stats</span><span class="p">.</span><span class="nx">totalRequests</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="p">;</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">({</span>
+    <span class="na">totalRequests</span><span class="p">:</span> <span class="nx">stats</span><span class="p">.</span><span class="nx">totalRequests</span><span class="p">,</span>
+    <span class="na">successRate</span><span class="p">:</span> <span class="s2">`</span><span class="p">${(</span><span class="nx">stats</span><span class="p">.</span><span class="nx">successfulRequests</span> <span class="o">/</span> <span class="nx">stats</span><span class="p">.</span><span class="nx">totalRequests</span> <span class="o">*</span> <span class="mi">100</span><span class="p">).</span><span class="nf">toFixed</span><span class="p">(</span><span class="mi">2</span><span class="p">)}</span><span class="s2">%`</span><span class="p">,</span>
+    <span class="na">errorRate</span><span class="p">:</span> <span class="s2">`</span><span class="p">${</span><span class="nx">errorRate</span><span class="p">.</span><span class="nf">toFixed</span><span class="p">(</span><span class="mi">2</span><span class="p">)}</span><span class="s2">%`</span><span class="p">,</span>
+    <span class="na">avgResponseTime</span><span class="p">:</span> <span class="s2">`</span><span class="p">${</span><span class="nx">avgDuration</span><span class="p">.</span><span class="nf">toFixed</span><span class="p">(</span><span class="mi">0</span><span class="p">)}</span><span class="s2">ms`</span>
+  <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Visit http://yourapi.com/admin/stats:</strong></p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"totalRequests"</span><span class="p">:</span><span class="w"> </span><span class="mi">15234</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"successRate"</span><span class="p">:</span><span class="w"> </span><span class="s2">"99.2%"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"errorRate"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0.8%"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"avgResponseTime"</span><span class="p">:</span><span class="w"> </span><span class="s2">"67ms"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Now you can check your API health anytime! ✅</strong></p>
+
+<hr />
+
+<h3 id="option-3-professional-monitoring-paid-1-hour-setup">Option 3: Professional Monitoring (Paid, 1 Hour Setup)</h3>
+
+<h4 id="best-tools-for-beginners">Best Tools for Beginners:</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Tool</th>
+      <th>Cost</th>
+      <th>Best For</th>
+      <th>Setup Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Datadog</strong></td>
+      <td>$15/month</td>
+      <td>Beautiful dashboards</td>
+      <td>30 min ⭐</td>
+    </tr>
+    <tr>
+      <td><strong>New Relic</strong></td>
+      <td>Free tier available</td>
+      <td>Easy to use</td>
+      <td>30 min ⭐</td>
+    </tr>
+    <tr>
+      <td><strong>Grafana Cloud</strong></td>
+      <td>Free tier</td>
+      <td>Open source</td>
+      <td>1 hour ⭐⭐</td>
+    </tr>
+    <tr>
+      <td><strong>AWS CloudWatch</strong></td>
+      <td>~$10/month</td>
+      <td>AWS users</td>
+      <td>20 min ⭐</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h4 id="example-setting-up-datadog-simple">Example: Setting Up Datadog (Simple!)</h4>
+
+<p><strong>Step 1: Sign up at datadog.com</strong></p>
+
+<p><strong>Step 2: Install agent on your server</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># One command!</span>
+<span class="nv">DD_API_KEY</span><span class="o">=</span>your-key bash <span class="nt">-c</span> <span class="s2">"</span><span class="si">$(</span>curl <span class="nt">-L</span> https://s3.amazonaws.com/dd-agent/scripts/install_script.sh<span class="si">)</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p><strong>Step 3: Install library in your app</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>npm <span class="nb">install </span>dd-trace
+</code></pre></div></div>
+
+<p><strong>Step 4: Add to your code</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// At the very top of your main file</span>
+<span class="nf">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">dd-trace</span><span class="dl">'</span><span class="p">).</span><span class="nf">init</span><span class="p">();</span>
+
+<span class="c1">// That's it! 🎉</span>
+</code></pre></div></div>
+
+<p><strong>Step 5: Check Datadog dashboard</strong></p>
+
+<p>You now see:</p>
+<ul>
+  <li>📊 Request rate graph</li>
+  <li>⏱️ Average response time</li>
+  <li>❌ Error rate</li>
+  <li>🖥️ CPU &amp; memory usage</li>
+  <li>📈 Everything automatically!</li>
+</ul>
+
+<hr />
+
+<h2 id="setting-up-alerts-get-notified-when-things-break">Setting Up Alerts (Get Notified When Things Break)</h2>
+
+<blockquote>
+  <p><strong>Alerts = Automatic notifications when something is wrong</strong></p>
+</blockquote>
+
+<h3 id="alert-example-high-error-rate">Alert Example: High Error Rate</h3>
+
+<p><strong>What you want:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>If error rate &gt; 5% for more than 5 minutes
+→ Send me a text message! 📱
+</code></pre></div></div>
+
+<p><strong>How to set up (Example with Datadog):</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Go to Monitors → New Monitor
+2. Choose "Metric Monitor"
+3. Set condition:
+   - Metric: error_rate
+   - Alert when: above 5%
+   - For: 5 minutes
+4. Set notification:
+   - Send to: your-phone@sms.com
+   - Message: "API errors are high! Check immediately"
+5. Save!
+</code></pre></div></div>
+
+<p><strong>Now you get alerted the moment things break ✅</strong></p>
+
+<hr />
+
+<h3 id="smart-alerts-what-to-alert-on">Smart Alerts (What to Alert On)</h3>
+
+<h4 id="-do-alert-on-these-important">✅ DO Alert On These (Important!):</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Error Rate &gt; 5%
+   → Something is broken!
+
+2. Response Time &gt; 1 second
+   → API is too slow!
+
+3. Traffic drops to 0
+   → API might be down!
+
+4. CPU &gt; 90% for 10 minutes
+   → Need more servers!
+
+5. Database connections &gt; 95%
+   → About to run out!
+</code></pre></div></div>
+
+<h4 id="-dont-alert-on-these-too-noisy">❌ DON’T Alert On These (Too Noisy):</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Single error (happens all the time)
+2. Response time spike for 1 second (temporary)
+3. CPU &gt; 50% (still plenty of capacity)
+4. One slow request (users make mistakes)
+</code></pre></div></div>
+
+<p><strong>Golden Rule:</strong> Only alert on things that need immediate action!</p>
+
+<hr />
+
+<h2 id="performance-optimization-making-your-api-faster">Performance Optimization (Making Your API Faster)</h2>
+
+<h3 id="step-1-find-the-slow-parts">Step 1: Find the Slow Parts</h3>
+
+<p><strong>Add timing to your code:</strong></p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/orders/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nf">time</span><span class="p">(</span><span class="dl">'</span><span class="s1">Total Request</span><span class="dl">'</span><span class="p">);</span>
+  
+  <span class="nx">console</span><span class="p">.</span><span class="nf">time</span><span class="p">(</span><span class="dl">'</span><span class="s1">Database Query</span><span class="dl">'</span><span class="p">);</span>
+  <span class="kd">const</span> <span class="nx">order</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM orders WHERE id = $1</span><span class="dl">'</span><span class="p">,</span> <span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">]);</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nf">timeEnd</span><span class="p">(</span><span class="dl">'</span><span class="s1">Database Query</span><span class="dl">'</span><span class="p">);</span>  <span class="c1">// Output: Database Query: 150ms</span>
+  
+  <span class="nx">console</span><span class="p">.</span><span class="nf">time</span><span class="p">(</span><span class="dl">'</span><span class="s1">User Lookup</span><span class="dl">'</span><span class="p">);</span>
+  <span class="kd">const</span> <span class="nx">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM users WHERE id = $1</span><span class="dl">'</span><span class="p">,</span> <span class="p">[</span><span class="nx">order</span><span class="p">.</span><span class="nx">userId</span><span class="p">]);</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nf">timeEnd</span><span class="p">(</span><span class="dl">'</span><span class="s1">User Lookup</span><span class="dl">'</span><span class="p">);</span>  <span class="c1">// Output: User Lookup: 120ms</span>
+  
+  <span class="nx">console</span><span class="p">.</span><span class="nf">time</span><span class="p">(</span><span class="dl">'</span><span class="s1">Product Details</span><span class="dl">'</span><span class="p">);</span>
+  <span class="kd">const</span> <span class="nx">products</span> <span class="o">=</span> <span class="k">await</span> <span class="nf">getProductDetails</span><span class="p">(</span><span class="nx">order</span><span class="p">.</span><span class="nx">items</span><span class="p">);</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nf">timeEnd</span><span class="p">(</span><span class="dl">'</span><span class="s1">Product Details</span><span class="dl">'</span><span class="p">);</span>  <span class="c1">// Output: Product Details: 800ms ← SLOW!</span>
+  
+  <span class="nx">console</span><span class="p">.</span><span class="nf">timeEnd</span><span class="p">(</span><span class="dl">'</span><span class="s1">Total Request</span><span class="dl">'</span><span class="p">);</span>  <span class="c1">// Output: Total Request: 1070ms</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">({</span> <span class="nx">order</span><span class="p">,</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">products</span> <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Now you know:</strong> Getting product details is the slow part!</p>
+
+<hr />
+
+<h3 id="step-2-add-caching-make-it-10x-faster">Step 2: Add Caching (Make It 10x Faster)</h3>
+
+<p><strong>Before (Slow):</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Every request hits database (slow!)</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/products/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">product</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM products WHERE id = $1</span><span class="dl">'</span><span class="p">,</span> <span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">]);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">product</span><span class="p">);</span>
+  <span class="c1">// Response time: 150ms</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>After (Fast):</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">redis</span> <span class="o">=</span> <span class="nf">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">redis</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">client</span> <span class="o">=</span> <span class="nx">redis</span><span class="p">.</span><span class="nf">createClient</span><span class="p">();</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/products/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">cacheKey</span> <span class="o">=</span> <span class="s2">`product:</span><span class="p">${</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">}</span><span class="s2">`</span><span class="p">;</span>
+  
+  <span class="c1">// Try cache first</span>
+  <span class="kd">const</span> <span class="nx">cached</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">client</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="nx">cacheKey</span><span class="p">);</span>
+  <span class="k">if </span><span class="p">(</span><span class="nx">cached</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="nx">cached</span><span class="p">));</span>  <span class="c1">// Response time: 2ms ⚡</span>
+  <span class="p">}</span>
+  
+  <span class="c1">// Cache miss: get from database</span>
+  <span class="kd">const</span> <span class="nx">product</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM products WHERE id = $1</span><span class="dl">'</span><span class="p">,</span> <span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">]);</span>
+  
+  <span class="c1">// Store in cache for 5 minutes</span>
+  <span class="k">await</span> <span class="nx">client</span><span class="p">.</span><span class="nf">setex</span><span class="p">(</span><span class="nx">cacheKey</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="nx">JSON</span><span class="p">.</span><span class="nf">stringify</span><span class="p">(</span><span class="nx">product</span><span class="p">));</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">product</span><span class="p">);</span>  <span class="c1">// Response time: 150ms first time, then 2ms</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Result: 75x faster! (150ms → 2ms)</strong></p>
+
+<hr />
+
+<h3 id="step-3-database-indexes-speed-up-queries">Step 3: Database Indexes (Speed Up Queries)</h3>
+
+<p><strong>Problem: Slow Query</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Without index: Scans ALL 1 million users (SLOW!)</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">users</span> <span class="k">WHERE</span> <span class="n">email</span> <span class="o">=</span> <span class="s1">'john@example.com'</span><span class="p">;</span>
+<span class="c1">-- Query time: 2000ms ❌</span>
+</code></pre></div></div>
+
+<p><strong>Solution: Add Index</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Create index on email column</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">idx_users_email</span> <span class="k">ON</span> <span class="n">users</span><span class="p">(</span><span class="n">email</span><span class="p">);</span>
+
+<span class="c1">-- Same query now:</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">users</span> <span class="k">WHERE</span> <span class="n">email</span> <span class="o">=</span> <span class="s1">'john@example.com'</span><span class="p">;</span>
+<span class="c1">-- Query time: 5ms ✅ (400x faster!)</span>
+</code></pre></div></div>
+
+<p><strong>When to Add Indexes:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Add index if you query by that column frequently:
+- User IDs ✅ (query all the time)
+- Email addresses ✅ (login queries)
+- Product SKUs ✅ (product lookups)
+- Order dates ✅ (date range queries)
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="step-4-reduce-data-transfer">Step 4: Reduce Data Transfer</h3>
+
+<p><strong>Bad: Sending Too Much Data</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Returns EVERYTHING (including huge description)</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/products</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">products</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM products</span><span class="dl">'</span><span class="p">);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">products</span><span class="p">);</span>  
+  <span class="c1">// Response: 5 MB of data</span>
+  <span class="c1">// Time: 500ms ❌</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Good: Send Only What’s Needed</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Returns only ID, name, price (what user sees in list)</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/products</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">products</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT id, name, price FROM products</span><span class="dl">'</span><span class="p">);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">products</span><span class="p">);</span>  
+  <span class="c1">// Response: 100 KB of data</span>
+  <span class="c1">// Time: 50ms ✅ (10x faster!)</span>
+<span class="p">});</span>
+
+<span class="c1">// Full details only when user clicks product</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/products/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">product</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM products WHERE id = $1</span><span class="dl">'</span><span class="p">,</span> <span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">]);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">product</span><span class="p">);</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="step-5-parallel-requests-do-multiple-things-at-once">Step 5: Parallel Requests (Do Multiple Things at Once)</h3>
+
+<p><strong>Bad: Sequential (Slow)</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Do one thing at a time (SLOW!)</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/dashboard</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nf">getUser</span><span class="p">();</span>         <span class="c1">// 100ms</span>
+  <span class="kd">const</span> <span class="nx">orders</span> <span class="o">=</span> <span class="k">await</span> <span class="nf">getOrders</span><span class="p">();</span>     <span class="c1">// 150ms</span>
+  <span class="kd">const</span> <span class="nx">products</span> <span class="o">=</span> <span class="k">await</span> <span class="nf">getProducts</span><span class="p">();</span> <span class="c1">// 200ms</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">({</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">orders</span><span class="p">,</span> <span class="nx">products</span> <span class="p">});</span>
+  <span class="c1">// Total time: 450ms ❌</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Good: Parallel (Fast)</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Do everything at the same time!</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/dashboard</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="p">[</span><span class="nx">user</span><span class="p">,</span> <span class="nx">orders</span><span class="p">,</span> <span class="nx">products</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">Promise</span><span class="p">.</span><span class="nf">all</span><span class="p">([</span>
+    <span class="nf">getUser</span><span class="p">(),</span>         <span class="c1">// ← All 3 run simultaneously</span>
+    <span class="nf">getOrders</span><span class="p">(),</span>       <span class="c1">// ←</span>
+    <span class="nf">getProducts</span><span class="p">()</span>      <span class="c1">// ←</span>
+  <span class="p">]);</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">({</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">orders</span><span class="p">,</span> <span class="nx">products</span> <span class="p">});</span>
+  <span class="c1">// Total time: 200ms ✅ (2x faster!)</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="performance-monitoring-dashboard-what-to-display">Performance Monitoring Dashboard (What to Display)</h2>
+
+<h3 id="simple-dashboard-example">Simple Dashboard Example:</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────┐
+│  API Performance Dashboard              │
+├─────────────────────────────────────────┤
+│                                         │
+│  🚀 Requests/Second: 1,234             │
+│  ⏱️  Avg Response Time: 67ms           │
+│  ✅ Success Rate: 99.8%                 │
+│  ❌ Error Rate: 0.2%                    │
+│                                         │
+│  📊 Slowest Endpoints:                  │
+│    1. POST /api/upload     - 2.3s      │
+│    2. GET /api/reports     - 890ms     │
+│    3. GET /api/analytics   - 450ms     │
+│                                         │
+│  🔥 Resource Usage:                     │
+│    CPU: ████████░░ 45%                 │
+│    Memory: ██████░░░░ 60%              │
+│    Database: ███░░░░░░░ 30%            │
+│                                         │
+└─────────────────────────────────────────┘
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="real-world-monitoring-examples">Real-World Monitoring Examples</h2>
+
+<h3 id="example-1-e-commerce-api">Example 1: E-Commerce API</h3>
+
+<p><strong>What to Monitor:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Checkout endpoint response time
+   → Alert if &gt; 500ms (users abandon slow checkouts!)
+
+2. Product search response time
+   → Alert if &gt; 200ms (users expect instant search)
+
+3. Payment gateway errors
+   → Alert immediately on ANY error (lost revenue!)
+
+4. Shopping cart endpoint traffic
+   → Spike means potential sales increase
+
+5. Database connection pool
+   → Alert if &gt; 80% (about to run out)
+</code></pre></div></div>
+
+<p><strong>Dashboard:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Top Priority Metrics:
+- Checkout success rate: 98.5% ✅
+- Average cart value: $67.32
+- Payment failures: 1.2% ⚠️ (investigate!)
+- Page load time: 1.2s
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="example-2-social-media-api">Example 2: Social Media API</h3>
+
+<p><strong>What to Monitor:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Feed load time
+   → Alert if &gt; 300ms (users scroll fast!)
+
+2. Image upload success rate
+   → Alert if &lt; 95% (broken uploads frustrate users)
+
+3. Real-time notification latency
+   → Should be &lt; 1 second
+
+4. API calls per user
+   → Detect unusual patterns (possible abuse)
+
+5. Peak traffic times
+   → Know when to scale up
+</code></pre></div></div>
+
+<p><strong>Dashboard:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Real-Time Metrics:
+- Active users: 45,234
+- Posts per second: 127
+- Image uploads/min: 890
+- Failed uploads: 12 (1.3%) ✅
+- Average feed load: 245ms ✅
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="example-3-banking-api">Example 3: Banking API</h3>
+
+<p><strong>What to Monitor:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Transaction endpoint errors
+   → Alert on ANY error (money is involved!)
+
+2. Authentication failures
+   → Spike might indicate attack
+
+3. Account balance query time
+   → Must be &lt; 100ms (users check often)
+
+4. Database replication lag
+   → Alert if &gt; 1 second (stale data)
+
+5. Security events
+   → Failed logins, suspicious patterns
+</code></pre></div></div>
+
+<p><strong>Dashboard:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Critical Metrics:
+- Transactions processed: 15,234
+- Transaction errors: 0 ✅ (must be zero!)
+- Avg transaction time: 45ms ✅
+- Failed auth attempts: 23 ⚠️ (monitor for attacks)
+- Uptime today: 100% ✅
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="common-performance-problems--solutions">Common Performance Problems &amp; Solutions</h2>
+
+<h3 id="problem-1-slow-database-queries">Problem 1: Slow Database Queries</h3>
+
+<p><strong>Symptom:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>API response time: 2000ms (way too slow!)
+</code></pre></div></div>
+
+<p><strong>Diagnosis:</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Add query timing</span>
+<span class="kd">const</span> <span class="nx">start</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">();</span>
+<span class="kd">const</span> <span class="nx">users</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="dl">'</span><span class="s1">SELECT * FROM users WHERE status = "active"</span><span class="dl">'</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="s2">`Query took </span><span class="p">${</span><span class="nb">Date</span><span class="p">.</span><span class="nf">now</span><span class="p">()</span> <span class="o">-</span> <span class="nx">start</span><span class="p">}</span><span class="s2">ms`</span><span class="p">);</span>
+<span class="c1">// Output: Query took 1800ms ← PROBLEM FOUND!</span>
+</code></pre></div></div>
+
+<p><strong>Solution:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Add index</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">idx_users_status</span> <span class="k">ON</span> <span class="n">users</span><span class="p">(</span><span class="n">status</span><span class="p">);</span>
+
+<span class="c1">-- Now query takes 50ms instead of 1800ms ✅</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="problem-2-memory-leak">Problem 2: Memory Leak</h3>
+
+<p><strong>Symptom:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Memory usage slowly increases over time
+Hour 1: 200 MB
+Hour 2: 400 MB
+Hour 3: 600 MB
+Hour 4: 800 MB
+Hour 5: SERVER CRASH! ❌
+</code></pre></div></div>
+
+<p><strong>Diagnosis:</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Bad: Storing data in global variable (never gets cleaned up!)</span>
+<span class="kd">const</span> <span class="nx">cache</span> <span class="o">=</span> <span class="p">{};</span>  <span class="c1">// ← Memory leak!</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/users/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">cache</span><span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="nf">getUser</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">cache</span><span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">]);</span>
+<span class="p">});</span>
+<span class="c1">// Cache grows forever, using more and more memory</span>
+</code></pre></div></div>
+
+<p><strong>Solution:</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Good: Use Redis with expiration</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/users/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">cached</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">redis</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="s2">`user:</span><span class="p">${</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+  <span class="k">if </span><span class="p">(</span><span class="nx">cached</span><span class="p">)</span> <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="nx">cached</span><span class="p">));</span>
+  
+  <span class="kd">const</span> <span class="nx">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nf">getUser</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+  <span class="k">await</span> <span class="nx">redis</span><span class="p">.</span><span class="nf">setex</span><span class="p">(</span><span class="s2">`user:</span><span class="p">${</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">id</span><span class="p">}</span><span class="s2">`</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="nx">JSON</span><span class="p">.</span><span class="nf">stringify</span><span class="p">(</span><span class="nx">user</span><span class="p">));</span>  <span class="c1">// Auto-expires in 5 min</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">user</span><span class="p">);</span>
+<span class="p">});</span>
+<span class="c1">// Memory stays constant ✅</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="problem-3-too-many-database-connections">Problem 3: Too Many Database Connections</h3>
+
+<p><strong>Symptom:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Error: "Too many connections to database"
+Some requests fail randomly
+</code></pre></div></div>
+
+<p><strong>Diagnosis:</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Bad: Creating new connection for each request</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/users/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">db</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Database</span><span class="p">();</span>  <span class="c1">// ← New connection every time!</span>
+  <span class="kd">const</span> <span class="nx">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nf">query</span><span class="p">(...);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">user</span><span class="p">);</span>
+  <span class="c1">// Connection not closed!</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Solution:</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Good: Use connection pool (reuse connections)</span>
+<span class="kd">const</span> <span class="nx">pool</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Pool</span><span class="p">({</span>
+  <span class="na">max</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>  <span class="c1">// Maximum 20 connections</span>
+  <span class="na">min</span><span class="p">:</span> <span class="mi">5</span>    <span class="c1">// Always keep 5 ready</span>
+<span class="p">});</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/users/:id</span><span class="dl">'</span><span class="p">,</span> <span class="k">async </span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">pool</span><span class="p">.</span><span class="nf">query</span><span class="p">(...);</span>  <span class="c1">// ← Reuses existing connection</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">(</span><span class="nx">user</span><span class="p">);</span>
+<span class="p">});</span>
+<span class="c1">// Connections are reused efficiently ✅</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="monitoring-checklist">Monitoring Checklist</h2>
+
+<p>Before going to production:</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Basic Logging:</strong> Every request logged with duration</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Error Tracking:</strong> All errors captured with details</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Performance Metrics:</strong> Latency, traffic, errors, saturation tracked</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Alerts Set Up:</strong> Get notified when problems occur</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Dashboard:</strong> Can see API health at a glance</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Database Monitoring:</strong> Query performance tracked</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Resource Monitoring:</strong> CPU, memory, disk usage tracked</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Uptime Monitoring:</strong> External service checks if API is reachable</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Regular Reviews:</strong> Check metrics weekly</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Documentation:</strong> Team knows how to read dashboards</li>
+</ul>
+
+<hr />
+
+<h2 id="simple-monitoring-tools-comparison">Simple Monitoring Tools Comparison</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Tool</th>
+      <th>Cost</th>
+      <th>Complexity</th>
+      <th>Best For</th>
+      <th>Setup Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Console.log</strong></td>
+      <td>Free</td>
+      <td>Very Low ⭐</td>
+      <td>Learning/testing</td>
+      <td>5 min</td>
+    </tr>
+    <tr>
+      <td><strong>Morgan (Express)</strong></td>
+      <td>Free</td>
+      <td>Low ⭐</td>
+      <td>Simple logging</td>
+      <td>10 min</td>
+    </tr>
+    <tr>
+      <td><strong>PM2 Monitoring</strong></td>
+      <td>Free</td>
+      <td>Low ⭐</td>
+      <td>Node.js apps</td>
+      <td>15 min</td>
+    </tr>
+    <tr>
+      <td><strong>Datadog</strong></td>
+      <td>$15/mo</td>
+      <td>Medium ⭐⭐</td>
+      <td>Professional teams</td>
+      <td>30 min</td>
+    </tr>
+    <tr>
+      <td><strong>New Relic</strong></td>
+      <td>Free tier</td>
+      <td>Medium ⭐⭐</td>
+      <td>Great dashboards</td>
+      <td>30 min</td>
+    </tr>
+    <tr>
+      <td><strong>Grafana + Prometheus</strong></td>
+      <td>Free</td>
+      <td>High ⭐⭐⭐</td>
+      <td>Self-hosted</td>
+      <td>2 hours</td>
+    </tr>
+    <tr>
+      <td><strong>AWS CloudWatch</strong></td>
+      <td>~$10/mo</td>
+      <td>Low ⭐</td>
+      <td>AWS users</td>
+      <td>20 min</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="quick-start-15-minute-monitoring-setup">Quick Start: 15-Minute Monitoring Setup</h2>
+
+<p><strong>Step 1: Install Morgan (Request Logger)</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>npm <span class="nb">install </span>morgan
+</code></pre></div></div>
+
+<p><strong>Step 2: Add to Your App</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">morgan</span> <span class="o">=</span> <span class="nf">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">morgan</span><span class="dl">'</span><span class="p">);</span>
+
+<span class="c1">// Log every request</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">use</span><span class="p">(</span><span class="nf">morgan</span><span class="p">(</span><span class="dl">'</span><span class="s1">combined</span><span class="dl">'</span><span class="p">));</span>
+
+<span class="c1">// Now you see:</span>
+<span class="c1">// 127.0.0.1 - - [01/Jan/2024:10:00:00 +0000] "GET /api/users/123 HTTP/1.1" 200 1234 "-" "Mozilla/5.0"</span>
+</code></pre></div></div>
+
+<p><strong>Step 3: Add Error Tracking</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">app</span><span class="p">.</span><span class="nf">use</span><span class="p">((</span><span class="nx">err</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nf">error</span><span class="p">({</span>
+    <span class="na">error</span><span class="p">:</span> <span class="nx">err</span><span class="p">.</span><span class="nx">message</span><span class="p">,</span>
+    <span class="na">stack</span><span class="p">:</span> <span class="nx">err</span><span class="p">.</span><span class="nx">stack</span><span class="p">,</span>
+    <span class="na">path</span><span class="p">:</span> <span class="nx">req</span><span class="p">.</span><span class="nx">path</span><span class="p">,</span>
+    <span class="na">method</span><span class="p">:</span> <span class="nx">req</span><span class="p">.</span><span class="nx">method</span><span class="p">,</span>
+    <span class="na">timestamp</span><span class="p">:</span> <span class="k">new</span> <span class="nc">Date</span><span class="p">()</span>
+  <span class="p">});</span>
+  
+  <span class="nx">res</span><span class="p">.</span><span class="nf">status</span><span class="p">(</span><span class="mi">500</span><span class="p">).</span><span class="nf">json</span><span class="p">({</span> <span class="na">error</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Internal server error</span><span class="dl">'</span> <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Step 4: Create Health Endpoint</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/health</span><span class="dl">'</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">({</span>
+    <span class="na">status</span><span class="p">:</span> <span class="dl">'</span><span class="s1">healthy</span><span class="dl">'</span><span class="p">,</span>
+    <span class="na">uptime</span><span class="p">:</span> <span class="nx">process</span><span class="p">.</span><span class="nf">uptime</span><span class="p">(),</span>
+    <span class="na">memory</span><span class="p">:</span> <span class="nx">process</span><span class="p">.</span><span class="nf">memoryUsage</span><span class="p">(),</span>
+    <span class="na">timestamp</span><span class="p">:</span> <span class="k">new</span> <span class="nc">Date</span><span class="p">()</span>
+  <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Step 5: Set Up Uptime Monitoring (Free)</strong></p>
+
+<p>Go to <strong>uptimerobot.com</strong>:</p>
+<ol>
+  <li>Sign up (free)</li>
+  <li>Add your API: <code class="language-plaintext highlighter-rouge">https://yourapi.com/health</code></li>
+  <li>Check every 5 minutes</li>
+  <li>Email you if it’s down</li>
+</ol>
+
+<p><strong>Done! You now have basic monitoring in 15 minutes! ✅</strong></p>
+
+<hr />
+
+<h2 id="summary-monitoring--performance">Summary: Monitoring &amp; Performance</h2>
+
+<blockquote>
+  <p><strong>The Golden Rules:</strong></p>
+
+  <ol>
+    <li><strong>Monitor the 4 Golden Signals</strong> → Latency, Traffic, Errors, Saturation</li>
+    <li><strong>Set up alerts</strong> → Know about problems before users complain</li>
+    <li><strong>Start simple</strong> → Basic logging is better than nothing</li>
+    <li><strong>Measure before optimizing</strong> → Find the slow parts first</li>
+    <li><strong>Cache aggressively</strong> → Can make APIs 10-100x faster</li>
+  </ol>
+</blockquote>
+
+<h3 id="what-good-monitoring-gives-you">What Good Monitoring Gives You</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Without Monitoring:
+- Find out about problems from angry users ❌
+- Don't know what's slow ❌
+- Can't prove improvements ❌
+- Constantly putting out fires ❌
+
+With Monitoring:
+- Know about problems before users ✅
+- See exactly what's slow ✅
+- Measure impact of optimizations ✅
+- Proactively prevent issues ✅
+- Sleep better at night 😴✅
+</code></pre></div></div>
+
+<h3 id="progressive-monitoring-approach">Progressive Monitoring Approach</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Week 1: Basic Logging
+- Console.log with timestamps
+- Error tracking
+- Cost: $0
+
+Week 2: Simple Dashboard
+- Request counter
+- Average response time
+- Error rate
+- Cost: $0
+
+Week 3: Add Alerts
+- High error rate alert
+- Slow response time alert
+- Cost: $0 (use free tier)
+
+Week 4: Professional Tool
+- Datadog or New Relic
+- Beautiful dashboards
+- Advanced alerts
+- Cost: ~$15/month
+
+Month 2+: Fine-tune
+- Optimize based on data
+- Add custom metrics
+- Improve alerts
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="continue-the-series">Continue the Series</h2>
+
+<p>This is <strong>Part 5</strong> of the “Scaling Your API” series:</p>
+
+<ul>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-1-to-1-million-rps/">Part 1: Performance &amp; Infrastructure →</a></strong> - Technical techniques to handle millions of requests</li>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-design-architecture-part-2/">Part 2: Design &amp; Architecture →</a></strong> - Organizational strategies and API design patterns</li>
+  <li><strong><a href="/handbook/handbook/_topics/choosing-the-right-database/">Part 3: Choosing the Right Database →</a></strong> - Database selection for your API</li>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-load-balancing-part-4/">Part 4: Load Balancing &amp; High Availability →</a></strong> - Keeping your API always available</li>
+  <li><strong>Part 5:</strong> Monitoring &amp; Performance ← You are here</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><strong><a href="https://docs.datadoghq.com/">Datadog Documentation</a></strong> — Learn professional monitoring</li>
+  <li><strong><a href="https://prometheus.io/docs/introduction/overview/">Prometheus &amp; Grafana Guide</a></strong> — Open source monitoring</li>
+  <li><strong><a href="https://sre.google/books/">Google SRE Book</a></strong> — How Google monitors services</li>
+  <li><strong><a href="https://learn.newrelic.com/">New Relic University</a></strong> — Free monitoring courses</li>
+</ul>
+
+<hr />
+
+<p><strong>Remember:</strong> You can’t improve what you don’t measure. Start monitoring today, even if it’s just basic logging. Your future self (and your users) will thank you!</p>

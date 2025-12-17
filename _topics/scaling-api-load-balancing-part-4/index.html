@@ -1,0 +1,815 @@
+<blockquote>
+  <p><strong>📚 This is Part 4 of the “Scaling Your API” Series</strong></p>
+  <ul>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-1-to-1-million-rps/">Part 1: Performance &amp; Infrastructure ←</a></strong> - Technical techniques to handle millions of requests</li>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-design-architecture-part-2/">Part 2: Design &amp; Architecture ←</a></strong> - Organizational strategies and API design patterns</li>
+    <li><strong><a href="/handbook/handbook/_topics/choosing-the-right-database/">Part 3: Choosing the Right Database ←</a></strong> - Database selection for your API</li>
+    <li><strong>Part 4 (this page):</strong> Load Balancing &amp; High Availability - Keeping your API always available</li>
+    <li><strong><a href="/handbook/handbook/_topics/scaling-api-monitoring-part-5/">Part 5: Monitoring &amp; Performance →</a></strong> - Tracking and improving API performance</li>
+  </ul>
+</blockquote>
+
+<h2 id="what-is-load-balancing-explained-simply">What is Load Balancing? (Explained Simply)</h2>
+
+<blockquote>
+  <p><strong>Think of it like a restaurant:</strong> Imagine a busy restaurant with multiple cashiers. When customers arrive, a host directs them to the cashier with the shortest line. That’s exactly what a load balancer does for your API!</p>
+</blockquote>
+
+<div class="mermaid">
+flowchart LR
+    USERS["👥 Users<br />(1000s of requests)"]
+    LB["⚖️ Load Balancer<br />(Traffic Director)"]
+    S1["🖥️ Server 1"]
+    S2["🖥️ Server 2"]
+    S3["🖥️ Server 3"]
+    
+    USERS --&gt; LB
+    LB --&gt; S1
+    LB --&gt; S2
+    LB --&gt; S3
+    
+    style USERS fill:#dbeafe,stroke:#2563eb
+    style LB fill:#fef3c7,stroke:#d97706
+    style S1 fill:#d1fae5,stroke:#059669
+    style S2 fill:#d1fae5,stroke:#059669
+    style S3 fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="without-load-balancer-">Without Load Balancer ❌</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1 Server handling ALL requests
+↓
+Server gets overloaded
+↓
+API becomes slow or crashes
+↓
+Users get errors 😞
+</code></pre></div></div>
+
+<h3 id="with-load-balancer-">With Load Balancer ✅</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Load Balancer distributes requests across 3 servers
+↓
+Each server handles 1/3 of the traffic
+↓
+API stays fast and stable
+↓
+Users happy 😊
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="why-your-api-needs-load-balancing">Why Your API Needs Load Balancing</h2>
+
+<h3 id="problem-1-too-much-traffic-for-one-server">Problem 1: Too Much Traffic for One Server</h3>
+
+<p><strong>Real-World Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Your API normally gets 1,000 requests/second
+One server can handle this easily
+
+Black Friday arrives 🛍️
+Suddenly: 10,000 requests/second
+One server crashes 💥
+
+With load balancer + 10 servers:
+Each server handles 1,000 requests/second
+API works perfectly ✅
+</code></pre></div></div>
+
+<h3 id="problem-2-server-crashes-it-happens">Problem 2: Server Crashes (It Happens!)</h3>
+
+<p><strong>What happens without load balancing:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>11:00 AM - Server running fine
+11:30 AM - Server crashes due to bug
+11:31 AM - Your entire API is DOWN
+12:00 PM - You fix and restart server
+Result: 30 minutes of downtime = Lost money &amp; angry users
+</code></pre></div></div>
+
+<p><strong>What happens with load balancing (3 servers):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>11:00 AM - All 3 servers running fine
+11:30 AM - Server 1 crashes
+11:30 AM - Load balancer detects crash
+11:31 AM - Traffic automatically goes to Server 2 &amp; 3
+11:31 AM - Your API is STILL WORKING
+12:00 PM - You fix Server 1 in the background
+Result: ZERO downtime = Happy users 😊
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="how-load-balancers-work-simple-explanation">How Load Balancers Work (Simple Explanation)</h2>
+
+<h3 id="1-round-robin-the-simplest-method">1. Round Robin (The Simplest Method)</h3>
+
+<blockquote>
+  <p><strong>Like taking turns:</strong> Request 1 → Server A, Request 2 → Server B, Request 3 → Server C, Request 4 → Server A again…</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Request 1 → Server 1 ✅
+Request 2 → Server 2 ✅
+Request 3 → Server 3 ✅
+Request 4 → Server 1 ✅
+Request 5 → Server 2 ✅
+</code></pre></div></div>
+
+<p><strong>When to use:</strong> When all your servers are the same size and handle requests equally fast.</p>
+
+<hr />
+
+<h3 id="2-least-connections">2. Least Connections</h3>
+
+<blockquote>
+  <p><strong>Like the shortest checkout line:</strong> Send the next customer to the cashier with the fewest people waiting.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Server 1: 10 active connections
+Server 2: 5 active connections ← Load balancer chooses this one!
+Server 3: 8 active connections
+
+Next request goes to Server 2 (least busy)
+</code></pre></div></div>
+
+<p><strong>When to use:</strong> When some requests take longer than others (like uploading files).</p>
+
+<hr />
+
+<h3 id="3-health-checks-automatic-server-monitoring">3. Health Checks (Automatic Server Monitoring)</h3>
+
+<blockquote>
+  <p><strong>Like a doctor checking patients:</strong> The load balancer regularly “pings” each server to make sure it’s healthy.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Every 10 seconds:
+Load Balancer: "Hey Server 1, are you ok?"
+Server 1: "Yes! ✅"
+
+Load Balancer: "Hey Server 2, are you ok?"
+Server 2: "Yes! ✅"
+
+Load Balancer: "Hey Server 3, are you ok?"
+Server 3: *No response* ❌
+
+Load Balancer: "Server 3 is down! Stop sending traffic there!"
+</code></pre></div></div>
+
+<p><strong>Result:</strong> Users never see errors because traffic automatically goes to healthy servers.</p>
+
+<hr />
+
+<h2 id="what-is-high-availability-simple-explanation">What is High Availability? (Simple Explanation)</h2>
+
+<blockquote>
+  <p><strong>High Availability = Your API is ALWAYS available, even when things break</strong></p>
+</blockquote>
+
+<h3 id="the-9s-of-availability">The 9’s of Availability</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Availability</th>
+      <th>Downtime per Year</th>
+      <th>What This Means</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>99% (“Two Nines”)</strong></td>
+      <td>3.65 days</td>
+      <td>Your API is down for nearly 4 days/year ❌</td>
+    </tr>
+    <tr>
+      <td><strong>99.9% (“Three Nines”)</strong></td>
+      <td>8.76 hours</td>
+      <td>Down for less than 9 hours/year 😐</td>
+    </tr>
+    <tr>
+      <td><strong>99.99% (“Four Nines”)</strong></td>
+      <td>52 minutes</td>
+      <td>Down for less than 1 hour/year ✅</td>
+    </tr>
+    <tr>
+      <td><strong>99.999% (“Five Nines”)</strong></td>
+      <td>5 minutes</td>
+      <td>Down for only 5 minutes/year 🎯</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Most companies aim for 99.9% - 99.99%</strong></p>
+
+<hr />
+
+<h2 id="building-high-availability-step-by-step">Building High Availability (Step by Step)</h2>
+
+<h3 id="step-1-multiple-servers-no-single-point-of-failure">Step 1: Multiple Servers (No Single Point of Failure)</h3>
+
+<div class="mermaid">
+flowchart TD
+    BAD["❌ Single Server<br />(If it crashes, you're done)"]
+    GOOD["✅ Multiple Servers<br />(If one crashes, others continue)"]
+    
+    style BAD fill:#fee,stroke:#f00
+    style GOOD fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Example Setup:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Minimum: 2 servers (one can fail, API still works)
+Recommended: 3+ servers (better for traffic distribution)
+Enterprise: 10+ servers across multiple data centers
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="step-2-health-checks-automatic-problem-detection">Step 2: Health Checks (Automatic Problem Detection)</h3>
+
+<p><strong>Simple Health Check Example:</strong></p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Your API endpoint that load balancer checks</span>
+<span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/health</span><span class="dl">'</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// Check if database is connected</span>
+  <span class="k">if </span><span class="p">(</span><span class="nx">database</span><span class="p">.</span><span class="nf">isConnected</span><span class="p">())</span> <span class="p">{</span>
+    <span class="nx">res</span><span class="p">.</span><span class="nf">status</span><span class="p">(</span><span class="mi">200</span><span class="p">).</span><span class="nf">json</span><span class="p">({</span> <span class="na">status</span><span class="p">:</span> <span class="dl">'</span><span class="s1">healthy</span><span class="dl">'</span> <span class="p">});</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">res</span><span class="p">.</span><span class="nf">status</span><span class="p">(</span><span class="mi">500</span><span class="p">).</span><span class="nf">json</span><span class="p">({</span> <span class="na">status</span><span class="p">:</span> <span class="dl">'</span><span class="s1">unhealthy</span><span class="dl">'</span> <span class="p">});</span>
+  <span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Load balancer checks this every 10 seconds:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Response 200 (OK) → Server is healthy ✅ → Keep sending traffic
+Response 500 (Error) → Server is unhealthy ❌ → Stop sending traffic
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="step-3-automatic-failover">Step 3: Automatic Failover</h3>
+
+<blockquote>
+  <p><strong>Failover = Automatically switching to backup when main server fails</strong></p>
+</blockquote>
+
+<p><strong>How It Works:</strong></p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant Users
+    participant LoadBalancer
+    participant Server1
+    participant Server2
+    
+    Users-&gt;&gt;LoadBalancer: Request
+    LoadBalancer-&gt;&gt;Server1: Forward request
+    Server1--xLoadBalancer: No response (crashed!)
+    LoadBalancer-&gt;&gt;Server2: Try Server 2
+    Server2-&gt;&gt;LoadBalancer: Success!
+    LoadBalancer-&gt;&gt;Users: Response
+    
+    Note over LoadBalancer: Server 1 marked unhealthy<br />All traffic goes to Server 2
+&lt;/sequenceDiagram&gt;
+</div>
+
+<p><strong>What users experience:</strong> Nothing! They don’t even know Server 1 crashed.</p>
+
+<hr />
+
+<h3 id="step-4-multiple-data-centers-geographic-redundancy">Step 4: Multiple Data Centers (Geographic Redundancy)</h3>
+
+<blockquote>
+  <p><strong>Think of it like having restaurant locations in different cities</strong></p>
+</blockquote>
+
+<div class="mermaid">
+flowchart TD
+    USERS["🌍 Global Users"]
+    DNS["🌐 DNS / Global Load Balancer"]
+    
+    DC1["🏢 Data Center 1<br />New York"]
+    DC2["🏢 Data Center 2<br />London"]
+    DC3["🏢 Data Center 3<br />Tokyo"]
+    
+    USERS --&gt; DNS
+    DNS --&gt; DC1
+    DNS --&gt; DC2
+    DNS --&gt; DC3
+    
+    style USERS fill:#dbeafe,stroke:#2563eb
+    style DNS fill:#fef3c7,stroke:#d97706
+    style DC1 fill:#d1fae5,stroke:#059669
+    style DC2 fill:#d1fae5,stroke:#059669
+    style DC3 fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Benefits:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>✅ If entire data center goes down → Traffic goes to other data centers
+✅ Users get routed to closest data center → Faster responses
+✅ Can handle MASSIVE traffic (millions of requests/second)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="popular-load-balancer-solutions">Popular Load Balancer Solutions</h2>
+
+<h3 id="for-beginners-managed-services">For Beginners (Managed Services)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Best For</th>
+      <th>Cost</th>
+      <th>Complexity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>AWS Application Load Balancer</strong></td>
+      <td>Most people on AWS</td>
+      <td>~$20/month</td>
+      <td>Low ⭐</td>
+    </tr>
+    <tr>
+      <td><strong>Google Cloud Load Balancing</strong></td>
+      <td>Google Cloud users</td>
+      <td>~$20/month</td>
+      <td>Low ⭐</td>
+    </tr>
+    <tr>
+      <td><strong>Cloudflare Load Balancing</strong></td>
+      <td>Simple setup, any provider</td>
+      <td>$5-50/month</td>
+      <td>Very Low 🌟</td>
+    </tr>
+    <tr>
+      <td><strong>DigitalOcean Load Balancer</strong></td>
+      <td>Small projects</td>
+      <td>$12/month</td>
+      <td>Very Low 🌟</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h3 id="self-hosted-more-control">Self-Hosted (More Control)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Tool</th>
+      <th>Best For</th>
+      <th>Cost</th>
+      <th>Complexity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Nginx</strong></td>
+      <td>Most flexible, free</td>
+      <td>Free</td>
+      <td>Medium ⭐⭐</td>
+    </tr>
+    <tr>
+      <td><strong>HAProxy</strong></td>
+      <td>High performance</td>
+      <td>Free</td>
+      <td>Medium ⭐⭐</td>
+    </tr>
+    <tr>
+      <td><strong>Traefik</strong></td>
+      <td>Modern, Docker-friendly</td>
+      <td>Free</td>
+      <td>Low ⭐</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="real-world-setup-examples">Real-World Setup Examples</h2>
+
+<h3 id="example-1-small-startup-1000-requestssecond">Example 1: Small Startup (1,000 requests/second)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Setup:
+├── 2 API Servers (for redundancy)
+├── 1 Load Balancer (DigitalOcean or AWS)
+└── Health checks every 10 seconds
+
+Cost: ~$50/month
+Uptime: 99.9% (less than 9 hours downtime/year)
+Can handle: One server failure with zero downtime
+</code></pre></div></div>
+
+<p><strong>Configuration:</strong></p>
+<div class="language-nginx highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Simple Nginx Load Balancer Config</span>
+<span class="k">upstream</span> <span class="s">api_servers</span> <span class="p">{</span>
+    <span class="kn">server</span> <span class="nf">api1.example.com</span><span class="p">:</span><span class="mi">3000</span><span class="p">;</span>  <span class="c1"># Server 1</span>
+    <span class="kn">server</span> <span class="nf">api2.example.com</span><span class="p">:</span><span class="mi">3000</span><span class="p">;</span>  <span class="c1"># Server 2</span>
+<span class="p">}</span>
+
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    
+    <span class="kn">location</span> <span class="n">/</span> <span class="p">{</span>
+        <span class="kn">proxy_pass</span> <span class="s">http://api_servers</span><span class="p">;</span>
+        
+        <span class="c1"># Health check</span>
+        <span class="kn">proxy_next_upstream</span> <span class="s">error</span> <span class="s">timeout</span> <span class="s">http_500</span><span class="p">;</span>
+        <span class="kn">proxy_connect_timeout</span> <span class="s">2s</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="example-2-growing-company-10000-requestssecond">Example 2: Growing Company (10,000 requests/second)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Setup:
+├── 5 API Servers (distributed load)
+├── 2 Load Balancers (for load balancer redundancy!)
+├── Auto-scaling (add more servers when traffic spikes)
+└── Health checks every 5 seconds
+
+Cost: ~$500/month
+Uptime: 99.95% (4 hours downtime/year)
+Can handle: 2 server failures + traffic spikes
+</code></pre></div></div>
+
+<p><strong>Features:</strong></p>
+<ul>
+  <li><strong>Auto-scaling:</strong> Automatically add servers during traffic spikes</li>
+  <li><strong>Load balancer redundancy:</strong> Even the load balancer has a backup</li>
+  <li><strong>Advanced health checks:</strong> Check database connections, not just “is server on?”</li>
+</ul>
+
+<hr />
+
+<h3 id="example-3-enterprise-100000-requestssecond">Example 3: Enterprise (100,000+ requests/second)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Setup:
+├── 3 Geographic Regions (US, Europe, Asia)
+│   ├── 10 API Servers per region
+│   ├── Local load balancers
+│   └── Local databases
+├── Global Load Balancer (routes by geography)
+├── Auto-scaling in each region
+└── Health checks every 2 seconds
+
+Cost: ~$10,000/month
+Uptime: 99.99% (52 minutes downtime/year)
+Can handle: Entire data center failure
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="common-load-balancing-patterns">Common Load Balancing Patterns</h2>
+
+<h3 id="pattern-1-active-active-all-servers-working">Pattern 1: Active-Active (All Servers Working)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>All servers handle traffic simultaneously
+Load balancer distributes evenly
+
+Server 1: ████████ 33% traffic
+Server 2: ████████ 33% traffic
+Server 3: ████████ 34% traffic
+
+Best for: Maximum performance, all resources utilized
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="pattern-2-active-passive-backup-on-standby">Pattern 2: Active-Passive (Backup on Standby)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>One server handles traffic, backup ready
+
+Server 1: ████████████████ 100% traffic (ACTIVE)
+Server 2: ................ 0% traffic (STANDBY)
+
+If Server 1 fails:
+Server 2: ████████████████ 100% traffic (NOW ACTIVE)
+
+Best for: Critical systems where you need guaranteed backup
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="pattern-3-session-sticky-user-always-goes-to-same-server">Pattern 3: Session Sticky (User Always Goes to Same Server)</h3>
+
+<blockquote>
+  <p><strong>Like having a regular cashier at your favorite store</strong></p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>User A always → Server 1
+User B always → Server 2
+User C always → Server 1
+
+Why? User's session data is stored on that server
+</code></pre></div></div>
+
+<p><strong>When to use:</strong> When you store user sessions in server memory (not recommended for high availability)</p>
+
+<p><strong>Better approach:</strong> Store sessions in Redis so any server can handle any user</p>
+
+<hr />
+
+<h2 id="step-by-step-setting-up-your-first-load-balancer">Step-by-Step: Setting Up Your First Load Balancer</h2>
+
+<h3 id="option-1-using-cloudflare-easiest---5-minutes">Option 1: Using Cloudflare (Easiest - 5 Minutes)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: Sign up for Cloudflare (free)
+Step 2: Add your domain
+Step 3: Go to Traffic → Load Balancing
+Step 4: Add your server IPs
+Step 5: Enable health checks
+Done! ✅
+
+Your API now has:
+- Load balancing
+- Automatic failover
+- DDoS protection (bonus!)
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="option-2-aws-application-load-balancer-15-minutes">Option 2: AWS Application Load Balancer (15 Minutes)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: Go to AWS EC2 Console
+Step 2: Click "Load Balancers" → "Create"
+Step 3: Choose "Application Load Balancer"
+Step 4: Add your EC2 instances
+Step 5: Configure health check:
+        - Path: /health
+        - Interval: 10 seconds
+        - Healthy threshold: 2
+Step 6: Create!
+
+Cost: ~$20/month
+Setup time: 15 minutes
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="option-3-simple-nginx-setup-30-minutes">Option 3: Simple Nginx Setup (30 Minutes)</h3>
+
+<p><strong>Install Nginx:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Ubuntu/Debian</span>
+<span class="nb">sudo </span>apt update
+<span class="nb">sudo </span>apt <span class="nb">install </span>nginx
+</code></pre></div></div>
+
+<p><strong>Create config file:</strong></p>
+<div class="language-nginx highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># /etc/nginx/sites-available/loadbalancer</span>
+
+<span class="k">upstream</span> <span class="s">myapi</span> <span class="p">{</span>
+    <span class="c1"># Round-robin between 3 servers</span>
+    <span class="kn">server</span> <span class="nf">192.168.1.10</span><span class="p">:</span><span class="mi">3000</span><span class="p">;</span>
+    <span class="kn">server</span> <span class="nf">192.168.1.11</span><span class="p">:</span><span class="mi">3000</span><span class="p">;</span>
+    <span class="kn">server</span> <span class="nf">192.168.1.12</span><span class="p">:</span><span class="mi">3000</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    <span class="kn">server_name</span> <span class="s">api.example.com</span><span class="p">;</span>
+    
+    <span class="kn">location</span> <span class="n">/</span> <span class="p">{</span>
+        <span class="kn">proxy_pass</span> <span class="s">http://myapi</span><span class="p">;</span>
+        
+        <span class="c1"># Forward user's real IP</span>
+        <span class="kn">proxy_set_header</span> <span class="s">X-Real-IP</span> <span class="nv">$remote_addr</span><span class="p">;</span>
+        <span class="kn">proxy_set_header</span> <span class="s">X-Forwarded-For</span> <span class="nv">$proxy_add_x_forwarded_for</span><span class="p">;</span>
+        
+        <span class="c1"># Automatic retry on failure</span>
+        <span class="kn">proxy_next_upstream</span> <span class="s">error</span> <span class="s">timeout</span> <span class="s">http_500</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1"># Health check endpoint</span>
+    <span class="kn">location</span> <span class="n">/health</span> <span class="p">{</span>
+        <span class="kn">access_log</span> <span class="no">off</span><span class="p">;</span>
+        <span class="kn">return</span> <span class="mi">200</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>Enable and restart:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo ln</span> <span class="nt">-s</span> /etc/nginx/sites-available/loadbalancer /etc/nginx/sites-enabled/
+<span class="nb">sudo </span>nginx <span class="nt">-t</span>  <span class="c"># Test configuration</span>
+<span class="nb">sudo </span>systemctl restart nginx
+</code></pre></div></div>
+
+<p><strong>Done! Your API now has load balancing ✅</strong></p>
+
+<hr />
+
+<h2 id="testing-your-load-balancer">Testing Your Load Balancer</h2>
+
+<h3 id="test-1-is-traffic-being-distributed">Test 1: Is Traffic Being Distributed?</h3>
+
+<p><strong>Add logging to your API:</strong></p>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">app</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/api/test</span><span class="dl">'</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="s2">`Request handled by: </span><span class="p">${</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">SERVER_NAME</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nf">json</span><span class="p">({</span> 
+    <span class="na">server</span><span class="p">:</span> <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">SERVER_NAME</span><span class="p">,</span>
+    <span class="na">timestamp</span><span class="p">:</span> <span class="k">new</span> <span class="nc">Date</span><span class="p">()</span>
+  <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><strong>Make multiple requests:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Request 1</span>
+curl https://api.example.com/api/test
+<span class="c"># Response: {"server":"Server-1","timestamp":"2024-01-01..."}</span>
+
+<span class="c"># Request 2</span>
+curl https://api.example.com/api/test
+<span class="c"># Response: {"server":"Server-2","timestamp":"2024-01-01..."}</span>
+
+<span class="c"># Request 3</span>
+curl https://api.example.com/api/test
+<span class="c"># Response: {"server":"Server-3","timestamp":"2024-01-01..."}</span>
+</code></pre></div></div>
+
+<p><strong>If you see different servers → Load balancing is working! ✅</strong></p>
+
+<hr />
+
+<h3 id="test-2-does-failover-work">Test 2: Does Failover Work?</h3>
+
+<p><strong>Simulate server crash:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Stop one API server</span>
+ssh server1.example.com
+<span class="nb">sudo </span>systemctl stop myapi
+
+<span class="c"># Make requests - they should still work!</span>
+<span class="k">for </span>i <span class="k">in</span> <span class="o">{</span>1..10<span class="o">}</span><span class="p">;</span> <span class="k">do
+  </span>curl https://api.example.com/api/test
+<span class="k">done</span>
+
+<span class="c"># All requests should succeed (using other servers)</span>
+</code></pre></div></div>
+
+<p><strong>If requests still work → Failover is working! ✅</strong></p>
+
+<hr />
+
+<h3 id="test-3-health-check-working">Test 3: Health Check Working?</h3>
+
+<p><strong>Check load balancer status:</strong></p>
+
+<p><strong>AWS:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Go to EC2 → Target Groups → Your group
+Check "Targets" tab
+Healthy targets: 2/3 (one is down)
+</code></pre></div></div>
+
+<p><strong>Nginx:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check error logs</span>
+<span class="nb">sudo tail</span> <span class="nt">-f</span> /var/log/nginx/error.log
+
+<span class="c"># You should see:</span>
+<span class="c"># "upstream server 192.168.1.10:3000 failed... no live upstreams"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="common-mistakes-to-avoid">Common Mistakes to Avoid</h2>
+
+<h3 id="-mistake-1-no-health-checks">❌ Mistake 1: No Health Checks</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: Load balancer sends traffic to crashed server
+Result: Users get errors
+
+Good: Health checks detect crash in seconds
+Result: Traffic automatically goes to healthy servers
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Always configure health checks (every 10-30 seconds)</p>
+
+<hr />
+
+<h3 id="-mistake-2-only-1-server-no-redundancy">❌ Mistake 2: Only 1 Server (No Redundancy)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: 1 server + load balancer
+Result: If server crashes, API is completely down
+
+Good: Minimum 2 servers
+Result: One can fail, API still works
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Always have at least 2 servers for production</p>
+
+<hr />
+
+<h3 id="-mistake-3-session-stored-on-individual-servers">❌ Mistake 3: Session Stored on Individual Servers</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: User logged in on Server 1, load balancer sends next request to Server 2
+Result: User appears logged out (session lost)
+
+Good: Store sessions in Redis (shared across all servers)
+Result: User stays logged in regardless of which server handles request
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Use centralized session storage (Redis, database)</p>
+
+<hr />
+
+<h3 id="-mistake-4-all-servers-in-same-data-center">❌ Mistake 4: All Servers in Same Data Center</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad: 5 servers all in same building
+Result: Power outage → ALL servers down
+
+Good: Servers in multiple data centers or cloud regions
+Result: One location fails → Other locations continue working
+</code></pre></div></div>
+
+<p><strong>Fix:</strong> Use multiple availability zones or regions</p>
+
+<hr />
+
+<h2 id="high-availability-checklist">High Availability Checklist</h2>
+
+<p>Before launching your API to production:</p>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Multiple Servers:</strong> At least 2, preferably 3+</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Load Balancer:</strong> Distributing traffic automatically</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Health Checks:</strong> Configured to detect failures (10-30 second intervals)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Automatic Failover:</strong> Traffic routes away from failed servers</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Centralized Sessions:</strong> Redis or database (not server memory)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Database Redundancy:</strong> Read replicas or backup database</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Monitoring:</strong> Alerts when servers go down</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Backup Plan:</strong> Know how to quickly add more servers</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Testing:</strong> Regularly test failover scenarios</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Documentation:</strong> Team knows how to respond to outages</li>
+</ul>
+
+<hr />
+
+<h2 id="summary-load-balancing--high-availability">Summary: Load Balancing &amp; High Availability</h2>
+
+<blockquote>
+  <p><strong>The Golden Rules:</strong></p>
+
+  <ol>
+    <li><strong>Never run just 1 server in production</strong> → Minimum 2 for redundancy</li>
+    <li><strong>Always use load balancer</strong> → Automatic traffic distribution + failover</li>
+    <li><strong>Configure health checks</strong> → Detect failures in seconds, not minutes</li>
+    <li><strong>Store sessions centrally</strong> → Users stay logged in across all servers</li>
+    <li><strong>Test your failover</strong> → Don’t wait for real crash to find out it doesn’t work!</li>
+  </ol>
+</blockquote>
+
+<h3 id="what-you-get-with-proper-load-balancing">What You Get With Proper Load Balancing</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Without Load Balancer:
+- Single point of failure ❌
+- Limited traffic capacity ❌
+- Manual intervention when things break ❌
+- Downtime during deployments ❌
+
+With Load Balancer:
+- Automatic failover ✅
+- Handle 10x more traffic ✅
+- Self-healing (automatic recovery) ✅
+- Zero-downtime deployments ✅
+- Happy users even when things break ✅
+</code></pre></div></div>
+
+<h3 id="next-steps">Next Steps</h3>
+
+<ol>
+  <li><strong>Start Simple:</strong> 2 servers + managed load balancer (AWS, DigitalOcean, Cloudflare)</li>
+  <li><strong>Monitor:</strong> Set up alerts for server health</li>
+  <li><strong>Test:</strong> Regularly test failover by intentionally stopping servers</li>
+  <li><strong>Scale:</strong> Add more servers as traffic grows</li>
+  <li><strong>Improve:</strong> Add multiple regions when needed</li>
+</ol>
+
+<hr />
+
+<h2 id="continue-the-series">Continue the Series</h2>
+
+<p>This is <strong>Part 4</strong> of the “Scaling Your API” series:</p>
+
+<ul>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-1-to-1-million-rps/">Part 1: Performance &amp; Infrastructure →</a></strong> - Technical techniques to handle millions of requests</li>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-design-architecture-part-2/">Part 2: Design &amp; Architecture →</a></strong> - Organizational strategies and API design patterns</li>
+  <li><strong><a href="/handbook/handbook/_topics/choosing-the-right-database/">Part 3: Choosing the Right Database →</a></strong> - Database selection for your API</li>
+  <li><strong>Part 4:</strong> Load Balancing &amp; High Availability ← You are here</li>
+  <li><strong><a href="/handbook/handbook/_topics/scaling-api-monitoring-part-5/">Part 5: Monitoring &amp; Performance →</a></strong> - Tracking and improving API performance</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><strong><a href="https://nginx.org/en/docs/http/load_balancing.html">Nginx Load Balancing Docs</a></strong> — Learn Nginx load balancing</li>
+  <li><strong><a href="https://aws.amazon.com/elasticloadbalancing/">AWS Application Load Balancer</a></strong> — Managed load balancing on AWS</li>
+  <li><strong><a href="https://www.haproxy.org/">HAProxy Configuration</a></strong> — High-performance load balancer</li>
+  <li><strong><a href="https://sre.google/books/">Site Reliability Engineering Book</a></strong> — Google’s approach to reliability</li>
+</ul>
+
+<hr />
+
+<p><strong>Remember:</strong> Load balancing isn’t about perfection — it’s about keeping your API running when things go wrong (and they will!). Start simple, test often, and improve over time.</p>
