@@ -1,0 +1,1734 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Case Study: How Uber Modernized Their Data Infrastructure with GCP (Part 2)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/case-studies">Case Studies</a> &mdash;
+    </nav>
+    <h2>Case Study: How Uber Modernized Their Data Infrastructure with GCP (Part 2)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/case-studies">Case Studies</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>Part 2 of the Uber Data Infrastructure Series</strong></p>
+
+  <p><strong>Previously:</strong> <a href="/handbook/handbook/_topics/uber-data-infrastructure-part-1-building/">Part 1 - Building the Original Infrastructure</a> explained how Uber built a custom data platform with Kafka, HDFS, Spark, Flink, and more.</p>
+
+  <p><strong>This article</strong> explains why Uber decided to migrate everything to Google Cloud Platform (GCP) and how they did it without breaking anything.</p>
+</blockquote>
+
+<h2 id="introduction-why-change-a-working-system">Introduction: Why Change a Working System?</h2>
+
+<p>By 2020, Uber had built one of the world’s most sophisticated data infrastructures:</p>
+<ul>
+  <li>✅ Handled 137 million monthly users</li>
+  <li>✅ Processed 1 million+ events per second</li>
+  <li>✅ Stored petabytes of data</li>
+  <li>✅ Powered real-time decisions in milliseconds</li>
+</ul>
+
+<p><strong>So why change it?</strong></p>
+
+<p>Think of it like this: Imagine you built your own power plant, water system, and phone network for your house. It works great! But:</p>
+<ul>
+  <li>You need 50 employees to maintain it 24/7</li>
+  <li>It costs $1 million/year to run</li>
+  <li>When you want to expand, you need to rebuild everything</li>
+  <li>You can’t go on vacation because someone needs to watch it</li>
+</ul>
+
+<p><strong>Wouldn’t it be easier to just plug into the city’s utilities?</strong></p>
+
+<p>That’s exactly what Uber realized about their data infrastructure.</p>
+
+<hr />
+
+<h2 id="the-problems-with-the-original-system">The Problems with the Original System</h2>
+
+<h3 id="problem-1-crushing-complexity">Problem 1: Crushing Complexity</h3>
+
+<blockquote>
+  <p><strong>The reality:</strong> Managing 7 different distributed systems is incredibly hard.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's data infrastructure in 2020:
+
+System 1: Apache Kafka
+- 100+ servers
+- 3 engineers dedicated to it
+- Upgrade every 6 months
+
+System 2: HDFS (Storage)
+- 1,000+ servers
+- 10 engineers managing
+- Constant disk failures
+
+System 3: Apache Hudi
+- Built by Uber, maintained by Uber
+- 5 engineers full-time
+
+System 4: Apache Spark
+- 500+ servers
+- 5 engineers managing
+
+System 5: Apache Flink
+- 200+ servers
+- 4 engineers managing
+
+System 6: Apache Pinot
+- 100+ servers
+- 3 engineers managing
+
+System 7: Presto
+- 200+ servers
+- 3 engineers managing
+
+TOTAL:
+- 2,000+ servers to manage
+- 35+ engineers JUST for infrastructure
+- Plus: networking, security, monitoring teams
+- Grand total: 300+ engineers
+
+That's an entire company just to run infrastructure!
+</code></pre></div></div>
+
+<h4 id="the-real-cost-of-complexity">The Real Cost of Complexity</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Engineer costs alone:
+- 300 engineers × $200K average salary
+- = $60 million/year just in salaries!
+- Plus infrastructure costs: $100M/year
+- Total: $160M/year
+
+And engineers could be building features instead!
+</code></pre></div></div>
+
+<h3 id="problem-2-slow-scalability">Problem 2: Slow Scalability</h3>
+
+<blockquote>
+  <p><strong>The problem:</strong> Can’t scale quickly when you manage your own hardware.</p>
+</blockquote>
+
+<p><strong>Real example from Uber:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Scenario: Expanding to India (2019)
+
+Traditional approach (what Uber did):
+Month 1-2: Find data center in India
+Month 3-4: Order servers (long lead times)
+Month 5-6: Ship and install hardware
+Month 7-8: Configure networking
+Month 9-10: Install and test software
+Month 11-12: Train local team
+Result: 12 months, $20 million
+
+Cloud approach (what they wanted):
+Week 1: Enable GCP region in India
+Week 2: Deploy infrastructure (copy config)
+Week 3: Test
+Week 4: Launch
+Result: 1 month, $2 million
+
+10x faster, 10x cheaper!
+</code></pre></div></div>
+
+<h3 id="problem-3-inflexible-capacity">Problem 3: Inflexible Capacity</h3>
+
+<blockquote>
+  <p><strong>The problem:</strong> Must plan capacity 6-12 months in advance.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Traditional infrastructure:
+- Predict next year's growth: "We'll grow 50%"
+- Order servers: 3-6 months lead time
+- Install: 2-3 months
+- Results: 6-12 months later
+
+What actually happens:
+❌ Grow slower than expected? Wasted money on unused servers
+❌ Grow faster than expected? Run out of capacity, can't serve users
+❌ Seasonal spikes? Must provision for peak (waste 70% of capacity off-peak)
+
+Example:
+New Year's Eve: 10x normal traffic
+- Need: 10,000 servers for 1 day
+- Reality: Must buy 10,000 servers permanently
+- Cost: $50M for servers used 1 day/year!
+</code></pre></div></div>
+
+<h3 id="problem-4-geographic-constraints">Problem 4: Geographic Constraints</h3>
+
+<blockquote>
+  <p><strong>The problem:</strong> Data regulations require data to stay in each country.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber operates in 70+ countries
+
+Regulations:
+- EU data must stay in EU (GDPR)
+- China data must stay in China
+- Brazil data must stay in Brazil
+- Australia data must stay in Australia
+- Etc.
+
+Uber's challenge:
+Need to replicate ENTIRE infrastructure in each region
+- 2,000 servers × 10 regions = 20,000 servers
+- 300 engineers × 10 regions = 3,000 engineers (impossible!)
+- Cost: $160M × 10 = $1.6 billion/year (impossible!)
+
+Reality: Could only expand to new countries very slowly
+</code></pre></div></div>
+
+<h3 id="problem-5-innovation-bottleneck">Problem 5: Innovation Bottleneck</h3>
+
+<blockquote>
+  <p><strong>The problem:</strong> Engineers spend time managing infrastructure instead of building features.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before (2020):
+- 300 engineers managing infrastructure
+- 500 engineers building features
+- Ratio: 37% on infrastructure!
+
+What Uber wanted:
+- 100 engineers managing infrastructure (cloud)
+- 700 engineers building features
+- Ratio: 12% on infrastructure
+
+Result: 200 more engineers building features!
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="the-solution-move-to-google-cloud-platform-gcp">The Solution: Move to Google Cloud Platform (GCP)</h2>
+
+<p>In 2020, Uber made a bold decision: <strong>Migrate their entire data infrastructure to Google Cloud Platform.</strong></p>
+
+<h3 id="why-google-cloud">Why Google Cloud?</h3>
+
+<p>Uber evaluated three major cloud providers:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Factor</th>
+      <th>AWS</th>
+      <th>Azure</th>
+      <th>Google Cloud</th>
+      <th>Winner</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>BigQuery</strong></td>
+      <td>❌ No equivalent</td>
+      <td>❌ Synapse (not as good)</td>
+      <td>✅ Best analytics database</td>
+      <td><strong>GCP</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Data tools</strong></td>
+      <td>Good</td>
+      <td>Good</td>
+      <td>Excellent (built for Google scale)</td>
+      <td><strong>GCP</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Pricing</strong></td>
+      <td>Standard</td>
+      <td>Standard</td>
+      <td>Cheaper for data workloads</td>
+      <td><strong>GCP</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Hadoop support</strong></td>
+      <td>Yes</td>
+      <td>Yes</td>
+      <td>Yes (Dataproc)</td>
+      <td>Tie</td>
+    </tr>
+    <tr>
+      <td><strong>Existing relationship</strong></td>
+      <td>No</td>
+      <td>No</td>
+      <td>Yes (Maps partnership)</td>
+      <td><strong>GCP</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Uber chose GCP</strong> primarily because of <strong>BigQuery</strong> — which could replace 3 systems (Hudi + Pinot + Presto) with one!</p>
+
+<hr />
+
+<h2 id="the-new-architecture-gcp-version">The New Architecture: GCP Version</h2>
+
+<h3 id="old-vs-new-side-by-side-comparison">Old vs New: Side-by-Side Comparison</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph OLD["OLD SYSTEM (Self-Managed)"]
+        direction TB
+        OK["Kafka<br />(100+ servers)"]
+        OH["HDFS<br />(1000+ servers)"]
+        OHU["Hudi<br />(maintenance nightmare)"]
+        OS["Spark<br />(500+ servers)"]
+        OF["Flink<br />(200+ servers)"]
+        OP["Pinot<br />(100+ servers)"]
+        OPR["Presto<br />(200+ servers)"]
+    end
+    
+    subgraph NEW["NEW SYSTEM (GCP Managed)"]
+        direction TB
+        NP["Pub/Sub<br />(fully managed)"]
+        NG["Cloud Storage<br />(fully managed)"]
+        NB["BigQuery<br />(replaces 3 systems!)"]
+        ND["Dataflow<br />(fully managed)"]
+        NDP["Dataproc<br />(managed Spark)"]
+    end
+    
+    OLD ==&gt;|"3-year migration"| NEW
+    
+    style OLD fill:#fee,stroke:#f00
+    style NEW fill:#dfe,stroke:#0f0
+</div>
+
+<h3 id="component-replacements">Component Replacements</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Old System</th>
+      <th>GCP Replacement</th>
+      <th>What Changed</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Kafka</strong> (100+ servers)</td>
+      <td><strong>Pub/Sub</strong> (0 servers)</td>
+      <td>Google manages everything</td>
+    </tr>
+    <tr>
+      <td><strong>HDFS</strong> (1,000+ servers)</td>
+      <td><strong>Cloud Storage</strong> (0 servers)</td>
+      <td>Infinite storage, pay per GB</td>
+    </tr>
+    <tr>
+      <td><strong>Hudi + Pinot + Presto</strong></td>
+      <td><strong>BigQuery</strong> (0 servers)</td>
+      <td>3 systems → 1 system!</td>
+    </tr>
+    <tr>
+      <td><strong>Spark</strong> (500+ servers)</td>
+      <td><strong>Dataproc</strong> (auto-scaling)</td>
+      <td>Spin up/down as needed</td>
+    </tr>
+    <tr>
+      <td><strong>Flink</strong> (200+ servers)</td>
+      <td><strong>Dataflow</strong> (auto-scaling)</td>
+      <td>Fully managed</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Total servers managed:</strong></p>
+<ul>
+  <li>Before: 2,000+ servers</li>
+  <li>After: 0 servers!</li>
+</ul>
+
+<hr />
+
+<h2 id="the-migration-strategy-how-uber-did-it">The Migration Strategy: How Uber Did It</h2>
+
+<h3 id="principle-1-zero-downtime">Principle 1: Zero Downtime</h3>
+
+<blockquote>
+  <p><strong>Non-negotiable:</strong> Can’t stop serving 137 million users during migration!</p>
+</blockquote>
+
+<p><strong>Uber’s approach:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Phase 1: Build parallel infrastructure
+├─ Old system: Serves production (100% of traffic)
+├─ New system: Built in parallel (0% of traffic)
+└─ Duration: 6 months
+
+Phase 2: Shadow testing
+├─ Old system: Serves production (100% of traffic)
+├─ New system: Receives copy of data (0% of traffic)
+├─ Compare results: Are they identical?
+└─ Duration: 6 months
+
+Phase 3: Gradual migration
+├─ Old system: 90% of traffic
+├─ New system: 10% of traffic (test users)
+├─ Monitor: Any issues?
+└─ Duration: 12 months
+
+Phase 4: Full migration
+├─ Old system: 0% of traffic (shut down)
+├─ New system: 100% of traffic
+└─ Duration: 6 months
+
+Total time: 30 months (2.5 years)
+</code></pre></div></div>
+
+<h3 id="principle-2-minimize-user-disruption">Principle 2: Minimize User Disruption</h3>
+
+<blockquote>
+  <p><strong>Goal:</strong> Data engineers shouldn’t need to rewrite their code.</p>
+</blockquote>
+
+<p><strong>How Uber achieved this:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Problem: Engineers had thousands of Spark jobs
+
+Bad approach:
+"Rewrite all your code for GCP!"
+Result: Years of work, high risk of errors
+
+Uber's approach:
+Keep the same interfaces:
+- Spark jobs run on Dataproc (managed Spark)
+- Same code, different infrastructure
+- Engineers don't even notice!
+
+Migration complexity:
+- Infrastructure team: High (rebuilding everything)
+- Data engineers: Low (minimal code changes)
+- Data scientists: Zero (no changes needed)
+</code></pre></div></div>
+
+<h3 id="principle-3-phased-migration-by-use-case">Principle 3: Phased Migration by Use Case</h3>
+
+<blockquote>
+  <p><strong>Strategy:</strong> Migrate least critical systems first, learn, then tackle critical systems.</p>
+</blockquote>
+
+<p><strong>Uber’s migration order:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Phase 1: Analytics &amp; Reporting (Non-Critical)
+├─ Risk: Low (if it breaks, business continues)
+├─ Complexity: Medium
+├─ Migrated: Pinot → BigQuery
+├─ Duration: 6 months
+└─ Learning: How to use BigQuery effectively
+
+Phase 2: Batch Processing (Medium Critical)
+├─ Risk: Medium (affects daily reports)
+├─ Complexity: High
+├─ Migrated: Spark → Dataproc
+├─ Duration: 12 months
+└─ Learning: Auto-scaling, cost optimization
+
+Phase 3: Storage (Critical)
+├─ Risk: High (can't lose data!)
+├─ Complexity: Very High
+├─ Migrated: HDFS → Cloud Storage + BigQuery
+├─ Duration: 12 months
+└─ Learning: Data governance, security
+
+Phase 4: Real-Time Systems (Most Critical)
+├─ Risk: Very High (affects user experience)
+├─ Complexity: Extreme
+├─ Migrated: Kafka → Pub/Sub, Flink → Dataflow
+├─ Duration: 6 months
+└─ Learning: Performance tuning, failover
+
+Total duration: 36 months (3 years)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="the-new-system-component-deep-dives">The New System: Component Deep Dives</h2>
+
+<h3 id="1-google-cloud-pubsub-replaces-kafka">1. Google Cloud Pub/Sub (Replaces Kafka)</h3>
+
+<blockquote>
+  <p><strong>What it is:</strong> Google’s fully managed event streaming service.</p>
+</blockquote>
+
+<h4 id="before-kafka-vs-after-pubsub">Before (Kafka) vs After (Pub/Sub)</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before (Kafka):
+✅ Performance: 1M events/second
+❌ Management: 100+ servers to manage
+❌ Scaling: Manual (add servers)
+❌ Monitoring: Build custom dashboards
+❌ Upgrades: Quarterly maintenance windows
+❌ Team: 3 engineers full-time
+❌ Cost: $2M/year (servers + engineers)
+
+After (Pub/Sub):
+✅ Performance: 1M+ events/second (same or better)
+✅ Management: Zero servers
+✅ Scaling: Automatic
+✅ Monitoring: Built-in dashboards
+✅ Upgrades: Google handles it
+✅ Team: 0 engineers (Google manages)
+✅ Cost: $1M/year (pay per message)
+
+Savings: $1M/year + 3 engineers freed up
+</code></pre></div></div>
+
+<h4 id="how-pubsub-works-simplified">How Pub/Sub Works (Simplified)</h4>
+
+<div class="mermaid">
+flowchart LR
+    APPS["Uber Apps"] --&gt; PUBSUB["Pub/Sub<br />(Fully Managed)"]
+    
+    PUBSUB --&gt; SUB1["Subscription 1:<br />Real-time processing"]
+    PUBSUB --&gt; SUB2["Subscription 2:<br />Analytics"]
+    PUBSUB --&gt; SUB3["Subscription 3:<br />Storage"]
+    
+    SUB1 --&gt; CONSUMER1["Dataflow"]
+    SUB2 --&gt; CONSUMER2["BigQuery"]
+    SUB3 --&gt; CONSUMER3["Cloud Storage"]
+    
+    style PUBSUB fill:#fef3c7,stroke:#d97706
+    style CONSUMER1 fill:#d1fae5,stroke:#059669
+    style CONSUMER2 fill:#dbeafe,stroke:#2563eb
+    style CONSUMER3 fill:#fce7f3,stroke:#db2777
+</div>
+
+<h4 id="real-migration-example">Real Migration Example</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Old Kafka code (before):
+Properties props = new Properties();
+props.put("bootstrap.servers", "kafka1:9092,kafka2:9092,kafka3:9092");
+props.put("group.id", "uber-analytics");
+KafkaConsumer&lt;String, String&gt; consumer = new KafkaConsumer&lt;&gt;(props);
+
+New Pub/Sub code (after):
+// Almost identical!
+ProjectSubscriptionName subscription = 
+  ProjectSubscriptionName.of("uber-project", "uber-analytics");
+Subscriber subscriber = Subscriber.newBuilder(subscription, receiver).build();
+
+Migration time: Hours (not months!)
+</code></pre></div></div>
+
+<h3 id="2-google-cloud-storage-replaces-hdfs">2. Google Cloud Storage (Replaces HDFS)</h3>
+
+<blockquote>
+  <p><strong>What it is:</strong> Infinite, durable, object storage in the cloud.</p>
+</blockquote>
+
+<h4 id="before-hdfs-vs-after-cloud-storage">Before (HDFS) vs After (Cloud Storage)</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before (HDFS):
+✅ Performance: Good
+❌ Capacity: Limited (must buy more disks)
+❌ Servers: 1,000+ servers to manage
+❌ Disk failures: Weekly (replace failed disks)
+❌ Expansion: Order disks 3 months in advance
+❌ Team: 10 engineers full-time
+❌ Cost: $50M/year (hardware + data centers + engineers)
+
+After (Cloud Storage):
+✅ Performance: Excellent (Google's network)
+✅ Capacity: Infinite (no limits)
+✅ Servers: Zero
+✅ Disk failures: Never (Google handles it)
+✅ Expansion: Instant (just write more data)
+✅ Team: 0 engineers (Google manages)
+✅ Cost: $20M/year (pay per GB stored)
+
+Savings: $30M/year + 10 engineers freed up
+</code></pre></div></div>
+
+<h4 id="cost-comparison-1-petabyte-of-data">Cost Comparison: 1 Petabyte of Data</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>HDFS (self-managed):
+- Servers: 50 servers × $10K each = $500K
+- Data center space: $100K/year
+- Power &amp; cooling: $200K/year
+- Network: $50K/year
+- Disk replacements: $100K/year
+- Engineers: 1 engineer × $200K = $200K/year
+Total: $1.15M/year
+
+Cloud Storage:
+- Storage: 1 PB × $20/TB/month = $20K/month
+- Data transfer: ~$50K/month
+Total: $840K/year
+
+Savings: $310K/year per petabyte!
+Plus: No engineers needed, scales instantly
+</code></pre></div></div>
+
+<h3 id="3-bigquery-replaces-hudi--pinot--presto">3. BigQuery (Replaces Hudi + Pinot + Presto)</h3>
+
+<blockquote>
+  <p><strong>The game-changer:</strong> One system replaces three!</p>
+</blockquote>
+
+<h4 id="the-magic-of-bigquery">The Magic of BigQuery</h4>
+
+<p><strong>What it does:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Old system needed 3 tools:
+1. Hudi: Store and update data
+2. Pinot: Fast analytics queries
+3. Presto: SQL queries across systems
+
+BigQuery does all three:
+1. Stores petabytes of data ✓
+2. Queries in milliseconds ✓
+3. Uses standard SQL ✓
+Plus:
+4. Auto-scales ✓
+5. Zero management ✓
+6. Integrates with everything ✓
+</code></pre></div></div>
+
+<h4 id="before-hudi--pinot--presto-vs-after-bigquery">Before (Hudi + Pinot + Presto) vs After (BigQuery)</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before:
+❌ 3 systems to learn
+❌ 3 systems to maintain
+❌ Data duplicated 3 times (storage waste)
+❌ Complex data syncing
+❌ 400+ servers across 3 systems
+❌ 11 engineers managing
+❌ Query time: 100-500ms (Pinot), 1-10s (Presto)
+❌ Cost: $30M/year
+
+After:
+✅ 1 system to learn
+✅ 0 systems to maintain (Google manages)
+✅ Data stored once
+✅ No syncing needed
+✅ 0 servers
+✅ 0 engineers managing
+✅ Query time: 100ms - 5s (depending on query)
+✅ Cost: $15M/year (pay per query)
+
+Savings: $15M/year + 11 engineers freed up
+Complexity reduction: 66% (3 systems → 1)
+</code></pre></div></div>
+
+<h4 id="real-bigquery-example">Real BigQuery Example</h4>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Query billions of rides instantly:</span>
+<span class="k">SELECT</span> 
+  <span class="n">city</span><span class="p">,</span>
+  <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_rides</span><span class="p">,</span>
+  <span class="k">AVG</span><span class="p">(</span><span class="n">fare</span><span class="p">)</span> <span class="k">as</span> <span class="n">avg_fare</span><span class="p">,</span>
+  <span class="k">SUM</span><span class="p">(</span><span class="n">fare</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_revenue</span>
+<span class="k">FROM</span> <span class="nv">`uber-data.trips.rides`</span>
+<span class="k">WHERE</span> <span class="nb">date</span> <span class="o">&gt;=</span> <span class="s1">'2024-01-01'</span>
+  <span class="k">AND</span> <span class="nb">date</span> <span class="o">&lt;</span> <span class="s1">'2024-02-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> <span class="n">city</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">total_revenue</span> <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="mi">10</span>
+
+<span class="c1">-- Query performance:</span>
+<span class="c1">-- Data scanned: 500 GB</span>
+<span class="c1">-- Query time: 2.3 seconds</span>
+<span class="c1">-- Cost: $2.50 (for this one query!)</span>
+
+<span class="c1">-- Same query on old system:</span>
+<span class="c1">-- Required: Running Presto cluster 24/7</span>
+<span class="c1">-- Cost: $70/day ($2,500/month) even if query runs once!</span>
+</code></pre></div></div>
+
+<h4 id="bigquerys-secret-sauce">BigQuery’s Secret Sauce</h4>
+
+<p><strong>1. Columnar Storage (Like Pinot)</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stores data in columns (not rows)
+Query: "Average fare in NYC"
+- Only reads "fare" column
+- Ignores other columns
+- 10-100x faster than reading full rows
+</code></pre></div></div>
+
+<p><strong>2. Separation of Storage and Compute</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Traditional database:
+- Storage and compute tied together
+- Must pay for compute 24/7
+- Can't scale independently
+
+BigQuery:
+- Storage separate from compute
+- Pay for compute only when querying
+- Auto-scales compute for each query
+
+Example:
+Small query: Uses 10 nodes, costs $0.10
+Huge query: Uses 1,000 nodes, costs $10
+Both finish in ~same time!
+</code></pre></div></div>
+
+<p><strong>3. Automatic Optimization</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>BigQuery automatically:
+- Chooses best indexes
+- Partitions data optimally
+- Compresses data
+- Caches frequent queries
+- Parallelizes queries
+
+Engineer's job:
+- Just write SQL
+- BigQuery optimizes everything
+</code></pre></div></div>
+
+<h3 id="4-dataproc-replaces-spark-clusters">4. Dataproc (Replaces Spark Clusters)</h3>
+
+<blockquote>
+  <p><strong>What it is:</strong> Managed Apache Spark/Hadoop service.</p>
+</blockquote>
+
+<h4 id="before-self-managed-spark-vs-after-dataproc">Before (Self-Managed Spark) vs After (Dataproc)</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before (Self-Managed Spark):
+❌ Cluster setup: 2-4 weeks
+❌ Always-on clusters: Waste money during idle time
+❌ Scaling: Manual (provision more nodes)
+❌ Monitoring: Build custom tools
+❌ Upgrades: Complex, risky
+❌ Cost: $40M/year (servers + engineers)
+❌ Team: 5 engineers managing
+
+After (Dataproc):
+✅ Cluster setup: 90 seconds!
+✅ Ephemeral clusters: Spin up for job, shut down after
+✅ Scaling: Auto-scales based on job size
+✅ Monitoring: Built-in dashboards
+✅ Upgrades: Click button (or automatic)
+✅ Cost: $20M/year (pay per job)
+✅ Team: 1 engineer managing
+
+Savings: $20M/year + 4 engineers freed up
+</code></pre></div></div>
+
+<h4 id="the-ephemeral-cluster-magic">The Ephemeral Cluster Magic</h4>
+
+<p><strong>Old approach (always-on):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Morning (8am): 
+- Cluster: Running (100 nodes)
+- Utilization: 80%
+- Cost: $100/hour
+
+Midday (12pm):
+- Cluster: Running (100 nodes)
+- Utilization: 90%
+- Cost: $100/hour
+
+Night (2am):
+- Cluster: Running (100 nodes)
+- Utilization: 5% (mostly idle!)
+- Cost: $100/hour (wasting $95/hour!)
+
+Daily cost: $2,400
+Wasted: ~$1,000/day (idle time)
+Monthly waste: $30,000!
+</code></pre></div></div>
+
+<p><strong>New approach (ephemeral):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Job 1 (8:00am): Need 50 nodes for 30 minutes
+- Spin up 50-node cluster
+- Run job
+- Shut down cluster
+- Cost: $25
+
+Job 2 (9:00am): Need 200 nodes for 15 minutes
+- Spin up 200-node cluster
+- Run job
+- Shut down cluster
+- Cost: $50
+
+Job 3 (10:00am): Need 20 nodes for 1 hour
+- Spin up 20-node cluster
+- Run job
+- Shut down cluster
+- Cost: $20
+
+Night (2am): No jobs
+- No clusters running
+- Cost: $0 ✅
+
+Daily cost: ~$1,200
+Savings: 50% compared to always-on!
+</code></pre></div></div>
+
+<h3 id="5-dataflow-replaces-flink">5. Dataflow (Replaces Flink)</h3>
+
+<blockquote>
+  <p><strong>What it is:</strong> Fully managed service for stream and batch processing.</p>
+</blockquote>
+
+<h4 id="before-flink-vs-after-dataflow">Before (Flink) vs After (Dataflow)</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before (Flink):
+✅ Performance: Excellent (sub-100ms)
+❌ Complexity: Very high (hardest system to manage)
+❌ Scaling: Manual, tricky
+❌ State management: Complex (where to store state?)
+❌ Failover: Build custom logic
+❌ Team: 4 engineers full-time
+❌ Cost: $15M/year
+
+After (Dataflow):
+✅ Performance: Excellent (sub-100ms, same as Flink)
+✅ Complexity: Low (Google manages)
+✅ Scaling: Auto-scales automatically
+✅ State management: Handled by Google
+✅ Failover: Automatic
+✅ Team: 0.5 engineers (part-time)
+✅ Cost: $10M/year
+
+Savings: $5M/year + 3.5 engineers freed up
+</code></pre></div></div>
+
+<h4 id="real-time-use-case-surge-pricing">Real-Time Use Case: Surge Pricing</h4>
+
+<p><strong>How it works on Dataflow:</strong></p>
+
+<div class="mermaid">
+flowchart LR
+    EVENTS["Ride Events<br />(Pub/Sub)"] --&gt; DATAFLOW["Dataflow Pipeline"]
+    
+    DATAFLOW --&gt; WINDOW["Windowing<br />(5-minute windows)"]
+    WINDOW --&gt; AGG["Aggregation<br />(count per zone)"]
+    AGG --&gt; CALC["Calculate<br />supply/demand"]
+    CALC --&gt; SURGE["Determine<br />surge multiplier"]
+    
+    SURGE --&gt; BIGQUERY["Store in<br />BigQuery"]
+    SURGE --&gt; PUBSUB["Publish<br />to Pub/Sub"]
+    
+    style DATAFLOW fill:#fef3c7,stroke:#d97706
+    style BIGQUERY fill:#dbeafe,stroke:#2563eb
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Dataflow pipeline (simplified):
+</span><span class="k">def</span> <span class="nf">calculate_surge</span><span class="p">(</span><span class="n">events</span><span class="p">):</span>
+    <span class="nf">return </span><span class="p">(</span>
+        <span class="n">events</span>
+        <span class="o">|</span> <span class="sh">"</span><span class="s">Window into 5 min</span><span class="sh">"</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="p">.</span><span class="nc">WindowInto</span><span class="p">(</span><span class="nc">FixedWindows</span><span class="p">(</span><span class="mi">300</span><span class="p">))</span>
+        <span class="o">|</span> <span class="sh">"</span><span class="s">Key by zone</span><span class="sh">"</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="p">.</span><span class="nc">Map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">zone</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
+        <span class="o">|</span> <span class="sh">"</span><span class="s">Count requests</span><span class="sh">"</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="p">.</span><span class="nc">CombinePerKey</span><span class="p">(</span><span class="nc">CountRequests</span><span class="p">())</span>
+        <span class="o">|</span> <span class="sh">"</span><span class="s">Count drivers</span><span class="sh">"</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="p">.</span><span class="nc">CombinePerKey</span><span class="p">(</span><span class="nc">CountDrivers</span><span class="p">())</span>
+        <span class="o">|</span> <span class="sh">"</span><span class="s">Calculate surge</span><span class="sh">"</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="p">.</span><span class="nc">Map</span><span class="p">(</span><span class="n">calculate_surge_multiplier</span><span class="p">)</span>
+        <span class="o">|</span> <span class="sh">"</span><span class="s">Write to BigQuery</span><span class="sh">"</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="nc">WriteToBigQuery</span><span class="p">(...)</span>
+    <span class="p">)</span>
+
+<span class="c1"># Dataflow handles:
+</span><span class="err">✅</span> <span class="n">Auto</span><span class="o">-</span><span class="nf">scaling </span><span class="p">(</span><span class="mi">10</span> <span class="n">to</span> <span class="mi">1000</span> <span class="n">workers</span><span class="p">)</span>
+<span class="err">✅</span> <span class="n">State</span> <span class="nf">management </span><span class="p">(</span><span class="n">remembers</span> <span class="n">counts</span><span class="p">)</span>
+<span class="err">✅</span> <span class="nc">Failover </span><span class="p">(</span><span class="k">if</span> <span class="n">worker</span> <span class="n">dies</span><span class="p">,</span> <span class="n">restart</span><span class="p">)</span>
+<span class="err">✅</span> <span class="nc">Monitoring </span><span class="p">(</span><span class="n">built</span><span class="o">-</span><span class="ow">in</span> <span class="n">metrics</span><span class="p">)</span>
+
+<span class="n">Engineer</span><span class="sh">'</span><span class="s">s job:
+- Just write the pipeline logic
+- Dataflow handles infrastructure
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="migration-challenges--solutions">Migration Challenges &amp; Solutions</h2>
+
+<h3 id="challenge-1-performance-differences">Challenge 1: Performance Differences</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>HDFS (on-premises):
+- Local disk access: 1-5ms latency
+- Network within data center: &lt;1ms
+
+Cloud Storage (GCP):
+- Network access: 10-50ms latency
+- Across internet: Can spike higher
+
+Result: Some jobs 2-5x slower!
+</code></pre></div></div>
+
+<p><strong>Uber’s solution:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Use persistent disks for hot data
+   - Frequently accessed data on fast disks
+   - Cold data in Cloud Storage
+
+2. Optimize data layout
+   - Partition data effectively
+   - Use compressed formats (Parquet)
+
+3. Leverage BigQuery
+   - Instead of reading files, query BigQuery
+   - BigQuery optimized for cloud access
+
+Result: Performance back to baseline (or better!)
+</code></pre></div></div>
+
+<h3 id="challenge-2-cost-management">Challenge 2: Cost Management</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>First month on GCP:
+- Bill: $8M (expected: $5M)
+- Overage: $3M!
+
+Why?
+- Data egress charges (moving data out)
+- Inefficient query patterns
+- Always-on development clusters
+- Not using reserved instances
+</code></pre></div></div>
+
+<p><strong>Uber’s solution:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Reserved instances
+   - Commit to baseline usage: 40% discount
+
+2. Committed use discounts
+   - Commit to 1-3 years: 50-70% discount
+
+3. Query optimization
+   - Use partitioned tables
+   - Limit SELECT * queries
+   - Cache frequent queries
+
+4. Ephemeral dev clusters
+   - Auto-shut down after 2 hours idle
+   - Saved $500K/month!
+
+5. Data lifecycle policies
+   - Move old data to cold storage
+   - Delete temp data automatically
+
+Result: Reduced costs to $5M/month target
+</code></pre></div></div>
+
+<h3 id="challenge-3-data-governance">Challenge 3: Data Governance</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GDPR compliance:
+- EU users' data must stay in EU
+- Can't accidentally move to US
+
+Risk:
+- Data engineer runs query
+- BigQuery job in US region
+- Reads EU data
+- Violation! Huge fines!
+</code></pre></div></div>
+
+<p><strong>Uber’s solution:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Regional isolation
+   - EU data: Only in EU regions
+   - US data: Only in US regions
+   - Enforced with IAM policies
+
+2. Data access proxies
+   - Engineers don't access data directly
+   - Go through proxy that enforces rules
+   - Proxy logs all access
+
+3. Automated compliance checks
+   - Daily scans for violations
+   - Alert security team immediately
+   - Auto-remediation where possible
+
+Result: Zero compliance violations!
+</code></pre></div></div>
+
+<h3 id="challenge-4-team-training">Challenge 4: Team Training</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>300 data engineers used to:
+- Spark on YARN
+- Hive SQL
+- Custom tools
+
+Now need to learn:
+- BigQuery SQL (different dialect)
+- Dataproc
+- Cloud Console
+- New monitoring tools
+</code></pre></div></div>
+
+<p><strong>Uber’s solution:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Gradual transition
+   - Keep old system running during training
+   - Learn at own pace
+
+2. Internal training program
+   - "GCP Boot Camp": 2-week intensive course
+   - Hands-on labs
+   - Office hours with experts
+
+3. Internal documentation
+   - Migration guides
+   - Best practices
+   - Common pitfalls
+
+4. Champions program
+   - Early adopters help teammates
+   - Share lessons learned
+
+5. Abstraction layers
+   - Build wrappers that hide complexity
+   - Engineers write same code, runs on GCP
+
+Result: 90% of engineers productive in 3 months
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="the-results-what-changed">The Results: What Changed</h2>
+
+<h3 id="result-1-massive-cost-savings">Result 1: Massive Cost Savings</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before (2020):
+Infrastructure: $100M/year
+- Servers: $50M
+- Data centers: $30M
+- Network: $10M
+- Maintenance: $10M
+
+Engineers: $60M/year
+- 300 engineers × $200K average
+
+Total: $160M/year
+
+After (2024):
+Infrastructure: $60M/year
+- GCP services: $60M
+- (No servers, data centers, etc.)
+
+Engineers: $20M/year
+- 100 engineers × $200K average
+- 200 engineers redeployed to product work
+
+Total: $80M/year
+
+SAVINGS: $80M/year (50% reduction!)
+</code></pre></div></div>
+
+<h3 id="result-2-speed-improvements">Result 2: Speed Improvements</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Development time:
+Before: 3-6 months to launch new data product
+- Provision infrastructure: 1-2 months
+- Setup and configure: 1 month
+- Develop: 1-2 months
+- Test and deploy: 1 month
+
+After: 2-4 weeks
+- Provision infrastructure: 0 days (instant!)
+- Setup and configure: 1 day
+- Develop: 1-2 weeks
+- Test and deploy: 1 week
+
+Improvement: 5-10x faster!
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Scaling time:
+Before: 3-6 months
+- Plan capacity
+- Order servers
+- Install and configure
+- Deploy
+
+After: Automatic
+- Traffic spike? Auto-scales in minutes
+- New region? Enable in days
+- Seasonal demand? Scales up/down automatically
+
+Improvement: 100x faster (months → minutes)
+</code></pre></div></div>
+
+<h3 id="result-3-reliability-improvements">Result 3: Reliability Improvements</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>System uptime:
+Before: 99.9% (9 hours downtime/year)
+- Hardware failures
+- Human errors
+- Upgrade issues
+
+After: 99.99% (52 minutes downtime/year)
+- Google's infrastructure
+- Automatic failover
+- No manual upgrades
+
+Improvement: 10x fewer outages
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Data durability:
+Before: 99.99% (risk of data loss)
+- 3 copies of data
+- But: Data center fire = could lose region
+
+After: 99.999999999% (11 nines!)
+- Google replicates across regions
+- Virtually impossible to lose data
+
+Improvement: 10,000x more durable
+</code></pre></div></div>
+
+<h3 id="result-4-global-expansion">Result 4: Global Expansion</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New region setup:
+Before: 6-12 months, $10-20M
+- Find/build data center
+- Order and install hardware
+- Hire local team
+- Deploy and configure
+
+After: 1-2 weeks, $1-2M
+- Enable GCP region
+- Copy configuration
+- Test
+- Launch
+
+Improvement: 10-20x faster, 10x cheaper
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's expansion since migration (2020-2024):
+- Launched in 20 new countries
+- Doubled total markets (35 → 70 countries)
+- Total cost: $30M (would have been $300M before!)
+
+The GCP migration enabled Uber's global expansion!
+</code></pre></div></div>
+
+<h3 id="result-5-innovation-velocity">Result 5: Innovation Velocity</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before migration:
+- 300 engineers on infrastructure
+- 500 engineers on product
+- Ratio: 37% infrastructure
+
+After migration:
+- 100 engineers on infrastructure
+- 700 engineers on product
+- Ratio: 12% infrastructure
+
+Impact:
+- 200 engineers freed up
+- Building features, not managing servers
+- Faster innovation
+- More products shipped
+</code></pre></div></div>
+
+<p><strong>New capabilities enabled:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Real-time fraud detection
+   - Needed: Scale to analyze 10M transactions/second
+   - Before: Impossible (limited capacity)
+   - After: Built on Dataflow (auto-scales)
+
+2. Global demand forecasting
+   - Needed: Process 1 PB of data daily
+   - Before: Would take 12 hours (too slow)
+   - After: BigQuery processes in 1 hour
+
+3. AI-powered pricing
+   - Needed: Train models on 5 years of data
+   - Before: Would take weeks, huge compute cost
+   - After: Dataproc spins up 10,000 nodes, done in hours
+
+4. Real-time driver bonuses
+   - Needed: Calculate bonuses in real-time
+   - Before: Batch processing (next day)
+   - After: Dataflow processes in milliseconds
+
+These features wouldn't exist without GCP migration!
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="lessons-learned-ubers-advice">Lessons Learned: Uber’s Advice</h2>
+
+<h3 id="lesson-1-phased-migration-is-critical">Lesson 1: Phased Migration is Critical</h3>
+
+<blockquote>
+  <p><strong>Uber’s advice:</strong> Don’t try to migrate everything at once.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's approach:
+Year 1: Migrate 10% of workloads
+- Learn the platform
+- Discover issues
+- Build confidence
+
+Year 2: Migrate 50% of workloads
+- Apply lessons learned
+- Optimize costs
+- Train teams
+
+Year 3: Migrate remaining 40%
+- Tackle critical systems last
+- After gaining experience
+
+What NOT to do:
+❌ "Big bang" migration (switch everything overnight)
+❌ Migrate critical systems first
+❌ Rush to meet arbitrary deadline
+
+Result: Zero major incidents!
+</code></pre></div></div>
+
+<h3 id="lesson-2-run-both-systems-in-parallel">Lesson 2: Run Both Systems in Parallel</h3>
+
+<blockquote>
+  <p><strong>Uber’s advice:</strong> Run old and new systems side-by-side during migration.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>The "shadow mode" approach:
+1. New system receives copy of all data
+2. Both systems process in parallel
+3. Compare results continuously
+4. Only switch when identical for 30 days
+
+Benefits:
+✅ No risk to production
+✅ Discover issues before they impact users
+✅ Can roll back instantly if needed
+✅ Build confidence gradually
+
+Cost:
+❌ Running two systems = 2x cost temporarily
+✅ But: Worth it for zero-risk migration
+
+Uber's timeline:
+- Parallel run: 6 months per system
+- Extra cost: $30M
+- Value: Priceless (zero production incidents)
+</code></pre></div></div>
+
+<h3 id="lesson-3-cost-optimization-takes-time">Lesson 3: Cost Optimization Takes Time</h3>
+
+<blockquote>
+  <p><strong>Uber’s advice:</strong> Initial cloud costs will be higher. Optimize over time.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's cost journey:
+Month 1: $8M (60% over budget!)
+- Haven't optimized yet
+- Learning platform
+
+Month 3: $7M (40% over budget)
+- Applied some optimizations
+- Still learning
+
+Month 6: $6M (20% over budget)
+- Most optimizations done
+- Getting there
+
+Month 12: $5M (on budget!)
+- Fully optimized
+- Using reserved instances
+- Efficient query patterns
+
+Key insight: Budget for learning curve!
+</code></pre></div></div>
+
+<h3 id="lesson-4-invest-in-training">Lesson 4: Invest in Training</h3>
+
+<blockquote>
+  <p><strong>Uber’s advice:</strong> Your engineers are your most important asset.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's training investment:
+- 2-week boot camps: $500K
+- Internal documentation: $200K
+- Office hours (expert time): $300K
+- External trainers: $100K
+Total: $1.1M
+
+Return on investment:
+- Faster adoption: Saved 6 months
+- Fewer errors: Prevented costly mistakes
+- Better optimization: Saved $3M/year
+ROI: 300% in first year!
+
+Lesson: Training pays for itself quickly
+</code></pre></div></div>
+
+<h3 id="lesson-5-dont-lift-and-shift-forever">Lesson 5: Don’t Lift-and-Shift Forever</h3>
+
+<blockquote>
+  <p><strong>Uber’s advice:</strong> Start with lift-and-shift, but modernize afterwards.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's two-phase approach:
+
+Phase 1: Lift-and-Shift (Year 1-2)
+- Move to GCP IaaS
+- Minimal changes to code
+- Fast migration
+- Benefits: Faster scaling, less management
+
+Phase 2: Modernization (Year 2-4)
+- Adopt PaaS services (BigQuery, Dataflow)
+- Refactor applications
+- Slower, requires code changes
+- Benefits: Lower costs, better performance
+
+Why two phases?
+✅ Phase 1: Quick wins, low risk
+✅ Phase 2: Maximize benefits
+❌ Trying to do both at once: Too complex, high risk
+
+Current status (2024):
+- 70% modernized to PaaS
+- 30% still on IaaS
+- Target: 90% PaaS by 2026
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="whats-next-for-uber">What’s Next for Uber?</h2>
+
+<h3 id="current-state-2024">Current State (2024)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Infrastructure:
+✅ 100% on GCP
+✅ 0 self-managed servers
+✅ 70% using PaaS services
+✅ 30% using IaaS (still migrating)
+
+Cost:
+✅ $80M/year (down from $160M)
+✅ 50% cost reduction
+✅ Still optimizing
+
+Team:
+✅ 100 engineers on infrastructure (down from 300)
+✅ 200 engineers redeployed to product
+✅ Faster innovation
+</code></pre></div></div>
+
+<h3 id="future-plans-2024-2026">Future Plans (2024-2026)</h3>
+
+<p><strong>1. Complete PaaS Migration</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Goal: Move remaining 30% from IaaS to PaaS
+- Replace remaining self-managed Spark → Dataproc
+- Migrate all storage to BigQuery/Cloud Storage
+- Adopt Vertex AI for ML workloads
+
+Expected benefits:
+- Additional 20% cost savings ($16M/year)
+- Reduced complexity
+</code></pre></div></div>
+
+<p><strong>2. Multi-Cloud Strategy</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Goal: Don't depend on single cloud provider
+- Primary: GCP (current)
+- Secondary: AWS (for specific workloads)
+- Disaster recovery: Azure
+
+Benefits:
+- Avoid vendor lock-in
+- Negotiate better pricing
+- Resilience (if one cloud goes down)
+
+Challenge:
+- Increased complexity
+- Team needs to learn multiple clouds
+</code></pre></div></div>
+
+<p><strong>3. Real-Time Everything</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Goal: Move from batch to real-time processing
+- Real-time earnings (not next-day)
+- Real-time fraud detection (not minutes)
+- Real-time analytics (not hourly)
+
+Enabled by:
+- Dataflow's streaming capabilities
+- BigQuery's streaming inserts
+- Pub/Sub's low latency
+
+Expected benefits:
+- Better user experience
+- Faster fraud detection
+- More accurate pricing
+</code></pre></div></div>
+
+<p><strong>4. AI/ML Everywhere</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Goal: Leverage AI for everything
+- Demand forecasting
+- Dynamic pricing optimization
+- Route optimization
+- Driver-rider matching
+- Fraud detection
+- Customer support automation
+
+Enabled by:
+- Vertex AI (managed ML platform)
+- BigQuery ML (SQL-based ML)
+- TensorFlow on Dataproc
+
+Investment: $50M over 3 years
+Expected ROI: $200M in increased efficiency
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="summary-the-complete-transformation">Summary: The Complete Transformation</h2>
+
+<h3 id="the-journey">The Journey</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2015-2020: Built Custom Infrastructure
+- 7 specialized systems
+- 2,000+ servers
+- 300 engineers
+- $160M/year
+- 99.9% uptime
+
+2020-2023: Migrated to GCP
+- 3-year journey
+- $30M migration cost
+- Zero production incidents
+- Phased approach
+
+2024: Fully on Cloud
+- 5 main GCP services
+- 0 servers
+- 100 engineers
+- $80M/year
+- 99.99% uptime
+
+Transformation:
+- 50% cost reduction
+- 10x faster to scale
+- 5-10x faster development
+- 10x better reliability
+- 200 engineers freed for product work
+</code></pre></div></div>
+
+<h3 id="old-vs-new-final-comparison">Old vs New: Final Comparison</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Before (Self-Managed)</th>
+      <th>After (GCP)</th>
+      <th>Improvement</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Cost</strong></td>
+      <td>$160M/year</td>
+      <td>$80M/year</td>
+      <td>50% reduction</td>
+    </tr>
+    <tr>
+      <td><strong>Servers</strong></td>
+      <td>2,000+</td>
+      <td>0</td>
+      <td>100% reduction</td>
+    </tr>
+    <tr>
+      <td><strong>Engineers</strong></td>
+      <td>300</td>
+      <td>100</td>
+      <td>67% reduction</td>
+    </tr>
+    <tr>
+      <td><strong>Uptime</strong></td>
+      <td>99.9%</td>
+      <td>99.99%</td>
+      <td>10x fewer outages</td>
+    </tr>
+    <tr>
+      <td><strong>Scaling time</strong></td>
+      <td>3-6 months</td>
+      <td>Minutes</td>
+      <td>1,000x faster</td>
+    </tr>
+    <tr>
+      <td><strong>New region</strong></td>
+      <td>6-12 months, $10-20M</td>
+      <td>1-2 weeks, $1-2M</td>
+      <td>10x faster, 10x cheaper</td>
+    </tr>
+    <tr>
+      <td><strong>Dev time</strong></td>
+      <td>3-6 months</td>
+      <td>2-4 weeks</td>
+      <td>5-10x faster</td>
+    </tr>
+    <tr>
+      <td><strong>Complexity</strong></td>
+      <td>Very High (7 systems)</td>
+      <td>Medium (5 services)</td>
+      <td>30% reduction</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ol>
+  <li><strong>Cloud isn’t always cheaper immediately</strong>
+    <ul>
+      <li>Year 1: Costs more (running both systems)</li>
+      <li>Year 2+: Massive savings</li>
+      <li>ROI: Positive after 18 months</li>
+    </ul>
+  </li>
+  <li><strong>Migration takes time</strong>
+    <ul>
+      <li>Uber: 3 years for complete migration</li>
+      <li>Can’t rush it</li>
+      <li>Phased approach is critical</li>
+    </ul>
+  </li>
+  <li><strong>The benefits are real</strong>
+    <ul>
+      <li>50% cost savings</li>
+      <li>10x faster scaling</li>
+      <li>Freed engineers for innovation</li>
+      <li>Enabled global expansion</li>
+    </ul>
+  </li>
+  <li><strong>It’s not just about technology</strong>
+    <ul>
+      <li>Team training is critical</li>
+      <li>Change management is key</li>
+      <li>Cultural shift required</li>
+    </ul>
+  </li>
+  <li><strong>Managed services win at scale</strong>
+    <ul>
+      <li>Even Uber (with massive engineering team)</li>
+      <li>Chose managed over self-managed</li>
+      <li>Focus engineers on product, not infrastructure</li>
+    </ul>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="what-this-means-for-you">What This Means for You</h2>
+
+<h3 id="if-youre-a-startup">If You’re a Startup</h3>
+
+<p><strong>Lesson:</strong> Start with cloud from day 1!</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DON'T build like old Uber:
+❌ Self-managed infrastructure
+❌ Custom systems
+❌ Years of engineering effort
+
+DO start with cloud:
+✅ Use managed services (BigQuery, etc.)
+✅ Scale automatically
+✅ Focus on product, not infrastructure
+
+Your tech stack should be:
+Phase 1 (0-100K users): $100-1K/month
+- PostgreSQL (managed)
+- Redis (managed)
+- Simple analytics
+
+Phase 2 (100K-1M users): $1K-10K/month
+- Cloud SQL or Aurora
+- Redis/Memcached
+- BigQuery for analytics
+
+Phase 3 (1M-10M users): $10K-100K/month
+- BigQuery for data warehouse
+- Pub/Sub for events
+- Dataflow for processing
+
+Only at 10M+ users:
+- Consider what Uber does
+- But still on managed services!
+</code></pre></div></div>
+
+<h3 id="if-youre-mid-size-currently-self-managed">If You’re Mid-Size (Currently Self-Managed)</h3>
+
+<p><strong>Lesson:</strong> Migrate to cloud, but take your time.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Migration timeline:
+Year 1: Plan and pilot
+- Assess current infrastructure
+- Calculate TCO (total cost of ownership)
+- Run pilot projects
+- Build business case
+
+Year 2-3: Migrate
+- Start with non-critical systems
+- Run in parallel
+- Train team
+- Optimize costs
+
+Year 4: Complete and optimize
+- Finish migration
+- Shut down old infrastructure
+- Celebrate savings!
+
+Expected savings:
+- 30-50% cost reduction
+- 5-10x faster development
+- Fewer engineers on infrastructure
+</code></pre></div></div>
+
+<h3 id="if-youre-enterprise">If You’re Enterprise</h3>
+
+<p><strong>Lesson:</strong> Follow Uber’s playbook.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's proven approach:
+1. Phased migration (3 years)
+2. Run in parallel (shadow mode)
+3. Migrate by risk level (low to high)
+4. Invest in training ($1M+)
+5. Start with lift-and-shift
+6. Then modernize to PaaS
+7. Optimize costs continuously
+
+Expected outcomes:
+- 40-60% cost savings (long-term)
+- Faster innovation
+- Global expansion enabled
+- Better reliability
+
+Investment required:
+- Migration cost: $10-100M (depending on size)
+- Time: 2-5 years
+- ROI: 2-3 years
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="conclusion-the-future-is-managed-services">Conclusion: The Future is Managed Services</h2>
+
+<p>Uber’s journey teaches us:</p>
+
+<ol>
+  <li><strong>Even the most sophisticated companies are moving to cloud</strong>
+    <ul>
+      <li>Uber built one of the world’s best data platforms</li>
+      <li>Still chose to migrate to GCP</li>
+      <li>Managed services &gt; self-managed at any scale</li>
+    </ul>
+  </li>
+  <li><strong>Migration is hard but worth it</strong>
+    <ul>
+      <li>3 years of effort</li>
+      <li>$30M migration cost</li>
+      <li>$80M/year savings</li>
+      <li>ROI in &lt; 18 months</li>
+    </ul>
+  </li>
+  <li><strong>Focus on your core business</strong>
+    <ul>
+      <li>Uber’s business: Ridesharing</li>
+      <li>Not: Running data centers</li>
+      <li>Cloud lets them focus on what matters</li>
+    </ul>
+  </li>
+  <li><strong>The benefits compound over time</strong>
+    <ul>
+      <li>Initial: Just cost savings</li>
+      <li>Later: Faster innovation, global expansion</li>
+      <li>Long-term: Competitive advantage</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>The bottom line:</strong> If Uber can simplify their infrastructure with cloud, you can too!</p>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><strong><a href="https://www.uber.com/blog/modernizing-ubers-data-infrastructure-with-gcp/">Uber’s GCP Migration Blog Post</a></strong> - Official announcement</li>
+  <li><strong><a href="https://cloud.google.com/customers/uber">Google Cloud Case Study: Uber</a></strong> - Detailed case study</li>
+  <li><strong><a href="https://cloud.google.com/bigquery/docs">BigQuery Documentation</a></strong> - Learn BigQuery</li>
+  <li><strong><a href="https://cloud.google.com/dataflow/docs">Dataflow Documentation</a></strong> - Stream/batch processing</li>
+  <li><strong><a href="https://cloud.google.com/architecture/migration-to-gcp-getting-started">Cloud Migration Best Practices</a></strong> - Migration guide</li>
+  <li><strong><a href="https://cloud.google.com/products/calculator">TCO Calculator</a></strong> - Calculate your savings</li>
+</ul>
+
+<hr />
+
+<p><strong>Series Navigation:</strong></p>
+<ul>
+  <li>← <a href="/handbook/handbook/_topics/uber-data-infrastructure-part-1-building/">Part 1: Building the Original Infrastructure</a></li>
+  <li>Part 2: Modernizing with GCP ← You are here</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">case-study</span>, <span class="tag">uber</span>, <span class="tag">data-infrastructure</span>, <span class="tag">gcp</span>, <span class="tag">google-cloud</span>, <span class="tag">cloud-migration</span>, <span class="tag">real-world</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>

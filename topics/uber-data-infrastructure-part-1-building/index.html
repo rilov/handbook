@@ -1,0 +1,1355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Case Study: How Uber Built Their Data Infrastructure (Part 1)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/case-studies">Case Studies</a> &mdash;
+    </nav>
+    <h2>Case Study: How Uber Built Their Data Infrastructure (Part 1)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/case-studies">Case Studies</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>Part 1 of the Uber Data Infrastructure Series</strong></p>
+
+  <p>This article explains how Uber built one of the world’s largest data infrastructures from scratch. You’ll learn why traditional databases don’t work at Uber’s scale and how they solved it with specialized tools.</p>
+
+  <p><strong>Next:</strong> <a href="/handbook/handbook/_topics/uber-data-infrastructure-part-2-modernization/">Part 2 - Modernizing with Google Cloud →</a></p>
+</blockquote>
+
+<h2 id="introduction-the-uber-data-challenge">Introduction: The Uber Data Challenge</h2>
+
+<p>Imagine you’re running a service that needs to track:</p>
+
+<ul>
+  <li><strong>137 million monthly active users</strong></li>
+  <li><strong>7 billion trips per year</strong> (19 million trips per day!)</li>
+  <li><strong>Millions of drivers</strong> in real-time</li>
+  <li><strong>GPS updates every second</strong> from millions of devices</li>
+  <li><strong>Payments, pricing, matching, analytics</strong> — all happening simultaneously</li>
+</ul>
+
+<p>Every single second, Uber processes:</p>
+<ul>
+  <li>🚗 Thousands of ride requests</li>
+  <li>📍 Millions of GPS location updates</li>
+  <li>💰 Thousands of payments</li>
+  <li>📊 Billions of data points for analytics</li>
+</ul>
+
+<p><strong>The problem:</strong> No single database can handle this. Traditional databases would crash instantly.</p>
+
+<p><strong>The solution:</strong> Uber had to build a completely custom data infrastructure using multiple specialized systems working together.</p>
+
+<hr />
+
+<h2 id="why-traditional-databases-dont-work-at-uber-scale">Why Traditional Databases Don’t Work at Uber Scale</h2>
+
+<p>Let’s understand the problem first:</p>
+
+<h3 id="the-traditional-approach-wont-work">The Traditional Approach (Won’t Work!)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Typical startup database:
+- PostgreSQL or MySQL
+- Handles: 10,000 requests/second
+- Storage: Up to 10 TB
+- Cost: $500-5,000/month
+
+Uber's requirements:
+- Events: 1,000,000+ per second (100x more!)
+- Storage: Multiple petabytes (1,000,000 GB)
+- Cost: Can't throw unlimited money at it
+- Result: Traditional database = 💥 CRASH!
+</code></pre></div></div>
+
+<h3 id="what-uber-needs-instead">What Uber Needs Instead</h3>
+
+<p>Think of it like a city’s infrastructure:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Single Database = One huge warehouse
+- Everything in one place
+- Hard to scale
+- One failure = everything stops
+
+Uber's Approach = Specialized city systems
+- Highways (Kafka) for moving data
+- Warehouses (HDFS) for storage
+- Factories (Spark) for processing
+- Real-time centers (Flink) for instant decisions
+- Search centers (Pinot/Presto) for finding data
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="part-1-the-data-collection-layer">Part 1: The Data Collection Layer</h2>
+
+<h3 id="apache-kafka--the-event-highway">Apache Kafka — The Event Highway</h3>
+
+<blockquote>
+  <p><strong>Think of Kafka as:</strong> A super-fast highway system that can move millions of cars (data events) per second without ever getting jammed.</p>
+</blockquote>
+
+<h4 id="what-problem-does-it-solve">What Problem Does It Solve?</h4>
+
+<p><strong>Without Kafka:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber App → Database → CRASH!
+(Too many events hitting database at once)
+</code></pre></div></div>
+
+<p><strong>With Kafka:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber App → Kafka (buffer) → Database
+(Kafka handles the flood, database processes at its own pace)
+</code></pre></div></div>
+
+<h4 id="how-kafka-works-at-uber">How Kafka Works at Uber</h4>
+
+<div class="mermaid">
+flowchart LR
+    RIDERS["📱 Rider Apps"] --&gt; KAFKA["Kafka<br />Event Stream"]
+    DRIVERS["🚗 Driver Apps"] --&gt; KAFKA
+    PAYMENTS["💳 Payment Systems"] --&gt; KAFKA
+    MAPS["🗺️ Maps/GPS"] --&gt; KAFKA
+    
+    KAFKA --&gt; TOPIC1["Topic: Rides"]
+    KAFKA --&gt; TOPIC2["Topic: GPS"]
+    KAFKA --&gt; TOPIC3["Topic: Payments"]
+    
+    TOPIC1 --&gt; CONSUMERS["Data Consumers<br />(Spark, Flink, etc.)"]
+    TOPIC2 --&gt; CONSUMERS
+    TOPIC3 --&gt; CONSUMERS
+    
+    style KAFKA fill:#fef3c7,stroke:#d97706
+    style CONSUMERS fill:#d1fae5,stroke:#059669
+</div>
+
+<h4 id="real-example-a-single-ride">Real Example: A Single Ride</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Rider opens app
+   → Kafka captures: {"event": "app_opened", "user_id": 12345, "time": "10:00:00"}
+
+2. Rider requests ride
+   → Kafka captures: {"event": "ride_requested", "from": "Times Square", "to": "JFK"}
+
+3. Driver accepts
+   → Kafka captures: {"event": "ride_accepted", "driver_id": 67890}
+
+4. GPS updates (every second)
+   → Kafka captures: {"event": "location", "lat": 40.7580, "lng": -73.9855}
+
+5. Ride completes
+   → Kafka captures: {"event": "ride_completed", "fare": $45.50}
+
+All these events flow through Kafka at the rate of:
+- 1,000,000+ events per second
+- 86,400,000,000+ events per day (86 billion!)
+</code></pre></div></div>
+
+<h4 id="why-uber-chose-kafka">Why Uber Chose Kafka</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Traditional Queue</th>
+      <th>Kafka</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Throughput</strong></td>
+      <td>10,000 events/sec</td>
+      <td>1,000,000+ events/sec</td>
+    </tr>
+    <tr>
+      <td><strong>Retention</strong></td>
+      <td>Minutes-Hours</td>
+      <td>Days-Weeks</td>
+    </tr>
+    <tr>
+      <td><strong>Replay</strong></td>
+      <td>❌ Once consumed, gone</td>
+      <td>✅ Can replay anytime</td>
+    </tr>
+    <tr>
+      <td><strong>Durability</strong></td>
+      <td>❌ Can lose data</td>
+      <td>✅ Never loses data</td>
+    </tr>
+    <tr>
+      <td><strong>Scalability</strong></td>
+      <td>Hard to scale</td>
+      <td>Scales horizontally</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Key benefit:</strong> Kafka acts as a “replayable log” — Uber can go back and reprocess events from days ago if needed!</p>
+
+<hr />
+
+<h2 id="part-2-the-storage-layer">Part 2: The Storage Layer</h2>
+
+<h3 id="hdfs-hadoop-distributed-file-system--the-massive-warehouse">HDFS (Hadoop Distributed File System) — The Massive Warehouse</h3>
+
+<blockquote>
+  <p><strong>Think of HDFS as:</strong> A warehouse so massive it spans thousands of buildings (servers), but you can still find any item instantly.</p>
+</blockquote>
+
+<h4 id="what-problem-does-it-solve-1">What Problem Does It Solve?</h4>
+
+<p><strong>Traditional storage problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Regular hard drive: 10 TB max
+Uber's data: 1,000 TB (1 petabyte) per day!
+
+Can't fit on one machine!
+</code></pre></div></div>
+
+<p><strong>HDFS solution:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Split data across 1,000+ machines
+Each machine stores small pieces
+Data never lost (3 copies of everything)
+</code></pre></div></div>
+
+<h4 id="how-hdfs-works-simplified">How HDFS Works (Simplified)</h4>
+
+<p>Imagine saving a huge movie file:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal computer:
+Movie.mp4 (100 GB) → Saved on single hard drive
+
+HDFS:
+Movie.mp4 (100 GB) → Split into 100 pieces (1 GB each)
+- Piece 1 → Server A, Server B, Server C (3 copies)
+- Piece 2 → Server D, Server E, Server F (3 copies)
+- Piece 3 → Server G, Server H, Server I (3 copies)
+... and so on
+
+If Server A crashes? No problem! Piece 1 still on B and C
+</code></pre></div></div>
+
+<h4 id="ubers-hdfs-scale">Uber’s HDFS Scale</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Scale</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Total storage</strong></td>
+      <td>Multiple petabytes (1 PB = 1,000,000 GB)</td>
+    </tr>
+    <tr>
+      <td><strong>Files stored</strong></td>
+      <td>Billions of files</td>
+    </tr>
+    <tr>
+      <td><strong>Servers</strong></td>
+      <td>Thousands of machines</td>
+    </tr>
+    <tr>
+      <td><strong>Daily growth</strong></td>
+      <td>Terabytes of new data every day</td>
+    </tr>
+    <tr>
+      <td><strong>Data retention</strong></td>
+      <td>Years of historical data</td>
+    </tr>
+    <tr>
+      <td><strong>Availability</strong></td>
+      <td>99.9% (almost never down)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="what-uber-stores-in-hdfs">What Uber Stores in HDFS</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Trip Records
+   - Every ride ever taken
+   - Date, time, pickup, dropoff, fare, driver, rider
+   - Billions of records
+
+2. GPS Traces
+   - Every GPS ping from every driver
+   - Used for: maps, ETAs, routing
+   - Trillions of data points
+
+3. Payment Data
+   - Every transaction
+   - Used for: accounting, fraud detection
+   - Years of history
+
+4. Logs
+   - Every app action, API call, error
+   - Used for: debugging, analytics
+   - Petabytes of logs
+
+5. Analytics Data
+   - Pre-computed metrics, reports
+   - Used for: dashboards, business decisions
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="part-3-the-smart-storage-layer">Part 3: The Smart Storage Layer</h2>
+
+<h3 id="apache-hudi--the-time-traveling-librarian">Apache Hudi — The Time-Traveling Librarian</h3>
+
+<blockquote>
+  <p><strong>Think of Hudi as:</strong> A magical librarian who can not only find any book in a library of billions but can also show you what the library looked like yesterday, last week, or last year.</p>
+</blockquote>
+
+<h4 id="what-problem-does-it-solve-2">What Problem Does It Solve?</h4>
+
+<p><strong>HDFS problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>HDFS is great for storing data
+But:
+- Can't update existing data (only append)
+- Can't delete old data easily
+- Can't query efficiently
+- Can't go back in time
+
+Example problem:
+Ride #12345 status: "in_progress"
+Driver completes ride
+Need to update to: "completed"
+HDFS: Can't update! Must write entire new file!
+</code></pre></div></div>
+
+<p><strong>Hudi solution:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>✅ Can update records (like a database)
+✅ Can delete records
+✅ Can query efficiently
+✅ Can time travel (see data from any point in time)
+✅ Works on top of HDFS
+</code></pre></div></div>
+
+<h4 id="real-example-updating-a-ride">Real Example: Updating a Ride</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Without Hudi (pure HDFS):
+1. Read entire file (1 GB) with 1 million rides
+2. Find ride #12345
+3. Update status
+4. Write entire file (1 GB) back
+Time: Minutes, Space: 1 GB extra
+
+With Hudi:
+1. Update ride #12345 directly
+2. Hudi tracks the change
+Time: Seconds, Space: Few KB
+</code></pre></div></div>
+
+<h4 id="hudis-time-travel-feature">Hudi’s Time Travel Feature</h4>
+
+<p>This is incredibly powerful for Uber:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Question: "Show me all rides in NYC on Dec 1st as they appeared at 2pm"
+
+Hudi can answer this!
+
+It keeps track of:
+- What data looked like at 2pm
+- What changed between 2pm and 3pm
+- What changed between 3pm and 4pm
+- Etc.
+
+Use cases:
+✅ Debugging: "Why did driver earnings look wrong yesterday?"
+✅ Auditing: "Show me all payments as they were last month"
+✅ Machine Learning: "Train model on data from exactly 1 week ago"
+</code></pre></div></div>
+
+<h4 id="ubers-hudi-use-cases">Uber’s Hudi Use Cases</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use Case</th>
+      <th>How Hudi Helps</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Trip Updates</strong></td>
+      <td>Update ride status, fare, duration in real-time</td>
+    </tr>
+    <tr>
+      <td><strong>Pricing Corrections</strong></td>
+      <td>Fix pricing errors after the fact</td>
+    </tr>
+    <tr>
+      <td><strong>GDPR Compliance</strong></td>
+      <td>Delete user data when requested</td>
+    </tr>
+    <tr>
+      <td><strong>Data Quality</strong></td>
+      <td>Fix bad data without reprocessing everything</td>
+    </tr>
+    <tr>
+      <td><strong>A/B Testing</strong></td>
+      <td>Compare metrics before/after changes</td>
+    </tr>
+    <tr>
+      <td><strong>Auditing</strong></td>
+      <td>Show exact state of data at any point in time</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="part-4-the-processing-layer">Part 4: The Processing Layer</h2>
+
+<h3 id="apache-spark--the-overnight-factory">Apache Spark — The Overnight Factory</h3>
+
+<blockquote>
+  <p><strong>Think of Spark as:</strong> A massive factory that works overnight to process millions of items in parallel, preparing everything for the next day.</p>
+</blockquote>
+
+<h4 id="what-problem-does-it-solve-3">What Problem Does It Solve?</h4>
+
+<p><strong>The batch processing problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Task: Calculate yesterday's earnings for 5 million drivers
+
+Single computer:
+- Process 1 driver at a time
+- 5 million drivers × 10 seconds each = 57 days!
+- Impossible!
+
+Spark:
+- Process 5,000 drivers simultaneously
+- 5 million ÷ 5,000 = 1,000 batches
+- 1,000 × 10 seconds = 2.7 hours
+- Done overnight! ✅
+</code></pre></div></div>
+
+<h4 id="how-spark-works-simplified">How Spark Works (Simplified)</h4>
+
+<div class="mermaid">
+flowchart LR
+    DATA["Huge Dataset<br />(1 PB)"] --&gt; SPLIT["Split into<br />1000 pieces"]
+    
+    SPLIT --&gt; WORKER1["Worker 1<br />Process piece 1"]
+    SPLIT --&gt; WORKER2["Worker 2<br />Process piece 2"]
+    SPLIT --&gt; WORKER3["Worker 3<br />Process piece 3"]
+    SPLIT --&gt; DOTS["..."]
+    SPLIT --&gt; WORKER1000["Worker 1000<br />Process piece 1000"]
+    
+    WORKER1 --&gt; COMBINE["Combine Results"]
+    WORKER2 --&gt; COMBINE
+    WORKER3 --&gt; COMBINE
+    DOTS --&gt; COMBINE
+    WORKER1000 --&gt; COMBINE
+    
+    COMBINE --&gt; RESULT["Final Result"]
+    
+    style DATA fill:#dbeafe,stroke:#2563eb
+    style COMBINE fill:#d1fae5,stroke:#059669
+    style RESULT fill:#fce7f3,stroke:#db2777
+</div>
+
+<h4 id="what-uber-uses-spark-for">What Uber Uses Spark For</h4>
+
+<p><strong>1. Nightly Earnings Calculations</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Every night, Spark calculates:</span>
+<span class="k">SELECT</span> 
+  <span class="n">driver_id</span><span class="p">,</span>
+  <span class="k">SUM</span><span class="p">(</span><span class="n">fare</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_earnings</span><span class="p">,</span>
+  <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_rides</span><span class="p">,</span>
+  <span class="k">AVG</span><span class="p">(</span><span class="n">rating</span><span class="p">)</span> <span class="k">as</span> <span class="n">avg_rating</span>
+<span class="k">FROM</span> <span class="n">trips</span>
+<span class="k">WHERE</span> <span class="nb">date</span> <span class="o">=</span> <span class="n">YESTERDAY</span>
+<span class="k">GROUP</span> <span class="k">BY</span> <span class="n">driver_id</span>
+
+<span class="n">Processes</span><span class="p">:</span> <span class="n">Billions</span> <span class="k">of</span> <span class="n">trips</span>
+<span class="nb">Time</span><span class="p">:</span> <span class="mi">2</span><span class="o">-</span><span class="mi">3</span> <span class="n">hours</span> <span class="p">(</span><span class="n">overnight</span><span class="p">)</span>
+<span class="k">Output</span><span class="p">:</span> <span class="n">Driver</span> <span class="n">earnings</span> <span class="n">ready</span> <span class="k">by</span> <span class="n">morning</span>
+</code></pre></div></div>
+
+<p><strong>2. Surge Pricing Maps</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Every hour, Spark builds heatmaps:
+</span><span class="o">-</span> <span class="n">Where</span> <span class="n">demand</span> <span class="ow">is</span> <span class="n">high</span>
+<span class="o">-</span> <span class="n">Where</span> <span class="n">supply</span> <span class="ow">is</span> <span class="n">low</span>
+<span class="o">-</span> <span class="n">Calculate</span> <span class="n">surge</span> <span class="nf">multiplier </span><span class="p">(</span><span class="mf">1.5</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="n">x</span><span class="p">,</span> <span class="mi">3</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">Processes</span><span class="p">:</span> <span class="n">Real</span><span class="o">-</span><span class="n">time</span> <span class="n">demand</span> <span class="n">data</span>
+<span class="n">Time</span><span class="p">:</span> <span class="mi">15</span><span class="o">-</span><span class="mi">30</span> <span class="n">minutes</span>
+<span class="n">Output</span><span class="p">:</span> <span class="n">Updated</span> <span class="n">pricing</span> <span class="k">for</span> <span class="n">entire</span> <span class="n">city</span>
+</code></pre></div></div>
+
+<p><strong>3. Machine Learning Models</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Weekly, Spark trains ML models:
+</span><span class="o">-</span> <span class="n">ETA</span> <span class="nf">prediction </span><span class="p">(</span><span class="n">how</span> <span class="nb">long</span> <span class="n">will</span> <span class="n">ride</span> <span class="n">take</span><span class="err">?</span><span class="p">)</span>
+<span class="o">-</span> <span class="n">Demand</span> <span class="nf">forecasting </span><span class="p">(</span><span class="n">where</span> <span class="n">will</span> <span class="n">rides</span> <span class="n">be</span> <span class="n">needed</span><span class="err">?</span><span class="p">)</span>
+<span class="o">-</span> <span class="n">Fraud</span> <span class="nf">detection </span><span class="p">(</span><span class="n">identify</span> <span class="n">suspicious</span> <span class="n">patterns</span><span class="p">)</span>
+
+<span class="n">Processes</span><span class="p">:</span> <span class="n">Weeks</span> <span class="n">of</span> <span class="n">historical</span> <span class="n">data</span>
+<span class="n">Time</span><span class="p">:</span> <span class="n">Hours</span> <span class="n">to</span> <span class="n">days</span>
+<span class="n">Output</span><span class="p">:</span> <span class="n">Updated</span> <span class="n">ML</span> <span class="n">models</span>
+</code></pre></div></div>
+
+<p><strong>4. Report Generation</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Every day, Spark generates reports:
+- City-by-city metrics
+- Driver performance stats
+- Revenue analytics
+- Customer satisfaction trends
+
+Processes: All previous day's data
+Time: 1-2 hours
+Output: Thousands of reports for business teams
+</code></pre></div></div>
+
+<h4 id="sparks-performance-at-uber">Spark’s Performance at Uber</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Data Size</th>
+      <th>Time</th>
+      <th>Speed-up vs Single Machine</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Daily earnings</strong></td>
+      <td>1 TB</td>
+      <td>2 hours</td>
+      <td>100x faster</td>
+    </tr>
+    <tr>
+      <td><strong>Weekly reports</strong></td>
+      <td>7 TB</td>
+      <td>5 hours</td>
+      <td>200x faster</td>
+    </tr>
+    <tr>
+      <td><strong>ML training</strong></td>
+      <td>50 TB</td>
+      <td>12 hours</td>
+      <td>500x faster</td>
+    </tr>
+    <tr>
+      <td><strong>Data cleanup</strong></td>
+      <td>100 TB</td>
+      <td>24 hours</td>
+      <td>1000x faster</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="part-5-the-real-time-processing-layer">Part 5: The Real-Time Processing Layer</h2>
+
+<h3 id="apache-flink--the-instant-response-system">Apache Flink — The Instant Response System</h3>
+
+<blockquote>
+  <p><strong>Think of Flink as:</strong> A lightning-fast brain that makes decisions in milliseconds, not hours. While Spark processes data overnight, Flink processes it right now!</p>
+</blockquote>
+
+<h4 id="spark-vs-flink-whats-the-difference">Spark vs Flink: What’s the Difference?</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Spark (Batch Processing):
+- Like mail delivery: collect all day, deliver at night
+- Processes data in large batches
+- Takes minutes to hours
+- Used for: reports, analytics, ML training
+
+Flink (Stream Processing):
+- Like phone calls: instant communication
+- Processes data immediately as it arrives
+- Takes milliseconds
+- Used for: real-time decisions, instant alerts
+</code></pre></div></div>
+
+<h4 id="what-problem-does-flink-solve">What Problem Does Flink Solve?</h4>
+
+<p><strong>Real-time decision problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Scenario: New Year's Eve in Times Square
+- 100,000 people requesting rides simultaneously
+- Need to calculate surge pricing NOW
+- Can't wait for Spark's overnight batch job!
+
+Solution: Flink processes events in real-time
+1. Event arrives: Ride requested
+2. Flink calculates: Demand spike detected
+3. Flink decides: Apply 3x surge pricing
+4. Response sent: &lt; 100ms!
+</code></pre></div></div>
+
+<h4 id="how-flink-works-simplified">How Flink Works (Simplified)</h4>
+
+<div class="mermaid">
+flowchart LR
+    EVENTS["Events Stream<br />(Kafka)"] --&gt; FLINK["Flink<br />Real-time Processing"]
+    
+    FLINK --&gt; DECISION1["Surge Pricing<br />(&lt; 100ms)"]
+    FLINK --&gt; DECISION2["Fraud Detection<br />(&lt; 50ms)"]
+    FLINK --&gt; DECISION3["Driver Matching<br />(&lt; 200ms)"]
+    FLINK --&gt; DECISION4["ETA Calculation<br />(&lt; 100ms)"]
+    
+    DECISION1 --&gt; ACTION["Immediate Actions"]
+    DECISION2 --&gt; ACTION
+    DECISION3 --&gt; ACTION
+    DECISION4 --&gt; ACTION
+    
+    style FLINK fill:#fef3c7,stroke:#d97706
+    style ACTION fill:#d1fae5,stroke:#059669
+</div>
+
+<h4 id="ubers-real-time-use-cases-with-flink">Uber’s Real-Time Use Cases with Flink</h4>
+
+<p><strong>1. Surge Pricing (Real-Time)</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input: Ride requests per minute per zone
+Processing:
+- Count requests in last 5 minutes
+- Compare to available drivers
+- Calculate supply/demand ratio
+- Determine surge multiplier
+
+Output: Updated pricing every 30 seconds
+Latency: &lt; 100ms
+</code></pre></div></div>
+
+<p><strong>2. Fraud Detection (Real-Time)</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input: Payment transaction
+Processing:
+- Check against known fraud patterns
+- Verify card/user history
+- Calculate risk score
+- Approve or flag
+
+Output: Approve/Reject decision
+Latency: &lt; 50ms (must be instant!)
+</code></pre></div></div>
+
+<p><strong>3. Driver-Rider Matching (Real-Time)</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input: New ride request
+Processing:
+- Find drivers within 5 miles
+- Calculate ETA for each driver
+- Consider driver rating, preferences
+- Select best match
+
+Output: Matched driver
+Latency: &lt; 200ms
+</code></pre></div></div>
+
+<p><strong>4. Real-Time Dashboards</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input: All events (rides, GPS, payments)
+Processing:
+- Aggregate by city, time, type
+- Calculate KPIs (rides/minute, revenue/hour)
+- Detect anomalies
+
+Output: Live dashboard metrics
+Latency: &lt; 500ms
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="part-6-the-analytics--query-layer">Part 6: The Analytics &amp; Query Layer</h2>
+
+<h3 id="apache-pinot--the-speed-demon-for-analytics">Apache Pinot — The Speed Demon for Analytics</h3>
+
+<blockquote>
+  <p><strong>Think of Pinot as:</strong> A super-smart librarian who can answer complex questions about billions of books in under a second.</p>
+</blockquote>
+
+<h4 id="what-problem-does-it-solve-4">What Problem Does It Solve?</h4>
+
+<p><strong>The analytics problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Question: "How many rides in NYC in the last hour?"
+
+HDFS/Hudi:
+- Scan entire dataset (terabytes)
+- Filter for NYC
+- Filter for last hour
+- Count results
+Time: 5-10 minutes ❌
+
+Pinot:
+- Pre-indexed data
+- Knows exactly where NYC data is
+- Instant filtering
+Time: 100-500 milliseconds ✅
+</code></pre></div></div>
+
+<h4 id="how-pinot-achieves-speed">How Pinot Achieves Speed</h4>
+
+<p><strong>Secret 1: Columnar Storage</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal database stores rows:
+[John, 25, NYC] [Jane, 30, LA] [Bob, 28, CHI]
+
+To count people from NYC:
+- Must read every row
+- Check city for each
+- Slow!
+
+Pinot stores columns:
+Names: [John, Jane, Bob]
+Ages:  [25, 30, 28]
+Cities: [NYC, LA, CHI]
+
+To count people from NYC:
+- Only read Cities column
+- Much faster!
+</code></pre></div></div>
+
+<p><strong>Secret 2: Pre-Aggregation</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Instead of calculating on the fly:
+"Count rides in NYC last hour" (takes minutes)
+
+Pinot pre-calculates:
+- Rides per minute per city
+- Updated in real-time
+- Query just reads pre-computed value
+- Instant!
+</code></pre></div></div>
+
+<h4 id="what-uber-uses-pinot-for">What Uber Uses Pinot For</h4>
+
+<p><strong>1. Real-Time Dashboards</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Business teams query instantly:</span>
+<span class="k">SELECT</span> 
+  <span class="n">city</span><span class="p">,</span>
+  <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">rides</span><span class="p">,</span>
+  <span class="k">AVG</span><span class="p">(</span><span class="n">fare</span><span class="p">)</span> <span class="k">as</span> <span class="n">avg_fare</span><span class="p">,</span>
+  <span class="k">SUM</span><span class="p">(</span><span class="n">fare</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_revenue</span>
+<span class="k">FROM</span> <span class="n">trips</span>
+<span class="k">WHERE</span> <span class="nb">timestamp</span> <span class="o">&gt;</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">-</span> <span class="n">INTERVAL</span> <span class="s1">'1 hour'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> <span class="n">city</span>
+
+<span class="n">Query</span> <span class="nb">time</span><span class="p">:</span> <span class="mi">200</span><span class="n">ms</span>
+<span class="n">Updates</span><span class="p">:</span> <span class="k">Every</span> <span class="mi">10</span> <span class="n">seconds</span>
+</code></pre></div></div>
+
+<p><strong>2. Operational Monitoring</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Monitor system health:</span>
+<span class="k">SELECT</span> 
+  <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">failed_payments</span><span class="p">,</span>
+  <span class="k">AVG</span><span class="p">(</span><span class="n">response_time</span><span class="p">)</span> <span class="k">as</span> <span class="n">latency</span>
+<span class="k">FROM</span> <span class="n">events</span>
+<span class="k">WHERE</span> <span class="n">event_type</span> <span class="o">=</span> <span class="s1">'payment_failed'</span>
+  <span class="k">AND</span> <span class="nb">timestamp</span> <span class="o">&gt;</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">-</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span>
+
+<span class="n">Query</span> <span class="nb">time</span><span class="p">:</span> <span class="mi">100</span><span class="n">ms</span>
+<span class="n">Critical</span> <span class="k">for</span><span class="p">:</span> <span class="n">Detecting</span> <span class="n">outages</span>
+</code></pre></div></div>
+
+<p><strong>3. Ad-Hoc Analysis</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Product managers can explore data:
+- "Show me peak demand times by city"
+- "Compare weekend vs weekday rides"
+- "Find highest-earning drivers"
+
+All queries return in &lt; 1 second!
+</code></pre></div></div>
+
+<h3 id="presto--the-universal-query-tool">Presto — The Universal Query Tool</h3>
+
+<blockquote>
+  <p><strong>Think of Presto as:</strong> A universal translator that lets you ask questions about data stored anywhere, in any format, using simple English-like queries (SQL).</p>
+</blockquote>
+
+<h4 id="what-problem-does-it-solve-5">What Problem Does It Solve?</h4>
+
+<p><strong>The data silo problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uber's data is everywhere:
+- Ride data in HDFS
+- User profiles in PostgreSQL
+- Real-time metrics in Pinot
+- Logs in Elasticsearch
+
+Traditional approach:
+- Learn different tools for each system
+- Write different code for each
+- Complex and error-prone
+
+Presto solution:
+- One tool to query everything
+- Simple SQL language
+- Joins across different systems
+</code></pre></div></div>
+
+<h4 id="real-example-cross-system-query">Real Example: Cross-System Query</h4>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Join data from multiple systems:</span>
+<span class="k">SELECT</span> 
+  <span class="n">u</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
+  <span class="n">u</span><span class="p">.</span><span class="n">signup_date</span><span class="p">,</span>
+  <span class="k">COUNT</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">trip_id</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_trips</span><span class="p">,</span>
+  <span class="k">AVG</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">fare</span><span class="p">)</span> <span class="k">as</span> <span class="n">avg_fare</span>
+<span class="k">FROM</span> <span class="n">postgres</span><span class="p">.</span><span class="n">users</span> <span class="n">u</span>  <span class="c1">-- PostgreSQL database</span>
+<span class="k">JOIN</span> <span class="n">hdfs</span><span class="p">.</span><span class="n">trips</span> <span class="n">t</span>      <span class="c1">-- HDFS data lake</span>
+  <span class="k">ON</span> <span class="n">u</span><span class="p">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">t</span><span class="p">.</span><span class="n">user_id</span>
+<span class="k">WHERE</span> <span class="n">u</span><span class="p">.</span><span class="n">city</span> <span class="o">=</span> <span class="s1">'NYC'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> <span class="n">u</span><span class="p">.</span><span class="n">name</span><span class="p">,</span> <span class="n">u</span><span class="p">.</span><span class="n">signup_date</span>
+
+<span class="c1">-- Presto handles all the complexity!</span>
+<span class="c1">-- Data engineers write simple SQL</span>
+</code></pre></div></div>
+
+<h4 id="what-uber-uses-presto-for">What Uber Uses Presto For</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use Case</th>
+      <th>Data Sources</th>
+      <th>Why Presto?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>User Analytics</strong></td>
+      <td>PostgreSQL + HDFS + Pinot</td>
+      <td>Join user profiles with trip history</td>
+    </tr>
+    <tr>
+      <td><strong>Data Science</strong></td>
+      <td>HDFS + S3 + Hive</td>
+      <td>Access all data with SQL</td>
+    </tr>
+    <tr>
+      <td><strong>Business Intelligence</strong></td>
+      <td>All systems</td>
+      <td>One tool for all reports</td>
+    </tr>
+    <tr>
+      <td><strong>Ad-Hoc Queries</strong></td>
+      <td>Any data source</td>
+      <td>Quick exploration</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="how-everything-works-together">How Everything Works Together</h2>
+
+<p>Let’s follow a single ride through Uber’s entire data infrastructure:</p>
+
+<h3 id="timeline-of-a-ride">Timeline of a Ride</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10:00:00 - Rider opens app
+├─ Kafka: Captures "app_opened" event
+├─ Flink: Updates real-time "active users" count
+└─ Pinot: Dashboard shows +1 active user
+
+10:00:30 - Rider requests ride
+├─ Kafka: Captures "ride_requested" event
+├─ Flink: Matches with nearest driver (200ms)
+├─ Pinot: Dashboard shows +1 pending ride
+└─ HDFS: Stores request details
+
+10:01:00 - Driver accepts
+├─ Kafka: Captures "ride_accepted" event
+├─ Flink: Notifies rider, starts ETA calculation
+└─ Pinot: Dashboard updates ride status
+
+10:01:00-10:15:00 - Trip in progress
+├─ Kafka: Captures GPS updates (every second)
+├─ Flink: Updates ETA in real-time
+├─ HDFS: Stores GPS trace
+└─ Pinot: Dashboard shows active trips
+
+10:15:00 - Trip completes
+├─ Kafka: Captures "ride_completed" event
+├─ Flink: Processes payment in real-time
+├─ Hudi: Stores complete trip record
+├─ Pinot: Dashboard shows completed trip
+└─ HDFS: Archives all data
+
+Overnight (02:00 AM)
+└─ Spark: Calculates driver earnings, surge patterns, reports
+
+Next Morning (08:00 AM)
+├─ Driver sees earnings in app (from Spark job)
+├─ Business team sees reports (from Pinot)
+└─ Data scientists query data (using Presto)
+</code></pre></div></div>
+
+<h3 id="the-complete-architecture">The Complete Architecture</h3>
+
+<div class="mermaid">
+flowchart TD
+    APPS["Uber Apps<br />Riders &amp; Drivers"] --&gt; KAFKA["Apache Kafka<br />Event Streaming"]
+    
+    KAFKA --&gt; FLINK["Apache Flink<br />Real-Time Processing"]
+    KAFKA --&gt; SPARK["Apache Spark<br />Batch Processing"]
+    
+    FLINK --&gt; HDFS["HDFS<br />Raw Storage"]
+    SPARK --&gt; HDFS
+    
+    HDFS --&gt; HUDI["Apache Hudi<br />Smart Data Lake"]
+    
+    HUDI --&gt; PINOT["Apache Pinot<br />Fast Analytics"]
+    HUDI --&gt; PRESTO["Presto<br />SQL Queries"]
+    
+    PINOT --&gt; DASHBOARDS["Real-Time<br />Dashboards"]
+    PRESTO --&gt; REPORTS["Reports &amp;<br />Analysis"]
+    
+    FLINK -.-&gt;|Real-time alerts| APPS
+    SPARK -.-&gt;|Daily updates| APPS
+    
+    style KAFKA fill:#fef3c7,stroke:#d97706
+    style HDFS fill:#d1fae5,stroke:#059669
+    style HUDI fill:#dbeafe,stroke:#2563eb
+    style DASHBOARDS fill:#fce7f3,stroke:#db2777
+</div>
+
+<hr />
+
+<h2 id="the-numbers-ubers-scale">The Numbers: Uber’s Scale</h2>
+
+<h3 id="infrastructure-scale">Infrastructure Scale</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Scale</th>
+      <th>Context</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Daily Events</strong></td>
+      <td>100+ billion</td>
+      <td>That’s 1,000,000+ per second</td>
+    </tr>
+    <tr>
+      <td><strong>Data Storage</strong></td>
+      <td>Multiple petabytes</td>
+      <td>1 PB = 1,000,000 GB</td>
+    </tr>
+    <tr>
+      <td><strong>Kafka Throughput</strong></td>
+      <td>1,000,000+ events/sec</td>
+      <td>Never loses data</td>
+    </tr>
+    <tr>
+      <td><strong>HDFS Servers</strong></td>
+      <td>Thousands</td>
+      <td>Across multiple data centers</td>
+    </tr>
+    <tr>
+      <td><strong>Spark Jobs</strong></td>
+      <td>100,000+ per day</td>
+      <td>Processing in parallel</td>
+    </tr>
+    <tr>
+      <td><strong>Flink Latency</strong></td>
+      <td>&lt; 100ms</td>
+      <td>Real-time decisions</td>
+    </tr>
+    <tr>
+      <td><strong>Pinot Query Time</strong></td>
+      <td>100-500ms</td>
+      <td>Billions of records</td>
+    </tr>
+    <tr>
+      <td><strong>Data Retention</strong></td>
+      <td>Years</td>
+      <td>For compliance &amp; ML training</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="cost--complexity">Cost &amp; Complexity</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Reality</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Infrastructure Cost</strong></td>
+      <td>$100+ million/year</td>
+    </tr>
+    <tr>
+      <td><strong>Data Engineers</strong></td>
+      <td>300+ engineers</td>
+    </tr>
+    <tr>
+      <td><strong>Servers</strong></td>
+      <td>Thousands of machines</td>
+    </tr>
+    <tr>
+      <td><strong>Data Centers</strong></td>
+      <td>Multiple global locations</td>
+    </tr>
+    <tr>
+      <td><strong>Complexity</strong></td>
+      <td>Very high (7 major systems)</td>
+    </tr>
+    <tr>
+      <td><strong>Maintenance</strong></td>
+      <td>24/7 on-call teams</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="key-lessons-learned">Key Lessons Learned</h2>
+
+<h3 id="lesson-1-start-simple">Lesson 1: Start Simple!</h3>
+
+<blockquote>
+  <p><strong>Uber’s Reality:</strong> This infrastructure wasn’t built in a day. They started with simple databases and gradually added complexity as they grew.</p>
+</blockquote>
+
+<p><strong>Startup Journey:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Year 1 (10K users):
+- Simple PostgreSQL
+- Cost: $100/month
+- Team: 1 engineer
+
+Year 2 (100K users):
+- PostgreSQL + Redis cache
+- Cost: $1,000/month
+- Team: 2-3 engineers
+
+Year 3 (1M users):
+- PostgreSQL + Redis + Kafka
+- Cost: $10,000/month
+- Team: 5-10 engineers
+
+Year 5 (10M users):
+- Started building custom infrastructure
+- Cost: $100,000+/month
+- Team: 50+ engineers
+
+Year 10 (100M users):
+- Full custom stack (Kafka, HDFS, Spark, etc.)
+- Cost: $100M+/year
+- Team: 300+ engineers
+</code></pre></div></div>
+
+<p><strong>Don’t build Uber’s infrastructure until you have Uber’s scale!</strong></p>
+
+<h3 id="lesson-2-specialize-systems-for-different-jobs">Lesson 2: Specialize Systems for Different Jobs</h3>
+
+<blockquote>
+  <p><strong>Why Uber uses 7 different systems:</strong> Each tool solves a specific problem better than a general-purpose solution.</p>
+</blockquote>
+
+<table>
+  <thead>
+    <tr>
+      <th>System</th>
+      <th>Job</th>
+      <th>Why Specialized?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Kafka</strong></td>
+      <td>Event streaming</td>
+      <td>100x faster than database writes</td>
+    </tr>
+    <tr>
+      <td><strong>HDFS</strong></td>
+      <td>Storage</td>
+      <td>Stores petabytes, regular disks can’t</td>
+    </tr>
+    <tr>
+      <td><strong>Hudi</strong></td>
+      <td>Updates</td>
+      <td>HDFS can’t update, Hudi can</td>
+    </tr>
+    <tr>
+      <td><strong>Spark</strong></td>
+      <td>Batch processing</td>
+      <td>1000x faster with parallel processing</td>
+    </tr>
+    <tr>
+      <td><strong>Flink</strong></td>
+      <td>Real-time</td>
+      <td>Millisecond latency, Spark takes hours</td>
+    </tr>
+    <tr>
+      <td><strong>Pinot</strong></td>
+      <td>Analytics</td>
+      <td>Sub-second queries on billions of rows</td>
+    </tr>
+    <tr>
+      <td><strong>Presto</strong></td>
+      <td>Queries</td>
+      <td>Query any system with SQL</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="lesson-3-real-time-vs-batch-processing">Lesson 3: Real-Time vs Batch Processing</h3>
+
+<blockquote>
+  <p><strong>Different problems need different speeds:</strong></p>
+</blockquote>
+
+<p><strong>Real-Time (Flink):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Use when:
+- Need instant decisions (&lt; 1 second)
+- User-facing features
+- Critical operations
+
+Examples:
+- Surge pricing
+- Driver matching
+- Fraud detection
+- Payment processing
+
+Cost: More expensive (always running)
+</code></pre></div></div>
+
+<p><strong>Batch (Spark):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Use when:
+- Can wait hours for results
+- Processing large datasets
+- Background jobs
+
+Examples:
+- Daily reports
+- Earnings calculations
+- ML model training
+- Data cleanup
+
+Cost: Cheaper (runs periodically)
+</code></pre></div></div>
+
+<h3 id="lesson-4-data-never-lies-if-you-keep-it-all">Lesson 4: Data Never Lies… If You Keep It All</h3>
+
+<blockquote>
+  <p><strong>Uber’s philosophy:</strong> Store everything forever. You never know what data you’ll need later.</p>
+</blockquote>
+
+<p><strong>Benefits of keeping all data:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>✅ Can replay events (reprocess with new logic)
+✅ Train ML models on historical data
+✅ Debug production issues months later
+✅ Comply with audits/regulations
+✅ Discover new insights from old data
+
+Cost: Storage is cheap ($20/TB/month)
+Value: Insights are priceless
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="challenges-uber-faced">Challenges Uber Faced</h2>
+
+<h3 id="challenge-1-complexity">Challenge 1: Complexity</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Managing 7 different systems:
+- Each needs separate expertise
+- Different upgrade cycles
+- Complex interactions
+- 24/7 monitoring needed
+
+Result: 300+ engineers just to keep systems running
+</code></pre></div></div>
+
+<h3 id="challenge-2-cost">Challenge 2: Cost</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Annual infrastructure costs:
+- Server hardware: $50M
+- Data centers: $30M
+- Network: $20M
+- Maintenance: $10M
+- Engineers: $50M (salaries)
+Total: $160M/year
+</code></pre></div></div>
+
+<h3 id="challenge-3-global-expansion">Challenge 3: Global Expansion</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>To expand to new country:
+- Build/rent data center
+- Ship hardware
+- Install and configure
+- Hire local engineers
+Time: 6-12 months
+Cost: $10-50M per region
+</code></pre></div></div>
+
+<h3 id="challenge-4-scalability-bottlenecks">Challenge 4: Scalability Bottlenecks</h3>
+
+<p><strong>Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Growing faster than infrastructure:
+- Order servers (3-6 months lead time)
+- Capacity planning nightmares
+- Risk of running out of space
+- Over-provisioning wastes money
+</code></pre></div></div>
+
+<p>These challenges led Uber to modernize…</p>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>This infrastructure powered Uber for years, but by 2020, they faced serious challenges:</p>
+<ul>
+  <li><strong>Too complex</strong> (300+ engineers needed)</li>
+  <li><strong>Too expensive</strong> ($160M+/year)</li>
+  <li><strong>Slow to scale</strong> (months to add capacity)</li>
+  <li><strong>Hard to expand globally</strong> (rebuild everything per region)</li>
+</ul>
+
+<p><strong>The solution?</strong> Move to Google Cloud Platform and simplify everything.</p>
+
+<p><strong>Continue to:</strong> <a href="/handbook/handbook/_topics/uber-data-infrastructure-part-2-modernization/">Part 2 - Modernizing with Google Cloud →</a></p>
+
+<hr />
+
+<h2 id="summary-the-original-uber-data-stack">Summary: The Original Uber Data Stack</h2>
+
+<h3 id="the-architecture">The Architecture</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Layer 1: Collection
+- Kafka: Capture all events (1M+/sec)
+
+Layer 2: Storage
+- HDFS: Store petabytes of data
+
+Layer 3: Smart Storage
+- Hudi: Enable updates and time travel
+
+Layer 4: Processing
+- Spark: Batch processing (overnight)
+- Flink: Real-time processing (milliseconds)
+
+Layer 5: Analytics
+- Pinot: Fast analytics (sub-second)
+- Presto: Universal SQL queries
+</code></pre></div></div>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ol>
+  <li><strong>Specialized systems</strong> beat general-purpose at scale</li>
+  <li><strong>Start simple</strong> — add complexity only when needed</li>
+  <li><strong>Real-time vs batch</strong> — use the right tool for the job</li>
+  <li><strong>Store everything</strong> — data is valuable forever</li>
+  <li><strong>Expect challenges</strong> — scale brings complexity and cost</li>
+</ol>
+
+<h3 id="by-the-numbers">By the Numbers</h3>
+
+<ul>
+  <li>📊 <strong>137 million</strong> monthly active users</li>
+  <li>🔄 <strong>1 million+</strong> events per second</li>
+  <li>💾 <strong>Multiple petabytes</strong> of data stored</li>
+  <li>⚡ <strong>&lt; 100ms</strong> real-time processing</li>
+  <li>💰 <strong>$160M+/year</strong> infrastructure cost</li>
+  <li>👥 <strong>300+</strong> engineers to manage</li>
+</ul>
+
+<p><strong>Next:</strong> Learn how Uber modernized this entire stack with Google Cloud Platform, reducing complexity by 50% and costs by 40%!</p>
+
+<p>→ <a href="/handbook/handbook/_topics/uber-data-infrastructure-part-2-modernization/">Part 2 - Modernizing with Google Cloud</a></p>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><a href="https://kafka.apache.org/documentation/">Apache Kafka Documentation</a></li>
+  <li><a href="https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html">Hadoop HDFS Architecture</a></li>
+  <li><a href="https://hudi.apache.org/docs/overview">Apache Hudi Documentation</a></li>
+  <li><a href="https://spark.apache.org/docs/latest/">Apache Spark Overview</a></li>
+  <li><a href="https://flink.apache.org/flink-architecture.html">Apache Flink Architecture</a></li>
+  <li><a href="https://docs.pinot.apache.org/">Apache Pinot Documentation</a></li>
+  <li><a href="https://prestodb.io/docs/current/">Presto Documentation</a></li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">case-study</span>, <span class="tag">uber</span>, <span class="tag">data-infrastructure</span>, <span class="tag">kafka</span>, <span class="tag">hadoop</span>, <span class="tag">spark</span>, <span class="tag">flink</span>, <span class="tag">real-world</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>
