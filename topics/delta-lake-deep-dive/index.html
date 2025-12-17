@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Delta Lake Deep Dive — ACID Transactions on Data Lakes</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>Delta Lake Deep Dive — ACID Transactions on Data Lakes</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>What is Delta Lake?</strong> Think of it like adding “Track Changes” and “Version History” to your data files. Imagine if every time you edited a Word document, it automatically saved every version, prevented two people from conflicting changes, and let you undo any mistake — even from months ago. That’s Delta Lake for big data!</p>
+</blockquote>
+
+<h2 id="why-delta-lake-exists">Why Delta Lake Exists</h2>
+
+<p>Data lakes have a fundamental problem:</p>
+
+<p><strong>The Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day 1: Upload data.parquet → ✅ Success
+Day 2: Overwrite data.parquet → ⚠️ Readers see corrupted half-written file!
+Day 3: Delete old data → ❌ No undo, data lost forever
+</code></pre></div></div>
+
+<p><strong>Think of it this way:</strong> Traditional data lakes are like having important documents scattered across multiple USB drives with no backup. Delta Lake is like upgrading to Google Drive with version history, auto-save, and collaboration features.</p>
+
+<p><strong>What’s Missing:</strong></p>
+<ul>
+  <li>❌ No transactions (ACID)</li>
+  <li>❌ No time travel (can’t undo mistakes)</li>
+  <li>❌ No efficient updates/deletes</li>
+  <li>❌ No data quality enforcement</li>
+</ul>
+
+<p><strong>Delta Lake’s Solution:</strong> Add a transaction log on top of Parquet files:</p>
+
+<div class="mermaid">
+flowchart LR
+    subgraph traditional["Traditional Data Lake"]
+        PARQUET["Parquet Files"]
+        PROBLEMS["Problems:<br />❌ No ACID<br />❌ No history<br />❌ Hard to update"]
+    end
+    
+    subgraph delta["Delta Lake"]
+        LOG["Transaction Log<br />(_delta_log/)"]
+        DATA["Parquet Files"]
+        FEATURES["Features:<br />✅ ACID<br />✅ Time travel<br />✅ Easy updates<br />✅ Schema enforcement"]
+    end
+    
+    traditional --&gt; |"Add transaction log"| delta
+    LOG --&gt; |"Tracks all changes"| DATA
+    
+    style traditional fill:#fecaca,stroke:#dc2626
+    style delta fill:#d1fae5,stroke:#059669
+    style LOG fill:#fef3c7,stroke:#d97706
+</div>
+
+<hr />
+
+<h2 id="architecture-transaction-log--parquet-files">Architecture: Transaction Log + Parquet Files</h2>
+
+<blockquote>
+  <p><strong>Here’s the key insight:</strong> Parquet files are like Word documents saved on your computer. Delta Lake adds a “change log” (like Google Docs’ version history) that tracks every edit, who made it, and when. The documents themselves (Parquet files) are unchanged — Delta just adds smart tracking on top!</p>
+</blockquote>
+
+<p>Delta Lake is NOT a file format — it’s a <strong>storage layer</strong> on top of Parquet:</p>
+
+<div class="mermaid">
+flowchart TD
+    DELTA["Delta Table"] --&gt; LOG["_delta_log/<br />(transaction log)"]
+    DELTA --&gt; DATA["Parquet Files<br />(actual data)"]
+    
+    LOG --&gt; V0["00000000000000000000.json<br />(version 0)"]
+    LOG --&gt; V1["00000000000000000001.json<br />(version 1)"]
+    LOG --&gt; V2["00000000000000000002.json<br />(version 2)"]
+    LOG --&gt; CHECKPOINT["00000000000000000010.checkpoint.parquet"]
+    
+    V0 --&gt; |"Add file1.parquet"| ACTION1["Actions"]
+    V1 --&gt; |"Add file2.parquet<br />Remove file1.parquet"| ACTION2["Actions"]
+    
+    DATA --&gt; FILE1["part-00000.parquet"]
+    DATA --&gt; FILE2["part-00001.parquet"]
+    DATA --&gt; FILE3["part-00002.parquet"]
+    
+    style DELTA fill:#dbeafe,stroke:#2563eb
+    style LOG fill:#fef3c7,stroke:#d97706
+    style DATA fill:#d1fae5,stroke:#059669
+    style CHECKPOINT fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="file-structure">File Structure</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>my_table/
+│
+├── _delta_log/                              # Transaction log (metadata)
+│   ├── 00000000000000000000.json            # Version 0 (initial data)
+│   ├── 00000000000000000001.json            # Version 1 (added data)
+│   ├── 00000000000000000002.json            # Version 2 (updated data)
+│   ├── 00000000000000000010.checkpoint.parquet  # Checkpoint (optimization)
+│   └── _last_checkpoint                     # Points to latest checkpoint
+│
+└── [data files]/                            # Parquet files (actual data)
+    ├── part-00000-abc123.snappy.parquet
+    ├── part-00001-def456.snappy.parquet
+    └── part-00002-ghi789.snappy.parquet
+</code></pre></div></div>
+
+<h3 id="transaction-log-entry-example">Transaction Log Entry Example</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="mi">00000000000000000001</span><span class="err">.json</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"commitInfo"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="mi">1702742400000</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"operation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"WRITE"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"operationMetrics"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"numFiles"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"numOutputRows"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1000"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"protocol"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"minReaderVersion"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"minWriterVersion"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"metaData"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"abc-123-def"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"format"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"provider"</span><span class="p">:</span><span class="w"> </span><span class="s2">"parquet"</span><span class="p">},</span><span class="w">
+    </span><span class="nl">"schemaString"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{</span><span class="se">\"</span><span class="s2">type</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">struct</span><span class="se">\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">fields</span><span class="se">\"</span><span class="s2">:[...]}"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"partitionColumns"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"date"</span><span class="p">],</span><span class="w">
+    </span><span class="nl">"configuration"</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"add"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"part-00000-abc123.snappy.parquet"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"partitionValues"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2024-12-16"</span><span class="p">},</span><span class="w">
+    </span><span class="nl">"size"</span><span class="p">:</span><span class="w"> </span><span class="mi">10485760</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"modificationTime"</span><span class="p">:</span><span class="w"> </span><span class="mi">1702742400000</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"dataChange"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"stats"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{</span><span class="se">\"</span><span class="s2">numRecords</span><span class="se">\"</span><span class="s2">:1000,</span><span class="se">\"</span><span class="s2">minValues</span><span class="se">\"</span><span class="s2">:{...},</span><span class="se">\"</span><span class="s2">maxValues</span><span class="se">\"</span><span class="s2">:{...}}"</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"remove"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"part-00000-old123.snappy.parquet"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"deletionTimestamp"</span><span class="p">:</span><span class="w"> </span><span class="mi">1702742400000</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"dataChange"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Key Actions:</strong></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">add</code>: New file added</li>
+  <li><code class="language-plaintext highlighter-rouge">remove</code>: File removed (logical deletion)</li>
+  <li><code class="language-plaintext highlighter-rouge">metaData</code>: Schema, partitioning</li>
+  <li><code class="language-plaintext highlighter-rouge">commitInfo</code>: Who, when, what operation</li>
+</ul>
+
+<hr />
+
+<h2 id="acid-guarantees">ACID Guarantees</h2>
+
+<blockquote>
+  <p><strong>What is ACID?</strong> It means “your data stays safe and consistent.” Here’s what it guarantees:</p>
+  <ul>
+    <li><strong>A</strong>tomic: Changes either fully happen or don’t happen at all (no half-finished saves)</li>
+    <li><strong>C</strong>onsistent: Data follows your rules (like “age must be a number”)</li>
+    <li><strong>I</strong>solated: Two people editing at once don’t mess each other up</li>
+    <li><strong>D</strong>urable: Once saved, it stays saved even if the computer crashes</li>
+  </ul>
+
+  <p>Bottom line: Your data won’t get corrupted or lost!</p>
+</blockquote>
+
+<p>Delta Lake provides full ACID transactions:</p>
+
+<h3 id="atomicity">Atomicity</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Either ALL rows are written, or NONE
+</span><span class="k">try</span><span class="p">:</span>
+    <span class="n">df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">my_table</span><span class="sh">"</span><span class="p">)</span>
+    <span class="c1"># ✅ All-or-nothing
+</span><span class="k">except</span><span class="p">:</span>
+    <span class="c1"># ❌ Failure → No partial writes visible
+</span></code></pre></div></div>
+
+<p><strong>How It Works:</strong></p>
+<ol>
+  <li>Write new Parquet files (not visible yet)</li>
+  <li>Create transaction log entry</li>
+  <li><strong>Atomic commit:</strong> Write log entry as a single file</li>
+  <li>If log write fails → Files ignored (invisible)</li>
+</ol>
+
+<h3 id="consistency">Consistency</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Schema enforcement
+</span><span class="n">df_v1</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([(</span><span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">Alice</span><span class="sh">"</span><span class="p">)],</span> <span class="p">[</span><span class="sh">"</span><span class="s">id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">])</span>
+<span class="n">df_v1</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ❌ This fails (wrong schema)
+</span><span class="n">df_v2</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([(</span><span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">Bob</span><span class="sh">"</span><span class="p">,</span> <span class="mi">30</span><span class="p">)],</span> <span class="p">[</span><span class="sh">"</span><span class="s">id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">age</span><span class="sh">"</span><span class="p">])</span>
+<span class="n">df_v2</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">mode</span><span class="p">(</span><span class="sh">"</span><span class="s">append</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># SchemaEvolutionException!
+</span>
+<span class="c1"># ✅ Must enable schema evolution explicitly
+</span><span class="n">df_v2</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">mode</span><span class="p">(</span><span class="sh">"</span><span class="s">append</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">mergeSchema</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">true</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="isolation">Isolation</h3>
+
+<p><strong>Optimistic Concurrency Control:</strong></p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant W1 as Writer 1
+    participant Log as Delta Log
+    participant W2 as Writer 2
+    
+    W1-&gt;&gt;Log: Read version 5
+    W2-&gt;&gt;Log: Read version 5
+    
+    W1-&gt;&gt;Log: Write version 6 ✅
+    
+    W2-&gt;&gt;Log: Try to write version 6 ❌
+    Log-&gt;&gt;W2: Conflict! Version 6 exists
+    W2-&gt;&gt;Log: Read version 6, retry
+    W2-&gt;&gt;Log: Write version 7 ✅
+</div>
+
+<p><strong>Two writers can’t write the same version</strong> — automatic retry!</p>
+
+<h3 id="durability">Durability</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Once committed, data is durable
+</span><span class="n">df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># ✅ Crash after this? Data is safe on disk
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="time-travel-query-any-version">Time Travel: Query Any Version</h2>
+
+<blockquote>
+  <p><strong>Think of it like this:</strong> Remember when you accidentally deleted important photos, but could recover them because your phone keeps backups? Time Travel is exactly that for your data. You can see what your data looked like yesterday, last week, or last year — and even restore old versions if you made a mistake!</p>
+</blockquote>
+
+<p>Delta Lake tracks every version of your data:</p>
+
+<div class="mermaid">
+flowchart LR
+    V0["Version 0<br />1000 rows"] --&gt; V1["Version 1<br />+500 rows"]
+    V1 --&gt; V2["Version 2<br />DELETE 100"]
+    V2 --&gt; V3["Version 3<br />UPDATE status"]
+    
+    QUERY["Query"] --&gt; |"@v0"| V0
+    QUERY --&gt; |"@v1"| V1
+    QUERY --&gt; |"@v2"| V2
+    QUERY --&gt; |"@v3"| V3
+    
+    style V0 fill:#fef3c7,stroke:#d97706
+    style V1 fill:#d1fae5,stroke:#059669
+    style V2 fill:#dbeafe,stroke:#2563eb
+    style V3 fill:#fce7f3,stroke:#db2777
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Read current version
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Read specific version
+</span><span class="n">df_v0</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">versionAsOf</span><span class="sh">"</span><span class="p">,</span> <span class="mi">0</span><span class="p">).</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">df_v5</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">versionAsOf</span><span class="sh">"</span><span class="p">,</span> <span class="mi">5</span><span class="p">).</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Read as of timestamp
+</span><span class="n">df_yesterday</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">timestampAsOf</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-12-15</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># SQL syntax
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">SELECT * FROM users VERSION AS OF 5</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">SELECT * FROM users TIMESTAMP AS OF </span><span class="sh">'</span><span class="s">2024-12-15</span><span class="sh">'"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+  <li>🔍 Audit: “What did the data look like yesterday?”</li>
+  <li>🐛 Debug: “What changed between versions 5 and 6?”</li>
+  <li>♻️ Rollback: “Undo that bad DELETE!”</li>
+</ul>
+
+<hr />
+
+<h2 id="updates--deletes-how-they-work">Updates &amp; Deletes: How They Work</h2>
+
+<p>Traditional Parquet can’t update/delete. Delta Lake can!</p>
+
+<h3 id="delete">DELETE</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">delta.tables</span> <span class="kn">import</span> <span class="n">DeltaTable</span>
+
+<span class="n">delta_table</span> <span class="o">=</span> <span class="n">DeltaTable</span><span class="p">.</span><span class="nf">forPath</span><span class="p">(</span><span class="n">spark</span><span class="p">,</span> <span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Delete rows
+</span><span class="n">delta_table</span><span class="p">.</span><span class="nf">delete</span><span class="p">(</span><span class="sh">"</span><span class="s">age &lt; 18</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Under the Hood:</strong></p>
+
+<div class="mermaid">
+flowchart TD
+    BEFORE["file1.parquet:<br />1000 rows<br />(100 match DELETE)"]
+    
+    DELETE["DELETE WHERE age &lt; 18"]
+    
+    BEFORE --&gt; DELETE
+    
+    DELETE --&gt; LOG["Transaction Log:<br />REMOVE file1.parquet<br />ADD file1_new.parquet<br />ADD file2_new.parquet"]
+    
+    DELETE --&gt; NEW1["file1_new.parquet:<br />600 rows (no matches)"]
+    DELETE --&gt; NEW2["file2_new.parquet:<br />300 rows (no matches)"]
+    
+    style BEFORE fill:#fecaca,stroke:#dc2626
+    style NEW1 fill:#d1fae5,stroke:#059669
+    style NEW2 fill:#d1fae5,stroke:#059669
+    style LOG fill:#fef3c7,stroke:#d97706
+</div>
+
+<p><strong>Process:</strong></p>
+<ol>
+  <li>Read files that might contain matching rows</li>
+  <li>Filter out deleted rows</li>
+  <li>Write new files (without deleted rows)</li>
+  <li>Update transaction log: <code class="language-plaintext highlighter-rouge">REMOVE old, ADD new</code></li>
+</ol>
+
+<p><strong>Old files still exist!</strong> (Enables time travel)</p>
+
+<h3 id="update">UPDATE</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Update rows
+</span><span class="n">delta_table</span><span class="p">.</span><span class="nf">update</span><span class="p">(</span>
+  <span class="n">condition</span> <span class="o">=</span> <span class="sh">"</span><span class="s">status = </span><span class="sh">'</span><span class="s">pending</span><span class="sh">'"</span><span class="p">,</span>
+  <span class="nb">set</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">status</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"'</span><span class="s">active</span><span class="sh">'"</span><span class="p">}</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Same process as DELETE:</strong></p>
+<ol>
+  <li>Read files with matching rows</li>
+  <li>Apply updates</li>
+  <li>Write new files</li>
+  <li>Log: <code class="language-plaintext highlighter-rouge">REMOVE old, ADD new</code></li>
+</ol>
+
+<h3 id="merge-upsert">MERGE (Upsert)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Upsert (UPDATE if exists, INSERT if not)
+</span><span class="n">delta_table</span><span class="p">.</span><span class="nf">alias</span><span class="p">(</span><span class="sh">"</span><span class="s">target</span><span class="sh">"</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span>
+  <span class="n">updates_df</span><span class="p">.</span><span class="nf">alias</span><span class="p">(</span><span class="sh">"</span><span class="s">source</span><span class="sh">"</span><span class="p">),</span>
+  <span class="sh">"</span><span class="s">target.user_id = source.user_id</span><span class="sh">"</span>
+<span class="p">).</span><span class="nf">whenMatchedUpdate</span><span class="p">(</span><span class="nb">set</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.name</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">email</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.email</span><span class="sh">"</span>
+<span class="p">}).</span><span class="nf">whenNotMatchedInsert</span><span class="p">(</span><span class="n">values</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.user_id</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.name</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">email</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.email</span><span class="sh">"</span>
+<span class="p">}).</span><span class="nf">execute</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p><strong>Use Case:</strong> CDC (Change Data Capture) from databases</p>
+
+<hr />
+
+<h2 id="schema-evolution">Schema Evolution</h2>
+
+<p>Delta Lake enforces schemas but allows safe evolution:</p>
+
+<h3 id="adding-columns">Adding Columns</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Initial schema: id, name
+</span><span class="n">df1</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([(</span><span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">Alice</span><span class="sh">"</span><span class="p">)],</span> <span class="p">[</span><span class="sh">"</span><span class="s">id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">])</span>
+<span class="n">df1</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Add column: email
+</span><span class="n">df2</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([(</span><span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">Bob</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bob@example.com</span><span class="sh">"</span><span class="p">)],</span> <span class="p">[</span><span class="sh">"</span><span class="s">id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">email</span><span class="sh">"</span><span class="p">])</span>
+
+<span class="c1"># ❌ Fails without option
+</span><span class="n">df2</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">mode</span><span class="p">(</span><span class="sh">"</span><span class="s">append</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ✅ Enable schema evolution
+</span><span class="n">df2</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">mode</span><span class="p">(</span><span class="sh">"</span><span class="s">append</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">mergeSchema</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">true</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Old rows get NULL for new column
+</span><span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">users</span><span class="sh">"</span><span class="p">).</span><span class="nf">show</span><span class="p">()</span>
+<span class="c1"># +---+-----+---------------+
+# | id| name|          email|
+# +---+-----+---------------+
+# |  1|Alice|           null|  ← NULL for missing column
+# |  2|  Bob|bob@example.com|
+# +---+-----+---------------+
+</span></code></pre></div></div>
+
+<h3 id="changing-column-types">Changing Column Types</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Unsafe: Changing type (rejected)
+</span><span class="n">ALTER</span> <span class="n">TABLE</span> <span class="n">users</span> <span class="n">ALTER</span> <span class="n">COLUMN</span> <span class="n">age</span> <span class="n">TYPE</span> <span class="n">STRING</span><span class="p">;</span>  <span class="c1"># Fails!
+</span>
+<span class="c1"># ✅ Safe: Add new column, migrate data, drop old
+</span><span class="n">ALTER</span> <span class="n">TABLE</span> <span class="n">users</span> <span class="n">ADD</span> <span class="n">COLUMN</span> <span class="n">age_str</span> <span class="n">STRING</span><span class="p">;</span>
+<span class="n">UPDATE</span> <span class="n">users</span> <span class="n">SET</span> <span class="n">age_str</span> <span class="o">=</span> <span class="nc">CAST</span><span class="p">(</span><span class="n">age</span> <span class="n">AS</span> <span class="n">STRING</span><span class="p">);</span>
+<span class="n">ALTER</span> <span class="n">TABLE</span> <span class="n">users</span> <span class="n">DROP</span> <span class="n">COLUMN</span> <span class="n">age</span><span class="p">;</span>
+<span class="n">ALTER</span> <span class="n">TABLE</span> <span class="n">users</span> <span class="n">RENAME</span> <span class="n">COLUMN</span> <span class="n">age_str</span> <span class="n">TO</span> <span class="n">age</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="schema-enforcement">Schema Enforcement</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Set column constraints
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+  ALTER TABLE users ADD CONSTRAINT valid_age CHECK (age &gt;= 0 AND age &lt;= 120);
+  ALTER TABLE users ALTER COLUMN email SET NOT NULL;
+</span><span class="sh">"""</span><span class="p">)</span>
+
+<span class="c1"># ❌ These fail
+</span><span class="n">INSERT</span> <span class="n">INTO</span> <span class="n">users</span> <span class="nc">VALUES </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">Alice</span><span class="sh">"</span><span class="p">,</span> <span class="n">null</span><span class="p">,</span> <span class="mi">25</span><span class="p">);</span>  <span class="c1"># email NOT NULL
+</span><span class="n">INSERT</span> <span class="n">INTO</span> <span class="n">users</span> <span class="nc">VALUES </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">Bob</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bob@ex.com</span><span class="sh">"</span><span class="p">,</span> <span class="mi">150</span><span class="p">);</span>  <span class="c1"># age &gt; 120
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="optimization-optimize--z-order">Optimization: OPTIMIZE &amp; Z-ORDER</h2>
+
+<blockquote>
+  <p><strong>What’s happening here:</strong> Over time, you end up with lots of tiny files (like having 1000 Word documents when you could have 10). OPTIMIZE combines them into bigger files, making everything faster. Z-ORDER is like organizing your files so related stuff is stored together — makes searches way faster!</p>
+</blockquote>
+
+<p>Delta Lake files accumulate over time. Optimize them!</p>
+
+<h3 id="optimize-compaction">OPTIMIZE (Compaction)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Before: 1000 small files (slow reads)
+# After: 10 large files (fast reads)
+</span>
+<span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">OPTIMIZE users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Or with Python API
+</span><span class="n">delta_table</span><span class="p">.</span><span class="nf">optimize</span><span class="p">().</span><span class="nf">executeCompaction</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="mermaid">
+flowchart LR
+    subgraph before["Before OPTIMIZE"]
+        F1["file1.parquet<br />1 MB"]
+        F2["file2.parquet<br />1 MB"]
+        F3["file3.parquet<br />1 MB"]
+        F4["... (1000 files)"]
+    end
+    
+    subgraph after["After OPTIMIZE"]
+        F5["file_new1.parquet<br />100 MB"]
+        F6["file_new2.parquet<br />100 MB"]
+    end
+    
+    before --&gt; |"Compact"| after
+    
+    style before fill:#fecaca,stroke:#dc2626
+    style after fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="z-order-co-locate-data">Z-ORDER (Co-locate Data)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Co-locate data by frequently filtered columns
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">OPTIMIZE users ZORDER BY (country, city)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Queries on these columns become 10x faster!
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">SELECT * FROM users WHERE country = </span><span class="sh">'</span><span class="s">US</span><span class="sh">'</span><span class="s"> AND city = </span><span class="sh">'</span><span class="s">NYC</span><span class="sh">'"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>How Z-ORDER Works:</strong></p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph without["Without Z-ORDER"]
+        R1["Row 1: US, NYC"]
+        R2["Row 2: UK, London"]
+        R3["Row 3: US, NYC"]
+        R4["Row 4: UK, London"]
+    end
+    
+    subgraph with["With Z-ORDER BY country, city"]
+        R5["Row 1: US, NYC<br />Row 3: US, NYC"]
+        R6["Row 2: UK, London<br />Row 4: UK, London"]
+    end
+    
+    without --&gt; |"Z-ORDER"| with
+    
+    QUERY["WHERE country='US'"] --&gt; with
+    with --&gt; |"Read only 1 file"| FAST["🚀 Fast"]
+    
+    style without fill:#fecaca,stroke:#dc2626
+    style with fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Result:</strong> Data with similar filter values is physically co-located!</p>
+
+<hr />
+
+<h2 id="vacuum-clean-up-old-files">Vacuum: Clean Up Old Files</h2>
+
+<blockquote>
+  <p><strong>Here’s the trade-off:</strong> Remember how Time Travel keeps all old versions of your data? That’s great, but eventually you’re storing 100 versions and running out of space! VACUUM is like emptying your trash can — it permanently deletes old versions you don’t need anymore. <strong>Warning:</strong> Once you vacuum, you can’t time-travel to those deleted versions!</p>
+</blockquote>
+
+<p>Time travel keeps old files forever. Eventually, clean up:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># WARNING: Deletes files older than 7 days (default retention)
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">VACUUM users</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Or specify retention period
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">VACUUM users RETAIN 168 HOURS</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># 7 days
+</span>
+<span class="c1"># See what would be deleted (dry run)
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">VACUUM users DRY RUN</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>What VACUUM Does:</strong></p>
+
+<div class="mermaid">
+flowchart LR
+    OLD["Old files<br />(not in current version)"]
+    RETENTION["Retention<br />Check"]
+    DELETE["Delete files<br />older than retention"]
+    
+    OLD --&gt; RETENTION
+    RETENTION --&gt; |"Older than 7 days"| DELETE
+    RETENTION --&gt; |"Within 7 days"| KEEP["Keep files<br />(time travel)"]
+    
+    style OLD fill:#fef3c7,stroke:#d97706
+    style DELETE fill:#fecaca,stroke:#dc2626
+    style KEEP fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>⚠️ Warning:</strong> After VACUUM, you can’t time-travel to deleted versions!</p>
+
+<hr />
+
+<h2 id="performance-tips">Performance Tips</h2>
+
+<h3 id="1-partition-your-data">1. Partition Your Data</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Partition by date (common pattern)
+</span><span class="n">df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">partitionBy</span><span class="p">(</span><span class="sh">"</span><span class="s">year</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">month</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">day</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">events</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Directory structure:
+# events/
+#   year=2024/
+#     month=12/
+#       day=15/part-00000.parquet
+#       day=16/part-00000.parquet
+</span>
+<span class="c1"># Query: Only reads relevant partitions
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">SELECT * FROM events WHERE year=2024 AND month=12 AND day=16</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Partition Pruning:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Total data: 1 TB (365 days)
+Query: WHERE day=16 → Reads 3 GB (1 day) → 300x faster!
+</code></pre></div></div>
+
+<h3 id="2-enable-auto-optimize">2. Enable Auto-Optimize</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Enable auto-compaction (Databricks)
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+  ALTER TABLE users SET TBLPROPERTIES (
+    </span><span class="sh">'</span><span class="s">delta.autoOptimize.optimizeWrite</span><span class="sh">'</span><span class="s"> = </span><span class="sh">'</span><span class="s">true</span><span class="sh">'</span><span class="s">,
+    </span><span class="sh">'</span><span class="s">delta.autoOptimize.autoCompact</span><span class="sh">'</span><span class="s"> = </span><span class="sh">'</span><span class="s">true</span><span class="sh">'</span><span class="s">
+  )
+</span><span class="sh">"""</span><span class="p">)</span>
+
+<span class="c1"># Automatically optimizes during writes
+</span></code></pre></div></div>
+
+<h3 id="3-use-data-skipping">3. Use Data Skipping</h3>
+
+<p>Delta Lake tracks min/max statistics per file:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Query: WHERE age &gt; 50
+# Delta skips files where max_age &lt; 50 (don't contain matches)
+</span>
+<span class="c1"># Enable data skipping statistics
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+  ALTER TABLE users SET TBLPROPERTIES (
+    </span><span class="sh">'</span><span class="s">delta.dataSkippingNumIndexedCols</span><span class="sh">'</span><span class="s"> = </span><span class="sh">'</span><span class="s">10</span><span class="sh">'</span><span class="s">
+  )
+</span><span class="sh">"""</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="4-liquid-clustering-new">4. Liquid Clustering (New!)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Alternative to Z-ORDER and partitioning (Delta Lake 3.0+)
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+  CREATE TABLE users (id LONG, country STRING, city STRING)
+  USING DELTA
+  CLUSTER BY (country, city)
+</span><span class="sh">"""</span><span class="p">)</span>
+
+<span class="c1"># Automatically maintains clustering over time
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="delta-lake-vs-traditional-parquet">Delta Lake vs Traditional Parquet</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Parquet</th>
+      <th>Delta Lake</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>File Format</strong></td>
+      <td>Parquet</td>
+      <td>Parquet + Transaction Log</td>
+    </tr>
+    <tr>
+      <td><strong>ACID</strong></td>
+      <td>❌ No</td>
+      <td>✅ Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Time Travel</strong></td>
+      <td>❌ No</td>
+      <td>✅ Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Schema Enforcement</strong></td>
+      <td>❌ No</td>
+      <td>✅ Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Updates/Deletes</strong></td>
+      <td>❌ No (must rewrite)</td>
+      <td>✅ Yes (efficient)</td>
+    </tr>
+    <tr>
+      <td><strong>Concurrent Writes</strong></td>
+      <td>⚠️ Unsafe</td>
+      <td>✅ Safe</td>
+    </tr>
+    <tr>
+      <td><strong>Compatibility</strong></td>
+      <td>Universal</td>
+      <td>Spark, Databricks, Pandas</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="real-world-example">Real-World Example</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># E-commerce orders table
+</span><span class="kn">from</span> <span class="n">pyspark.sql.functions</span> <span class="kn">import</span> <span class="n">col</span><span class="p">,</span> <span class="n">current_timestamp</span>
+
+<span class="c1"># Create Delta table
+</span><span class="n">orders_df</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([</span>
+  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">pending</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-12-16</span><span class="sh">"</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">),</span>
+  <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">shipped</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-12-16</span><span class="sh">"</span><span class="p">,</span> <span class="mf">200.0</span><span class="p">),</span>
+<span class="p">],</span> <span class="p">[</span><span class="sh">"</span><span class="s">order_id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">status</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">order_date</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">amount</span><span class="sh">"</span><span class="p">])</span>
+
+<span class="n">orders_df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">partitionBy</span><span class="p">(</span><span class="sh">"</span><span class="s">order_date</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">/data/orders</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Later: Update order status
+</span><span class="kn">from</span> <span class="n">delta.tables</span> <span class="kn">import</span> <span class="n">DeltaTable</span>
+
+<span class="n">delta_table</span> <span class="o">=</span> <span class="n">DeltaTable</span><span class="p">.</span><span class="nf">forPath</span><span class="p">(</span><span class="n">spark</span><span class="p">,</span> <span class="sh">"</span><span class="s">/data/orders</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">delta_table</span><span class="p">.</span><span class="nf">update</span><span class="p">(</span>
+  <span class="n">condition</span> <span class="o">=</span> <span class="sh">"</span><span class="s">order_id = 1</span><span class="sh">"</span><span class="p">,</span>
+  <span class="nb">set</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">status</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"'</span><span class="s">shipped</span><span class="sh">'"</span><span class="p">,</span> <span class="sh">"</span><span class="s">updated_at</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">current_timestamp()</span><span class="sh">"</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Merge new orders (upsert)
+</span><span class="n">new_orders</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([</span>
+  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">delivered</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-12-16</span><span class="sh">"</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">),</span>  <span class="c1"># Update existing
+</span>  <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">pending</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-12-17</span><span class="sh">"</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">),</span>    <span class="c1"># Insert new
+</span><span class="p">],</span> <span class="p">[</span><span class="sh">"</span><span class="s">order_id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">status</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">order_date</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">amount</span><span class="sh">"</span><span class="p">])</span>
+
+<span class="n">delta_table</span><span class="p">.</span><span class="nf">alias</span><span class="p">(</span><span class="sh">"</span><span class="s">target</span><span class="sh">"</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span>
+  <span class="n">new_orders</span><span class="p">.</span><span class="nf">alias</span><span class="p">(</span><span class="sh">"</span><span class="s">source</span><span class="sh">"</span><span class="p">),</span>
+  <span class="sh">"</span><span class="s">target.order_id = source.order_id</span><span class="sh">"</span>
+<span class="p">).</span><span class="nf">whenMatchedUpdate</span><span class="p">(</span><span class="nb">set</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="sh">"</span><span class="s">status</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.status</span><span class="sh">"</span>
+<span class="p">}).</span><span class="nf">whenNotMatchedInsert</span><span class="p">(</span><span class="n">values</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="sh">"</span><span class="s">order_id</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.order_id</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">status</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.status</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">order_date</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.order_date</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">amount</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">source.amount</span><span class="sh">"</span>
+<span class="p">}).</span><span class="nf">execute</span><span class="p">()</span>
+
+<span class="c1"># Time travel: What was order 1's status yesterday?
+</span><span class="n">historical_df</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">timestampAsOf</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-12-15</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">/data/orders</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">filter</span><span class="p">(</span><span class="sh">"</span><span class="s">order_id = 1</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Optimize for better read performance
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">OPTIMIZE delta.`/data/orders` ZORDER BY (status)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Clean up old files (keep 30 days)
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">VACUUM delta.`/data/orders` RETAIN 720 HOURS</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-always-use-partitioning">1. Always Use Partitioning</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ✅ Partition by time (most common)
+</span><span class="p">.</span><span class="nf">partitionBy</span><span class="p">(</span><span class="sh">"</span><span class="s">year</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">month</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">day</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ❌ Avoid too many partitions
+</span><span class="p">.</span><span class="nf">partitionBy</span><span class="p">(</span><span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># Millions of partitions → slow!
+</span>
+<span class="c1"># ✅ Good cardinality
+</span><span class="p">.</span><span class="nf">partitionBy</span><span class="p">(</span><span class="sh">"</span><span class="s">country</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">date</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># Hundreds of partitions
+</span></code></pre></div></div>
+
+<p><strong>Rule of Thumb:</strong> Aim for 10-100 files per partition</p>
+
+<h3 id="2-optimize-regularly">2. Optimize Regularly</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Set up optimization schedule
+# Daily: OPTIMIZE for read performance
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">OPTIMIZE my_table ZORDER BY (frequently_filtered_col)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Weekly: VACUUM to clean up
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">VACUUM my_table RETAIN 168 HOURS</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="3-use-merge-for-upserts">3. Use MERGE for Upserts</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ✅ Efficient upsert
+</span><span class="n">delta_table</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">updates</span><span class="p">,</span> <span class="sh">"</span><span class="s">id</span><span class="sh">"</span><span class="p">).</span><span class="n">whenMatched</span><span class="bp">...</span>
+
+<span class="c1"># ❌ Slow: DELETE + INSERT
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">DELETE FROM table WHERE id IN (...)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">INSERT INTO table VALUES (...)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="4-enable-schema-evolution-explicitly">4. Enable Schema Evolution Explicitly</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ✅ Explicit opt-in
+</span><span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">mergeSchema</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">true</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ❌ Automatic evolution can cause surprises
+</span></code></pre></div></div>
+
+<h3 id="5-monitor-transaction-log-size">5. Monitor Transaction Log Size</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Check number of commits
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">DESCRIBE HISTORY my_table</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Create checkpoint manually if needed (every 10 commits auto)
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">CHECKPOINT my_table</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="common-pitfalls">Common Pitfalls</h2>
+
+<h3 id="1-too-many-small-files">1. Too Many Small Files</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Problem: 10,000 small files
+# Solution: OPTIMIZE
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">OPTIMIZE my_table</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="2-not-using-time-travel-before-delete">2. Not Using Time Travel Before DELETE</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Oops! Deleted wrong data
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">DELETE FROM users WHERE status = </span><span class="sh">'</span><span class="s">active</span><span class="sh">'"</span><span class="p">)</span>
+
+<span class="c1"># ✅ Rollback using time travel
+</span><span class="n">old_version</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">DESCRIBE HISTORY users</span><span class="sh">"</span><span class="p">).</span><span class="nf">first</span><span class="p">().</span><span class="n">version</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">RESTORE TABLE users TO VERSION AS OF </span><span class="si">{</span><span class="n">old_version</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="3-forgetting-to-vacuum">3. Forgetting to VACUUM</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Problem: Disk usage grows forever
+# Solution: Regular VACUUM
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">VACUUM my_table RETAIN 168 HOURS</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="4-wrong-partition-column">4. Wrong Partition Column</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ High cardinality
+</span><span class="p">.</span><span class="nf">partitionBy</span><span class="p">(</span><span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># Millions of partitions
+</span>
+<span class="c1"># ✅ Low-medium cardinality
+</span><span class="p">.</span><span class="nf">partitionBy</span><span class="p">(</span><span class="sh">"</span><span class="s">country</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">date</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># Hundreds of partitions
+</span></code></pre></div></div>
+
+<h3 id="5-not-handling-conflicts">5. Not Handling Conflicts</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Assumes write will succeed
+</span><span class="n">df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">mode</span><span class="p">(</span><span class="sh">"</span><span class="s">append</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">table</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># ✅ Handle concurrent write conflicts
+</span><span class="kn">from</span> <span class="n">delta.exceptions</span> <span class="kn">import</span> <span class="n">ConcurrentAppendException</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">delta</span><span class="sh">"</span><span class="p">).</span><span class="nf">mode</span><span class="p">(</span><span class="sh">"</span><span class="s">append</span><span class="sh">"</span><span class="p">).</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">table</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">ConcurrentAppendException</span><span class="p">:</span>
+    <span class="c1"># Retry logic
+</span>    <span class="k">pass</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="should-you-use-delta-lake">Should You Use Delta Lake?</h2>
+
+<blockquote>
+  <p><strong>Quick Decision Guide:</strong></p>
+  <ul>
+    <li>✅ <strong>Use Delta Lake:</strong> Your data changes frequently (updates/deletes), you need to track history, or multiple people are working with the same data</li>
+    <li>❌ <strong>Use Plain Parquet:</strong> You just save data once and never change it (like archiving old records)</li>
+    <li>✅ <strong>Use Delta Lake:</strong> You’re building anything business-critical where mistakes could be costly</li>
+    <li>❌ <strong>Use Plain Parquet:</strong> You need to share files with systems that don’t support Delta Lake</li>
+  </ul>
+
+  <p><strong>Example:</strong> A bank should use Delta Lake (need perfect records, auditing). A weather station archiving old readings could use plain Parquet (never changes).</p>
+</blockquote>
+
+<h2 id="when-to-use-delta-lake">When to Use Delta Lake</h2>
+
+<div class="mermaid">
+flowchart TD
+    START["Choose Delta Lake when:"]
+    
+    START --&gt; ACID["Need ACID<br />transactions"]
+    START --&gt; UPDATE["Need to UPDATE/<br />DELETE data"]
+    START --&gt; TIME["Need time travel/<br />audit history"]
+    START --&gt; QUALITY["Need schema<br />enforcement"]
+    
+    START2["Use Plain Parquet when:"]
+    
+    START2 --&gt; SIMPLE["Write-once,<br />read-many"]
+    START2 --&gt; COMPAT["Need universal<br />compatibility"]
+    START2 --&gt; STREAM["Simple streaming"]
+    
+    style START fill:#d1fae5,stroke:#059669
+    style START2 fill:#fef3c7,stroke:#d97706
+</div>
+
+<h3 id="-use-delta-lake-for">✅ Use Delta Lake For:</h3>
+
+<ol>
+  <li><strong>Data Warehouses / Lakehouses</strong>
+    <ul>
+      <li>ACID transactions</li>
+      <li>Schema enforcement</li>
+      <li>Updates/deletes</li>
+    </ul>
+  </li>
+  <li><strong>CDC (Change Data Capture)</strong>
+    <ul>
+      <li>MERGE for upserts</li>
+      <li>Track changes over time</li>
+    </ul>
+  </li>
+  <li><strong>Auditing / Compliance</strong>
+    <ul>
+      <li>Time travel</li>
+      <li>Full history</li>
+    </ul>
+  </li>
+  <li><strong>Collaborative Environments</strong>
+    <ul>
+      <li>Multiple writers</li>
+      <li>Concurrent updates</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="-use-plain-parquet-for">❌ Use Plain Parquet For:</h3>
+
+<ol>
+  <li><strong>Simple ETL</strong>
+    <ul>
+      <li>Write-once, read-many</li>
+      <li>No updates needed</li>
+    </ul>
+  </li>
+  <li><strong>Universal Compatibility</strong>
+    <ul>
+      <li>Share with non-Spark tools</li>
+      <li>Athena, Redshift Spectrum</li>
+    </ul>
+  </li>
+  <li><strong>Extreme Performance</strong>
+    <ul>
+      <li>No transaction log overhead</li>
+    </ul>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<blockquote>
+  <p><strong>Quick Takeaways:</strong></p>
+  <ul>
+    <li><strong>What is Delta Lake?</strong> Parquet files + a smart “change log” that tracks every edit</li>
+    <li><strong>Real-world comparison:</strong> Like adding Google Docs features (version history, undo, collaboration) to regular files</li>
+    <li><strong>Why use it?</strong> You can update/delete data, undo mistakes, see history, and multiple people can edit safely</li>
+    <li><strong>When to use it?</strong> Business-critical data, anything that changes frequently, data that needs auditing</li>
+    <li><strong>When NOT to use it?</strong> Data you write once and never change (like archiving old records)</li>
+    <li><strong>Bottom line:</strong> If your data is important and changes over time → use Delta Lake. If you just dump data and never touch it again → plain Parquet is fine.</li>
+  </ul>
+</blockquote>
+
+<p>Delta Lake adds <strong>ACID transactions</strong> to data lakes:</p>
+
+<p><strong>Key Features:</strong></p>
+<ol>
+  <li>✅ <strong>ACID transactions</strong> — Your data stays safe and consistent (no corruption or half-finished saves)</li>
+  <li>✅ <strong>Time travel</strong> — See what data looked like yesterday, last week, or last year</li>
+  <li>✅ <strong>Schema enforcement</strong> — Prevent bad data from sneaking in</li>
+  <li>✅ <strong>Efficient updates/deletes</strong> — Change or remove data without rewriting everything</li>
+  <li>✅ <strong>MERGE (upsert)</strong> support — Update existing rows or insert new ones in one operation</li>
+  <li>✅ <strong>Concurrent writes</strong> — Multiple people can edit safely without conflicts</li>
+</ol>
+
+<p><strong>Key Components:</strong></p>
+<ul>
+  <li><strong>Transaction log</strong> (<code class="language-plaintext highlighter-rouge">_delta_log/</code>) — Like a diary tracking every change</li>
+  <li><strong>Parquet files</strong> — The actual data (unchanged format)</li>
+  <li><strong>Checkpoints</strong> — Speedup for reading the log</li>
+  <li><strong>Statistics</strong> — Smart indexes to skip irrelevant data</li>
+</ul>
+
+<p><strong>Decision Matrix:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Your Need</th>
+      <th>Solution</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ACID transactions</td>
+      <td>🏆 <strong>Delta Lake</strong></td>
+    </tr>
+    <tr>
+      <td>Time travel / audit</td>
+      <td>🏆 <strong>Delta Lake</strong></td>
+    </tr>
+    <tr>
+      <td>Updates/deletes</td>
+      <td>🏆 <strong>Delta Lake</strong></td>
+    </tr>
+    <tr>
+      <td>Write-once, read-many</td>
+      <td>Plain Parquet</td>
+    </tr>
+    <tr>
+      <td>Universal compatibility</td>
+      <td>Plain Parquet</td>
+    </tr>
+    <tr>
+      <td>Streaming with exactly-once</td>
+      <td>🏆 <strong>Delta Lake</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>The Bottom Line:</strong></p>
+<ul>
+  <li><strong>Need database features on a data lake?</strong> → Delta Lake</li>
+  <li><strong>Simple append-only workload?</strong> → Plain Parquet is fine</li>
+  <li><strong>In doubt?</strong> → Start with Delta Lake. It’s worth the small overhead for the safety and features.</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><a href="https://docs.delta.io/">Delta Lake Documentation</a></li>
+  <li><a href="https://github.com/delta-io/delta">Delta Lake GitHub</a></li>
+  <li><a href="https://www.databricks.com/product/delta-lake-on-databricks">Databricks Delta Lake Guide</a></li>
+  <li><a href="https://github.com/delta-io/delta/blob/master/PROTOCOL.md">Delta Lake Protocol</a></li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">delta-lake</span>, <span class="tag">file-formats</span>, <span class="tag">data-engineering</span>, <span class="tag">acid</span>, <span class="tag">lakehouse</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>

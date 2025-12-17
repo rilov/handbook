@@ -1,0 +1,1086 @@
+<blockquote>
+  <p><strong>What is Avro?</strong> A file format designed for data that flows continuously (like sensor data or website clicks). The clever part? The file remembers its own structure, so even if you add new fields later, old and new systems can still understand each other. Think of it like a form that evolves over time but can still be read by old software.</p>
+
+  <p><strong>Should you care about Avro?</strong> Only if you’re working with:</p>
+  <ul>
+    <li>Real-time data streaming (like Kafka)</li>
+    <li>Systems where data structure changes frequently</li>
+    <li>High-speed data transfer between systems</li>
+  </ul>
+
+  <p>If you’re just analyzing data in Excel or Python, <strong>Parquet is simpler and more widely supported</strong>.</p>
+</blockquote>
+
+<h2 id="why-avro-exists">Why Avro Exists</h2>
+
+<p>Imagine you’re building a data pipeline:</p>
+<ul>
+  <li><strong>Day 1:</strong> User events have 5 fields</li>
+  <li><strong>Day 30:</strong> You add 3 new fields</li>
+  <li><strong>Day 60:</strong> You rename a field</li>
+</ul>
+
+<p><strong>Think of it like this:</strong> You design a customer feedback form with 5 questions. Later, you add 3 more questions. You still have old forms with only 5 answers — how do you process both old and new forms together? Avro solves this!</p>
+
+<p><strong>The Problem:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>How do old systems read new data?
+How do new systems read old data?
+</code></pre></div></div>
+
+<p><strong>Avro’s Solution:</strong> Embed the schema IN the file, enabling perfect <strong>schema evolution</strong>.</p>
+
+<div class="mermaid">
+flowchart LR
+    OLD["Old Schema<br />{name, age}"] --&gt; FILE1["file_v1.avro"]
+    NEW["New Schema<br />{name, age, email}"] --&gt; FILE2["file_v2.avro"]
+    
+    READER["Reader"] --&gt; FILE1
+    READER --&gt; FILE2
+    
+    FILE1 --&gt; |"Has schema inside"| SUCCESS1["✅ Reads correctly"]
+    FILE2 --&gt; |"Has schema inside"| SUCCESS2["✅ Reads correctly"]
+    
+    style OLD fill:#fef3c7,stroke:#d97706
+    style NEW fill:#d1fae5,stroke:#059669
+    style SUCCESS1 fill:#d1fae5,stroke:#059669
+    style SUCCESS2 fill:#d1fae5,stroke:#059669
+</div>
+
+<hr />
+
+<h2 id="architecture-schema--data">Architecture: Schema + Data</h2>
+
+<blockquote>
+  <p><strong>Key difference from Parquet:</strong> Parquet stores columns together (all names, then all ages). Avro stores rows together (name+age, name+age, name+age). Think of Parquet as organizing a filing cabinet by topic, and Avro as organizing it chronologically. Each has its strengths!</p>
+
+  <p><strong>Avro’s trick:</strong> The “form template” (schema) is saved right inside the file, so the file is self-describing!</p>
+</blockquote>
+
+<p>Unlike Parquet/ORC (columnar), Avro is <strong>row-based</strong> with embedded schema:</p>
+
+<div class="mermaid">
+flowchart TD
+    FILE["Avro File"] --&gt; HEADER["Header"]
+    FILE --&gt; BLOCKS["Data Blocks"]
+    FILE --&gt; SYNC["Sync Markers"]
+    
+    HEADER --&gt; MAGIC["Magic: 'Obj1'"]
+    HEADER --&gt; SCHEMA["Schema<br />(JSON)"]
+    HEADER --&gt; CODEC["Compression Codec"]
+    
+    BLOCKS --&gt; BLOCK1["Block 1<br />(100-1000 rows)"]
+    BLOCKS --&gt; BLOCK2["Block 2"]
+    BLOCKS --&gt; BLOCK3["Block 3"]
+    
+    BLOCK1 --&gt; COUNT["Row Count"]
+    BLOCK1 --&gt; SIZE["Byte Size"]
+    BLOCK1 --&gt; DATA["Serialized Rows<br />(binary)"]
+    
+    style FILE fill:#dbeafe,stroke:#2563eb
+    style HEADER fill:#fef3c7,stroke:#d97706
+    style SCHEMA fill:#d1fae5,stroke:#059669
+    style BLOCKS fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="file-structure">File Structure</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>my_data.avro
+│
+├── Header
+│   ├── Magic bytes: "Obj1" (4 bytes)
+│   ├── Schema (JSON, embedded)
+│   │   {
+│   │     "type": "record",
+│   │     "name": "User",
+│   │     "fields": [
+│   │       {"name": "id", "type": "long"},
+│   │       {"name": "name", "type": "string"}
+│   │     ]
+│   │   }
+│   └── Compression codec: "snappy", "deflate", "null"
+│
+├── Data Block 1
+│   ├── Number of rows: 500
+│   ├── Byte size: 10,000
+│   ├── Serialized rows (binary):
+│   │   Row 1: [123, "Alice"]
+│   │   Row 2: [124, "Bob"]
+│   │   ...
+│   └── Sync marker (16 bytes)
+│
+├── Data Block 2
+│   └── ... (same structure)
+│
+└── Data Block N
+</code></pre></div></div>
+
+<p><strong>Key Insight:</strong> Schema is stored ONCE at the beginning, not repeated per row!</p>
+
+<hr />
+
+<h2 id="type-system">Type System</h2>
+
+<p>Avro has a rich, self-describing type system:</p>
+
+<h3 id="primitive-types">Primitive Types</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>JSON Schema</th>
+      <th>Size</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">null</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"null"</code></td>
+      <td>0 bytes</td>
+      <td><code class="language-plaintext highlighter-rouge">null</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">boolean</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"boolean"</code></td>
+      <td>1 byte</td>
+      <td><code class="language-plaintext highlighter-rouge">true</code>, <code class="language-plaintext highlighter-rouge">false</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">int</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"int"</code></td>
+      <td>1-5 bytes (variable)</td>
+      <td><code class="language-plaintext highlighter-rouge">-2,147,483,648</code> to <code class="language-plaintext highlighter-rouge">2,147,483,647</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">long</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"long"</code></td>
+      <td>1-10 bytes (variable)</td>
+      <td>64-bit integer</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">float</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"float"</code></td>
+      <td>4 bytes</td>
+      <td>IEEE 754 single precision</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">double</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"double"</code></td>
+      <td>8 bytes</td>
+      <td>IEEE 754 double precision</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">bytes</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"bytes"</code></td>
+      <td>Variable</td>
+      <td>Raw byte sequence</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">string</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"string"</code></td>
+      <td>Variable</td>
+      <td>UTF-8 text</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="complex-types">Complex Types</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Example Schema</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Array</strong></td>
+      <td>List of items</td>
+      <td><code class="language-plaintext highlighter-rouge">{"type": "array", "items": "string"}</code></td>
+    </tr>
+    <tr>
+      <td><strong>Map</strong></td>
+      <td>Key-value pairs (string keys)</td>
+      <td><code class="language-plaintext highlighter-rouge">{"type": "map", "values": "int"}</code></td>
+    </tr>
+    <tr>
+      <td><strong>Record</strong></td>
+      <td>Struct with named fields</td>
+      <td>See below</td>
+    </tr>
+    <tr>
+      <td><strong>Enum</strong></td>
+      <td>Fixed set of values</td>
+      <td><code class="language-plaintext highlighter-rouge">{"type": "enum", "symbols": ["A", "B"]}</code></td>
+    </tr>
+    <tr>
+      <td><strong>Union</strong></td>
+      <td>One of several types</td>
+      <td><code class="language-plaintext highlighter-rouge">["null", "string"]</code> (nullable string)</td>
+    </tr>
+    <tr>
+      <td><strong>Fixed</strong></td>
+      <td>Fixed-size byte array</td>
+      <td><code class="language-plaintext highlighter-rouge">{"type": "fixed", "size": 16, "name": "UUID"}</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="record-struct-example">Record (Struct) Example</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"record"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"User"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"namespace"</span><span class="p">:</span><span class="w"> </span><span class="s2">"com.example"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"id"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"doc"</span><span class="p">:</span><span class="w"> </span><span class="s2">"User ID"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"username"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"null"</span><span class="p">,</span><span class="w"> </span><span class="s2">"string"</span><span class="p">],</span><span class="w">
+      </span><span class="nl">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"age"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"int"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tags"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"array"</span><span class="p">,</span><span class="w"> </span><span class="nl">"items"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+      </span><span class="nl">"default"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Key Features:</strong></p>
+<ul>
+  <li><strong>Union types:</strong> <code class="language-plaintext highlighter-rouge">["null", "string"]</code> = nullable string</li>
+  <li><strong>Default values:</strong> Enable backward compatibility</li>
+  <li><strong>Documentation:</strong> Inline docs for each field</li>
+</ul>
+
+<hr />
+
+<h2 id="encoding-compact-binary-format">Encoding: Compact Binary Format</h2>
+
+<blockquote>
+  <p><strong>How it works:</strong> Avro uses a clever trick — small numbers take up less space than big numbers. The number “5” takes 1 byte, but “1,000,000” takes more bytes. Most real-world numbers are small, so this saves tons of space! It’s like using abbreviations for common words in text messages.</p>
+</blockquote>
+
+<p>Avro uses <strong>variable-length encoding</strong> for efficiency:</p>
+
+<h3 id="integer-encoding-zig-zag--variable-length">Integer Encoding (Zig-Zag + Variable Length)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Small integers take fewer bytes
+</span><span class="n">Value</span><span class="p">:</span>   <span class="mi">0</span>  <span class="err">→</span>  <span class="mi">1</span> <span class="n">byte</span><span class="p">:</span>  <span class="p">[</span><span class="mh">0x00</span><span class="p">]</span>
+<span class="n">Value</span><span class="p">:</span>   <span class="mi">1</span>  <span class="err">→</span>  <span class="mi">1</span> <span class="n">byte</span><span class="p">:</span>  <span class="p">[</span><span class="mh">0x02</span><span class="p">]</span>
+<span class="n">Value</span><span class="p">:</span>  <span class="mi">127</span> <span class="err">→</span>  <span class="mi">1</span> <span class="n">byte</span><span class="p">:</span>  <span class="p">[</span><span class="mh">0xFE</span><span class="p">]</span>
+<span class="n">Value</span><span class="p">:</span>  <span class="mi">128</span> <span class="err">→</span>  <span class="mi">2</span> <span class="nb">bytes</span><span class="p">:</span> <span class="p">[</span><span class="mh">0x80</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">]</span>
+<span class="n">Value</span><span class="p">:</span> <span class="mi">1000</span> <span class="err">→</span>  <span class="mi">2</span> <span class="nb">bytes</span><span class="p">:</span> <span class="p">[</span><span class="mh">0xD0</span><span class="p">,</span> <span class="mh">0x0F</span><span class="p">]</span>
+
+<span class="c1"># Negative numbers also efficient (zig-zag encoding)
+</span><span class="n">Value</span><span class="p">:</span>  <span class="o">-</span><span class="mi">1</span>  <span class="err">→</span>  <span class="mi">1</span> <span class="n">byte</span><span class="p">:</span>  <span class="p">[</span><span class="mh">0x01</span><span class="p">]</span>
+<span class="n">Value</span><span class="p">:</span> <span class="o">-</span><span class="mi">64</span>  <span class="err">→</span>  <span class="mi">1</span> <span class="n">byte</span><span class="p">:</span>  <span class="p">[</span><span class="mh">0x7F</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p><strong>Why Variable Length?</strong></p>
+<ul>
+  <li>Most integers are small → save space</li>
+  <li>Avro can store <code class="language-plaintext highlighter-rouge">1</code> in 1 byte instead of 4 bytes (like <code class="language-plaintext highlighter-rouge">INT32</code>)</li>
+</ul>
+
+<h3 id="string-encoding">String Encoding</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># String: "hello"
+</span><span class="n">Length</span><span class="p">:</span>  <span class="mi">5</span>        <span class="err">→</span> <span class="p">[</span><span class="mh">0x0A</span><span class="p">]</span>       <span class="c1"># Variable-length encoded
+</span><span class="n">Content</span><span class="p">:</span> <span class="sh">"</span><span class="s">hello</span><span class="sh">"</span>  <span class="err">→</span> <span class="p">[</span><span class="mh">0x68</span><span class="p">,</span> <span class="mh">0x65</span><span class="p">,</span> <span class="mh">0x6C</span><span class="p">,</span> <span class="mh">0x6C</span><span class="p">,</span> <span class="mh">0x6F</span><span class="p">]</span>
+
+<span class="c1"># Total: 6 bytes (1 for length + 5 for content)
+</span></code></pre></div></div>
+
+<h3 id="array-encoding">Array Encoding</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Array: [1, 2, 3]
+</span><span class="n">Block</span> <span class="n">count</span><span class="p">:</span> <span class="mi">3</span>    <span class="err">→</span> <span class="p">[</span><span class="mh">0x06</span><span class="p">]</span>  <span class="c1"># Positive = 3 items follow
+</span><span class="n">Items</span><span class="p">:</span>            <span class="err">→</span> <span class="p">[</span><span class="mh">0x02</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">,</span> <span class="mh">0x06</span><span class="p">]</span>  <span class="c1"># Variable-length ints
+</span><span class="n">End</span> <span class="n">marker</span><span class="p">:</span>       <span class="err">→</span> <span class="p">[</span><span class="mh">0x00</span><span class="p">]</span>  <span class="c1"># Zero = end of array
+</span></code></pre></div></div>
+
+<h3 id="record-encoding">Record Encoding</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Schema: {name: string, age: int}
+# Data: {name: "Alice", age: 30}
+</span>
+<span class="n">Serialized</span><span class="p">:</span>
+  <span class="p">[</span><span class="mh">0x0A</span><span class="p">]</span>                    <span class="c1"># Length of "Alice" (5)
+</span>  <span class="p">[</span><span class="mh">0x41</span><span class="p">,</span> <span class="mh">0x6C</span><span class="p">,</span> <span class="mh">0x69</span><span class="p">,</span> <span class="mh">0x63</span><span class="p">,</span> <span class="mh">0x65</span><span class="p">]</span>  <span class="c1"># "Alice"
+</span>  <span class="p">[</span><span class="mh">0x3C</span><span class="p">]</span>                    <span class="c1"># Age: 30 (variable-length)
+</span></code></pre></div></div>
+
+<p><strong>No field names in data!</strong> Schema defines field order, data is pure values.</p>
+
+<hr />
+
+<h2 id="schema-evolution-the-killer-feature">Schema Evolution: The Killer Feature</h2>
+
+<blockquote>
+  <p><strong>What’s a schema?</strong> Think of it as the “template” or “blueprint” for your data. Like a form has specific fields (name, email, age), a schema defines what fields your data has and what type they are (text, number, date).</p>
+
+  <p><strong>Schema evolution means:</strong> The form can change over time without breaking old submissions!</p>
+</blockquote>
+
+<p>Avro shines when schemas change over time:</p>
+
+<div class="mermaid">
+flowchart TD
+    V1["Version 1 Schema<br />{id, name}"]
+    V2["Version 2 Schema<br />{id, name, email}"]
+    V3["Version 3 Schema<br />{id, username, email, age}"]
+    
+    V1 --&gt; |"Add field"| V2
+    V2 --&gt; |"Rename + add field"| V3
+    
+    READER["Reader with<br />any version"] --&gt; V1FILE["File v1"]
+    READER --&gt; V2FILE["File v2"]
+    READER --&gt; V3FILE["File v3"]
+    
+    V1FILE --&gt; SUCCESS["✅ All compatible"]
+    V2FILE --&gt; SUCCESS
+    V3FILE --&gt; SUCCESS
+    
+    style V1 fill:#fef3c7,stroke:#d97706
+    style V2 fill:#d1fae5,stroke:#059669
+    style V3 fill:#dbeafe,stroke:#2563eb
+    style SUCCESS fill:#d1fae5,stroke:#059669
+</div>
+
+<h3 id="1-adding-fields-backward-compatible">1. Adding Fields (Backward Compatible)</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">Version</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="err">(Writer</span><span class="w"> </span><span class="err">Schema)</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"record"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"User"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"id"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">Version</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="err">(Reader</span><span class="w"> </span><span class="err">Schema)</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"record"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"User"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"id"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"null"</span><span class="p">,</span><span class="w"> </span><span class="s2">"string"</span><span class="p">],</span><span class="w"> </span><span class="nl">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="err">NEW!</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Result:</strong> Reader with v2 schema reads v1 data → uses default <code class="language-plaintext highlighter-rouge">null</code> for missing <code class="language-plaintext highlighter-rouge">email</code>.</p>
+
+<h3 id="2-removing-fields-forward-compatible">2. Removing Fields (Forward Compatible)</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">Writer</span><span class="w"> </span><span class="err">Schema</span><span class="w"> </span><span class="err">(v</span><span class="mi">2</span><span class="err">)</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"id"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">Reader</span><span class="w"> </span><span class="err">Schema</span><span class="w"> </span><span class="err">(v</span><span class="mi">1</span><span class="err">)</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"id"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+    </span><span class="err">//</span><span class="w"> </span><span class="err">email</span><span class="w"> </span><span class="err">field</span><span class="w"> </span><span class="err">removed</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Result:</strong> Reader ignores unknown <code class="language-plaintext highlighter-rouge">email</code> field.</p>
+
+<h3 id="3-renaming-fields-aliases">3. Renaming Fields (Aliases)</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">Writer</span><span class="w"> </span><span class="err">Schema</span><span class="w"> </span><span class="err">(old)</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">Reader</span><span class="w"> </span><span class="err">Schema</span><span class="w"> </span><span class="err">(new)</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"username"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"aliases"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="err">Can</span><span class="w"> </span><span class="err">read</span><span class="w"> </span><span class="err">old</span><span class="w"> </span><span class="s2">"name"</span><span class="w"> </span><span class="err">field</span><span class="w"> </span><span class="err">as</span><span class="w"> </span><span class="s2">"username"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="4-changing-field-types-with-caution">4. Changing Field Types (with caution)</h3>
+
+<p><strong>Safe Changes:</strong></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">int</code> → <code class="language-plaintext highlighter-rouge">long</code> ✅</li>
+  <li><code class="language-plaintext highlighter-rouge">float</code> → <code class="language-plaintext highlighter-rouge">double</code> ✅</li>
+  <li><code class="language-plaintext highlighter-rouge">string</code> → <code class="language-plaintext highlighter-rouge">bytes</code> ✅</li>
+</ul>
+
+<p><strong>Unsafe Changes:</strong></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">long</code> → <code class="language-plaintext highlighter-rouge">int</code> ❌ (data loss!)</li>
+  <li><code class="language-plaintext highlighter-rouge">string</code> → <code class="language-plaintext highlighter-rouge">int</code> ❌ (incompatible)</li>
+</ul>
+
+<hr />
+
+<h2 id="schema-registry-the-missing-piece">Schema Registry: The Missing Piece</h2>
+
+<blockquote>
+  <p><strong>The problem it solves:</strong> Imagine if every email you sent included a 10-page document explaining what “From,” “To,” and “Subject” mean. That’s wasteful! Instead, email programs just know those fields exist. Schema Registry is like that — it stores the “form template” once, and messages just reference it. This saves tons of space!</p>
+
+  <p><strong>Note:</strong> This is specific to Kafka and real-time streaming systems.</p>
+</blockquote>
+
+<p>In streaming systems (Kafka), storing the full schema in every message is wasteful:</p>
+
+<div class="mermaid">
+flowchart LR
+    PRODUCER["Producer"] --&gt; REGISTRY["Schema Registry"]
+    REGISTRY --&gt; |"Schema ID: 42"| KAFKA["Kafka Topic"]
+    
+    KAFKA --&gt; |"Message:<br />[ID: 42][data]"| CONSUMER["Consumer"]
+    CONSUMER --&gt; REGISTRY
+    REGISTRY --&gt; |"Fetch Schema 42"| CONSUMER
+    
+    style REGISTRY fill:#dbeafe,stroke:#2563eb
+    style KAFKA fill:#fef3c7,stroke:#d97706
+    style CONSUMER fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>How It Works:</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Producer
+</span><span class="mf">1.</span> <span class="n">Register</span> <span class="n">schema</span> <span class="k">with</span> <span class="n">Schema</span> <span class="n">Registry</span> <span class="err">→</span> <span class="n">Get</span> <span class="n">schema_id</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="mf">2.</span> <span class="n">Serialize</span> <span class="n">data</span> <span class="k">with</span> <span class="n">Avro</span>
+<span class="mf">3.</span> <span class="n">Prepend</span> <span class="n">schema_id</span> <span class="n">to</span> <span class="n">message</span><span class="p">:</span> <span class="p">[</span><span class="mi">42</span><span class="p">][</span><span class="n">binary_data</span><span class="p">]</span>
+<span class="mf">4.</span> <span class="n">Send</span> <span class="n">to</span> <span class="n">Kafka</span>
+
+<span class="c1"># Consumer  
+</span><span class="mf">1.</span> <span class="n">Read</span> <span class="n">message</span><span class="p">:</span> <span class="p">[</span><span class="mi">42</span><span class="p">][</span><span class="n">binary_data</span><span class="p">]</span>
+<span class="mf">2.</span> <span class="n">Extract</span> <span class="n">schema_id</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="mf">3.</span> <span class="n">Fetch</span> <span class="n">schema</span> <span class="k">from</span> <span class="nf">registry </span><span class="p">(</span><span class="n">cached</span><span class="p">)</span>
+<span class="mf">4.</span> <span class="n">Deserialize</span> <span class="n">data</span> <span class="k">with</span> <span class="n">schema</span>
+</code></pre></div></div>
+
+<p><strong>Message Format:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[Magic byte: 0x00] [Schema ID: 4 bytes] [Avro binary data]
+</code></pre></div></div>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+  <li>Messages are tiny (no repeated schema)</li>
+  <li>Centralized schema management</li>
+  <li>Schema evolution enforcement</li>
+</ul>
+
+<p><strong>Popular Implementations:</strong></p>
+<ul>
+  <li>Confluent Schema Registry</li>
+  <li>AWS Glue Schema Registry</li>
+  <li>Azure Schema Registry</li>
+</ul>
+
+<hr />
+
+<h2 id="compression">Compression</h2>
+
+<p>Avro supports block-level compression:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Codec</th>
+      <th>Speed</th>
+      <th>Ratio</th>
+      <th>Best For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>null</strong></td>
+      <td>⚡⚡⚡⚡ Instant</td>
+      <td>1x</td>
+      <td>Pre-compressed data</td>
+    </tr>
+    <tr>
+      <td><strong>deflate</strong></td>
+      <td>🐌 Slow</td>
+      <td>Excellent</td>
+      <td>Archival, small files</td>
+    </tr>
+    <tr>
+      <td><strong>snappy</strong></td>
+      <td>⚡⚡⚡ Fast</td>
+      <td>Good</td>
+      <td>Default choice</td>
+    </tr>
+    <tr>
+      <td><strong>bzip2</strong></td>
+      <td>🐌 Very Slow</td>
+      <td>Best</td>
+      <td>Long-term storage</td>
+    </tr>
+    <tr>
+      <td><strong>zstandard</strong></td>
+      <td>⚡⚡ Fast</td>
+      <td>Excellent</td>
+      <td>Modern default</td>
+    </tr>
+    <tr>
+      <td><strong>lz4</strong></td>
+      <td>⚡⚡⚡ Very Fast</td>
+      <td>Good</td>
+      <td>Real-time streaming</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Block-Level Compression:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Block 1: [500 rows] → Compress as one unit → Write
+Block 2: [500 rows] → Compress as one unit → Write
+</code></pre></div></div>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+  <li>Splittable (can decompress blocks independently)</li>
+  <li>Good compression (rows have similar structure)</li>
+</ul>
+
+<hr />
+
+<h2 id="avro-vs-parquet-vs-json">Avro vs Parquet vs JSON</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Avro</th>
+      <th>Parquet</th>
+      <th>JSON</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Storage</strong></td>
+      <td>Row-based</td>
+      <td>Columnar</td>
+      <td>Row-based</td>
+    </tr>
+    <tr>
+      <td><strong>Schema</strong></td>
+      <td>Embedded in file</td>
+      <td>In metadata</td>
+      <td>❌ Not enforced</td>
+    </tr>
+    <tr>
+      <td><strong>Schema Evolution</strong></td>
+      <td>🏆 <strong>Excellent</strong></td>
+      <td>Good</td>
+      <td>❌ Manual</td>
+    </tr>
+    <tr>
+      <td><strong>Compression</strong></td>
+      <td>Good</td>
+      <td>🏆 <strong>Excellent</strong></td>
+      <td>Poor</td>
+    </tr>
+    <tr>
+      <td><strong>Read Speed (analytics)</strong></td>
+      <td>Medium</td>
+      <td>🏆 <strong>Very Fast</strong></td>
+      <td>Slow</td>
+    </tr>
+    <tr>
+      <td><strong>Write Speed</strong></td>
+      <td>🏆 <strong>Very Fast</strong></td>
+      <td>Medium</td>
+      <td>Very Fast</td>
+    </tr>
+    <tr>
+      <td><strong>Streaming</strong></td>
+      <td>🏆 <strong>Excellent</strong></td>
+      <td>Poor</td>
+      <td>Good</td>
+    </tr>
+    <tr>
+      <td><strong>Human Readable</strong></td>
+      <td>❌ Binary</td>
+      <td>❌ Binary</td>
+      <td>✅ Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Use Case</strong></td>
+      <td>Streaming, Kafka</td>
+      <td>Analytics, DW</td>
+      <td>APIs, configs</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mermaid">
+flowchart TD
+    QUESTION["What's your use case?"]
+    
+    QUESTION --&gt; STREAM["Streaming data<br />(Kafka)"]
+    QUESTION --&gt; ANALYTICS["Analytics<br />(aggregations)"]
+    QUESTION --&gt; API["API responses"]
+    
+    STREAM --&gt; AVRO["✅ Use Avro"]
+    ANALYTICS --&gt; PARQUET["✅ Use Parquet"]
+    API --&gt; JSON["✅ Use JSON"]
+    
+    style QUESTION fill:#f1f5f9,stroke:#64748b
+    style AVRO fill:#d1fae5,stroke:#059669
+    style PARQUET fill:#fef3c7,stroke:#d97706
+    style JSON fill:#dbeafe,stroke:#2563eb
+</div>
+
+<hr />
+
+<h2 id="real-world-use-case-kafka--avro">Real-World Use Case: Kafka + Avro</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">confluent_kafka</span> <span class="kn">import</span> <span class="n">avro</span>
+<span class="kn">from</span> <span class="n">confluent_kafka.avro</span> <span class="kn">import</span> <span class="n">AvroProducer</span>
+
+<span class="c1"># Define schema
+</span><span class="n">user_schema</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">record</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">User</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">fields</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">long</span><span class="sh">"</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">username</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">string</span><span class="sh">"</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">email</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">null</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">string</span><span class="sh">"</span><span class="p">],</span> <span class="sh">"</span><span class="s">default</span><span class="sh">"</span><span class="p">:</span> <span class="n">null</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">signup_date</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">string</span><span class="sh">"</span><span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1"># Configure producer with Schema Registry
+</span><span class="n">producer</span> <span class="o">=</span> <span class="nc">AvroProducer</span><span class="p">({</span>
+    <span class="sh">'</span><span class="s">bootstrap.servers</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">localhost:9092</span><span class="sh">'</span><span class="p">,</span>
+    <span class="sh">'</span><span class="s">schema.registry.url</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">http://localhost:8081</span><span class="sh">'</span>
+<span class="p">},</span> <span class="n">default_value_schema</span><span class="o">=</span><span class="n">user_schema</span><span class="p">)</span>
+
+<span class="c1"># Produce message
+</span><span class="n">user_data</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">:</span> <span class="mi">12345</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">username</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">alice</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">email</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">alice@example.com</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">signup_date</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">2024-12-16</span><span class="sh">"</span>
+<span class="p">}</span>
+
+<span class="n">producer</span><span class="p">.</span><span class="nf">produce</span><span class="p">(</span><span class="n">topic</span><span class="o">=</span><span class="sh">'</span><span class="s">users</span><span class="sh">'</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">user_data</span><span class="p">)</span>
+<span class="n">producer</span><span class="p">.</span><span class="nf">flush</span><span class="p">()</span>
+
+<span class="c1"># Later: Add new field (backward compatible)
+</span><span class="n">updated_schema</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">record</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">User</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">fields</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">long</span><span class="sh">"</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">username</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">string</span><span class="sh">"</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">email</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">null</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">string</span><span class="sh">"</span><span class="p">],</span> <span class="sh">"</span><span class="s">default</span><span class="sh">"</span><span class="p">:</span> <span class="n">null</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">signup_date</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">string</span><span class="sh">"</span><span class="p">},</span>
+        <span class="p">{</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">country</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">null</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">string</span><span class="sh">"</span><span class="p">],</span> <span class="sh">"</span><span class="s">default</span><span class="sh">"</span><span class="p">:</span> <span class="n">null</span><span class="p">}</span>  <span class="c1"># NEW!
+</span>    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1"># Old consumers can still read new messages!
+</span></code></pre></div></div>
+
+<p><strong>Why This Works:</strong></p>
+<ol>
+  <li>New field has a default value</li>
+  <li>Schema Registry tracks both versions</li>
+  <li>Old consumers ignore unknown <code class="language-plaintext highlighter-rouge">country</code> field</li>
+  <li>New consumers get <code class="language-plaintext highlighter-rouge">null</code> for old messages</li>
+</ol>
+
+<hr />
+
+<h2 id="performance-comparison">Performance Comparison</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">time</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">json</span>
+
+<span class="c1"># Create test data (1M rows)
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
+    <span class="sh">'</span><span class="s">id</span><span class="sh">'</span><span class="p">:</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1_000_000</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">name</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="sh">'</span><span class="s">User_</span><span class="sh">'</span> <span class="o">+</span> <span class="nf">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1_000_000</span><span class="p">)],</span>
+    <span class="sh">'</span><span class="s">email</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="sh">'</span><span class="s">user{}@example.com</span><span class="sh">'</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1_000_000</span><span class="p">)],</span>
+    <span class="sh">'</span><span class="s">age</span><span class="sh">'</span><span class="p">:</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">randint</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mi">1_000_000</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="c1"># Write as Avro
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">to_avro</span><span class="p">(</span><span class="sh">'</span><span class="s">data.avro</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">snappy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">avro_write_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="n">avro_size</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">getsize</span><span class="p">(</span><span class="sh">'</span><span class="s">data.avro</span><span class="sh">'</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+<span class="c1"># Write as Parquet
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">snappy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">parquet_write_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="n">parquet_size</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">getsize</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+<span class="c1"># Write as JSON
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">to_json</span><span class="p">(</span><span class="sh">'</span><span class="s">data.json</span><span class="sh">'</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="sh">'</span><span class="s">records</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">json_write_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="n">json_size</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">getsize</span><span class="p">(</span><span class="sh">'</span><span class="s">data.json</span><span class="sh">'</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Avro:    </span><span class="si">{</span><span class="n">avro_size</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> MB in </span><span class="si">{</span><span class="n">avro_write_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Parquet: </span><span class="si">{</span><span class="n">parquet_size</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> MB in </span><span class="si">{</span><span class="n">parquet_write_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">JSON:    </span><span class="si">{</span><span class="n">json_size</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> MB in </span><span class="si">{</span><span class="n">json_write_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Read entire file
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df_avro</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_avro</span><span class="p">(</span><span class="sh">'</span><span class="s">data.avro</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">avro_read_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df_parquet</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">parquet_read_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df_json</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_json</span><span class="p">(</span><span class="sh">'</span><span class="s">data.json</span><span class="sh">'</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="sh">'</span><span class="s">records</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">json_read_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Full read:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Avro:    </span><span class="si">{</span><span class="n">avro_read_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Parquet: </span><span class="si">{</span><span class="n">parquet_read_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">JSON:    </span><span class="si">{</span><span class="n">json_read_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Typical Results:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Size:
+Avro:    125.0 MB in 2.3s  (fast writes)
+Parquet:  85.0 MB in 3.5s  (slower writes, better compression)
+JSON:    450.0 MB in 8.2s  (huge, slow)
+
+Full read:
+Avro:    1.8s  (decent for row-based)
+Parquet: 0.5s  (fastest, columnar)
+JSON:    15.2s (very slow)
+
+Column read (age only):
+Avro:    1.7s  (must read all columns)
+Parquet: 0.1s  (only reads one column) 🏆
+</code></pre></div></div>
+
+<p><strong>Conclusion:</strong></p>
+<ul>
+  <li><strong>Avro:</strong> Fast writes, good for streaming</li>
+  <li><strong>Parquet:</strong> Best compression, fast analytics</li>
+  <li><strong>JSON:</strong> Human-readable, but slow &amp; large</li>
+</ul>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-always-use-default-values">1. Always Use Default Values</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">❌</span><span class="w"> </span><span class="err">Bad:</span><span class="w"> </span><span class="err">No</span><span class="w"> </span><span class="err">default</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">✅</span><span class="w"> </span><span class="err">Good:</span><span class="w"> </span><span class="err">Has</span><span class="w"> </span><span class="err">default</span><span class="w"> </span><span class="err">(enables</span><span class="w"> </span><span class="err">backward</span><span class="w"> </span><span class="err">compatibility)</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"null"</span><span class="p">,</span><span class="w"> </span><span class="s2">"string"</span><span class="p">],</span><span class="w"> </span><span class="nl">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="2-use-unions-for-optional-fields">2. Use Unions for Optional Fields</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">❌</span><span class="w"> </span><span class="err">Bad:</span><span class="w"> </span><span class="err">Field</span><span class="w"> </span><span class="err">is</span><span class="w"> </span><span class="err">required</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"phone"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">✅</span><span class="w"> </span><span class="err">Good:</span><span class="w"> </span><span class="err">Field</span><span class="w"> </span><span class="err">is</span><span class="w"> </span><span class="err">optional</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"phone"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"null"</span><span class="p">,</span><span class="w"> </span><span class="s2">"string"</span><span class="p">],</span><span class="w"> </span><span class="nl">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="3-version-your-schemas">3. Version Your Schemas</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"record"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"User"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"namespace"</span><span class="p">:</span><span class="w"> </span><span class="s2">"com.example.v2"</span><span class="p">,</span><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="err">Version</span><span class="w"> </span><span class="err">in</span><span class="w"> </span><span class="err">namespace</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="4-document-your-fields">4. Document Your Fields</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"status"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"doc"</span><span class="p">:</span><span class="w"> </span><span class="s2">"User account status. Valid values: active, suspended, deleted"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="5-use-enums-for-fixed-values">5. Use Enums for Fixed Values</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">❌</span><span class="w"> </span><span class="err">Bad:</span><span class="w"> </span><span class="err">Free-form</span><span class="w"> </span><span class="err">string</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"status"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">✅</span><span class="w"> </span><span class="err">Good:</span><span class="w"> </span><span class="err">Enforced</span><span class="w"> </span><span class="err">values</span><span class="w">
+</span><span class="p">{</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"status"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"enum"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Status"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"symbols"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"ACTIVE"</span><span class="p">,</span><span class="w"> </span><span class="s2">"SUSPENDED"</span><span class="p">,</span><span class="w"> </span><span class="s2">"DELETED"</span><span class="p">]</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="6-choose-snappy-compression-default">6. Choose Snappy Compression (Default)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Fast compression/decompression, good ratio
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_avro</span><span class="p">(</span><span class="sh">'</span><span class="s">data.avro</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">snappy</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="common-pitfalls">Common Pitfalls</h2>
+
+<h3 id="1-breaking-schema-compatibility">1. Breaking Schema Compatibility</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">❌</span><span class="w"> </span><span class="err">Breaking</span><span class="w"> </span><span class="err">change:</span><span class="w"> </span><span class="err">Removed</span><span class="w"> </span><span class="err">required</span><span class="w"> </span><span class="err">field</span><span class="w">
+</span><span class="err">//</span><span class="w"> </span><span class="err">Old</span><span class="w"> </span><span class="err">schema</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">New</span><span class="w"> </span><span class="err">schema</span><span class="w"> </span><span class="err">(missing</span><span class="w"> </span><span class="err">email)</span><span class="w">
+</span><span class="err">//</span><span class="w"> </span><span class="err">Old</span><span class="w"> </span><span class="err">readers</span><span class="w"> </span><span class="err">will</span><span class="w"> </span><span class="err">fail!</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Solution:</strong> Never remove required fields without defaults.</p>
+
+<h3 id="2-using-avro-for-analytics">2. Using Avro for Analytics</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Slow: Read 1 column from Avro
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_avro</span><span class="p">(</span><span class="sh">'</span><span class="s">data.avro</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">age</span><span class="sh">'</span><span class="p">])</span>
+<span class="c1"># Must read ALL columns (row-based)
+</span>
+<span class="c1"># ✅ Fast: Read 1 column from Parquet
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">age</span><span class="sh">'</span><span class="p">])</span>
+<span class="c1"># Only reads the column you need
+</span></code></pre></div></div>
+
+<h3 id="3-not-using-schema-registry">3. Not Using Schema Registry</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Bad: Embed full schema in every Kafka message
+</span><span class="n">message</span> <span class="o">=</span> <span class="p">[</span><span class="n">schema_json</span><span class="p">,</span> <span class="n">data</span><span class="p">]</span>  <span class="c1"># Huge overhead!
+</span>
+<span class="c1"># ✅ Good: Use Schema Registry
+</span><span class="n">message</span> <span class="o">=</span> <span class="p">[</span><span class="n">schema_id</span><span class="p">,</span> <span class="n">data</span><span class="p">]</span>  <span class="c1"># Tiny overhead
+</span></code></pre></div></div>
+
+<h3 id="4-large-block-sizes">4. Large Block Sizes</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Bad: 100 MB blocks (not splittable)
+# ✅ Good: 1-10 MB blocks (parallelizable)
+</span></code></pre></div></div>
+
+<h3 id="5-changing-field-types-unsafely">5. Changing Field Types Unsafely</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">//</span><span class="w"> </span><span class="err">❌</span><span class="w"> </span><span class="err">Breaking:</span><span class="w"> </span><span class="err">int</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">string</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"age"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"int"</span><span class="p">}</span><span class="w">     </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"age"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+
+</span><span class="err">//</span><span class="w"> </span><span class="err">✅</span><span class="w"> </span><span class="err">Safe:</span><span class="w"> </span><span class="err">int</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">long</span><span class="w">
+</span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"age"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"int"</span><span class="p">}</span><span class="w">     </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"age"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="should-you-use-avro">Should You Use Avro?</h2>
+
+<blockquote>
+  <p><strong>Quick Decision Guide:</strong></p>
+  <ul>
+    <li>✅ <strong>Use Avro:</strong> You’re building real-time data systems (like tracking website clicks as they happen)</li>
+    <li>❌ <strong>Use Parquet:</strong> You’re analyzing existing data (like last month’s sales report)</li>
+    <li>✅ <strong>Use Avro:</strong> Your data structure changes often and you need backward compatibility</li>
+    <li>❌ <strong>Use Parquet:</strong> Your data structure is stable</li>
+  </ul>
+
+  <p><strong>Honest take:</strong> Unless you’re specifically working with Kafka or real-time streaming, <strong>start with Parquet</strong>. It’s simpler, more widely supported, and easier to work with. Avro is for specialized use cases!</p>
+</blockquote>
+
+<h2 id="when-to-use-avro">When to Use Avro</h2>
+
+<div class="mermaid">
+flowchart TD
+    START["Choose Avro when:"]
+    
+    START --&gt; KAFKA["Using Kafka/<br />streaming"]
+    START --&gt; EVOLVE["Schema changes<br />frequently"]
+    START --&gt; WRITE["Write-heavy<br />workload"]
+    START --&gt; ROW["Need full rows<br />(not columns)"]
+    
+    START2["Choose Parquet when:"]
+    
+    START2 --&gt; ANALYTICS["Analytics/<br />aggregations"]
+    START2 --&gt; COMPRESS["Need max<br />compression"]
+    START2 --&gt; COLUMNS["Reading specific<br />columns"]
+    
+    style START fill:#d1fae5,stroke:#059669
+    style START2 fill:#fef3c7,stroke:#d97706
+</div>
+
+<h3 id="-use-avro-for">✅ Use Avro For:</h3>
+
+<ol>
+  <li><strong>Kafka / Event Streaming</strong>
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Producer → Kafka (Avro) → Consumer
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Schema Evolution</strong>
+    <ul>
+      <li>Fields added/removed frequently</li>
+      <li>Need backward/forward compatibility</li>
+    </ul>
+  </li>
+  <li><strong>Write-Heavy Workloads</strong>
+    <ul>
+      <li>Fast serialization</li>
+      <li>Streaming ingestion</li>
+    </ul>
+  </li>
+  <li><strong>RPC / Data Exchange</strong>
+    <ul>
+      <li>Between services</li>
+      <li>Compact binary format</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="-use-parquet-instead-for">❌ Use Parquet Instead For:</h3>
+
+<ol>
+  <li><strong>Analytics / Data Warehouses</strong>
+    <ul>
+      <li>Aggregations, GROUP BY</li>
+      <li>Reading specific columns</li>
+    </ul>
+  </li>
+  <li><strong>Large-Scale Storage</strong>
+    <ul>
+      <li>Better compression (10-20% smaller)</li>
+    </ul>
+  </li>
+  <li><strong>Read-Heavy Workloads</strong>
+    <ul>
+      <li>Parquet’s columnar layout is faster</li>
+    </ul>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<blockquote>
+  <p><strong>Quick Takeaways:</strong></p>
+  <ul>
+    <li><strong>What is Avro?</strong> A file format designed for real-time data streaming (like website clicks, sensor data)</li>
+    <li><strong>Special power:</strong> The file remembers its own structure, so old and new versions can work together</li>
+    <li><strong>Why use it?</strong> When data structure changes frequently and you need old/new systems to coexist</li>
+    <li><strong>When to use it?</strong> Kafka streaming, real-time data pipelines, rapidly changing data structures</li>
+    <li><strong>When NOT to use it?</strong> Analyzing historical data, working in Python/Excel, when your data structure is stable</li>
+    <li><strong>Bottom line:</strong> Unless you’re specifically working with Kafka or real-time streaming, <strong>use Parquet instead</strong>. Avro is specialized and less widely supported.</li>
+  </ul>
+</blockquote>
+
+<p>Avro is a <strong>schema-evolution-first</strong> format for streaming data:</p>
+
+<p><strong>Key Strengths:</strong></p>
+<ol>
+  <li>✅ <strong>Schema embedded</strong> in file (self-describing — knows its own structure)</li>
+  <li>✅ <strong>Schema evolution</strong> (old and new versions work together)</li>
+  <li>✅ <strong>Fast writes</strong> (optimized for streaming data)</li>
+  <li>✅ <strong>Compact</strong> (efficient encoding saves space)</li>
+  <li>✅ <strong>Kafka-native</strong> (industry standard for Kafka)</li>
+</ol>
+
+<p><strong>Key Weaknesses:</strong></p>
+<ol>
+  <li>❌ <strong>Row-based</strong> (slow for analytics that need specific columns)</li>
+  <li>❌ <strong>No column pruning</strong> (must read all columns, even if you only need one)</li>
+  <li>❌ <strong>Worse compression</strong> than Parquet (typically 10-20% larger)</li>
+  <li>❌ <strong>Binary</strong> (can’t open in text editor or Excel)</li>
+  <li>❌ <strong>Limited tool support</strong> (works best with Java/Kafka ecosystem)</li>
+</ol>
+
+<p><strong>Decision Matrix:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Your Use Case</th>
+      <th>Best Format</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Kafka streaming</td>
+      <td>🏆 <strong>Avro</strong></td>
+    </tr>
+    <tr>
+      <td>Schema evolution</td>
+      <td>🏆 <strong>Avro</strong></td>
+    </tr>
+    <tr>
+      <td>Analytics (SQL)</td>
+      <td>Parquet</td>
+    </tr>
+    <tr>
+      <td>Data warehouse</td>
+      <td>Parquet</td>
+    </tr>
+    <tr>
+      <td>Fast writes</td>
+      <td>🏆 <strong>Avro</strong></td>
+    </tr>
+    <tr>
+      <td>APIs</td>
+      <td>JSON</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>The Bottom Line:</strong></p>
+<ul>
+  <li><strong>Streaming + schema changes?</strong> → Avro is the answer</li>
+  <li><strong>Analytics + big data?</strong> → Use Parquet</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><a href="https://avro.apache.org/docs/">Apache Avro Documentation</a></li>
+  <li><a href="https://avro.apache.org/docs/current/spec.html">Avro Specification</a></li>
+  <li><a href="https://docs.confluent.io/platform/current/schema-registry/index.html">Confluent Schema Registry</a></li>
+  <li><a href="https://docs.confluent.io/platform/current/schema-registry/avro.html">Schema Evolution in Avro</a></li>
+</ul>

@@ -1,0 +1,1079 @@
+<blockquote>
+  <p><strong>What is ORC?</strong> Parquet’s cousin, designed specifically for Hadoop (a big data processing system). It’s faster than Parquet in Hadoop, but ONLY works well in Hadoop.</p>
+
+  <p><strong>Should you care about ORC?</strong></p>
+  <ul>
+    <li>✅ <strong>Yes:</strong> You’re working with Hadoop, Hive, or enterprise big data systems</li>
+    <li>❌ <strong>No:</strong> You’re using Python, Spark, or modern cloud tools</li>
+    <li>🤷 <strong>Maybe:</strong> Your company already uses ORC</li>
+  </ul>
+
+  <p><strong>The honest take:</strong> Unless you’re specifically in a Hadoop/Hive environment, <strong>use Parquet instead</strong>. It’s more widely supported and works everywhere. ORC is a specialized tool for a specific ecosystem.</p>
+</blockquote>
+
+<h2 id="why-orc-exists">Why ORC Exists</h2>
+
+<p>ORC was created by Hortonworks to be the <strong>fastest</strong> columnar format for Hadoop/Hive. While Parquet focuses on compatibility across engines, ORC focuses on <strong>raw performance</strong> in the Hadoop ecosystem.</p>
+
+<p><strong>Think of it like this:</strong> ORC is like a racing car tuned for a specific track (Hadoop). It’s faster on that track than a regular sports car (Parquet), but you can only race it on that one track. Parquet is like a versatile sports car that performs well on any road.</p>
+
+<p><strong>The Problem ORC Solves:</strong></p>
+<ul>
+  <li>Hive queries on TB-scale data were too slow</li>
+  <li>Existing formats (RCFile) had poor compression</li>
+  <li>Need for built-in indexes and statistics</li>
+</ul>
+
+<p><strong>ORC’s Solution:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Traditional: Read 1 TB → Filter → Process = Slow
+ORC: Read indexes → Skip 90% → Read 100 GB → Process = 10x faster
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="architecture-stripes-indexes--statistics">Architecture: Stripes, Indexes &amp; Statistics</h2>
+
+<p>ORC organizes files into <strong>stripes</strong> (similar to Parquet’s row groups, but with better indexing):</p>
+
+<div class="mermaid">
+flowchart TD
+    FILE["ORC File"] --&gt; STRIPE1["Stripe 1<br />(250 MB default)"]
+    FILE --&gt; STRIPE2["Stripe 2"]
+    FILE --&gt; STRIPE3["Stripe 3"]
+    
+    STRIPE1 --&gt; INDEX["Index Data<br />(lightweight)"]
+    STRIPE1 --&gt; DATA["Column Data<br />(compressed)"]
+    STRIPE1 --&gt; FOOTER["Stripe Footer<br />(metadata)"]
+    
+    DATA --&gt; C1["Column 1 Data"]
+    DATA --&gt; C2["Column 2 Data"]
+    DATA --&gt; C3["Column 3 Data"]
+    
+    INDEX --&gt; I1["Row Index<br />(every 10K rows)"]
+    INDEX --&gt; I2["Bloom Filters"]
+    
+    style FILE fill:#dbeafe,stroke:#2563eb
+    style STRIPE1 fill:#d1fae5,stroke:#059669
+    style INDEX fill:#fef3c7,stroke:#d97706
+    style DATA fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="1-file-structure">1. File Structure</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>my_data.orc
+│
+├── Postscript (metadata about file)
+│
+├── Stripe 1 (250 MB default)
+│   ├── Index Data
+│   │   ├── Row Group Index (every 10,000 rows)
+│   │   │   ├── Min/Max values
+│   │   │   ├── Sum (for numeric columns)
+│   │   │   ├── HasNull flag
+│   │   │   └── Positions (byte offsets)
+│   │   │
+│   │   └── Bloom Filters (optional)
+│   │       └── Probabilistic set membership
+│   │
+│   ├── Column Data (compressed)
+│   │   ├── Column 0 Stream (PRESENT stream - nulls)
+│   │   ├── Column 0 Stream (DATA stream - values)
+│   │   ├── Column 1 Stream
+│   │   └── ...
+│   │
+│   └── Stripe Footer
+│       └── Stream locations &amp; metadata
+│
+├── Stripe 2
+│   └── ... (same structure)
+│
+└── File Footer
+    ├── Schema (type tree)
+    ├── Stripe Statistics (min/max across stripes)
+    ├── Column Statistics (global)
+    ├── Stripe Locations
+    └── User Metadata
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="key-difference-from-parquet-three-level-indexing">Key Difference from Parquet: Three-Level Indexing</h2>
+
+<blockquote>
+  <p><strong>How it works:</strong> ORC is like a book with a table of contents, chapter summaries, AND page indexes — three levels of shortcuts! Parquet just has a table of contents. This makes ORC faster at finding specific data, but only if you’re using software (like Hive) that knows how to use all three levels.</p>
+
+  <p><strong>Think of it like this:</strong> Imagine looking for a specific scene in a movie. ORC gives you: (1) which DVD, (2) which chapter, (3) which minute. Parquet just tells you which DVD. Both work, but ORC can skip more if your player supports it!</p>
+</blockquote>
+
+<p>ORC has <strong>much more aggressive indexing</strong> than Parquet:</p>
+
+<div class="mermaid">
+flowchart TD
+    QUERY["Query:<br />WHERE age &gt; 40"]
+    
+    QUERY --&gt; L1["Level 1: File Statistics<br />Min age: 18, Max age: 65"]
+    L1 --&gt; |"✅ File contains matches"| L2
+    
+    L2["Level 2: Stripe Statistics<br />Stripe 1: min=18, max=35<br />Stripe 2: min=36, max=65"]
+    L2 --&gt; |"❌ Skip Stripe 1"| SKIP1
+    L2 --&gt; |"✅ Read Stripe 2"| L3
+    
+    L3["Level 3: Row Group Index<br />RG1: min=36, max=40<br />RG2: min=41, max=50<br />RG3: min=51, max=65"]
+    L3 --&gt; |"❌ Skip RG1"| SKIP2
+    L3 --&gt; |"✅ Read RG2 &amp; RG3"| READ
+    
+    style QUERY fill:#dbeafe,stroke:#2563eb
+    style L1 fill:#fef3c7,stroke:#d97706
+    style L2 fill:#d1fae5,stroke:#059669
+    style L3 fill:#fce7f3,stroke:#db2777
+    style SKIP1 fill:#fecaca,stroke:#dc2626
+    style SKIP2 fill:#fecaca,stroke:#dc2626
+    style READ fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>Result:</strong> ORC can skip 90%+ of data before even decompressing it!</p>
+
+<hr />
+
+<h2 id="type-system">Type System</h2>
+
+<p>ORC has a rich built-in type system (unlike Parquet’s physical/logical split):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>ORC Type</th>
+      <th>Description</th>
+      <th>Storage</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Primitives</strong></td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">boolean</code></td>
+      <td>true/false</td>
+      <td>1 bit (RLE encoded)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">tinyint</code></td>
+      <td>8-bit signed integer</td>
+      <td>1 byte</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">smallint</code></td>
+      <td>16-bit signed integer</td>
+      <td>2 bytes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">int</code></td>
+      <td>32-bit signed integer</td>
+      <td>4 bytes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">bigint</code></td>
+      <td>64-bit signed integer</td>
+      <td>8 bytes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">float</code></td>
+      <td>32-bit floating point</td>
+      <td>4 bytes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">double</code></td>
+      <td>64-bit floating point</td>
+      <td>8 bytes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">string</code></td>
+      <td>UTF-8 text</td>
+      <td>Variable</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">binary</code></td>
+      <td>Raw bytes</td>
+      <td>Variable</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">timestamp</code></td>
+      <td>Date + time (nanosecond precision)</td>
+      <td>8 bytes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">date</code></td>
+      <td>Date only</td>
+      <td>4 bytes (days since epoch)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">decimal</code></td>
+      <td>Fixed-point decimal</td>
+      <td>Variable</td>
+    </tr>
+    <tr>
+      <td><strong>Complex Types</strong></td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">array&lt;T&gt;</code></td>
+      <td>List of elements</td>
+      <td>Nested encoding</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">map&lt;K,V&gt;</code></td>
+      <td>Key-value pairs</td>
+      <td>Nested encoding</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">struct&lt;...&gt;</code></td>
+      <td>Named fields</td>
+      <td>Nested encoding</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">union&lt;...&gt;</code></td>
+      <td>One of several types</td>
+      <td>Tagged union</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="nested-types-example">Nested Types Example</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">events</span> <span class="p">(</span>
+  <span class="n">id</span> <span class="nb">bigint</span><span class="p">,</span>
+  <span class="k">user</span> <span class="n">struct</span><span class="o">&lt;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">string</span><span class="p">,</span>
+    <span class="n">age</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">emails</span><span class="p">:</span> <span class="n">array</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span>
+  <span class="o">&gt;</span><span class="p">,</span>
+  <span class="n">metadata</span> <span class="k">map</span><span class="o">&lt;</span><span class="n">string</span><span class="p">,</span> <span class="n">string</span><span class="o">&gt;</span>
+<span class="p">)</span> <span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>ORC stores this as a <strong>column tree</strong>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Column 0: id (bigint)
+Column 1: user (struct)
+  Column 2: user.name (string)
+  Column 3: user.age (int)
+  Column 4: user.emails (array)
+    Column 5: user.emails.element (string)
+Column 6: metadata (map)
+  Column 7: metadata.key (string)
+  Column 8: metadata.value (string)
+</code></pre></div></div>
+
+<p>Each column in the tree is compressed independently!</p>
+
+<hr />
+
+<h2 id="encoding-schemes">Encoding Schemes</h2>
+
+<p>ORC uses different encodings based on data type and patterns:</p>
+
+<h3 id="1-run-length-encoding-rle">1. Run Length Encoding (RLE)</h3>
+
+<p>For repeated values (especially booleans and integers):</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original data
+</span><span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+
+<span class="c1"># RLE encoded
+</span><span class="n">encoded</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+</code></pre></div></div>
+
+<p><strong>ORC’s RLE Versions:</strong></p>
+<ul>
+  <li><strong>RLE v1:</strong> Original encoding</li>
+  <li><strong>RLE v2:</strong> Improved, handles varying run lengths better</li>
+</ul>
+
+<h3 id="2-dictionary-encoding">2. Dictionary Encoding</h3>
+
+<p>For low-cardinality columns:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original (1M rows)
+</span><span class="n">status</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">active</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">inactive</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">pending</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">active</span><span class="sh">"</span><span class="p">,</span> <span class="p">...]</span>
+
+<span class="c1"># Dictionary
+</span><span class="n">dictionary</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="mi">0</span><span class="p">:</span> <span class="sh">"</span><span class="s">active</span><span class="sh">"</span><span class="p">,</span>
+  <span class="mi">1</span><span class="p">:</span> <span class="sh">"</span><span class="s">inactive</span><span class="sh">"</span><span class="p">,</span> 
+  <span class="mi">2</span><span class="p">:</span> <span class="sh">"</span><span class="s">pending</span><span class="sh">"</span>
+<span class="p">}</span>
+
+<span class="c1"># Data stored as IDs (integer stream)
+</span><span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">...]</span>
+</code></pre></div></div>
+
+<p><strong>When Used:</strong></p>
+<ul>
+  <li>String columns with &lt; 50% unique values</li>
+  <li>Automatically enabled by ORC writer</li>
+</ul>
+
+<h3 id="3-delta-encoding">3. Delta Encoding</h3>
+
+<p>For sequential/sorted integers:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original timestamps
+</span><span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1001</span><span class="p">,</span> <span class="mi">1002</span><span class="p">,</span> <span class="mi">1003</span><span class="p">]</span>
+
+<span class="c1"># Delta encoded
+</span><span class="n">base</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">deltas</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># Smaller numbers → better compression
+</span></code></pre></div></div>
+
+<h3 id="4-direct-encoding">4. Direct Encoding</h3>
+
+<p>For random/unpredictable data, store values directly (no encoding).</p>
+
+<h3 id="5-present-stream-null-tracking">5. PRESENT Stream (Null Tracking)</h3>
+
+<p>ORC separates null tracking into its own stream:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original data
+</span><span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="n">null</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="n">null</span><span class="p">,</span> <span class="mi">9</span><span class="p">]</span>
+
+<span class="c1"># ORC storage
+</span><span class="n">PRESENT</span> <span class="n">stream</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># Bitmap (1 = present, 0 = null)
+</span><span class="n">DATA</span> <span class="n">stream</span><span class="p">:</span>    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">]</span>         <span class="c1"># Only non-null values
+</span></code></pre></div></div>
+
+<p><strong>Benefit:</strong> Can skip entire DATA stream if all values are null!</p>
+
+<hr />
+
+<h2 id="compression">Compression</h2>
+
+<p>ORC supports multiple compression codecs:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Codec</th>
+      <th>Speed</th>
+      <th>Ratio</th>
+      <th>CPU</th>
+      <th>Best For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>ZLIB</strong></td>
+      <td>🐌 Slow</td>
+      <td>Excellent</td>
+      <td>High</td>
+      <td>Default, archival</td>
+    </tr>
+    <tr>
+      <td><strong>Snappy</strong></td>
+      <td>⚡⚡⚡ Very Fast</td>
+      <td>Good</td>
+      <td>Low</td>
+      <td>Real-time queries</td>
+    </tr>
+    <tr>
+      <td><strong>LZO</strong></td>
+      <td>⚡⚡ Fast</td>
+      <td>Good</td>
+      <td>Medium</td>
+      <td>Hadoop standard</td>
+    </tr>
+    <tr>
+      <td><strong>LZ4</strong></td>
+      <td>⚡⚡⚡ Very Fast</td>
+      <td>Good</td>
+      <td>Low</td>
+      <td>Best speed/ratio balance</td>
+    </tr>
+    <tr>
+      <td><strong>ZSTD</strong></td>
+      <td>⚡⚡ Fast</td>
+      <td>Best</td>
+      <td>Medium</td>
+      <td>Modern default</td>
+    </tr>
+    <tr>
+      <td><strong>None</strong></td>
+      <td>⚡⚡⚡⚡ Instant</td>
+      <td>1x</td>
+      <td>None</td>
+      <td>Pre-compressed data</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Compression Stack:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Type System:   INT, STRING, etc.
+2. Encoding:      RLE, Dictionary, Delta
+3. Compression:   ZLIB/Snappy/ZSTD (per stream)
+4. Disk:         Final bytes
+</code></pre></div></div>
+
+<p><strong>Unlike Parquet:</strong> ORC compresses each stream independently!</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Column: age (INT)
+  └─ PRESENT stream (nulls) → Compressed with ZLIB
+  └─ DATA stream (values)   → Compressed with ZLIB
+
+Column: name (STRING)  
+  └─ PRESENT stream         → Compressed with ZLIB
+  └─ DATA stream (values)   → Compressed with ZLIB
+  └─ LENGTH stream (lengths)→ Compressed with ZLIB
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="bloom-filters-orcs-secret-weapon">Bloom Filters: ORC’s Secret Weapon</h2>
+
+<blockquote>
+  <p><strong>What’s a Bloom filter?</strong> A super-fast “cheat sheet” that says “this data definitely ISN’T here” without checking every single row.</p>
+
+  <p><strong>Real-world example:</strong> You’re looking for your friend John at a huge concert. Instead of checking every single person, someone at the entrance says “John definitely didn’t enter through this gate.” You just saved hours! That’s what Bloom filters do — they quickly rule out where data ISN’T, so you don’t waste time looking there.</p>
+</blockquote>
+
+<p>ORC can build <strong>Bloom filters</strong> for columns to test set membership:</p>
+
+<div class="mermaid">
+flowchart LR
+    QUERY["Query:<br />WHERE email = 'john@example.com'"]
+    
+    QUERY --&gt; BLOOM["Check Bloom Filter"]
+    BLOOM --&gt; |"Definitely NOT in row group"| SKIP["Skip entire row group"]
+    BLOOM --&gt; |"Might be in row group"| READ["Read &amp; check data"]
+    
+    style QUERY fill:#dbeafe,stroke:#2563eb
+    style BLOOM fill:#fef3c7,stroke:#d97706
+    style SKIP fill:#fecaca,stroke:#dc2626
+    style READ fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>How It Works:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Bloom filter characteristics
+</span><span class="o">-</span> <span class="bp">False</span> <span class="n">Positive</span> <span class="n">Rate</span><span class="p">:</span> <span class="o">~</span><span class="mi">1</span><span class="o">%</span> <span class="p">(</span><span class="n">configurable</span><span class="p">)</span>
+<span class="o">-</span> <span class="n">Space</span><span class="p">:</span> <span class="o">~</span><span class="mi">1</span><span class="o">-</span><span class="mi">2</span><span class="o">%</span> <span class="n">of</span> <span class="n">column</span> <span class="n">size</span>
+<span class="o">-</span> <span class="n">Speed</span><span class="p">:</span> <span class="nc">O</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="n">membership</span> <span class="n">test</span>
+
+<span class="c1"># Query: WHERE user_id = 12345
+</span><span class="mf">1.</span> <span class="n">Check</span> <span class="n">Bloom</span> <span class="nb">filter</span> <span class="err">→</span> <span class="sh">"</span><span class="s">Definitely not in this row group</span><span class="sh">"</span>
+<span class="mf">2.</span> <span class="n">Skip</span> <span class="n">reading</span> <span class="mi">10</span><span class="p">,</span><span class="mi">000</span> <span class="n">rows</span><span class="err">!</span>
+</code></pre></div></div>
+
+<p><strong>Enable Bloom Filters:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="p">(</span>
+  <span class="n">id</span> <span class="nb">bigint</span><span class="p">,</span>
+  <span class="n">email</span> <span class="n">string</span>
+<span class="p">)</span> <span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="n">TBLPROPERTIES</span> <span class="p">(</span>
+  <span class="nv">"orc.bloom.filter.columns"</span><span class="o">=</span><span class="nv">"email"</span><span class="p">,</span>
+  <span class="nv">"orc.bloom.filter.fpp"</span><span class="o">=</span><span class="nv">"0.01"</span>  <span class="c1">-- 1% false positive rate</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>When to Use:</strong></p>
+<ul>
+  <li>High-cardinality columns (user IDs, emails)</li>
+  <li>Equality predicates (<code class="language-plaintext highlighter-rouge">WHERE id = 123</code>)</li>
+  <li>NOT useful for range queries (<code class="language-plaintext highlighter-rouge">WHERE age &gt; 30</code>)</li>
+</ul>
+
+<hr />
+
+<h2 id="predicate-pushdown-three-layers">Predicate Pushdown: Three Layers</h2>
+
+<p>ORC’s multi-level statistics enable aggressive pruning:</p>
+
+<h3 id="layer-1-stripe-level-statistics">Layer 1: Stripe-Level Statistics</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Query: WHERE age BETWEEN 25 AND 35
+</span>
+<span class="n">Stripe</span> <span class="mi">1</span><span class="p">:</span> <span class="n">min_age</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">24</span>  <span class="err">→</span> <span class="err">❌</span> <span class="nc">Skip </span><span class="p">(</span><span class="nb">max</span> <span class="o">&lt;</span> <span class="mi">25</span><span class="p">)</span>
+<span class="n">Stripe</span> <span class="mi">2</span><span class="p">:</span> <span class="n">min_age</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">40</span>  <span class="err">→</span> <span class="err">✅</span> <span class="nc">Read </span><span class="p">(</span><span class="n">overlaps</span> <span class="nb">range</span><span class="p">)</span>
+<span class="n">Stripe</span> <span class="mi">3</span><span class="p">:</span> <span class="n">min_age</span><span class="o">=</span><span class="mi">41</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">65</span>  <span class="err">→</span> <span class="err">❌</span> <span class="nc">Skip </span><span class="p">(</span><span class="nb">min</span> <span class="o">&gt;</span> <span class="mi">35</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="layer-2-row-group-statistics">Layer 2: Row Group Statistics</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Within Stripe 2
+</span><span class="n">Row</span> <span class="n">Group</span> <span class="mi">1</span><span class="p">:</span> <span class="nb">min</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">28</span>  <span class="err">→</span> <span class="err">✅</span> <span class="nc">Read </span><span class="p">(</span><span class="ow">in</span> <span class="nb">range</span><span class="p">)</span>
+<span class="n">Row</span> <span class="n">Group</span> <span class="mi">2</span><span class="p">:</span> <span class="nb">min</span><span class="o">=</span><span class="mi">29</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">32</span>  <span class="err">→</span> <span class="err">✅</span> <span class="nc">Read </span><span class="p">(</span><span class="ow">in</span> <span class="nb">range</span><span class="p">)</span>  
+<span class="n">Row</span> <span class="n">Group</span> <span class="mi">3</span><span class="p">:</span> <span class="nb">min</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">36</span>  <span class="err">→</span> <span class="err">✅</span> <span class="nc">Read </span><span class="p">(</span><span class="n">overlaps</span><span class="p">)</span>
+<span class="n">Row</span> <span class="n">Group</span> <span class="mi">4</span><span class="p">:</span> <span class="nb">min</span><span class="o">=</span><span class="mi">37</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">40</span>  <span class="err">→</span> <span class="err">❌</span> <span class="nc">Skip </span><span class="p">(</span><span class="nb">min</span> <span class="o">&gt;</span> <span class="mi">35</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="layer-3-bloom-filter-check">Layer 3: Bloom Filter Check</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Query: WHERE email = 'alice@example.com'
+</span>
+<span class="n">Row</span> <span class="n">Group</span> <span class="mi">1</span><span class="p">:</span> <span class="n">Bloom</span> <span class="nb">filter</span> <span class="n">says</span> <span class="sh">"</span><span class="s">NOT present</span><span class="sh">"</span> <span class="err">→</span> <span class="err">❌</span> <span class="n">Skip</span>
+<span class="n">Row</span> <span class="n">Group</span> <span class="mi">2</span><span class="p">:</span> <span class="n">Bloom</span> <span class="nb">filter</span> <span class="n">says</span> <span class="sh">"</span><span class="s">MAYBE present</span><span class="sh">"</span> <span class="err">→</span> <span class="err">✅</span> <span class="n">Read</span> <span class="o">&amp;</span> <span class="n">verify</span>
+</code></pre></div></div>
+
+<p><strong>Combined Effect:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original: 1 TB of data
+After stripe pruning: 200 GB (skipped 800 GB)
+After row group pruning: 50 GB (skipped 150 GB)
+After bloom filters: 10 GB (skipped 40 GB)
+
+Final: Read only 1% of data! 🚀
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="acid-support-in-hive-30">ACID Support (in Hive 3.0+)</h2>
+
+<blockquote>
+  <p><strong>Important limitation:</strong> This ACID feature ONLY works in Hive — not in Spark, Python, or most other tools. If you need ACID transactions that work everywhere, use <strong>Delta Lake</strong> instead (which works with Parquet and is much more widely supported).</p>
+</blockquote>
+
+<p>ORC is the <strong>only</strong> format with native ACID support in Hive:</p>
+
+<div class="mermaid">
+flowchart TD
+    BASE["Base File<br />base_0001.orc"]
+    
+    UPDATE1["Update:<br />UPDATE users SET status = 'active'"]
+    UPDATE1 --&gt; DELTA1["Delta File<br />delta_0002.orc"]
+    
+    UPDATE2["Delete:<br />DELETE FROM users WHERE age &lt; 18"]
+    UPDATE2 --&gt; DELTA2["Delta File<br />delta_0003.orc"]
+    
+    READ["Read Query"] --&gt; MERGE["Merge base + deltas"]
+    BASE --&gt; MERGE
+    DELTA1 --&gt; MERGE
+    DELTA2 --&gt; MERGE
+    
+    COMPACT["Compaction"] --&gt; NEWBASE["New Base File<br />(merged)"]
+    
+    style BASE fill:#dbeafe,stroke:#2563eb
+    style DELTA1 fill:#fef3c7,stroke:#d97706
+    style DELTA2 fill:#fef3c7,stroke:#d97706
+    style MERGE fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>How ACID Works:</strong></p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Enable ACID on table</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="p">(</span>
+  <span class="n">id</span> <span class="nb">bigint</span><span class="p">,</span>
+  <span class="n">name</span> <span class="n">string</span><span class="p">,</span>
+  <span class="n">status</span> <span class="n">string</span>
+<span class="p">)</span> <span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="n">TBLPROPERTIES</span> <span class="p">(</span><span class="s1">'transactional'</span><span class="o">=</span><span class="s1">'true'</span><span class="p">);</span>
+
+<span class="c1">-- Now you can UPDATE/DELETE (not possible with plain Parquet!)</span>
+<span class="k">UPDATE</span> <span class="n">users</span> <span class="k">SET</span> <span class="n">status</span> <span class="o">=</span> <span class="s1">'inactive'</span> <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="mi">123</span><span class="p">;</span>
+<span class="k">DELETE</span> <span class="k">FROM</span> <span class="n">users</span> <span class="k">WHERE</span> <span class="n">created_date</span> <span class="o">&lt;</span> <span class="s1">'2020-01-01'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Under the Hood:</strong></p>
+<ol>
+  <li><strong>Base files:</strong> Original data (immutable)</li>
+  <li><strong>Delta files:</strong> Changes (updates/deletes)</li>
+  <li><strong>Read:</strong> Merge base + deltas on-the-fly</li>
+  <li><strong>Compaction:</strong> Periodically merge deltas into new base</li>
+</ol>
+
+<p><strong>Limitations:</strong></p>
+<ul>
+  <li>Only works in Hive/Tez (not Spark, Presto)</li>
+  <li>Performance degrades without compaction</li>
+  <li>More complex than append-only formats</li>
+</ul>
+
+<hr />
+
+<h2 id="orc-vs-parquet-head-to-head">ORC vs Parquet: Head-to-Head</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>ORC</th>
+      <th>Parquet</th>
+      <th>Winner</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Indexing</strong></td>
+      <td>3-level + Bloom filters</td>
+      <td>Basic statistics</td>
+      <td>🏆 <strong>ORC</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Compression</strong></td>
+      <td>Slightly better</td>
+      <td>Excellent</td>
+      <td>🏆 <strong>ORC</strong> (slightly)</td>
+    </tr>
+    <tr>
+      <td><strong>Read Speed</strong></td>
+      <td>Faster (in Hive)</td>
+      <td>Fast</td>
+      <td>🏆 <strong>ORC</strong> (in Hadoop)</td>
+    </tr>
+    <tr>
+      <td><strong>Compatibility</strong></td>
+      <td>Hadoop-focused</td>
+      <td>Engine-agnostic</td>
+      <td>🏆 <strong>Parquet</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Nested Types</strong></td>
+      <td>Excellent</td>
+      <td>Excellent</td>
+      <td>🤝 Tie</td>
+    </tr>
+    <tr>
+      <td><strong>ACID Support</strong></td>
+      <td>✅ Yes (Hive 3+)</td>
+      <td>❌ No</td>
+      <td>🏆 <strong>ORC</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Ecosystem</strong></td>
+      <td>Hive, Pig, Presto</td>
+      <td>Spark, Pandas, DuckDB, Snowflake</td>
+      <td>🏆 <strong>Parquet</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Bloom Filters</strong></td>
+      <td>✅ Built-in</td>
+      <td>❌ No</td>
+      <td>🏆 <strong>ORC</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Popularity</strong></td>
+      <td>Declining</td>
+      <td>Growing</td>
+      <td>🏆 <strong>Parquet</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="performance-comparison">Performance Comparison</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">time</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+
+<span class="c1"># Create test data (10M rows)
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
+    <span class="sh">'</span><span class="s">id</span><span class="sh">'</span><span class="p">:</span> <span class="nf">range</span><span class="p">(</span><span class="mi">10_000_000</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">category</span><span class="sh">'</span><span class="p">:</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">([</span><span class="sh">'</span><span class="s">A</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">B</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">C</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">D</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">E</span><span class="sh">'</span><span class="p">],</span> <span class="mi">10_000_000</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">value</span><span class="sh">'</span><span class="p">:</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">10_000_000</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="c1"># Write ORC
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_orc</span><span class="p">(</span><span class="sh">'</span><span class="s">data.orc</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">zlib</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">orc_size</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">getsize</span><span class="p">(</span><span class="sh">'</span><span class="s">data.orc</span><span class="sh">'</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+<span class="c1"># Write Parquet
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">snappy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">parquet_size</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">getsize</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">ORC size:     </span><span class="si">{</span><span class="n">orc_size</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> MB</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Parquet size: </span><span class="si">{</span><span class="n">parquet_size</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> MB</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Read with filter
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df_orc</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_orc</span><span class="p">(</span><span class="sh">'</span><span class="s">data.orc</span><span class="sh">'</span><span class="p">)</span>  <span class="c1"># Note: pandas doesn't support ORC predicate pushdown
+</span><span class="n">df_orc</span> <span class="o">=</span> <span class="n">df_orc</span><span class="p">[</span><span class="n">df_orc</span><span class="p">[</span><span class="sh">'</span><span class="s">category</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="sh">'</span><span class="s">A</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">orc_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df_parquet</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="p">[(</span><span class="sh">'</span><span class="s">category</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">==</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">A</span><span class="sh">'</span><span class="p">)])</span>
+<span class="n">parquet_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Filtered read:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">ORC:     </span><span class="si">{</span><span class="n">orc_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Parquet: </span><span class="si">{</span><span class="n">parquet_time</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Typical Results (Hive/Spark with predicate pushdown):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Size:
+ORC:     78 MB (slightly smaller)
+Parquet: 85 MB
+
+Filtered Read (with pushdown):
+ORC:     0.12s (bloom filters help!)
+Parquet: 0.18s
+</code></pre></div></div>
+
+<p><strong>But in Python/Pandas:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ORC:     3.50s (no predicate pushdown support)
+Parquet: 0.15s (excellent pushdown support)
+</code></pre></div></div>
+
+<p><strong>Winner depends on tool!</strong></p>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-sort-data-before-writing">1. Sort Data Before Writing</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Sort by frequently filtered columns</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users_sorted</span>
+<span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="k">AS</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">users</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">country</span><span class="p">,</span> <span class="n">signup_date</span><span class="p">;</span>
+
+<span class="c1">-- Result: Better statistics → more pruning</span>
+</code></pre></div></div>
+
+<h3 id="2-enable-bloom-filters-for-high-cardinality-columns">2. Enable Bloom Filters for High-Cardinality Columns</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">events</span> <span class="p">(</span>
+  <span class="n">event_id</span> <span class="n">string</span><span class="p">,</span>
+  <span class="n">user_id</span> <span class="nb">bigint</span><span class="p">,</span>
+  <span class="nb">timestamp</span> <span class="nb">timestamp</span>
+<span class="p">)</span> <span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="n">TBLPROPERTIES</span> <span class="p">(</span>
+  <span class="nv">"orc.bloom.filter.columns"</span><span class="o">=</span><span class="nv">"event_id,user_id"</span><span class="p">,</span>
+  <span class="nv">"orc.bloom.filter.fpp"</span><span class="o">=</span><span class="nv">"0.05"</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="3-tune-stripe-size">3. Tune Stripe Size</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Default: 250 MB (good for most cases)</span>
+<span class="c1">-- Smaller stripes → more parallelism, more overhead</span>
+<span class="c1">-- Larger stripes → less parallelism, better compression</span>
+
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">large_table</span> <span class="p">(...)</span>
+<span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="n">TBLPROPERTIES</span> <span class="p">(</span><span class="nv">"orc.stripe.size"</span><span class="o">=</span><span class="nv">"134217728"</span><span class="p">);</span>  <span class="c1">-- 128 MB</span>
+</code></pre></div></div>
+
+<h3 id="4-use-zstd-compression-modern-default">4. Use ZSTD Compression (Modern Default)</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="p">(...)</span>
+<span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="n">TBLPROPERTIES</span> <span class="p">(</span><span class="nv">"orc.compress"</span><span class="o">=</span><span class="nv">"ZSTD"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>Compression Advice:</strong></p>
+<ul>
+  <li><strong>ZSTD:</strong> Best all-around (modern default)</li>
+  <li><strong>Snappy:</strong> Fastest reads (real-time analytics)</li>
+  <li><strong>ZLIB:</strong> Smallest files (archival)</li>
+</ul>
+
+<h3 id="5-monitor-schema-evolution">5. Monitor Schema Evolution</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Add column (safe)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">ADD</span> <span class="n">COLUMNS</span> <span class="p">(</span><span class="n">phone</span> <span class="n">string</span><span class="p">);</span>
+
+<span class="c1">-- Rename column (requires rewrite)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="n">CHANGE</span> <span class="k">COLUMN</span> <span class="n">email</span> <span class="n">email_address</span> <span class="n">string</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>ORC supports schema evolution, but some operations are expensive.</p>
+
+<hr />
+
+<h2 id="common-pitfalls">Common Pitfalls</h2>
+
+<h3 id="1-using-orc-outside-hadoop-ecosystem">1. Using ORC Outside Hadoop Ecosystem</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ Python/Pandas → Poor ORC support, slow
+✅ Python/Pandas → Use Parquet instead
+
+❌ DuckDB → Limited ORC support
+✅ DuckDB → Use Parquet instead
+
+✅ Hive/Presto → Excellent ORC support
+</code></pre></div></div>
+
+<h3 id="2-not-using-bloom-filters">2. Not Using Bloom Filters</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Without bloom filters</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">users</span> <span class="k">WHERE</span> <span class="n">user_id</span> <span class="o">=</span> <span class="mi">123</span><span class="p">;</span>
+<span class="c1">-- Reads all row groups → Slow</span>
+
+<span class="c1">-- With bloom filters</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="p">(...)</span>
+<span class="n">TBLPROPERTIES</span> <span class="p">(</span><span class="nv">"orc.bloom.filter.columns"</span><span class="o">=</span><span class="nv">"user_id"</span><span class="p">);</span>
+<span class="c1">-- Skips 99% of row groups → 100x faster</span>
+</code></pre></div></div>
+
+<h3 id="3-small-files-problem">3. Small Files Problem</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ 10,000 files × 1 MB = Huge metadata overhead
+✅ 100 files × 100 MB = Fast
+</code></pre></div></div>
+
+<h3 id="4-not-compacting-acid-tables">4. Not Compacting ACID Tables</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- ACID tables accumulate delta files</span>
+<span class="c1">-- Without compaction: Reads become slow!</span>
+
+<span class="c1">-- Solution: Regular compaction</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="n">COMPACT</span> <span class="s1">'MAJOR'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="5-wrong-stripe-size">5. Wrong Stripe Size</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ Stripe size = 10 MB → Too much metadata overhead
+❌ Stripe size = 1 GB → Not enough parallelism
+✅ Stripe size = 128-256 MB → Good balance
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="should-you-use-orc">Should You Use ORC?</h2>
+
+<blockquote>
+  <p><strong>Quick Decision Guide:</strong></p>
+  <ul>
+    <li>✅ <strong>Use ORC:</strong> Your company uses Hadoop/Hive and someone told you to use ORC</li>
+    <li>❌ <strong>Use Parquet:</strong> You’re using anything else (Python, Spark, cloud databases, modern tools)</li>
+    <li>✅ <strong>Use ORC:</strong> You need ACID transactions in Hive specifically</li>
+    <li>❌ <strong>Use Parquet:</strong> You need to work with multiple tools or systems</li>
+  </ul>
+
+  <p><strong>The reality:</strong> ORC adoption is declining. Most companies are moving to Parquet because it works everywhere. Unless you’re locked into a Hadoop environment, <strong>use Parquet</strong>. Even Apache Spark (which used ORC initially) now recommends Parquet as the default.</p>
+
+  <p><strong>When ORC actually makes sense:</strong></p>
+  <ul>
+    <li>You’re at a company with a huge existing Hadoop investment</li>
+    <li>You’re doing data warehousing specifically in Hive</li>
+    <li>You need Hive’s ACID feature</li>
+  </ul>
+</blockquote>
+
+<h2 id="when-to-use-orc">When to Use ORC</h2>
+
+<div class="mermaid">
+flowchart TD
+    START["Choose ORC when:"]
+    
+    START --&gt; H["Using Hive/Hadoop"]
+    START --&gt; A["Need ACID transactions"]
+    START --&gt; B["Have high-cardinality<br />columns (IDs, emails)"]
+    START --&gt; P["Need best possible<br />compression"]
+    
+    START2["Choose Parquet when:"]
+    
+    START2 --&gt; S["Using Spark/Pandas"]
+    START2 --&gt; M["Multi-engine compatibility"]
+    START2 --&gt; E["Python/R analytics"]
+    
+    style START fill:#d1fae5,stroke:#059669
+    style START2 fill:#fef3c7,stroke:#d97706
+</div>
+
+<h3 id="-use-orc-for">✅ Use ORC For:</h3>
+
+<ol>
+  <li><strong>Hadoop/Hive workloads</strong>
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- ORC is optimized for Hive</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="p">(...)</span> <span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span><span class="p">;</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>ACID transactions</strong>
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Only ORC supports ACID in Hive</span>
+<span class="k">UPDATE</span> <span class="n">users</span> <span class="k">SET</span> <span class="n">status</span> <span class="o">=</span> <span class="s1">'active'</span> <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="mi">123</span><span class="p">;</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>High-cardinality columns</strong>
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Bloom filters excel here</span>
+<span class="k">WHERE</span> <span class="n">user_id</span> <span class="o">=</span> <span class="s1">'8f3a7b2c-...'</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Maximum compression</strong>
+    <ul>
+      <li>ORC typically 5-10% smaller than Parquet</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="-use-parquet-instead-for">❌ Use Parquet Instead For:</h3>
+
+<ol>
+  <li><strong>Multi-engine compatibility</strong>
+    <ul>
+      <li>Spark, Pandas, DuckDB, Snowflake, BigQuery</li>
+    </ul>
+  </li>
+  <li><strong>Python/R data science</strong>
+    <ul>
+      <li>Much better library support</li>
+    </ul>
+  </li>
+  <li><strong>Cloud-native analytics</strong>
+    <ul>
+      <li>Parquet is the de facto standard</li>
+    </ul>
+  </li>
+  <li><strong>Modern data lakes</strong>
+    <ul>
+      <li>Delta Lake, Iceberg use Parquet (not ORC)</li>
+    </ul>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="migration-guide-parquet--orc">Migration Guide: Parquet ↔ ORC</h2>
+
+<h3 id="parquet-to-orc">Parquet to ORC</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- In Hive</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users_orc</span>
+<span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="k">AS</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">users_parquet</span><span class="p">;</span>
+
+<span class="c1">-- Preserve partitions</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users_orc</span> <span class="p">(...)</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="nb">year</span> <span class="nb">int</span><span class="p">,</span> <span class="k">month</span> <span class="nb">int</span><span class="p">)</span>
+<span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">users_orc</span> <span class="k">PARTITION</span> <span class="p">(</span><span class="nb">year</span><span class="p">,</span> <span class="k">month</span><span class="p">)</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">users_parquet</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="orc-to-parquet">ORC to Parquet</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In PySpark
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">orc</span><span class="p">(</span><span class="sh">"</span><span class="s">data.orc</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">parquet</span><span class="p">(</span><span class="sh">"</span><span class="s">data.parquet</span><span class="sh">"</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">"</span><span class="s">snappy</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="real-world-example">Real-World Example</h2>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- E-commerce events table (100 TB)</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">events</span> <span class="p">(</span>
+  <span class="n">event_id</span> <span class="n">string</span><span class="p">,</span>
+  <span class="n">user_id</span> <span class="nb">bigint</span><span class="p">,</span>
+  <span class="n">event_type</span> <span class="n">string</span><span class="p">,</span>
+  <span class="n">product_id</span> <span class="nb">bigint</span><span class="p">,</span>
+  <span class="nb">timestamp</span> <span class="nb">timestamp</span><span class="p">,</span>
+  <span class="n">metadata</span> <span class="k">map</span><span class="o">&lt;</span><span class="n">string</span><span class="p">,</span> <span class="n">string</span><span class="o">&gt;</span>
+<span class="p">)</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span>
+  <span class="nb">year</span> <span class="nb">int</span><span class="p">,</span>
+  <span class="k">month</span> <span class="nb">int</span><span class="p">,</span>
+  <span class="k">day</span> <span class="nb">int</span>
+<span class="p">)</span>
+<span class="n">STORED</span> <span class="k">AS</span> <span class="n">ORC</span>
+<span class="n">TBLPROPERTIES</span> <span class="p">(</span>
+  <span class="nv">"orc.compress"</span><span class="o">=</span><span class="nv">"ZSTD"</span><span class="p">,</span>
+  <span class="nv">"orc.stripe.size"</span><span class="o">=</span><span class="nv">"268435456"</span><span class="p">,</span>  <span class="c1">-- 256 MB stripes</span>
+  <span class="nv">"orc.bloom.filter.columns"</span><span class="o">=</span><span class="nv">"event_id,user_id,product_id"</span><span class="p">,</span>
+  <span class="nv">"orc.bloom.filter.fpp"</span><span class="o">=</span><span class="nv">"0.01"</span>
+<span class="p">);</span>
+
+<span class="c1">-- Query: Find specific user's events</span>
+<span class="k">SELECT</span> <span class="o">*</span>
+<span class="k">FROM</span> <span class="n">events</span>
+<span class="k">WHERE</span> <span class="nb">year</span> <span class="o">=</span> <span class="mi">2024</span>
+  <span class="k">AND</span> <span class="k">month</span> <span class="o">=</span> <span class="mi">12</span>
+  <span class="k">AND</span> <span class="n">user_id</span> <span class="o">=</span> <span class="mi">123456</span><span class="p">;</span>
+
+<span class="c1">-- Execution:</span>
+<span class="c1">-- 1. Partition pruning: Only scan year=2024/month=12 (skip 99%)</span>
+<span class="c1">-- 2. Stripe pruning: Check stripe statistics</span>
+<span class="c1">-- 3. Bloom filter: Skip stripes without user_id=123456</span>
+<span class="c1">-- 4. Row group pruning: Skip row groups without user_id=123456</span>
+<span class="c1">-- Result: Read &lt; 0.1% of data!</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<blockquote>
+  <p><strong>Quick Takeaways:</strong></p>
+  <ul>
+    <li><strong>What is ORC?</strong> A file format designed specifically for Hadoop (a big data system)</li>
+    <li><strong>Like Parquet but…</strong> Faster in Hadoop, but ONLY works well in Hadoop</li>
+    <li><strong>Should you use it?</strong> Only if you’re in a Hadoop/Hive environment</li>
+    <li><strong>When NOT to use it?</strong> Python, Spark, cloud tools, modern data systems</li>
+    <li><strong>The reality:</strong> ORC is declining in popularity. Most companies use Parquet now.</li>
+    <li><strong>Bottom line:</strong> Unless someone at your company specifically told you to use ORC for Hadoop/Hive, <strong>use Parquet instead</strong>. Parquet works everywhere; ORC doesn’t.</li>
+  </ul>
+</blockquote>
+
+<p>ORC is a <strong>high-performance</strong> columnar format designed for Hadoop:</p>
+
+<p><strong>Key Strengths:</strong></p>
+<ol>
+  <li>✅ <strong>Three-level indexing</strong> (like a book with table of contents, chapter summaries, AND page indexes)</li>
+  <li>✅ <strong>Bloom filters</strong> (super-fast “this data isn’t here” checks)</li>
+  <li>✅ <strong>Excellent compression</strong> (5-10% better than Parquet)</li>
+  <li>✅ <strong>ACID support</strong> in Hive (but ONLY in Hive!)</li>
+  <li>✅ <strong>Aggressive predicate pushdown</strong> (skips irrelevant data very efficiently)</li>
+</ol>
+
+<p><strong>Key Weaknesses:</strong></p>
+<ol>
+  <li>❌ <strong>Hadoop-focused</strong> (limited support in Python, R, modern tools)</li>
+  <li>❌ <strong>Not the de facto standard</strong> (Parquet is more popular and universal)</li>
+  <li>❌ <strong>Poor Python/R support</strong> (hard to use outside Hadoop)</li>
+  <li>❌ <strong>Declining ecosystem</strong> (fewer tools being built for it)</li>
+  <li>❌ <strong>Vendor lock-in</strong> (ties you to Hadoop/Hive infrastructure)</li>
+</ol>
+
+<p><strong>Decision Matrix:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Your Situation</th>
+      <th>Recommendation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Hive/Hadoop data warehouse</td>
+      <td>🏆 <strong>Use ORC</strong></td>
+    </tr>
+    <tr>
+      <td>Spark + multi-engine</td>
+      <td>Use Parquet</td>
+    </tr>
+    <tr>
+      <td>Python data science</td>
+      <td>Use Parquet</td>
+    </tr>
+    <tr>
+      <td>Need ACID (in Hive)</td>
+      <td>🏆 <strong>Use ORC</strong></td>
+    </tr>
+    <tr>
+      <td>Cloud-native data lake</td>
+      <td>Use Parquet</td>
+    </tr>
+    <tr>
+      <td>Maximum compression</td>
+      <td>🏆 <strong>Use ORC</strong> (slightly better)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>The Bottom Line:</strong></p>
+<ul>
+  <li><strong>Hive-centric?</strong> → ORC is faster</li>
+  <li><strong>Everything else?</strong> → Parquet is safer</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><a href="https://orc.apache.org/specification/">ORC Specification</a></li>
+  <li><a href="https://www.youtube.com/watch?v=1j8SdS7s_NY">ORC vs Parquet Benchmark</a></li>
+  <li><a href="https://cwiki.apache.org/confluence/display/Hive/Hive+Transactions">Hive ACID Tables</a></li>
+</ul>

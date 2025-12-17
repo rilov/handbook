@@ -1,0 +1,869 @@
+<blockquote>
+  <p><strong>Think of Parquet as a super-efficient way to save spreadsheet data.</strong> Instead of saving rows (like Excel does), it saves columns together. This makes it much faster to read and takes up way less space. If you’ve ever waited forever for a big Excel file to open, Parquet solves that problem!</p>
+</blockquote>
+
+<h2 id="why-parquet-exists">Why Parquet Exists</h2>
+
+<p>Imagine you’re analyzing a table with 1 billion rows and 100 columns. You only need 3 columns. Would you rather:</p>
+
+<ul>
+  <li><strong>Read all 100 columns</strong> (CSV way) — waste 97% of your I/O</li>
+  <li><strong>Read only the 3 columns you need</strong> (Parquet way) — 33x faster</li>
+</ul>
+
+<p><strong>Think of it like a filing cabinet</strong> where documents are organized by topic (columns) instead of by date (rows). If you need to find all emails, you go to one drawer. With traditional filing (rows), you’d have to open every single drawer to find emails scattered everywhere.</p>
+
+<p>That’s the power of <strong>columnar storage</strong>. But Parquet doesn’t stop there — it also uses clever encoding and compression tricks to make files 10-100x smaller.</p>
+
+<p>Parquet is the format companies like Netflix and Uber use to analyze huge amounts of data quickly. It’s not human-readable (you can’t open it in Excel), but it’s incredibly fast and small.</p>
+
+<hr />
+
+<h2 id="the-architecture-row-groups--column-chunks">The Architecture: Row Groups &amp; Column Chunks</h2>
+
+<blockquote>
+  <p><strong>Here’s how it works:</strong> Imagine a huge spreadsheet with 1 million rows. Parquet breaks it into smaller chunks (like 10,000 rows each), then within each chunk, it stores all values from Column A together, all values from Column B together, etc. This makes it super fast to read just one column!</p>
+</blockquote>
+
+<p>Parquet uses a hybrid approach called <strong>PAX (Partition Attributes Across)</strong> layout:</p>
+
+<div class="mermaid">
+flowchart TD
+    FILE["Parquet File"] --&gt; RG1["Row Group 1<br />(e.g., 10,000 rows)"]
+    FILE --&gt; RG2["Row Group 2<br />(e.g., 10,000 rows)"]
+    FILE --&gt; RG3["Row Group 3<br />(e.g., 10,000 rows)"]
+    
+    RG1 --&gt; C1["Column Chunk:<br />name"]
+    RG1 --&gt; C2["Column Chunk:<br />age"]
+    RG1 --&gt; C3["Column Chunk:<br />city"]
+    
+    C1 --&gt; P1["Page 1"]
+    C1 --&gt; P2["Page 2"]
+    
+    style FILE fill:#dbeafe,stroke:#2563eb
+    style RG1 fill:#d1fae5,stroke:#059669
+    style C1 fill:#fef3c7,stroke:#d97706
+    style P1 fill:#fce7f3,stroke:#db2777
+</div>
+
+<h3 id="1-row-groups-horizontal-partition">1. Row Groups (Horizontal Partition)</h3>
+<ul>
+  <li>File is split into <strong>row groups</strong> (typically 128 MB each)</li>
+  <li>Each row group contains a subset of rows (e.g., 10,000 rows)</li>
+  <li>Allows parallel processing across row groups</li>
+</ul>
+
+<h3 id="2-column-chunks-vertical-partition">2. Column Chunks (Vertical Partition)</h3>
+<ul>
+  <li>Within each row group, data is stored <strong>column by column</strong></li>
+  <li>Each column’s values are stored together in a <strong>column chunk</strong></li>
+  <li>Similar values cluster together → better compression</li>
+</ul>
+
+<h3 id="3-pages-compression-unit">3. Pages (Compression Unit)</h3>
+<ul>
+  <li>Each column chunk is further divided into <strong>pages</strong></li>
+  <li>Pages are the unit of encoding and compression</li>
+  <li>Typically 1 MB per page</li>
+</ul>
+
+<p><strong>Why This Works:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Same column values cluster together:
+  age: [25, 25, 26, 25, 27, 25, 26, ...]
+  
+Much easier to compress than mixed data:
+  row: ["John", 25, "NYC", "Engineer", "John", 25, "LA", ...]
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="type-system-logical-vs-physical">Type System: Logical vs Physical</h2>
+
+<blockquote>
+  <p><strong>The clever trick:</strong> Parquet stores everything using just 8 basic building blocks (like numbers and text), but it remembers what those building blocks actually represent (like dates or money). It’s like how your phone stores photos as 0s and 1s, but displays them as images.</p>
+</blockquote>
+
+<p>Parquet separates <strong>what data means</strong> (logical) from <strong>how it’s stored</strong> (physical).</p>
+
+<h3 id="physical-types-only-8">Physical Types (Only 8!)</h3>
+
+<p>Parquet only knows how to write these types to disk:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Physical Type</th>
+      <th>Size</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">BOOLEAN</code></td>
+      <td>1 bit</td>
+      <td><code class="language-plaintext highlighter-rouge">true</code>, <code class="language-plaintext highlighter-rouge">false</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">INT32</code></td>
+      <td>4 bytes</td>
+      <td><code class="language-plaintext highlighter-rouge">-2,147,483,648</code> to <code class="language-plaintext highlighter-rouge">2,147,483,647</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">INT64</code></td>
+      <td>8 bytes</td>
+      <td>Very large integers</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">FLOAT</code></td>
+      <td>4 bytes</td>
+      <td><code class="language-plaintext highlighter-rouge">3.14</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DOUBLE</code></td>
+      <td>8 bytes</td>
+      <td><code class="language-plaintext highlighter-rouge">3.141592653589793</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">BYTE_ARRAY</code></td>
+      <td>Variable</td>
+      <td>Raw bytes (e.g., strings)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">FIXED_LEN_BYTE_ARRAY</code></td>
+      <td>Fixed</td>
+      <td>Fixed-size binary data</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">INT96</code></td>
+      <td>12 bytes</td>
+      <td>⚠️ Deprecated (old timestamps)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Why so few?</strong> Keeps the Parquet reader/writer implementation simple.</p>
+
+<h3 id="logical-types-rich-semantics">Logical Types (Rich Semantics)</h3>
+
+<p>Your application needs more than 8 types! Logical types add meaning:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Logical Type</th>
+      <th>Stored As</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">STRING</code></td>
+      <td><code class="language-plaintext highlighter-rouge">BYTE_ARRAY</code></td>
+      <td>UTF-8 encoded text</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DATE</code></td>
+      <td><code class="language-plaintext highlighter-rouge">INT32</code></td>
+      <td>Days since Unix epoch (Jan 1, 1970)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TIMESTAMP</code></td>
+      <td><code class="language-plaintext highlighter-rouge">INT64</code></td>
+      <td>Microseconds since Unix epoch</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DECIMAL</code></td>
+      <td><code class="language-plaintext highlighter-rouge">BYTE_ARRAY</code> or <code class="language-plaintext highlighter-rouge">INT32/64</code></td>
+      <td>Fixed-point decimal (e.g., money)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">UUID</code></td>
+      <td><code class="language-plaintext highlighter-rouge">FIXED_LEN_BYTE_ARRAY(16)</code></td>
+      <td>128-bit UUID</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">JSON</code></td>
+      <td><code class="language-plaintext highlighter-rouge">BYTE_ARRAY</code></td>
+      <td>UTF-8 JSON string</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Example:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Your data
+</span><span class="n">date</span> <span class="o">=</span> <span class="sh">"</span><span class="s">2024-12-16</span><span class="sh">"</span>
+
+<span class="c1"># Stored in Parquet as INT32
+</span><span class="n">physical_value</span> <span class="o">=</span> <span class="mi">20072</span>  <span class="c1"># days since 1970-01-01
+</span>
+<span class="c1"># Logical type annotation tells reader: "interpret as DATE"
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="encoding-schemes">Encoding Schemes</h2>
+
+<blockquote>
+  <p><strong>What’s encoding?</strong> It’s finding patterns to save space. If you see “NYC” written 1000 times, instead of saving “NYC” 1000 times, you save it once and write “repeat 1000 times.” That’s what encoding does!</p>
+</blockquote>
+
+<p>This is where Parquet gets clever. Different data patterns use different encodings.</p>
+
+<h3 id="1-plain-no-encoding">1. PLAIN (No Encoding)</h3>
+
+<p>Just serialize values back-to-back in little-endian format.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>INT32: [1, 2, 3]
+Bytes: 01 00 00 00 | 02 00 00 00 | 03 00 00 00
+       (4 bytes each)
+</code></pre></div></div>
+
+<p><strong>When Used:</strong></p>
+<ul>
+  <li>High cardinality data (many unique values)</li>
+  <li>Random/unpredictable data</li>
+  <li>As a fallback when nothing else works</li>
+</ul>
+
+<h3 id="2-rle_dictionary-most-common">2. RLE_DICTIONARY (Most Common!)</h3>
+
+<blockquote>
+  <p><strong>Think of it like this:</strong> Imagine writing an essay where you mention “Massachusetts” 100 times. Instead of writing it out every time, you write “MA (1)” once at the top, then just write “(1)” everywhere else. That’s dictionary encoding!</p>
+</blockquote>
+
+<p>Build a dictionary of unique values, then reference them by ID.</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original data (1000 rows)
+</span><span class="n">cities</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">NYC</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">LA</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NYC</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">SF</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NYC</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">LA</span><span class="sh">"</span><span class="p">,</span> <span class="p">...]</span>
+
+<span class="c1"># Dictionary (stored once)
+</span><span class="n">dictionary</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="mi">0</span><span class="p">:</span> <span class="sh">"</span><span class="s">NYC</span><span class="sh">"</span><span class="p">,</span>
+  <span class="mi">1</span><span class="p">:</span> <span class="sh">"</span><span class="s">LA</span><span class="sh">"</span><span class="p">,</span> 
+  <span class="mi">2</span><span class="p">:</span> <span class="sh">"</span><span class="s">SF</span><span class="sh">"</span>
+<span class="p">}</span>
+
+<span class="c1"># Data (stored as IDs)
+</span><span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">...]</span>  <span class="c1"># Much smaller!
+</span></code></pre></div></div>
+
+<div class="mermaid">
+flowchart LR
+    subgraph original["Original: 1000 rows × 10 bytes = 10 KB"]
+        O1["NYC"]
+        O2["LA"]
+        O3["NYC"]
+        O4["..."]
+    end
+    
+    subgraph encoded["Dictionary: 30 bytes<br />IDs: 1000 bytes = 1 KB"]
+        DICT["Dict:<br />0=NYC<br />1=LA<br />2=SF"]
+        IDS["IDs:<br />0,1,0,2,0,..."]
+    end
+    
+    original --&gt; |"10x smaller"| encoded
+    
+    style original fill:#fecaca,stroke:#dc2626
+    style encoded fill:#d1fae5,stroke:#059669
+</div>
+
+<p><strong>When Used:</strong></p>
+<ul>
+  <li>Low cardinality columns (few unique values)</li>
+  <li>Repeated values (e.g., categories, status codes)</li>
+  <li>String columns with duplicates</li>
+</ul>
+
+<p><strong>Compression Ratio:</strong> Often 10-100x for categorical data!</p>
+
+<h3 id="3-rle-run-length-encoding">3. RLE (Run-Length Encoding)</h3>
+
+<p>Store repeated values as <code class="language-plaintext highlighter-rouge">(value, count)</code> pairs.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original data
+</span><span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+
+<span class="c1"># RLE encoded
+</span><span class="n">encoded</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>  <span class="c1"># Much smaller!
+</span></code></pre></div></div>
+
+<p><strong>When Used:</strong></p>
+<ul>
+  <li>Long sequences of repeated values</li>
+  <li>Boolean columns with many consecutive trues/falses</li>
+  <li>Sorted data</li>
+</ul>
+
+<h3 id="4-delta_binary_packed">4. DELTA_BINARY_PACKED</h3>
+
+<p>Store first value, then only the <strong>differences</strong> (deltas).</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original timestamps
+</span><span class="n">timestamps</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1001</span><span class="p">,</span> <span class="mi">1002</span><span class="p">,</span> <span class="mi">1003</span><span class="p">,</span> <span class="mi">1004</span><span class="p">]</span>
+
+<span class="c1"># Delta encoded
+</span><span class="n">base</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">deltas</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># Much smaller numbers!
+</span></code></pre></div></div>
+
+<p><strong>When Used:</strong></p>
+<ul>
+  <li>Sequential data (timestamps, IDs)</li>
+  <li>Sorted integers</li>
+  <li>Time series data</li>
+</ul>
+
+<h3 id="5-delta_length_byte_array">5. DELTA_LENGTH_BYTE_ARRAY</h3>
+
+<p>For variable-length strings, store the lengths as deltas.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original strings
+</span><span class="n">strings</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">hello</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">world</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">test</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">data</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="c1"># Store lengths as deltas
+</span><span class="n">lengths</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="n">delta_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># Differences!
+</span></code></pre></div></div>
+
+<p><strong>When Used:</strong></p>
+<ul>
+  <li>Variable-length strings with similar lengths</li>
+  <li>Text columns</li>
+</ul>
+
+<h3 id="6-delta_byte_array">6. DELTA_BYTE_ARRAY</h3>
+
+<p>Store the first string, then only the prefix/suffix changes.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original data (sorted)
+</span><span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">apple</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">apply</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">application</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="c1"># Delta encoded
+</span><span class="n">values</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="sh">"</span><span class="s">apple</span><span class="sh">"</span><span class="p">,</span>           <span class="c1"># Full value
+</span>  <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">y</span><span class="sh">"</span><span class="p">),</span>          <span class="c1"># Keep 3 chars ("app"), add "y" 
+</span>  <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">lication</span><span class="sh">"</span><span class="p">)</span>    <span class="c1"># Keep 3 chars ("app"), add "lication"
+</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p><strong>When Used:</strong></p>
+<ul>
+  <li>Sorted strings with common prefixes</li>
+  <li>URLs, file paths</li>
+</ul>
+
+<hr />
+
+<h2 id="compression">Compression</h2>
+
+<blockquote>
+  <p><strong>What’s compression?</strong> It’s like zipping a file on your computer — makes it smaller so it takes less space and is faster to send. Parquet uses different “zippers” depending on whether you need maximum speed or maximum space savings.</p>
+</blockquote>
+
+<p>After encoding, Parquet applies compression algorithms:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Compression</th>
+      <th>Speed</th>
+      <th>Ratio</th>
+      <th>CPU Usage</th>
+      <th>Best For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Snappy</strong></td>
+      <td>⚡⚡⚡ Fast</td>
+      <td>Good</td>
+      <td>Low</td>
+      <td>Default choice</td>
+    </tr>
+    <tr>
+      <td><strong>GZIP</strong></td>
+      <td>🐌 Slow</td>
+      <td>Better</td>
+      <td>Medium</td>
+      <td>Archival storage</td>
+    </tr>
+    <tr>
+      <td><strong>LZ4</strong></td>
+      <td>⚡⚡⚡ Very Fast</td>
+      <td>Good</td>
+      <td>Very Low</td>
+      <td>Real-time processing</td>
+    </tr>
+    <tr>
+      <td><strong>ZSTD</strong></td>
+      <td>⚡⚡ Fast</td>
+      <td>Excellent</td>
+      <td>Medium</td>
+      <td>Best balance</td>
+    </tr>
+    <tr>
+      <td><strong>Brotli</strong></td>
+      <td>🐌 Slowest</td>
+      <td>Best</td>
+      <td>High</td>
+      <td>Cold storage</td>
+    </tr>
+    <tr>
+      <td><strong>Uncompressed</strong></td>
+      <td>⚡⚡⚡⚡ Instant</td>
+      <td>None</td>
+      <td>None</td>
+      <td>Already compressed data</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Compression Stack:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Physical Type:  "NYC", "LA", "NYC", "SF" ... (BYTE_ARRAY)
+2. Encoding:       Dictionary + IDs (RLE_DICTIONARY)
+3. Compression:    Snappy/GZIP (further reduces size)
+4. Disk:          Final bytes written to file
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="putting-it-all-together">Putting It All Together</h2>
+
+<p>Let’s see how Parquet stores this data:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># DataFrame with 1 million rows
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
+    <span class="sh">'</span><span class="s">user_id</span><span class="sh">'</span><span class="p">:</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1_000_001</span><span class="p">),</span>           <span class="c1"># Sequential
+</span>    <span class="sh">'</span><span class="s">status</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="sh">'</span><span class="s">active</span><span class="sh">'</span><span class="p">]</span> <span class="o">*</span> <span class="mi">800_000</span> <span class="o">+</span> <span class="p">[</span><span class="sh">'</span><span class="s">inactive</span><span class="sh">'</span><span class="p">]</span> <span class="o">*</span> <span class="mi">200_000</span><span class="p">,</span>  <span class="c1"># Repetitive
+</span>    <span class="sh">'</span><span class="s">city</span><span class="sh">'</span><span class="p">:</span> <span class="n">random</span><span class="p">.</span><span class="nf">choices</span><span class="p">([</span><span class="sh">'</span><span class="s">NYC</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">LA</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">SF</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">),</span>  <span class="c1"># Low cardinality
+</span>    <span class="sh">'</span><span class="s">timestamp</span><span class="sh">'</span><span class="p">:</span> <span class="n">pd</span><span class="p">.</span><span class="nf">date_range</span><span class="p">(</span><span class="sh">'</span><span class="s">2024-01-01</span><span class="sh">'</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="sh">'</span><span class="s">1s</span><span class="sh">'</span><span class="p">)</span>
+<span class="p">})</span>
+</code></pre></div></div>
+
+<p><strong>How Parquet Stores This:</strong></p>
+
+<div class="mermaid">
+flowchart TD
+    subgraph user_id["user_id Column"]
+        U1["Physical: INT64"]
+        U2["Encoding: DELTA_BINARY_PACKED<br />(base + deltas)"]
+        U3["Compression: Snappy"]
+        U4["Result: ~1 MB"]
+    end
+    
+    subgraph status["status Column"]
+        S1["Physical: BYTE_ARRAY"]
+        S2["Encoding: RLE<br />(800k active, 200k inactive)"]
+        S3["Compression: Snappy"]
+        S4["Result: ~100 KB"]
+    end
+    
+    subgraph city["city Column"]
+        C1["Physical: BYTE_ARRAY"]
+        C2["Encoding: RLE_DICTIONARY<br />(3 values in dict)"]
+        C3["Compression: Snappy"]
+        C4["Result: ~500 KB"]
+    end
+    
+    style user_id fill:#dbeafe,stroke:#2563eb
+    style status fill:#d1fae5,stroke:#059669
+    style city fill:#fef3c7,stroke:#d97706
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Column</th>
+      <th>Raw Size</th>
+      <th>Parquet Size</th>
+      <th>Compression</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">user_id</code></td>
+      <td>8 MB</td>
+      <td>~1 MB</td>
+      <td>8x</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">status</code></td>
+      <td>7 MB</td>
+      <td>~100 KB</td>
+      <td>70x!</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">city</code></td>
+      <td>5 MB</td>
+      <td>~500 KB</td>
+      <td>10x</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td><strong>20 MB</strong></td>
+      <td><strong>~1.6 MB</strong></td>
+      <td><strong>~12x</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="reading-parquet-files">Reading Parquet Files</h2>
+
+<p>Parquet’s structure enables <strong>predicate pushdown</strong> and <strong>column pruning</strong>:</p>
+
+<h3 id="column-pruning">Column Pruning</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Only read 2 columns
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">user_id</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">city</span><span class="sh">'</span><span class="p">])</span>
+<span class="c1"># ✅ Only reads those column chunks — ignores others!
+</span></code></pre></div></div>
+
+<h3 id="predicate-pushdown">Predicate Pushdown</h3>
+
+<blockquote>
+  <p><strong>What’s this?</strong> A fancy way of saying “don’t even bother reading data you don’t need.” Like if you’re looking for files from December, you don’t open the folders for January-November. Parquet keeps a “cheat sheet” at the beginning of the file that tells it which sections to skip.</p>
+</blockquote>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Filter by value
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="p">[(</span><span class="sh">'</span><span class="s">status</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">==</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">active</span><span class="sh">'</span><span class="p">)])</span>
+<span class="c1"># ✅ Reads statistics → skips row groups where status != 'active'
+</span></code></pre></div></div>
+
+<h3 id="statistics-in-footer">Statistics in Footer</h3>
+
+<p>Each column chunk stores min/max statistics:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Parquet footer metadata
+</span><span class="n">Column</span><span class="p">:</span> <span class="n">age</span>
+  <span class="n">Row</span> <span class="n">Group</span> <span class="mi">1</span><span class="p">:</span> <span class="nb">min</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">25</span>
+  <span class="n">Row</span> <span class="n">Group</span> <span class="mi">2</span><span class="p">:</span> <span class="nb">min</span><span class="o">=</span><span class="mi">26</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">35</span>
+  <span class="n">Row</span> <span class="n">Group</span> <span class="mi">3</span><span class="p">:</span> <span class="nb">min</span><span class="o">=</span><span class="mi">36</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">65</span>
+
+<span class="c1"># Query: WHERE age &gt; 40
+# ✅ Skip row groups 1 &amp; 2 (max &lt; 40)
+# ✅ Only read row group 3
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="file-structure-example">File Structure Example</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>my_data.parquet
+│
+├── [4 bytes] Magic Number: "PAR1"
+│
+├── Row Group 1
+│   ├── Column Chunk: user_id
+│   │   ├── Dictionary Page (if using dictionary)
+│   │   ├── Data Page 1 (encoded + compressed)
+│   │   ├── Data Page 2
+│   │   └── Metadata (min, max, null count)
+│   │
+│   ├── Column Chunk: status
+│   └── Column Chunk: city
+│
+├── Row Group 2
+│   └── ... (same structure)
+│
+├── Footer
+│   ├── Schema
+│   ├── Row Group Metadata (locations, stats)
+│   ├── Column Metadata
+│   └── Footer Length (4 bytes)
+│
+└── [4 bytes] Magic Number: "PAR1"
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-choose-the-right-row-group-size">1. Choose the Right Row Group Size</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Default: 128 MB row groups
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">row_group_size</span><span class="o">=</span><span class="mi">128</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>
+
+<span class="c1"># Smaller row groups → More parallelism, more metadata overhead
+# Larger row groups → Less parallelism, less metadata overhead
+</span></code></pre></div></div>
+
+<p><strong>Rule of Thumb:</strong> 128-512 MB per row group</p>
+
+<h3 id="2-use-dictionary-encoding-for-categories">2. Use Dictionary Encoding for Categories</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Convert to categorical before writing
+</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">status</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">status</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="sh">'</span><span class="s">category</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">)</span>  <span class="c1"># Uses dictionary encoding
+</span></code></pre></div></div>
+
+<h3 id="3-sort-data-for-better-compression">3. Sort Data for Better Compression</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Sort by frequently filtered columns
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="nf">sort_values</span><span class="p">([</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">status</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">)</span>
+<span class="c1"># ✅ Better compression, better statistics, faster filtering
+</span></code></pre></div></div>
+
+<h3 id="4-choose-compression-based-on-use-case">4. Choose Compression Based on Use Case</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Real-time analytics
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">snappy</span><span class="sh">'</span><span class="p">)</span>  <span class="c1"># Fast reads
+</span>
+<span class="c1"># Archival storage
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">zstd</span><span class="sh">'</span><span class="p">)</span>  <span class="c1"># Best compression
+</span>
+<span class="c1"># Best balance
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">zstd</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression_level</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="5-partition-large-datasets">5. Partition Large Datasets</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Partition by date for time-series data
+</span><span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">partition_cols</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">year</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">month</span><span class="sh">'</span><span class="p">])</span>
+
+<span class="c1"># Creates structure:
+# data.parquet/
+#   year=2024/
+#     month=01/part-00000.parquet
+#     month=02/part-00000.parquet
+#   year=2025/
+#     month=01/part-00000.parquet
+</span>
+<span class="c1"># ✅ Query only reads relevant partitions
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="common-pitfalls">Common Pitfalls</h2>
+
+<h3 id="1-too-many-small-files">1. Too Many Small Files</h3>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ 10,000 files × 1 KB = Slow
+✅ 10 files × 1 MB = Fast
+</code></pre></div></div>
+
+<p><strong>Why:</strong> Opening files has overhead. Combine small files.</p>
+
+<h3 id="2-wide-schemas-too-many-columns">2. Wide Schemas (Too Many Columns)</h3>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ 10,000 columns = Huge metadata overhead
+✅ &lt; 1,000 columns = Reasonable
+</code></pre></div></div>
+
+<p><strong>Solution:</strong> Split into multiple tables or nest columns.</p>
+
+<h3 id="3-not-using-partitioning">3. Not Using Partitioning</h3>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ Single 100 GB file
+✅ Partitioned by date/region
+</code></pre></div></div>
+
+<h3 id="4-wrong-compression-for-use-case">4. Wrong Compression for Use Case</h3>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ GZIP for real-time queries (slow decompression)
+✅ Snappy/LZ4 for real-time (fast decompression)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="performance-tips">Performance Tips</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operation</th>
+      <th>Tip</th>
+      <th>Speed Gain</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Read Specific Columns</strong></td>
+      <td>Use <code class="language-plaintext highlighter-rouge">columns=[...]</code> parameter</td>
+      <td>10-100x faster</td>
+    </tr>
+    <tr>
+      <td><strong>Filter Early</strong></td>
+      <td>Use <code class="language-plaintext highlighter-rouge">filters=[...]</code> parameter</td>
+      <td>2-10x faster</td>
+    </tr>
+    <tr>
+      <td><strong>Partition Data</strong></td>
+      <td>Partition by frequently filtered columns</td>
+      <td>10-1000x faster</td>
+    </tr>
+    <tr>
+      <td><strong>Sort Before Writing</strong></td>
+      <td>Sort by filter columns</td>
+      <td>2-5x faster reads</td>
+    </tr>
+    <tr>
+      <td><strong>Use Categories</strong></td>
+      <td>Convert strings to categorical</td>
+      <td>5-20x smaller</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="should-you-use-parquet">Should You Use Parquet?</h2>
+
+<blockquote>
+  <p><strong>Quick Decision Guide:</strong></p>
+  <ul>
+    <li>✅ <strong>Use Parquet:</strong> You have lots of data (&gt;100 MB) and need to analyze it fast</li>
+    <li>❌ <strong>Skip Parquet:</strong> You have small files or need to read data like a book (row by row)</li>
+    <li>✅ <strong>Use Parquet:</strong> You’re using tools like Python, Spark, or cloud databases</li>
+    <li>❌ <strong>Skip Parquet:</strong> You need to open files in Excel or edit them manually</li>
+  </ul>
+</blockquote>
+
+<h2 id="when-not-to-use-parquet">When NOT to Use Parquet</h2>
+
+<p>Parquet isn’t always the answer:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use Case</th>
+      <th>Better Choice</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Small files (&lt; 1 MB)</td>
+      <td>CSV, JSON</td>
+      <td>Overhead not worth it</td>
+    </tr>
+    <tr>
+      <td>Frequently updated data</td>
+      <td>Delta Lake, Iceberg</td>
+      <td>Parquet is write-once</td>
+    </tr>
+    <tr>
+      <td>Row-wise access</td>
+      <td>Avro, JSON</td>
+      <td>Parquet optimized for columns</td>
+    </tr>
+    <tr>
+      <td>Human readability</td>
+      <td>CSV, JSON</td>
+      <td>Parquet is binary</td>
+    </tr>
+    <tr>
+      <td>Streaming writes</td>
+      <td>Avro</td>
+      <td>Parquet needs to buffer row groups</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="real-world-example">Real-World Example</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">time</span>
+
+<span class="c1"># Create test data
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
+    <span class="sh">'</span><span class="s">id</span><span class="sh">'</span><span class="p">:</span> <span class="nf">range</span><span class="p">(</span><span class="mi">10_000_000</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">category</span><span class="sh">'</span><span class="p">:</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">([</span><span class="sh">'</span><span class="s">A</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">B</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">C</span><span class="sh">'</span><span class="p">],</span> <span class="mi">10_000_000</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">value</span><span class="sh">'</span><span class="p">:</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">10_000_000</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="c1"># Save as CSV
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">to_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">data.csv</span><span class="sh">'</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">csv_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="n">csv_size</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">getsize</span><span class="p">(</span><span class="sh">'</span><span class="s">data.csv</span><span class="sh">'</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+<span class="c1"># Save as Parquet
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">to_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="sh">'</span><span class="s">snappy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">parquet_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="n">parquet_size</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">getsize</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">CSV:     </span><span class="si">{</span><span class="n">csv_size</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> MB in </span><span class="si">{</span><span class="n">csv_time</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Parquet: </span><span class="si">{</span><span class="n">parquet_size</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> MB in </span><span class="si">{</span><span class="n">parquet_time</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Read specific column
+</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df_csv</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">data.csv</span><span class="sh">'</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">category</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">csv_read</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+<span class="n">df_parquet</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_parquet</span><span class="p">(</span><span class="sh">'</span><span class="s">data.parquet</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">category</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">parquet_read</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Read 1 column:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">CSV:     </span><span class="si">{</span><span class="n">csv_read</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Parquet: </span><span class="si">{</span><span class="n">parquet_read</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">s (</span><span class="si">{</span><span class="n">csv_read</span><span class="o">/</span><span class="n">parquet_read</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">x faster)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Typical Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>CSV:     650.0 MB in 45.3s
+Parquet: 85.0 MB in 3.2s (7.6x smaller, 14x faster write)
+
+Read 1 column:
+CSV:     12.50s
+Parquet: 0.15s (83x faster)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<blockquote>
+  <p><strong>Quick Takeaways:</strong></p>
+  <ul>
+    <li><strong>What is Parquet?</strong> A super-efficient way to store large datasets (think millions of rows)</li>
+    <li><strong>Why use it?</strong> 10-100x smaller files, way faster to analyze</li>
+    <li><strong>When to use it?</strong> Anytime you’re working with data bigger than a few Excel spreadsheets</li>
+    <li><strong>When NOT to use it?</strong> Small files, data you need to edit manually, or files you need to open in Excel</li>
+    <li><strong>Bottom line:</strong> Analyzing data in Python, SQL, or cloud tools → use Parquet. Working in Excel → stick with CSV.</li>
+  </ul>
+</blockquote>
+
+<p>Parquet achieves amazing compression and speed through:</p>
+
+<ol>
+  <li><strong>Columnar Layout</strong> — Store similar values together (like organizing a filing cabinet by topic)</li>
+  <li><strong>Smart Encoding</strong> — Find patterns to save space (like using “MA” instead of writing “Massachusetts”)</li>
+  <li><strong>Compression</strong> — Zip files to make them even smaller</li>
+  <li><strong>Statistics</strong> — Quick lookup to skip irrelevant data</li>
+  <li><strong>Type System</strong> — Remember what data means, not just how it’s stored</li>
+</ol>
+
+<p><strong>The Magic Formula:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Raw Data → Physical Type → Encoding → Compression → Disk
+  ↓           ↓              ↓           ↓          ↓
+1000 MB  →  1000 MB    →   100 MB   →  10 MB   = 100x smaller!
+</code></pre></div></div>
+
+<p><strong>Use Parquet when:</strong></p>
+<ul>
+  <li>✅ Analytical queries (aggregations, filtering)</li>
+  <li>✅ Large datasets (&gt; 100 MB)</li>
+  <li>✅ Column-heavy reads (SELECT a few columns)</li>
+  <li>✅ Data warehouses, data lakes</li>
+  <li>✅ You’re using Python, Spark, SQL databases</li>
+</ul>
+
+<p><strong>Skip Parquet when:</strong></p>
+<ul>
+  <li>❌ Small files (&lt; 1 MB) — overhead not worth it</li>
+  <li>❌ Frequent updates — Parquet is write-once</li>
+  <li>❌ Row-by-row access — use CSV or databases</li>
+  <li>❌ Human needs to read it — use CSV or JSON</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><a href="https://parquet.apache.org/docs/">Apache Parquet Documentation</a></li>
+  <li><a href="https://github.com/apache/parquet-format">Parquet Format Specification</a></li>
+  <li><a href="https://research.google/pubs/pub36632/">Dremel Paper (Parquet’s Inspiration)</a></li>
+</ul>
