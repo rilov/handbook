@@ -27,19 +27,21 @@ related:
 
 ## Introduction: A Simple Privacy Promise
 
-Imagine you're building a dating profile on Facebook Dating and you enter your religion:
+Imagine you're sharing a family photo on Facebook - a picture of your kids at home:
 
 ```
-User fills out profile:
-Religion: "Buddhist"
+User shares photo:
+📷 Family photo with location: "Home address: 123 Main St"
 
 User's expectation:
-✅ Used to match with compatible partners
-❌ NOT used to show religious ads on Instagram
-❌ NOT used to personalize Facebook News Feed
-❌ NOT used for anything else
+✅ Visible to friends on Facebook
+✅ Maybe suggest nearby friends
+❌ NOT used to target ads based on home location
+❌ NOT shared with third-party apps
+❌ NOT used to track family members' movements
+❌ NOT visible on other Meta apps without permission
 
-Question: Can Facebook guarantee this?
+Question: Can Meta guarantee this?
 ```
 
 **For a small app:** This is easy. You know where all your data goes.
@@ -112,18 +114,18 @@ Manual privacy tracking:
 **Real example:**
 
 ```
-User enters religion on Dating app
+User shares photo with location: "At Disneyland with kids"
 
 Allowed uses (explicit consent):
-✅ Match with compatible partners
-✅ Show to potential matches
-✅ Dating recommendations
+✅ Show photo to friends
+✅ Suggest friends nearby
+✅ Add to family memories
 
 NOT allowed (no consent):
-❌ Personalize News Feed
-❌ Target ads
-❌ Train general AI models
-❌ Share with other products
+❌ Target location-based ads to the user
+❌ Track children's locations
+❌ Share with third-party advertisers
+❌ Use for surveillance purposes
 
 Challenge: How do you enforce this across billions of lines of code?
 ```
@@ -139,7 +141,7 @@ Challenge: How do you enforce this across billions of lines of code?
 ```
 Simple example:
 
-User Input (SOURCE)
+User shares photo with location (SOURCE)
     ↓
 Web Endpoint
     ↓
@@ -149,9 +151,9 @@ Data Warehouse
     ↓
 AI Model
     ↓
-Another Product (SINK)
+Ad Targeting System (SINK)
 
-Question: Does religion data from Dating reach that other product?
+Question: Does location data from photos reach the ad targeting system?
 ```
 
 ### Why Data Lineage is Critical for Privacy
@@ -233,26 +235,26 @@ Reality:
 ❌ Can't verify accuracy
 ```
 
-**Example: Tracing religion data manually**
+**Example: Tracing location data manually**
 
 ```
 Week 1: Start investigation
-- Interview Dating team: "Where do you send religion data?"
-- Dating team: "Uh... to the database, some logs, maybe some APIs?"
+- Interview Photos team: "Where does location data from photos go?"
+- Photos team: "Uh... to the database, some logs, maybe some APIs?"
 - Manually read code to find all references
 
 Week 2: Trace database
-- Find 47 downstream tables that read from dating_profiles
+- Find 67 downstream tables that read from photo_metadata
 - Each has 20-100 downstream consumers
 - Need to check each one
 
 Week 3: Trace APIs
-- Find 15 APIs that expose profile data
+- Find 25 APIs that expose photo/location data
 - Who calls these APIs? Need to search all code
 - Each API has 50+ callers
 
 Week 4: Trace logs
-- Religion might be in 200+ log tables
+- Location data might be in 300+ log tables
 - Each log feeds into data warehouse
 - Data warehouse has 1,000s of downstream tables
 
@@ -288,16 +290,16 @@ change every minute!
 **Problem 2: Transformed data**
 
 ```
-Input: religion = "Buddhist"
+Input: location = "Disneyland, Anaheim, CA"
 
 Transformation 1:
-religion → {metadata: {religion: "Buddhist"}}
+location → {metadata: {location: "Disneyland, Anaheim, CA", lat: 33.8, lon: -117.9}}
 
 Transformation 2:
-{religions: ["Buddhist", "Hindu"]} → {count: 2}
+{locations: ["Disneyland", "Universal Studios"]} → {nearby_count: 2}
 
 Transformation 3:
-"Buddhist" → "B" (code)
+"Disneyland, Anaheim, CA" → "LA_AREA_THEME_PARK" (category code)
 
 Question: Are these the same data?
 Manual tracking: Impossible to tell
@@ -307,16 +309,16 @@ Manual tracking: Impossible to tell
 
 ```
 Direct flow (easy to track):
-dating_profile.religion → recommendation_engine
+photo.location → nearby_friends_feature
 
 Indirect flow (nearly impossible to track):
-dating_profile.religion 
+photo.location 
   → tmp_table_abc123
-  → aggregated_features
+  → aggregated_location_features
   → model_training_dataset
-  → recommendation_model
-  → inference_service
-  → another_product
+  → user_interest_model
+  → ad_targeting_service
+  → third_party_advertisers
 
 Manual tracking: Would take months to discover this chain
 ```
@@ -324,7 +326,7 @@ Manual tracking: Would take months to discover this chain
 **Problem 4: Scale**
 
 ```
-To manually track religion data:
+To manually track location data:
 ├─ Review: 1,000,000+ lines of code
 ├─ Interview: 500+ engineers
 ├─ Check: 100,000+ assets
@@ -351,10 +353,10 @@ Accuracy: 50-60% at best
 **The challenge:**
 
 ```
-GDPR requirement: Religion data must be purpose-limited
+GDPR requirement: Location data must be purpose-limited
 
 To implement:
-1. Find all places religion is used
+1. Find all places location data is used
 2. Add privacy controls at those places
 3. Verify controls work
 
@@ -375,22 +377,22 @@ Risk: $4.6B fine (4% of global revenue)
 2018: Developer adds new feature
 
 Code:
-def show_recommendations(user_id):
-    profile = get_dating_profile(user_id)
-    # Use ALL profile data for recommendations
-    return train_model(profile)
+def show_targeted_ads(user_id):
+    photos = get_user_photos(user_id)
+    # Use ALL photo metadata including location
+    return target_ads_by_location(photos)
 
-Oops: Just used religion data for non-dating purposes!
+Oops: Just used children's location data for ad targeting!
 
 Without lineage:
-- Nobody knows religion data leaked
+- Nobody knows location data leaked to ads
 - No alerts
 - No way to discover
 - Privacy violation goes undetected
 
 With lineage:
-- Automatic detection: "Religion data flowing to recommendations"
-- Alert: "Potential privacy violation"
+- Automatic detection: "Photo location data flowing to ad targeting"
+- Alert: "Potential privacy violation - children's data"
 - Block: "Cannot deploy code that violates policy"
 ```
 
@@ -627,23 +629,23 @@ Team size: 100+ engineers
 
 ## Examples: Where Data Lineage is Critical
 
-### Example 1: Facebook Dating Religion Data
+### Example 1: Family Photo Location Data
 
 **The requirement:**
 
 ```
-User enters religion: "Buddhist"
+User shares family photo with location: "Home, 123 Main St"
 
 Allowed uses:
-✅ Show to potential matches with compatible preferences
-✅ Dating match recommendations
-✅ Dating profile display
+✅ Show photo to friends
+✅ Create family memories album
+✅ Suggest nearby friends once
 
 Not allowed:
-❌ Facebook News Feed personalization
-❌ Instagram content recommendations
-❌ Ad targeting anywhere
-❌ General AI model training
+❌ Target ads based on home location
+❌ Track family/children's locations over time
+❌ Share with third-party apps
+❌ Use for location-based marketing
 
 Question: How do you enforce this across millions of lines of code?
 Answer: You need data lineage!
@@ -652,11 +654,11 @@ Answer: You need data lineage!
 **Without lineage:**
 
 ```
-Engineer adds new recommendation feature:
-def recommend_pages(user_id):
-    profile = get_user_profile(user_id)  # Oops! Includes religion
-    interests = extract_interests(profile)  # Now religion leaked
-    return find_pages(interests)
+Engineer adds new ad targeting feature:
+def target_local_ads(user_id):
+    photos = get_user_photos(user_id)  # Oops! Includes home location
+    locations = extract_locations(photos)  # Now location leaked
+    return show_nearby_business_ads(locations)
 
 Result: Privacy violation, nobody knows ❌
 ```
@@ -665,7 +667,7 @@ Result: Privacy violation, nobody knows ❌
 
 ```
 Data lineage system detects:
-- Religion data flowing from Dating → general recommendations
+- Photo location data flowing from Photos → ad targeting
 - Automatic alert: "PRIVACY VIOLATION DETECTED"
 - Block deployment: "Cannot deploy code that violates policy"
 - Alert teams: "Fix privacy violation before deploying"
@@ -673,41 +675,30 @@ Data lineage system detects:
 Result: Privacy protected automatically ✅
 ```
 
-### Example 2: Health Data in Fitness Apps
-
-**The requirement:**
-
-```
-User logs health data in fitness app
-
-Allowed:
-✅ Fitness recommendations
-✅ Health tracking
-
-Not allowed:
-❌ Insurance purposes
-❌ Employment screening
-❌ Ad targeting
-
-Without lineage: No way to verify
-With lineage: Automatic enforcement
-```
-
-### Example 3: Children's Data
+### Example 2: Children's Location Data
 
 **The requirement:**
 
 ```
 COPPA (Children's Online Privacy Protection Act):
 - Data from users under 13 has strict restrictions
+- Location data especially sensitive
 - Cannot be used for behavioral advertising
 - Cannot be shared with third parties
+- Cannot be used to track children
 
-Challenge: Need to track all flows of children's data
+Example: Kid posts photo from school
+- School location must be protected
+- Cannot be used for ads
+- Cannot be shared
+- Must be deleted after X days
+
+Challenge: Need to track all flows of children's location data
 across all Meta products
 
 Scale:
 - 100M+ children on Meta platforms
+- Billions of photos with locations
 - Data in millions of assets
 - Need 100% accuracy (regulatory requirement)
 
@@ -810,7 +801,7 @@ Cost: $50M investment, $500M+ value
 ### The Problem in One Picture
 
 ```
-The Question: "Where does religion data from Dating go?"
+The Question: "Where does location data from photos go?"
 
 Without data lineage:
 ├─ Manual code review: 6 months

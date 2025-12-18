@@ -27,7 +27,7 @@ related:
 
 ## Introduction: The Architecture
 
-Remember the problem from Part 1: When a user enters their religion on Facebook Dating, how do you track where that data goes across Meta's entire infrastructure?
+Remember the problem from Part 1: When a user shares a family photo with location data, how do you track where that data goes across Meta's entire infrastructure?
 
 **Meta's solution: A two-stage data lineage system**
 
@@ -49,7 +49,7 @@ Stage 2: Identify Relevant Flows
 Result: End-to-end data flow visibility
 ```
 
-Let's walk through each part using the religion data example.
+Let's walk through each part using the photo location data example.
 
 ---
 
@@ -104,34 +104,35 @@ Why three approaches? Different systems require different techniques:
 
 ## Collecting Signals: Web Systems
 
-### Step 1: User Enters Religion Data
+### Step 1: User Shares Photo with Location
 
 ```hack
-// Dating profile endpoint (Hack code)
-function handleProfileUpdate(user_id: int, data: array): void {
-  // User enters religion
-  $religion = $data['religion'];  // "Buddhist"
+// Photo upload endpoint (Hack code)
+function handlePhotoUpload(user_id: int, photo_data: array): void {
+  // User shares photo with location
+  $location = $photo_data['location'];  // "Home, 123 Main St"
   
   // Store in database
-  $this->db->insert('dating_profiles', [
+  $this->db->insert('photos', [
     'user_id' => $user_id,
-    'religion' => $religion,
+    'photo_url' => $photo_data['url'],
+    'location' => $location,
   ]);
   
-  // Log the update
-  $this->logger->log('profile_updated', [
+  // Log the upload
+  $this->logger->log('photo_uploaded', [
     'user_id' => $user_id,
-    'religion' => $religion,
+    'location' => $location,
   ]);
   
-  // Call recommendation service
-  $this->api->call('/recommendations/update', [
-    'profile' => $data,
+  // Call nearby friends service
+  $this->api->call('/friends/nearby', [
+    'location' => $location,
   ]);
 }
 ```
 
-**Question:** How do we track where `$religion` goes?
+**Question:** How do we track where `$location` goes?
 
 ### Technique 1: Static Code Analysis
 
@@ -146,7 +147,7 @@ Static analyzer simulates code execution:
 4. Build flow graph
 
 For our example:
-$religion (source)
+$location (source)
   ├─> $this->db->insert (sink: database)
   ├─> $this->logger->log (sink: logs)
   └─> $this->api->call (sink: API)
@@ -170,10 +171,10 @@ Limitations:
 
 Example false positive:
 if (DEBUG_MODE) {  // Never true in production
-  $this->log('debug', $religion);
+  $this->log('debug', $location);
 }
 
-Static analysis says: "Religion logged here!"
+Static analysis says: "Location logged here!"
 Reality: This code never runs
 
 Need runtime signals to verify!
@@ -209,51 +210,51 @@ Privacy Probes compare source and sink payloads to verify data flows:
 
 ```
 Request execution:
-1. User submits: religion = "Buddhist"
+1. User submits: location = "Home, 123 Main St"
 
 2. Privacy Probe captures SOURCE:
-   - Location: handleProfileUpdate()
-   - Payload: {religion: "Buddhist"}
+   - Location: handlePhotoUpload()
+   - Payload: {location: "Home, 123 Main St"}
    - Timestamp: 10:30:00.123
 
 3. Code executes...
 
 4. Privacy Probe captures SINK #1:
-   - Location: db.insert('dating_profiles')
-   - Payload: {user_id: 123, religion: "Buddhist"}
+   - Location: db.insert('photos')
+   - Payload: {user_id: 123, location: "Home, 123 Main St"}
    - Timestamp: 10:30:00.145
 
 5. Privacy Probe captures SINK #2:
-   - Location: logger.log('profile_updated')
-   - Payload: {user_id: 123, religion: "Buddhist"}
+   - Location: logger.log('photo_uploaded')
+   - Payload: {user_id: 123, location: "Home, 123 Main St"}
    - Timestamp: 10:30:00.156
 
 6. Compare payloads:
-   SOURCE: "Buddhist"
-   SINK #1: "Buddhist" ← EXACT_MATCH ✅
-   SINK #2: "Buddhist" ← EXACT_MATCH ✅
+   SOURCE: "Home, 123 Main St"
+   SINK #1: "Home, 123 Main St" ← EXACT_MATCH ✅
+   SINK #2: "Home, 123 Main St" ← EXACT_MATCH ✅
 
 7. Emit lineage signals:
-   - Flow confirmed: religion → dating_profiles table
-   - Flow confirmed: religion → profile_updated logs
+   - Flow confirmed: location → photos table
+   - Flow confirmed: location → photo_uploaded logs
 ```
 
 **Handling transformations:**
 
 ```
 Case 1: Exact copy
-Source: "Buddhist"
-Sink:   "Buddhist"
+Source: "Home, 123 Main St"
+Sink:   "Home, 123 Main St"
 Result: EXACT_MATCH (high confidence) ✅
 
 Case 2: Contained in larger structure
-Source: "Buddhist"
-Sink:   {metadata: {religion: "Buddhist", verified: true}}
+Source: "Home, 123 Main St"
+Sink:   {metadata: {location: "Home, 123 Main St", lat: 40.7, lon: -74.0}}
 Result: CONTAINS (high confidence) ✅
 
 Case 3: Transformed
-Source: {religions: ["Buddhist", "Hindu"]}
-Sink:   {count: 2}
+Source: {locations: ["Home", "Work", "School"]}
+Sink:   {location_count: 3}
 Result: NO_MATCH (low confidence) ⚠️
 ```
 
@@ -296,26 +297,26 @@ Combined:
 **Real example:**
 
 ```hack
-function processProfile(data: array): void {
-  if (should_log_religion()) {  // Complex business logic
-    log('religion', data['religion']);
+function processPhoto(data: array): void {
+  if (should_log_location()) {  // Complex business logic
+    log('location', data['location']);
   }
   
-  if (should_send_to_recommendations()) {  // More complex logic
-    api->call('/recommendations', data);
+  if (should_send_to_ads()) {  // More complex logic
+    api->call('/ad_targeting', data);
   }
 }
 
 Static analysis says:
-"Religion might flow to logs AND recommendations"
+"Location might flow to logs AND ad targeting"
 
 Privacy Probes observe (over 1 week):
 - Logs: Observed 10,000 times ✅ Definitely happens
-- Recommendations: Observed 0 times ❌ Likely gated
+- Ad targeting: Observed 0 times ❌ Likely gated/blocked
 
 Conclusion:
 - Log flow: REAL (include in lineage)
-- Recommendation flow: FALSE POSITIVE (exclude)
+- Ad targeting flow: FALSE POSITIVE (exclude)
 ```
 
 ### Instrumentation Points
@@ -355,17 +356,17 @@ Coverage: 90%+ of data flows
 -- Data warehouse jobs process billions of rows
 -- How do we track lineage through SQL?
 
--- Example: Safety training data job
-INSERT INTO safety_training_tbl
+-- Example: Location analytics job
+INSERT INTO location_analytics_tbl
 SELECT 
   user_id as target_user_id,
-  religion as target_religion,
-  reported_count,
+  location as user_location,
+  photo_count,
   CASE 
-    WHEN religion IN ('Muslim', 'Jewish') THEN 'high_sensitivity'
-    ELSE 'normal'
-  END as sensitivity_level
-FROM dating_profiles_log
+    WHEN location LIKE '%Home%' THEN 'residential'
+    ELSE 'public'
+  END as location_type
+FROM photo_metadata_log
 WHERE date >= '2025-01-01'
   AND user_id IS NOT NULL;
 ```
@@ -373,7 +374,7 @@ WHERE date >= '2025-01-01'
 **Questions:**
 - Which columns flow where?
 - What transformations happen?
-- Where does `religion` end up?
+- Where does `location` end up?
 
 ### Technique: SQL Query Analysis
 
@@ -401,19 +402,19 @@ WHERE date >= '2025-01-01'
 
 ```sql
 -- Original query
-SELECT religion as target_religion
-FROM dating_profiles_log
+SELECT location as user_location
+FROM photo_metadata_log
 
 -- Analyzer output
 {
-  "input_table": "dating_profiles_log",
-  "input_columns": ["religion"],
-  "output_table": "safety_training_tbl",
-  "output_columns": ["target_religion"],
+  "input_table": "photo_metadata_log",
+  "input_columns": ["location"],
+  "output_table": "location_analytics_tbl",
+  "output_columns": ["user_location"],
   "column_lineage": [
     {
-      "source": "dating_profiles_log.religion",
-      "target": "safety_training_tbl.target_religion",
+      "source": "photo_metadata_log.location",
+      "target": "location_analytics_tbl.user_location",
       "transformation": "RENAME"
     }
   ],
@@ -427,12 +428,12 @@ FROM dating_profiles_log
 Granular tracking:
 
 Table-level:
-dating_profiles_log → safety_training_tbl
+photo_metadata_log → location_analytics_tbl
 (Not very useful: what about other columns?)
 
 Column-level:
-dating_profiles_log.religion → safety_training_tbl.target_religion
-dating_profiles_log.user_id → safety_training_tbl.target_user_id
+photo_metadata_log.location → location_analytics_tbl.user_location
+photo_metadata_log.user_id → location_analytics_tbl.target_user_id
 (Much more useful for privacy!)
 ```
 
@@ -445,24 +446,24 @@ dating_profiles_log.user_id → safety_training_tbl.target_user_id
 SELECT 
   user_id,
   -- Direct copy
-  religion,
+  location,
   
   -- Aggregation
-  COUNT(*) as match_count,
+  COUNT(*) as photo_count,
   
   -- CASE statement
   CASE 
-    WHEN religion = 'Buddhist' THEN 1 
+    WHEN location LIKE '%Home%' THEN 1 
     ELSE 0 
-  END as is_buddhist,
+  END as is_home,
   
   -- Concatenation
-  CONCAT(religion, '_', ethnicity) as religion_ethnicity,
+  CONCAT(location, '_', city) as full_location,
   
   -- Subquery
-  (SELECT COUNT(*) FROM matches WHERE matches.user_id = p.user_id) as total_matches
+  (SELECT COUNT(*) FROM friends WHERE friends.user_id = p.user_id) as friend_count
   
-FROM dating_profiles_log p;
+FROM photo_metadata_log p;
 ```
 
 **SQL analyzer handles:**
@@ -470,15 +471,15 @@ FROM dating_profiles_log p;
 ```
 For each output column, track dependencies:
 
-religion → religion (direct copy) ✅
-religion → is_buddhist (derived) ✅
-religion → religion_ethnicity (concatenation) ✅
+location → location (direct copy) ✅
+location → is_home (derived) ✅
+location → full_location (concatenation) ✅
 
-Match count:
+Photo count:
 - Depends on: COUNT(*) aggregate
-- Does NOT contain religion data ✅
+- Does NOT contain location data ✅
 
-Total_matches:
+Friend_count:
 - Depends on: subquery
 - Need to analyze subquery separately ✅
 ```
@@ -490,10 +491,10 @@ Total_matches:
 ```
 Job logs might be incomplete:
 
-Log 1: "Read from dating_profiles_log"
+Log 1: "Read from photo_metadata_log"
 [No write logged]
 
-Log 2: "Write to safety_training_tbl"
+Log 2: "Write to location_analytics_tbl"
 [No read logged]
 
 Question: Are these the same job?
@@ -514,16 +515,16 @@ Context matching:
 Example:
 Log 1: 
   job_id: spark_job_12345
-  action: READ dating_profiles_log
+  action: READ photo_metadata_log
   timestamp: 10:30:00
 
 Log 2:
   job_id: spark_job_12345  ← Same job!
-  action: WRITE safety_training_tbl
+  action: WRITE location_analytics_tbl
   timestamp: 10:30:15
 
 Conclusion: These are connected!
-Flow: dating_profiles_log → safety_training_tbl ✅
+Flow: photo_metadata_log → location_analytics_tbl ✅
 ```
 
 ---
@@ -535,14 +536,14 @@ Flow: dating_profiles_log → safety_training_tbl ✅
 ```python
 # Model training config
 training_config = {
-  "model_name": "dating_ranking_model",
-  "input_dataset": "asset://hive.table/dating_training_tbl",
+  "model_name": "nearby_friends_model",
+  "input_dataset": "asset://hive.table/photo_location_features",
   "features": [
-    "DATING_USER_AGE",
-    "DATING_USER_LOCATION",
-    "DATING_USER_RELIGION_SCORE",  # ← Religion feature!
+    "USER_AGE",
+    "USER_ACTIVITY_LEVEL",
+    "USER_HOME_LOCATION",  # ← Home location feature!
   ],
-  "output_model": "asset://ai.model/dating_ranking_model",
+  "output_model": "asset://ai.model/nearby_friends_model",
   "training_params": {...}
 }
 ```
@@ -560,27 +561,27 @@ training_config = {
 Parse training configs to extract relationships:
 
 Input:
-- Dataset: dating_training_tbl
-- Features: DATING_USER_RELIGION_SCORE
+- Dataset: photo_location_features
+- Features: USER_HOME_LOCATION
 
 Output:
-- Model: dating_ranking_model
+- Model: nearby_friends_model
 
 Lineage:
-dating_training_tbl 
-  → DATING_USER_RELIGION_SCORE
-  → dating_ranking_model ✅
+photo_location_features 
+  → USER_HOME_LOCATION
+  → nearby_friends_model ✅
 ```
 
 **Full AI lineage chain:**
 
 <div class="mermaid">
 flowchart TD
-    DATA["Input Dataset<br/>dating_training_tbl"]
-    FEATURE["Feature<br/>DATING_USER_RELIGION_SCORE"]
-    MODEL["Model<br/>dating_ranking_model"]
-    INFERENCE["Inference Service<br/>dating_recommendations"]
-    PRODUCT["Product<br/>Dating App"]
+    DATA["Input Dataset<br/>photo_location_features"]
+    FEATURE["Feature<br/>USER_HOME_LOCATION"]
+    MODEL["Model<br/>nearby_friends_model"]
+    INFERENCE["Inference Service<br/>friend_suggestions"]
+    PRODUCT["Product<br/>Facebook App"]
     
     DATA --> FEATURE
     FEATURE --> MODEL
@@ -617,35 +618,35 @@ Result: End-to-end AI lineage ✅
 ### Real Example: AI Lineage
 
 ```
-Starting point: Religion data in dating_training_tbl
+Starting point: Location data in photo_location_features
 
 Lineage trace:
 
 1. Data loading:
-   dating_training_tbl.religion 
+   photo_location_features.home_location 
    → DPP loads into feature store
 
 2. Feature engineering:
-   feature_store.religion
-   → DATING_USER_RELIGION_SCORE (computed feature)
+   feature_store.home_location
+   → USER_HOME_LOCATION (computed feature)
 
 3. Model training:
-   DATING_USER_RELIGION_SCORE
-   → dating_ranking_model (training input)
+   USER_HOME_LOCATION
+   → nearby_friends_model (training input)
 
 4. Model deployment:
-   dating_ranking_model
+   nearby_friends_model
    → inference_service (model serving)
 
 5. Product:
    inference_service
-   → Dating app recommendations
+   → Facebook friend suggestions
 
 6. Privacy check:
-   Is religion used outside Dating?
+   Is home location used for ads?
    - Check inference_service callers
-   - If any non-Dating caller: VIOLATION ❌
-   - If only Dating callers: COMPLIANT ✅
+   - If ad_targeting calls it: VIOLATION ❌
+   - If only friend_suggestions: COMPLIANT ✅
 ```
 
 ---
@@ -668,7 +669,7 @@ Challenge: How do you query this efficiently?
 
 ### The Iterative Discovery Process
 
-> **Problem:** Given a source (religion data), find all relevant downstream flows.
+> **Problem:** Given a source (photo location data), find all relevant downstream flows.
 
 **Naive approach (doesn't work):**
 
@@ -708,84 +709,88 @@ Why? The graph is too large and interconnected!
 Result: Only relevant flows, manageable size
 ```
 
-### Example: Finding Religion Data Flows
+### Example: Finding Photo Location Data Flows
 
 **Iteration 1:**
 
 ```
-Source: dating_profiles.religion
+Source: photos.location
 
 Discover (automatic):
-├─ dating_profiles_log (high confidence) ✅
-├─ profile_update_events (high confidence) ✅
-├─ recommendation_temp_table (low confidence) ⚠️
+├─ photo_metadata_log (high confidence) ✅
+├─ photo_upload_events (high confidence) ✅
+├─ nearby_friends_temp_table (low confidence) ⚠️
 └─ generic_analytics_table (low confidence) ⚠️
 
 Human review:
-├─ dating_profiles_log: INCLUDE ✅
+├─ photo_metadata_log: INCLUDE ✅
 │  └─ Action: Apply privacy controls
 │
-├─ profile_update_events: INCLUDE ✅
+├─ photo_upload_events: INCLUDE ✅
 │  └─ Action: Apply privacy controls
 │
-├─ recommendation_temp_table: EXCLUDE ❌
-│  └─ Reason: Doesn't actually contain religion
+├─ nearby_friends_temp_table: EXCLUDE ❌
+│  └─ Reason: Only uses approximate location
 │
 └─ generic_analytics_table: EXCLUDE ❌
-   └─ Reason: Aggregated, no sensitive data
+   └─ Reason: Aggregated, no precise locations
 
-Confirmed nodes: 2 (dating_profiles_log, profile_update_events)
+Confirmed nodes: 2 (photo_metadata_log, photo_upload_events)
 ```
 
 **Iteration 2:**
 
 ```
-New sources: dating_profiles_log, profile_update_events
+New sources: photo_metadata_log, photo_upload_events
 
-Discover from dating_profiles_log:
-├─ safety_training_tbl (high confidence) ✅
+Discover from photo_metadata_log:
+├─ location_analytics_tbl (high confidence) ✅
 ├─ data_warehouse_agg_daily (low confidence) ⚠️
 └─ export_table_xyz (low confidence) ⚠️
 
 Human review:
-├─ safety_training_tbl: INCLUDE ✅
+├─ location_analytics_tbl: INCLUDE ✅
 │  └─ Action: Apply privacy controls
 │
 └─ Others: EXCLUDE ❌
 
-Confirmed nodes: +1 (safety_training_tbl)
+Confirmed nodes: +1 (location_analytics_tbl)
 ```
 
 **Iteration 3:**
 
 ```
-New sources: safety_training_tbl
+New sources: location_analytics_tbl
 
-Discover from safety_training_tbl:
-├─ ai_feature_store (high confidence) ✅
+Discover from location_analytics_tbl:
+├─ ai_location_feature_store (high confidence) ✅
 └─ No other high-confidence flows
 
 Human review:
-└─ ai_feature_store: INCLUDE ✅
+└─ ai_location_feature_store: INCLUDE ✅
 
-Confirmed nodes: +1 (ai_feature_store)
+Confirmed nodes: +1 (ai_location_feature_store)
 ```
 
 **Iteration 4:**
 
 ```
-New sources: ai_feature_store
+New sources: ai_location_feature_store
 
 Discover:
-├─ dating_ranking_model (high confidence) ✅
-└─ No other flows
+├─ nearby_friends_model (high confidence) ✅
+└─ ad_targeting_model (high confidence) ⚠️
 
 Human review:
-└─ dating_ranking_model: INCLUDE ✅
-   └─ Final destination: Dating app only
-   └─ Privacy requirement: SATISFIED ✅
+├─ nearby_friends_model: INCLUDE ✅
+│  └─ Final destination: Friend suggestions only
+│  └─ Privacy requirement: SATISFIED ✅
+│
+└─ ad_targeting_model: VIOLATION ❌
+   └─ Home location used for ads!
+   └─ Action: BLOCK and alert teams
 
-Done! No more relevant flows.
+Done! Privacy violation detected and prevented.
 ```
 
 ### The Power of Cascading Exclusions
@@ -818,9 +823,9 @@ you avoid reviewing 100,000 downstream assets!
 **Before PZM (manual):**
 
 ```
-Engineer task: "Protect religion data in Dating"
+Engineer task: "Protect photo location data"
 
-Week 1-4: Find where religion is used
+Week 1-4: Find where location is used
 - Read code manually
 - Interview teams
 - Build spreadsheet
@@ -841,11 +846,11 @@ Total: 3 months, high error rate ❌
 **After PZM (with lineage):**
 
 ```
-Engineer task: "Protect religion data in Dating"
+Engineer task: "Protect photo location data"
 
 Hour 1: Query lineage
 - Open PZM tool
-- Query: "Find all flows from dating_profiles.religion"
+- Query: "Find all flows from photos.location"
 - Results: Visual graph in 30 seconds ✅
 
 Hour 2-4: Review flows
@@ -908,7 +913,7 @@ PZM monitors continuously:
 ├─ New data flows detected
 ├─ Check against policies
 ├─ Alert if violation:
-│  └─ "New flow detected: religion → ads"
+│  └─ "New flow detected: home_location → ad_targeting"
 │  └─ "BLOCK: Violates purpose limitation"
 └─ Automatic enforcement ✅
 ```
@@ -1252,18 +1257,18 @@ Result: Continuous improvement
 
 ```python
 # Original data
-religion = "Buddhist"
+location = "Home, 123 Main St"
 
 # Transformation 1: Encoding
-religion_encoded = encode(religion)  # "B01"
+location_encoded = geocode(location)  # lat: 40.7, lon: -74.0
 
 # Transformation 2: Aggregation
-religion_count = count_values([religion_encoded, ...])  # 42
+location_count = count_unique([location_encoded, ...])  # 42
 
 # Transformation 3: ML embedding
-religion_vector = model.embed(religion)  # [0.23, -0.15, 0.67, ...]
+location_vector = model.embed(location)  # [0.23, -0.15, 0.67, ...]
 
-Question: Is religion_vector still "religion data"?
+Question: Is location_vector still "location data"?
 ```
 
 **Current approach:**
