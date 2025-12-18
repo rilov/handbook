@@ -1,0 +1,1625 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Case Study: How Meta Built Privacy-Aware Data Lineage at Scale (Part 2 - The Solution)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/case-studies">Case Studies</a> &mdash;
+    </nav>
+    <h2>Case Study: How Meta Built Privacy-Aware Data Lineage at Scale (Part 2 - The Solution)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/case-studies">Case Studies</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <blockquote>
+  <p><strong>Part 2 of the Meta Data Lineage Series</strong></p>
+
+  <p><strong>Important Note:</strong> This article is based on my understanding after reading the <a href="https://engineering.fb.com/2025/01/22/security/how-meta-discovers-data-flows-via-lineage-at-scale/">Meta Engineering blog post</a> and several related articles. I’m trying to demystify and explain these concepts in an accessible way. If you want to understand exactly what Meta built, please refer to the original article linked in the Further Reading section.</p>
+
+  <p><strong>The challenge recap:</strong> Meta needed to trace data flows across millions of assets, billions of lines of code, and thousands of engineers — all updating in real-time.</p>
+
+  <p><strong>This article</strong> reveals the technical architecture, clever techniques, and hard-won lessons from building data lineage at unprecedented scale.</p>
+
+  <p><strong>Previous:</strong> <a href="/handbook/handbook/_topics/meta-data-lineage-part-1-challenge/">← Part 1 - The Challenge</a></p>
+</blockquote>
+
+<h2 id="introduction-the-architecture">Introduction: The Architecture</h2>
+
+<p>Remember the problem from Part 1: When a user enters their religion on Facebook Dating, how do you track where that data goes across Meta’s entire infrastructure?</p>
+
+<p><strong>Meta’s solution: A two-stage data lineage system</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stage 1: Collect Data Flow Signals
+├─ Static code analysis
+├─ Runtime instrumentation (Privacy Probes)
+├─ SQL query analysis
+├─ Config parsing
+└─ Combines signals from all sources
+
+Stage 2: Identify Relevant Flows
+├─ Start from source assets (e.g., religion data)
+├─ Traverse lineage graph
+├─ Filter relevant flows
+├─ Apply privacy controls
+└─ Continuous verification
+
+Result: End-to-end data flow visibility
+</code></pre></div></div>
+
+<p>Let’s walk through each part using the religion data example.</p>
+
+<hr />
+
+<h2 id="stage-1-collecting-data-flow-signals">Stage 1: Collecting Data Flow Signals</h2>
+
+<h3 id="overview-three-different-approaches">Overview: Three Different Approaches</h3>
+
+<p>Meta uses different techniques for different system types:</p>
+
+<div class="mermaid">
+flowchart TD
+    SYSTEMS["Meta's Systems"]
+    
+    WEB["Function-Based Systems<br />(Web, Backend Services)"]
+    BATCH["Batch Processing<br />(Data Warehouse)"]
+    AI["AI Systems<br />(ML Models)"]
+    
+    STATIC["Static Code Analysis"]
+    PROBES["Privacy Probes<br />(Runtime)"]
+    SQL["SQL Analysis"]
+    CONFIG["Config Parsing"]
+    
+    LINEAGE["Lineage Graph"]
+    
+    SYSTEMS --&gt; WEB
+    SYSTEMS --&gt; BATCH
+    SYSTEMS --&gt; AI
+    
+    WEB --&gt; STATIC
+    WEB --&gt; PROBES
+    BATCH --&gt; SQL
+    AI --&gt; CONFIG
+    
+    STATIC --&gt; LINEAGE
+    PROBES --&gt; LINEAGE
+    SQL --&gt; LINEAGE
+    CONFIG --&gt; LINEAGE
+    
+    style PROBES fill:#fef3c7,stroke:#f59e0b
+    style LINEAGE fill:#dbeafe,stroke:#2563eb
+</div>
+
+<p>Why three approaches? Different systems require different techniques:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>System Type</th>
+      <th>Example</th>
+      <th>Best Approach</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Web/APIs</td>
+      <td>Hack, C++, Python</td>
+      <td>Static + Runtime</td>
+      <td>Complex transformations</td>
+    </tr>
+    <tr>
+      <td>Data Warehouse</td>
+      <td>SQL queries</td>
+      <td>SQL Analysis</td>
+      <td>Declarative, easy to parse</td>
+    </tr>
+    <tr>
+      <td>AI Systems</td>
+      <td>Model training</td>
+      <td>Config Parsing</td>
+      <td>Configs define relationships</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="collecting-signals-web-systems">Collecting Signals: Web Systems</h2>
+
+<h3 id="step-1-user-enters-religion-data">Step 1: User Enters Religion Data</h3>
+
+<div class="language-hack highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Dating profile endpoint (Hack code)</span>
+<span class="k">function</span> <span class="n">handleProfileUpdate</span><span class="p">(</span><span class="kt">user_id</span><span class="o">:</span> <span class="k">int</span><span class="p">,</span> <span class="kt">data</span><span class="o">:</span> <span class="k">array</span><span class="p">):</span> <span class="kt">void</span> <span class="p">{</span>
+  <span class="c1">// User enters religion</span>
+  <span class="nv">$religion</span> <span class="o">=</span> <span class="nv">$data</span><span class="p">[</span><span class="s1">'religion'</span><span class="p">];</span>  <span class="c1">// "Buddhist"</span>
+  
+  <span class="c1">// Store in database</span>
+  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">db</span><span class="o">-&gt;</span><span class="nf">insert</span><span class="p">(</span><span class="s1">'dating_profiles'</span><span class="p">,</span> <span class="p">[</span>
+    <span class="s1">'user_id'</span> <span class="o">=&gt;</span> <span class="nv">$user_id</span><span class="p">,</span>
+    <span class="s1">'religion'</span> <span class="o">=&gt;</span> <span class="nv">$religion</span><span class="p">,</span>
+  <span class="p">]);</span>
+  
+  <span class="c1">// Log the update</span>
+  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">logger</span><span class="o">-&gt;</span><span class="nb">log</span><span class="p">(</span><span class="s1">'profile_updated'</span><span class="p">,</span> <span class="p">[</span>
+    <span class="s1">'user_id'</span> <span class="o">=&gt;</span> <span class="nv">$user_id</span><span class="p">,</span>
+    <span class="s1">'religion'</span> <span class="o">=&gt;</span> <span class="nv">$religion</span><span class="p">,</span>
+  <span class="p">]);</span>
+  
+  <span class="c1">// Call recommendation service</span>
+  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">api</span><span class="o">-&gt;</span><span class="nf">call</span><span class="p">(</span><span class="s1">'/recommendations/update'</span><span class="p">,</span> <span class="p">[</span>
+    <span class="s1">'profile'</span> <span class="o">=&gt;</span> <span class="nv">$data</span><span class="p">,</span>
+  <span class="p">]);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>Question:</strong> How do we track where <code class="language-plaintext highlighter-rouge">$religion</code> goes?</p>
+
+<h3 id="technique-1-static-code-analysis">Technique 1: Static Code Analysis</h3>
+
+<p><strong>How it works:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Static analyzer simulates code execution:
+
+1. Parse code into Abstract Syntax Tree (AST)
+2. Track data flow through variables
+3. Identify "sources" (inputs) and "sinks" (outputs)
+4. Build flow graph
+
+For our example:
+$religion (source)
+  ├─&gt; $this-&gt;db-&gt;insert (sink: database)
+  ├─&gt; $this-&gt;logger-&gt;log (sink: logs)
+  └─&gt; $this-&gt;api-&gt;call (sink: API)
+
+Result: 3 potential data flows detected
+</code></pre></div></div>
+
+<p><strong>The power:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Advantages:
+✅ Analyzes without running code
+✅ Covers all code paths (even unexecuted)
+✅ Fast (can analyze millions of lines)
+✅ Finds hidden flows
+
+Limitations:
+❌ False positives (code that never actually runs)
+❌ Can't see runtime transformations
+❌ Struggles with dynamic code
+
+Example false positive:
+if (DEBUG_MODE) {  // Never true in production
+  $this-&gt;log('debug', $religion);
+}
+
+Static analysis says: "Religion logged here!"
+Reality: This code never runs
+
+Need runtime signals to verify!
+</code></pre></div></div>
+
+<h3 id="technique-2-privacy-probes-runtime-instrumentation">Technique 2: Privacy Probes (Runtime Instrumentation)</h3>
+
+<p><strong>The breakthrough innovation:</strong></p>
+
+<blockquote>
+  <p><strong>Privacy Probes</strong> instrument Meta’s core frameworks to capture actual data flows at runtime.</p>
+</blockquote>
+
+<p><strong>How it works:</strong></p>
+
+<div class="language-hack highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Meta's logging framework (instrumented)</span>
+<span class="kd">class</span> <span class="nc">Logger</span> <span class="p">{</span>
+  <span class="k">public</span> <span class="k">function</span> <span class="n">log</span><span class="p">(</span><span class="kt">string</span> <span class="nv">$event</span><span class="p">,</span> <span class="kt">array</span> <span class="nv">$data</span><span class="p">):</span> <span class="kt">void</span> <span class="p">{</span>
+    <span class="c1">// NEW: Privacy Probe captures this</span>
+    <span class="nc">PrivacyProbe</span><span class="o">::</span><span class="nf">captureSource</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span>  <span class="c1">// Capture before logging</span>
+    
+    <span class="c1">// Original logging code</span>
+    <span class="nv">$this</span><span class="o">-&gt;</span><span class="nf">writeToLog</span><span class="p">(</span><span class="nv">$event</span><span class="p">,</span> <span class="nv">$data</span><span class="p">);</span>
+    
+    <span class="c1">// NEW: Privacy Probe captures this</span>
+    <span class="nc">PrivacyProbe</span><span class="o">::</span><span class="nf">captureSink</span><span class="p">(</span><span class="nv">$event</span><span class="p">,</span> <span class="nv">$data</span><span class="p">);</span>  <span class="c1">// Capture after logging</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>The magic: Payload matching</strong></p>
+
+<p>Privacy Probes compare source and sink payloads to verify data flows:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Request execution:
+1. User submits: religion = "Buddhist"
+
+2. Privacy Probe captures SOURCE:
+   - Location: handleProfileUpdate()
+   - Payload: {religion: "Buddhist"}
+   - Timestamp: 10:30:00.123
+
+3. Code executes...
+
+4. Privacy Probe captures SINK #1:
+   - Location: db.insert('dating_profiles')
+   - Payload: {user_id: 123, religion: "Buddhist"}
+   - Timestamp: 10:30:00.145
+
+5. Privacy Probe captures SINK #2:
+   - Location: logger.log('profile_updated')
+   - Payload: {user_id: 123, religion: "Buddhist"}
+   - Timestamp: 10:30:00.156
+
+6. Compare payloads:
+   SOURCE: "Buddhist"
+   SINK #1: "Buddhist" ← EXACT_MATCH ✅
+   SINK #2: "Buddhist" ← EXACT_MATCH ✅
+
+7. Emit lineage signals:
+   - Flow confirmed: religion → dating_profiles table
+   - Flow confirmed: religion → profile_updated logs
+</code></pre></div></div>
+
+<p><strong>Handling transformations:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Case 1: Exact copy
+Source: "Buddhist"
+Sink:   "Buddhist"
+Result: EXACT_MATCH (high confidence) ✅
+
+Case 2: Contained in larger structure
+Source: "Buddhist"
+Sink:   {metadata: {religion: "Buddhist", verified: true}}
+Result: CONTAINS (high confidence) ✅
+
+Case 3: Transformed
+Source: {religions: ["Buddhist", "Hindu"]}
+Sink:   {count: 2}
+Result: NO_MATCH (low confidence) ⚠️
+</code></pre></div></div>
+
+<p><strong>Match-set vs Full-set:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Match-set (high confidence):
+├─ EXACT_MATCH: Source equals sink
+├─ CONTAINS: Sink contains source as substring
+└─ Used for automatic lineage
+
+Full-set (lower confidence):
+├─ All source-sink pairs in a request
+├─ Includes transformed data (NO_MATCH)
+├─ Requires human review
+└─ Used for discovering hidden transformations
+</code></pre></div></div>
+
+<h3 id="the-power-of-runtime--static-analysis">The Power of Runtime + Static Analysis</h3>
+
+<p><strong>Combined approach:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Static Analysis finds:
+- All possible code paths (100 potential flows)
+- Including paths never executed
+- High recall, lower precision
+
+Privacy Probes verify:
+- Actual flows that happen (15 real flows)
+- With exact payloads
+- High precision, lower recall (only sampled)
+
+Combined:
+✅ High recall (static finds everything)
+✅ High precision (runtime verifies)
+✅ Best of both worlds
+</code></pre></div></div>
+
+<p><strong>Real example:</strong></p>
+
+<div class="language-hack highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function</span> <span class="n">processProfile</span><span class="p">(</span><span class="kt">data</span><span class="o">:</span> <span class="k">array</span><span class="p">):</span> <span class="kt">void</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nf">should_log_religion</span><span class="p">())</span> <span class="p">{</span>  <span class="c1">// Complex business logic</span>
+    <span class="nb">log</span><span class="p">(</span><span class="s1">'religion'</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">'religion'</span><span class="p">]);</span>
+  <span class="p">}</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nf">should_send_to_recommendations</span><span class="p">())</span> <span class="p">{</span>  <span class="c1">// More complex logic</span>
+    <span class="n">api</span><span class="o">-&gt;</span><span class="nf">call</span><span class="p">(</span><span class="s1">'/recommendations'</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">Static</span> <span class="n">analysis</span> <span class="n">says</span><span class="o">:</span>
+<span class="s2">"Religion might flow to logs AND recommendations"</span>
+
+<span class="nc">Privacy</span> <span class="nc">Probes</span> <span class="nf">observe</span> <span class="p">(</span><span class="n">over</span> <span class="mi">1</span> <span class="n">week</span><span class="p">)</span><span class="o">:</span>
+<span class="o">-</span> <span class="nc">Logs</span><span class="o">:</span> <span class="nc">Observed</span> <span class="mi">10</span><span class="p">,</span><span class="mo">000</span> <span class="n">times</span> <span class="err">✅</span> <span class="nc">Definitely</span> <span class="n">happens</span>
+<span class="o">-</span> <span class="nc">Recommendations</span><span class="o">:</span> <span class="nc">Observed</span> <span class="mi">0</span> <span class="n">times</span> <span class="err">❌</span> <span class="nc">Likely</span> <span class="n">gated</span>
+
+<span class="nc">Conclusion</span><span class="o">:</span>
+<span class="o">-</span> <span class="nc">Log</span> <span class="n">flow</span><span class="o">:</span> <span class="nf">REAL</span> <span class="p">(</span><span class="k">include</span> <span class="n">in</span> <span class="n">lineage</span><span class="p">)</span>
+<span class="o">-</span> <span class="nc">Recommendation</span> <span class="n">flow</span><span class="o">:</span> <span class="kc">FALSE</span> <span class="nf">POSITIVE</span> <span class="p">(</span><span class="n">exclude</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="instrumentation-points">Instrumentation Points</h3>
+
+<p><strong>Where Privacy Probes are embedded:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Meta's core frameworks:
+├─ Database layers (MySQL, RocksDB)
+│  └─ Captures: Table reads/writes
+│
+├─ Logging frameworks
+│  └─ Captures: All log writes
+│
+├─ API clients
+│  └─ Captures: API calls
+│
+├─ Caching layers (Memcache, TAO)
+│  └─ Captures: Cache reads/writes
+│
+├─ Message queues
+│  └─ Captures: Queue reads/writes
+│
+└─ Service mesh
+   └─ Captures: Service-to-service calls
+
+Coverage: 90%+ of data flows
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="collecting-signals-data-warehouse-sql-systems">Collecting Signals: Data Warehouse (SQL Systems)</h2>
+
+<h3 id="the-challenge">The Challenge</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Data warehouse jobs process billions of rows</span>
+<span class="c1">-- How do we track lineage through SQL?</span>
+
+<span class="c1">-- Example: Safety training data job</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">safety_training_tbl</span>
+<span class="k">SELECT</span> 
+  <span class="n">user_id</span> <span class="k">as</span> <span class="n">target_user_id</span><span class="p">,</span>
+  <span class="n">religion</span> <span class="k">as</span> <span class="n">target_religion</span><span class="p">,</span>
+  <span class="n">reported_count</span><span class="p">,</span>
+  <span class="k">CASE</span> 
+    <span class="k">WHEN</span> <span class="n">religion</span> <span class="k">IN</span> <span class="p">(</span><span class="s1">'Muslim'</span><span class="p">,</span> <span class="s1">'Jewish'</span><span class="p">)</span> <span class="k">THEN</span> <span class="s1">'high_sensitivity'</span>
+    <span class="k">ELSE</span> <span class="s1">'normal'</span>
+  <span class="k">END</span> <span class="k">as</span> <span class="n">sensitivity_level</span>
+<span class="k">FROM</span> <span class="n">dating_profiles_log</span>
+<span class="k">WHERE</span> <span class="nb">date</span> <span class="o">&gt;=</span> <span class="s1">'2025-01-01'</span>
+  <span class="k">AND</span> <span class="n">user_id</span> <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Questions:</strong></p>
+<ul>
+  <li>Which columns flow where?</li>
+  <li>What transformations happen?</li>
+  <li>Where does <code class="language-plaintext highlighter-rouge">religion</code> end up?</li>
+</ul>
+
+<h3 id="technique-sql-query-analysis">Technique: SQL Query Analysis</h3>
+
+<p><strong>How it works:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. SQL queries are logged by compute engines:
+   - Presto
+   - Spark
+   - Hive
+   - Others
+
+2. Static SQL analyzer parses queries:
+   - Extract input tables
+   - Extract output tables
+   - Map column lineage
+
+3. Build lineage graph:
+   Input: dating_profiles_log.religion
+   Output: safety_training_tbl.target_religion
+   Transformation: Direct copy + rename
+</code></pre></div></div>
+
+<p><strong>SQL analyzer example:</strong></p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Original query</span>
+<span class="k">SELECT</span> <span class="n">religion</span> <span class="k">as</span> <span class="n">target_religion</span>
+<span class="k">FROM</span> <span class="n">dating_profiles_log</span>
+
+<span class="c1">-- Analyzer output</span>
+<span class="p">{</span>
+  <span class="nv">"input_table"</span><span class="p">:</span> <span class="nv">"dating_profiles_log"</span><span class="p">,</span>
+  <span class="nv">"input_columns"</span><span class="p">:</span> <span class="p">[</span><span class="nv">"religion"</span><span class="p">],</span>
+  <span class="nv">"output_table"</span><span class="p">:</span> <span class="nv">"safety_training_tbl"</span><span class="p">,</span>
+  <span class="nv">"output_columns"</span><span class="p">:</span> <span class="p">[</span><span class="nv">"target_religion"</span><span class="p">],</span>
+  <span class="nv">"column_lineage"</span><span class="p">:</span> <span class="p">[</span>
+    <span class="p">{</span>
+      <span class="nv">"source"</span><span class="p">:</span> <span class="nv">"dating_profiles_log.religion"</span><span class="p">,</span>
+      <span class="nv">"target"</span><span class="p">:</span> <span class="nv">"safety_training_tbl.target_religion"</span><span class="p">,</span>
+      <span class="nv">"transformation"</span><span class="p">:</span> <span class="nv">"RENAME"</span>
+    <span class="p">}</span>
+  <span class="p">],</span>
+  <span class="nv">"confidence"</span><span class="p">:</span> <span class="nv">"HIGH"</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>Column-level lineage:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Granular tracking:
+
+Table-level:
+dating_profiles_log → safety_training_tbl
+(Not very useful: what about other columns?)
+
+Column-level:
+dating_profiles_log.religion → safety_training_tbl.target_religion
+dating_profiles_log.user_id → safety_training_tbl.target_user_id
+(Much more useful for privacy!)
+</code></pre></div></div>
+
+<h3 id="handling-complex-sql">Handling Complex SQL</h3>
+
+<p><strong>Challenge: Complex transformations</strong></p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Complex transformation</span>
+<span class="k">SELECT</span> 
+  <span class="n">user_id</span><span class="p">,</span>
+  <span class="c1">-- Direct copy</span>
+  <span class="n">religion</span><span class="p">,</span>
+  
+  <span class="c1">-- Aggregation</span>
+  <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">match_count</span><span class="p">,</span>
+  
+  <span class="c1">-- CASE statement</span>
+  <span class="k">CASE</span> 
+    <span class="k">WHEN</span> <span class="n">religion</span> <span class="o">=</span> <span class="s1">'Buddhist'</span> <span class="k">THEN</span> <span class="mi">1</span> 
+    <span class="k">ELSE</span> <span class="mi">0</span> 
+  <span class="k">END</span> <span class="k">as</span> <span class="n">is_buddhist</span><span class="p">,</span>
+  
+  <span class="c1">-- Concatenation</span>
+  <span class="n">CONCAT</span><span class="p">(</span><span class="n">religion</span><span class="p">,</span> <span class="s1">'_'</span><span class="p">,</span> <span class="n">ethnicity</span><span class="p">)</span> <span class="k">as</span> <span class="n">religion_ethnicity</span><span class="p">,</span>
+  
+  <span class="c1">-- Subquery</span>
+  <span class="p">(</span><span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">matches</span> <span class="k">WHERE</span> <span class="n">matches</span><span class="p">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">user_id</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_matches</span>
+  
+<span class="k">FROM</span> <span class="n">dating_profiles_log</span> <span class="n">p</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>SQL analyzer handles:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>For each output column, track dependencies:
+
+religion → religion (direct copy) ✅
+religion → is_buddhist (derived) ✅
+religion → religion_ethnicity (concatenation) ✅
+
+Match count:
+- Depends on: COUNT(*) aggregate
+- Does NOT contain religion data ✅
+
+Total_matches:
+- Depends on: subquery
+- Need to analyze subquery separately ✅
+</code></pre></div></div>
+
+<h3 id="connecting-reads-and-writes">Connecting Reads and Writes</h3>
+
+<p><strong>The challenge:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Job logs might be incomplete:
+
+Log 1: "Read from dating_profiles_log"
+[No write logged]
+
+Log 2: "Write to safety_training_tbl"
+[No read logged]
+
+Question: Are these the same job?
+</code></pre></div></div>
+
+<p><strong>Solution: Contextual matching</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Use execution context to connect reads/writes:
+
+Context matching:
+├─ Job ID (same Spark job)
+├─ Trace ID (same execution trace)
+├─ Timestamp (within same time window)
+├─ User ID (same service account)
+└─ Execution environment
+
+Example:
+Log 1: 
+  job_id: spark_job_12345
+  action: READ dating_profiles_log
+  timestamp: 10:30:00
+
+Log 2:
+  job_id: spark_job_12345  ← Same job!
+  action: WRITE safety_training_tbl
+  timestamp: 10:30:15
+
+Conclusion: These are connected!
+Flow: dating_profiles_log → safety_training_tbl ✅
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="collecting-signals-ai-systems">Collecting Signals: AI Systems</h2>
+
+<h3 id="the-challenge-1">The Challenge</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Model training config
+</span><span class="n">training_config</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="sh">"</span><span class="s">model_name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">dating_ranking_model</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">input_dataset</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">asset://hive.table/dating_training_tbl</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">features</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">DATING_USER_AGE</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">DATING_USER_LOCATION</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">DATING_USER_RELIGION_SCORE</span><span class="sh">"</span><span class="p">,</span>  <span class="c1"># ← Religion feature!
+</span>  <span class="p">],</span>
+  <span class="sh">"</span><span class="s">output_model</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">asset://ai.model/dating_ranking_model</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">training_params</span><span class="sh">"</span><span class="p">:</span> <span class="p">{...}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>Questions:</strong></p>
+<ul>
+  <li>Which data does this model use?</li>
+  <li>Does it use sensitive data?</li>
+  <li>Where are the model inferences used?</li>
+</ul>
+
+<h3 id="technique-config-parsing--runtime-instrumentation">Technique: Config Parsing + Runtime Instrumentation</h3>
+
+<p><strong>Config parsing:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Parse training configs to extract relationships:
+
+Input:
+- Dataset: dating_training_tbl
+- Features: DATING_USER_RELIGION_SCORE
+
+Output:
+- Model: dating_ranking_model
+
+Lineage:
+dating_training_tbl 
+  → DATING_USER_RELIGION_SCORE
+  → dating_ranking_model ✅
+</code></pre></div></div>
+
+<p><strong>Full AI lineage chain:</strong></p>
+
+<div class="mermaid">
+flowchart TD
+    DATA["Input Dataset<br />dating_training_tbl"]
+    FEATURE["Feature<br />DATING_USER_RELIGION_SCORE"]
+    MODEL["Model<br />dating_ranking_model"]
+    INFERENCE["Inference Service<br />dating_recommendations"]
+    PRODUCT["Product<br />Dating App"]
+    
+    DATA --&gt; FEATURE
+    FEATURE --&gt; MODEL
+    MODEL --&gt; INFERENCE
+    INFERENCE --&gt; PRODUCT
+    
+    style FEATURE fill:#fef3c7,stroke:#f59e0b
+    style MODEL fill:#dbeafe,stroke:#2563eb
+</div>
+
+<p><strong>Capturing at multiple levels:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>AI pipeline stages:
+
+1. Data loading (DPP framework)
+   - Instrumented to capture: dataset → features
+
+2. Model training (FBLearner Flow)
+   - Instrumented to capture: features → model
+
+3. Model registration
+   - Config parsing: model metadata
+
+4. Inference service (Backend service)
+   - Privacy Probes: model → API responses
+
+5. Product integration
+   - Privacy Probes: API → user-facing features
+
+Result: End-to-end AI lineage ✅
+</code></pre></div></div>
+
+<h3 id="real-example-ai-lineage">Real Example: AI Lineage</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Starting point: Religion data in dating_training_tbl
+
+Lineage trace:
+
+1. Data loading:
+   dating_training_tbl.religion 
+   → DPP loads into feature store
+
+2. Feature engineering:
+   feature_store.religion
+   → DATING_USER_RELIGION_SCORE (computed feature)
+
+3. Model training:
+   DATING_USER_RELIGION_SCORE
+   → dating_ranking_model (training input)
+
+4. Model deployment:
+   dating_ranking_model
+   → inference_service (model serving)
+
+5. Product:
+   inference_service
+   → Dating app recommendations
+
+6. Privacy check:
+   Is religion used outside Dating?
+   - Check inference_service callers
+   - If any non-Dating caller: VIOLATION ❌
+   - If only Dating callers: COMPLIANT ✅
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="stage-2-identifying-relevant-data-flows">Stage 2: Identifying Relevant Data Flows</h2>
+
+<h3 id="the-lineage-graph">The Lineage Graph</h3>
+
+<p>After collecting signals, Meta has a massive graph:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Scale:
+├─ Nodes: 10,000,000+ assets
+├─ Edges: 100,000,000+ data flows
+├─ Updates: Real-time (1,000+ per second)
+└─ Storage: Graph database
+
+Challenge: How do you query this efficiently?
+</code></pre></div></div>
+
+<h3 id="the-iterative-discovery-process">The Iterative Discovery Process</h3>
+
+<blockquote>
+  <p><strong>Problem:</strong> Given a source (religion data), find all relevant downstream flows.</p>
+</blockquote>
+
+<p><strong>Naive approach (doesn’t work):</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Start at: dating_profiles.religion
+Find: All downstream assets
+
+Result: 
+- 1,000,000+ downstream assets
+- 99.9% are false positives
+- Takes hours to compute
+- Unusable
+
+Why? The graph is too large and interconnected!
+</code></pre></div></div>
+
+<p><strong>Meta’s solution: Iterative filtering</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3-step cycle:
+
+1. Discover flows:
+   - Start from source
+   - Traverse graph
+   - Stop at low-confidence edges
+
+2. Human review:
+   - Engineer excludes false positives
+   - Engineer confirms true positives
+   - Apply privacy controls
+
+3. Repeat:
+   - Use confirmed nodes as new sources
+   - Continue traversal
+   - Until no new nodes
+
+Result: Only relevant flows, manageable size
+</code></pre></div></div>
+
+<h3 id="example-finding-religion-data-flows">Example: Finding Religion Data Flows</h3>
+
+<p><strong>Iteration 1:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: dating_profiles.religion
+
+Discover (automatic):
+├─ dating_profiles_log (high confidence) ✅
+├─ profile_update_events (high confidence) ✅
+├─ recommendation_temp_table (low confidence) ⚠️
+└─ generic_analytics_table (low confidence) ⚠️
+
+Human review:
+├─ dating_profiles_log: INCLUDE ✅
+│  └─ Action: Apply privacy controls
+│
+├─ profile_update_events: INCLUDE ✅
+│  └─ Action: Apply privacy controls
+│
+├─ recommendation_temp_table: EXCLUDE ❌
+│  └─ Reason: Doesn't actually contain religion
+│
+└─ generic_analytics_table: EXCLUDE ❌
+   └─ Reason: Aggregated, no sensitive data
+
+Confirmed nodes: 2 (dating_profiles_log, profile_update_events)
+</code></pre></div></div>
+
+<p><strong>Iteration 2:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: dating_profiles_log, profile_update_events
+
+Discover from dating_profiles_log:
+├─ safety_training_tbl (high confidence) ✅
+├─ data_warehouse_agg_daily (low confidence) ⚠️
+└─ export_table_xyz (low confidence) ⚠️
+
+Human review:
+├─ safety_training_tbl: INCLUDE ✅
+│  └─ Action: Apply privacy controls
+│
+└─ Others: EXCLUDE ❌
+
+Confirmed nodes: +1 (safety_training_tbl)
+</code></pre></div></div>
+
+<p><strong>Iteration 3:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: safety_training_tbl
+
+Discover from safety_training_tbl:
+├─ ai_feature_store (high confidence) ✅
+└─ No other high-confidence flows
+
+Human review:
+└─ ai_feature_store: INCLUDE ✅
+
+Confirmed nodes: +1 (ai_feature_store)
+</code></pre></div></div>
+
+<p><strong>Iteration 4:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: ai_feature_store
+
+Discover:
+├─ dating_ranking_model (high confidence) ✅
+└─ No other flows
+
+Human review:
+└─ dating_ranking_model: INCLUDE ✅
+   └─ Final destination: Dating app only
+   └─ Privacy requirement: SATISFIED ✅
+
+Done! No more relevant flows.
+</code></pre></div></div>
+
+<h3 id="the-power-of-cascading-exclusions">The Power of Cascading Exclusions</h3>
+
+<p><strong>Key insight:</strong></p>
+
+<blockquote>
+  <p>When you exclude a node early, all its downstream is automatically excluded — saving massive review effort.</p>
+</blockquote>
+
+<p><strong>Example:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>If generic_analytics_table is excluded in Iteration 1:
+├─ Excludes itself: 1 asset
+├─ Excludes 500 downstream tables
+├─ Excludes 10,000 downstream views
+└─ Excludes 100,000 total assets
+
+Total review effort saved: 99%+ ✅
+
+By excluding one false positive early,
+you avoid reviewing 100,000 downstream assets!
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="the-tool-policy-zone-manager-pzm">The Tool: Policy Zone Manager (PZM)</h2>
+
+<h3 id="developer-experience">Developer Experience</h3>
+
+<p><strong>Before PZM (manual):</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Engineer task: "Protect religion data in Dating"
+
+Week 1-4: Find where religion is used
+- Read code manually
+- Interview teams
+- Build spreadsheet
+
+Week 5-8: Identify downstream flows
+- Trace each flow manually
+- Check transformations
+- More spreadsheets
+
+Week 9-12: Apply privacy controls
+- Modify code in 100+ places
+- Test each change
+- Hope nothing breaks
+
+Total: 3 months, high error rate ❌
+</code></pre></div></div>
+
+<p><strong>After PZM (with lineage):</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Engineer task: "Protect religion data in Dating"
+
+Hour 1: Query lineage
+- Open PZM tool
+- Query: "Find all flows from dating_profiles.religion"
+- Results: Visual graph in 30 seconds ✅
+
+Hour 2-4: Review flows
+- Interactive UI shows all flows
+- Mark relevant: Include/Exclude
+- Tool applies controls automatically
+
+Day 1: Deploy controls
+- PZM generates code changes
+- Review and deploy
+- Continuous monitoring enabled
+
+Total: 1 day, low error rate ✅
+
+Time saved: 99%
+</code></pre></div></div>
+
+<h3 id="pzm-features">PZM Features</h3>
+
+<p><strong>Visual lineage graph:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Interactive UI:
+├─ Visual graph of data flows
+├─ Click nodes to expand/collapse
+├─ Color coding:
+│  ├─ Green: Protected
+│  ├─ Yellow: Needs review
+│  └─ Red: Violation detected
+├─ Filter by:
+│  ├─ Confidence level
+│  ├─ Data type
+│  └─ System
+└─ Export to code changes
+</code></pre></div></div>
+
+<p><strong>Bulk operations:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Instead of reviewing one flow at a time:
+
+Bulk exclude:
+- Select 100 false positive nodes
+- Click "Exclude all + downstream"
+- Saves weeks of work ✅
+
+Bulk include:
+- Select all high-confidence Dating assets
+- Click "Apply privacy controls"
+- Automatically generates code ✅
+</code></pre></div></div>
+
+<p><strong>Continuous monitoring:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>After initial setup:
+
+PZM monitors continuously:
+├─ New code deployed
+├─ New data flows detected
+├─ Check against policies
+├─ Alert if violation:
+│  └─ "New flow detected: religion → ads"
+│  └─ "BLOCK: Violates purpose limitation"
+└─ Automatic enforcement ✅
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="the-technology-stack">The Technology Stack</h2>
+
+<h3 id="architecture-overview">Architecture Overview</h3>
+
+<div class="mermaid">
+flowchart TD
+    SOURCES["Data Sources"]
+    WEB["Web/API<br />Servers"]
+    BATCH["Data<br />Warehouse"]
+    AI["AI<br />Systems"]
+    
+    COLLECTORS["Collectors"]
+    STATIC["Static<br />Analyzer"]
+    PROBES["Privacy<br />Probes"]
+    SQL["SQL<br />Analyzer"]
+    
+    PIPELINE["Processing Pipeline"]
+    DEDUP["Deduplication"]
+    SCORING["Confidence<br />Scoring"]
+    MERGE["Signal<br />Merging"]
+    
+    GRAPH["Lineage Graph<br />(Graph DB)"]
+    
+    TOOLS["Tools"]
+    PZM["Policy Zone<br />Manager"]
+    API["Query<br />API"]
+    MONITOR["Continuous<br />Monitoring"]
+    
+    SOURCES --&gt; WEB
+    SOURCES --&gt; BATCH
+    SOURCES --&gt; AI
+    
+    WEB --&gt; STATIC
+    WEB --&gt; PROBES
+    BATCH --&gt; SQL
+    AI --&gt; STATIC
+    
+    STATIC --&gt; COLLECTORS
+    PROBES --&gt; COLLECTORS
+    SQL --&gt; COLLECTORS
+    
+    COLLECTORS --&gt; PIPELINE
+    PIPELINE --&gt; DEDUP
+    DEDUP --&gt; SCORING
+    SCORING --&gt; MERGE
+    MERGE --&gt; GRAPH
+    
+    GRAPH --&gt; PZM
+    GRAPH --&gt; API
+    GRAPH --&gt; MONITOR
+    
+    style PROBES fill:#fef3c7,stroke:#f59e0b
+    style GRAPH fill:#dbeafe,stroke:#2563eb
+</div>
+
+<h3 id="key-components">Key Components</h3>
+
+<p><strong>1. Privacy Probes (Runtime)</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Implementation:
+├─ Language: C++ (performance-critical)
+├─ Sampling: 1% of requests (configurable)
+├─ Overhead: &lt;1% latency impact
+├─ Storage: In-memory buffers
+└─ Processing: Asynchronous
+
+Scale:
+├─ Requests sampled: 10M+ per second
+├─ Payloads captured: 100M+ per second
+├─ Comparisons: 1B+ per second
+└─ Signals emitted: 10M+ per second
+</code></pre></div></div>
+
+<p><strong>2. Static Analyzers</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Supported languages:
+├─ Hack (primary web language)
+├─ C++ (performance-critical services)
+├─ Python (ML pipelines)
+├─ Java (legacy services)
+└─ JavaScript (frontend)
+
+Analysis scope:
+├─ Code analyzed: 100M+ lines
+├─ Analysis time: Minutes (incremental)
+├─ AST nodes: Billions
+└─ Data flows found: 100M+
+</code></pre></div></div>
+
+<p><strong>3. SQL Analyzer</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Supported engines:
+├─ Presto
+├─ Spark
+├─ Hive
+├─ Custom SQL variants
+
+Capabilities:
+├─ Table lineage ✅
+├─ Column lineage ✅
+├─ Transformation tracking ✅
+├─ CTE support ✅
+├─ Subquery analysis ✅
+└─ Window functions ✅
+</code></pre></div></div>
+
+<p><strong>4. Lineage Graph Database</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Requirements:
+├─ Store: 10M+ nodes, 100M+ edges
+├─ Query: Sub-second for most queries
+├─ Update: Real-time (1,000+ updates/sec)
+├─ Traverse: Multi-hop paths efficiently
+└─ Scale: Horizontally
+
+Technology:
+├─ Custom graph database
+├─ Distributed across data centers
+├─ Replicated for reliability
+└─ Optimized for graph traversal
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="results-and-impact">Results and Impact</h2>
+
+<h3 id="by-the-numbers">By The Numbers</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Coverage:
+✅ Assets tracked: 10,000,000+
+✅ Data flows mapped: 100,000,000+
+✅ Languages supported: 10+
+✅ Systems instrumented: 100+
+✅ Teams using: 500+
+
+Accuracy:
+✅ Precision: 90%+ (match-set)
+✅ Recall: 85%+ (combined static + runtime)
+✅ False positive rate: &lt;10%
+✅ False negative rate: &lt;15%
+
+Performance:
+✅ Lineage query time: &lt;30 seconds
+✅ Real-time updates: &lt;5 minute delay
+✅ System overhead: &lt;1% latency
+✅ Cost per query: $0 (after infrastructure)
+</code></pre></div></div>
+
+<h3 id="time-savings">Time Savings</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Privacy control implementation:
+
+Before lineage:
+- Manual code review: 6-12 months
+- Engineering cost: $5M per requirement
+- Error rate: 40-50%
+- Coverage: 60-70%
+
+After lineage:
+- Automated discovery: 1 day
+- Engineering cost: $50K per requirement
+- Error rate: &lt;10%
+- Coverage: 90%+
+
+Time saved: 99%
+Cost saved: 99%
+Quality improved: 4x ✅
+</code></pre></div></div>
+
+<h3 id="privacy-impact">Privacy Impact</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Privacy controls deployed:
+├─ Purpose limitations: 1,000+
+├─ Data flows protected: 100,000+
+├─ Privacy violations prevented: 100s per year
+└─ Compliance verified: Continuous
+
+Regulatory compliance:
+✅ GDPR: Auditable compliance
+✅ CCPA: Verified enforcement
+✅ COPPA: Automatic children's data protection
+✅ Others: Framework extensible
+</code></pre></div></div>
+
+<h3 id="developer-productivity">Developer Productivity</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before:
+├─ 70% time on data flow discovery
+├─ 20% time on privacy reviews
+└─ 10% time on feature development
+
+After:
+├─ 10% time on data flow discovery (automated)
+├─ 20% time on privacy reviews (streamlined)
+└─ 70% time on feature development ✅
+
+Developer happiness: Significantly improved
+Product velocity: 7x faster for privacy work
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="key-learnings-and-challenges">Key Learnings and Challenges</h2>
+
+<h3 id="learning-1-focus-on-lineage-early">Learning 1: Focus on Lineage Early</h3>
+
+<blockquote>
+  <p><strong>Insight:</strong> Data lineage should be the FIRST step in privacy infrastructure, not an afterthought.</p>
+</blockquote>
+
+<p><strong>What Meta learned:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Initial approach:
+1. Build Policy Zones (privacy controls)
+2. Manually find where to apply them
+3. Realize: Can't scale without lineage
+4. Build lineage
+5. Accelerate Policy Zones adoption
+
+Better approach:
+1. Build data lineage first
+2. Use lineage to guide Policy Zones rollout
+3. Much faster adoption
+4. Better coverage
+
+Lesson: Invest in lineage before building controls
+</code></pre></div></div>
+
+<h3 id="learning-2-build-consumption-tools">Learning 2: Build Consumption Tools</h3>
+
+<blockquote>
+  <p><strong>Insight:</strong> Raw lineage data is useless without great tools.</p>
+</blockquote>
+
+<p><strong>What went wrong:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Year 1:
+- Built lineage collection
+- Engineers: "Great, where's the query tool?"
+- Team: "Just query the database directly"
+- Engineers: "This is too complex..."
+- Adoption: 10%
+
+Year 2:
+- Built Policy Zone Manager (PZM)
+- Visual interface
+- Interactive exploration
+- Bulk operations
+- Adoption: 80% ✅
+
+Lesson: Invest 50% in collection, 50% in tools
+</code></pre></div></div>
+
+<h3 id="learning-3-integrate-with-systems">Learning 3: Integrate with Systems</h3>
+
+<blockquote>
+  <p><strong>Insight:</strong> Don’t ask every team to instrument their code — provide libraries that do it automatically.</p>
+</blockquote>
+
+<p><strong>What worked:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad approach:
+- "Every team: Please add lineage tracking to your code"
+- Result: 30% compliance, inconsistent quality
+
+Good approach:
+- Instrument core frameworks (logging, DB, APIs)
+- All code using frameworks gets lineage automatically
+- Result: 90% coverage, consistent quality ✅
+
+Lesson: Make lineage automatic, not optional
+</code></pre></div></div>
+
+<h3 id="learning-4-combine-static-and-runtime">Learning 4: Combine Static and Runtime</h3>
+
+<blockquote>
+  <p><strong>Insight:</strong> Neither static nor runtime analysis alone is sufficient — you need both.</p>
+</blockquote>
+
+<p><strong>Why both:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Static alone:
+✅ Finds all possible flows
+❌ Many false positives
+❌ Can't see transformations
+❌ Can't verify actual behavior
+
+Runtime alone:
+✅ High accuracy
+❌ Only sees executed code
+❌ Sampling gaps
+❌ Expensive at scale
+
+Combined:
+✅ High recall (static finds everything)
+✅ High precision (runtime verifies)
+✅ Best accuracy
+✅ Practical at scale
+</code></pre></div></div>
+
+<h3 id="learning-5-measure-coverage">Learning 5: Measure Coverage</h3>
+
+<blockquote>
+  <p><strong>Insight:</strong> You can’t improve what you don’t measure.</p>
+</blockquote>
+
+<p><strong>What Meta measures:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Coverage metrics:
+├─ % of assets with lineage
+├─ % of code paths analyzed
+├─ % of systems instrumented
+├─ % of data flows captured
+└─ Tracked weekly, improved continuously
+
+Quality metrics:
+├─ Precision (false positive rate)
+├─ Recall (false negative rate)
+├─ Latency (query response time)
+└─ Adoption (teams using the tool)
+
+Result: Continuous improvement
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="challenges-and-limitations">Challenges and Limitations</h2>
+
+<h3 id="challenge-1-dynamic-and-transformed-data">Challenge 1: Dynamic and Transformed Data</h3>
+
+<p><strong>The problem:</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original data
+</span><span class="n">religion</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Buddhist</span><span class="sh">"</span>
+
+<span class="c1"># Transformation 1: Encoding
+</span><span class="n">religion_encoded</span> <span class="o">=</span> <span class="nf">encode</span><span class="p">(</span><span class="n">religion</span><span class="p">)</span>  <span class="c1"># "B01"
+</span>
+<span class="c1"># Transformation 2: Aggregation
+</span><span class="n">religion_count</span> <span class="o">=</span> <span class="nf">count_values</span><span class="p">([</span><span class="n">religion_encoded</span><span class="p">,</span> <span class="p">...])</span>  <span class="c1"># 42
+</span>
+<span class="c1"># Transformation 3: ML embedding
+</span><span class="n">religion_vector</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">embed</span><span class="p">(</span><span class="n">religion</span><span class="p">)</span>  <span class="c1"># [0.23, -0.15, 0.67, ...]
+</span>
+<span class="n">Question</span><span class="p">:</span> <span class="n">Is</span> <span class="n">religion_vector</span> <span class="n">still</span> <span class="sh">"</span><span class="s">religion data</span><span class="sh">"</span><span class="err">?</span>
+</code></pre></div></div>
+
+<p><strong>Current approach:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>High confidence (automatic):
+✅ Direct copies
+✅ Substring matching
+✅ Simple renames
+
+Low confidence (human review):
+⚠️ Encoded values
+⚠️ Aggregations
+⚠️ ML embeddings
+⚠️ Complex transformations
+
+Limitation: Some transformations require human judgment
+</code></pre></div></div>
+
+<h3 id="challenge-2-scale-and-performance">Challenge 2: Scale and Performance</h3>
+
+<p><strong>The trade-offs:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Sampling rate vs accuracy:
+├─ 100% sampling: Perfect accuracy, 10x cost
+├─ 10% sampling: Good accuracy, 2x cost
+├─ 1% sampling: Acceptable accuracy, 1x cost
+└─ Current: 1% sampling (tuned per system)
+
+Graph size vs query performance:
+├─ All assets: Complete, slow queries
+├─ Filtered assets: Incomplete, fast queries
+└─ Current: Intelligent indexing + caching
+
+Trade-off: Accept some gaps for practical performance
+</code></pre></div></div>
+
+<h3 id="challenge-3-constant-evolution">Challenge 3: Constant Evolution</h3>
+
+<p><strong>The moving target:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Changes per day:
+├─ New code: 1,000+ commits
+├─ New tables: 100s
+├─ New services: 10s
+├─ Schema changes: 100s
+└─ Always updating
+
+Challenge:
+- Lineage must update in real-time
+- Can't afford batch recomputation
+- Must handle incremental updates
+- Need to detect and alert on new flows
+
+Solution:
+- Incremental updates
+- Event-driven processing
+- Continuous monitoring
+- Alert on policy violations
+</code></pre></div></div>
+
+<h3 id="challenge-4-false-positives">Challenge 4: False Positives</h3>
+
+<p><strong>The review burden:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>At Meta scale:
+├─ Total flows: 100M+
+├─ False positive rate: 10%
+├─ False positives: 10M flows
+└─ Human review: Impossible for all
+
+Strategy:
+1. Auto-exclude obvious false positives (heuristics)
+2. Focus review on high-confidence flows
+3. Iterative filtering (exclude cascades)
+4. ML models to predict false positives
+5. Continuous improvement
+
+Result: Manageable review load (100s, not millions)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="future-directions">Future Directions</h2>
+
+<h3 id="expansion-more-coverage">Expansion: More Coverage</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Expanding lineage to:
+├─ Mobile apps (iOS, Android)
+├─ Edge computing
+├─ Third-party integrations
+├─ Encrypted data
+└─ Cross-platform flows
+
+Goal: 99%+ coverage of all data flows
+</code></pre></div></div>
+
+<h3 id="improvement-better-accuracy">Improvement: Better Accuracy</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Improving transformation tracking:
+├─ ML models to match encoded data
+├─ Semantic similarity for embeddings
+├─ Pattern recognition for aggregations
+└─ Automated confidence scoring
+
+Goal: 95%+ precision and recall
+</code></pre></div></div>
+
+<h3 id="innovation-new-use-cases">Innovation: New Use Cases</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Beyond privacy:
+├─ Security: Track sensitive data for security
+├─ Integrity: Prevent data quality issues
+├─ Compliance: Audit trails for regulations
+├─ Cost optimization: Identify unused data
+└─ Data governance: Catalog and discovery
+
+Potential: Lineage as universal platform
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="how-you-can-apply-this">How You Can Apply This</h2>
+
+<h3 id="for-small-companies-10-100-engineers">For Small Companies (10-100 engineers)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Start simple:
+├─ Document critical data flows manually
+├─ Add lightweight instrumentation
+├─ Use open-source lineage tools (e.g., OpenLineage)
+├─ Focus on most sensitive data first
+└─ Build incrementally
+
+Investment: $100K-$500K
+Timeline: 6-12 months
+Result: Good enough for compliance
+</code></pre></div></div>
+
+<h3 id="for-mid-size-companies-100-1000-engineers">For Mid-Size Companies (100-1,000 engineers)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Build basic automation:
+├─ Static analysis for code lineage
+├─ SQL parsing for data warehouse
+├─ Runtime logging for critical paths
+├─ Simple graph database
+└─ Internal query tool
+
+Investment: $1M-$5M
+Timeline: 1-2 years
+Result: Automated lineage for core systems
+</code></pre></div></div>
+
+<h3 id="for-large-companies-1000-engineers">For Large Companies (1,000+ engineers)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Full automation like Meta:
+├─ Multi-language static analysis
+├─ Runtime instrumentation framework
+├─ Distributed graph database
+├─ Developer-friendly tools
+├─ Continuous monitoring
+└─ ML for transformation tracking
+
+Investment: $10M-$50M
+Timeline: 2-4 years
+Result: Complete automated lineage at scale
+</code></pre></div></div>
+
+<h3 id="open-source-options">Open Source Options</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Available tools:
+├─ OpenLineage (LFAI &amp; Data)
+│  └─ Standard for lineage metadata
+│
+├─ Apache Atlas
+│  └─ Data governance and lineage
+│
+├─ Marquez (WeWork)
+│  └─ Metadata service for lineage
+│
+├─ Amundsen (Lyft)
+│  └─ Data discovery with lineage
+│
+└─ DataHub (LinkedIn)
+   └─ Metadata platform with lineage
+
+Start here before building custom!
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<h3 id="the-big-picture">The Big Picture</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Meta's data lineage journey:
+
+The problem:
+├─ Can't protect privacy without knowing where data goes
+├─ Manual tracking breaks down at scale
+├─ Billions of users, millions of assets
+└─ Regulatory requirements (GDPR, CCPA, etc.)
+
+The solution:
+├─ Automated lineage collection (static + runtime)
+├─ Privacy Probes for accurate flow tracking
+├─ SQL analysis for batch systems
+├─ Developer-friendly tools (PZM)
+└─ Continuous monitoring
+
+The results:
+├─ 10M+ assets tracked
+├─ 100M+ data flows mapped
+├─ 99% time saved on privacy work
+├─ 90%+ accuracy
+├─ Enabled Privacy Aware Infrastructure at scale
+└─ Compliance with global regulations
+
+The impact:
+✅ Billions of users protected
+✅ Privacy violations prevented
+✅ Developer productivity 7x improved
+✅ Regulatory compliance verified
+✅ Product innovation enabled
+</code></pre></div></div>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ol>
+  <li><strong>Privacy at scale requires automation</strong>
+    <ul>
+      <li>Manual tracking impossible beyond 100 engineers</li>
+      <li>Need infrastructure, not policies</li>
+      <li>Lineage is the foundation</li>
+    </ul>
+  </li>
+  <li><strong>Combine static and runtime analysis</strong>
+    <ul>
+      <li>Static: High recall, finds all possible flows</li>
+      <li>Runtime: High precision, verifies actual flows</li>
+      <li>Together: Best accuracy</li>
+    </ul>
+  </li>
+  <li><strong>Invest in developer tools</strong>
+    <ul>
+      <li>Raw lineage data is useless</li>
+      <li>Need visual, interactive tools</li>
+      <li>PZM reduced discovery time by 99%</li>
+    </ul>
+  </li>
+  <li><strong>Start with core frameworks</strong>
+    <ul>
+      <li>Don’t ask teams to instrument code</li>
+      <li>Instrument core libraries</li>
+      <li>Automatic coverage</li>
+    </ul>
+  </li>
+  <li><strong>Measure and improve continuously</strong>
+    <ul>
+      <li>Track coverage metrics</li>
+      <li>Monitor accuracy</li>
+      <li>Iterate on quality</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="the-future">The Future</h3>
+
+<blockquote>
+  <p><strong>Data lineage is becoming essential infrastructure — not just for privacy, but for security, compliance, cost optimization, and data governance.</strong></p>
+</blockquote>
+
+<p>As data ecosystems grow more complex, lineage will evolve from a “nice to have” to a fundamental requirement for operating at scale.</p>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><strong><a href="https://engineering.fb.com/2025/01/22/security/how-meta-discovers-data-flows-via-lineage-at-scale/">Original Meta Engineering Blog</a></strong> - Source article with more technical details</li>
+  <li><strong><a href="https://engineering.fb.com/2025/07/23/security/policy-zones-meta-privacy/">Policy Zones at Meta</a></strong> - How Meta enforces purpose limitation</li>
+  <li><strong><a href="https://about.fb.com/news/2021/08/privacy-aware-infrastructure/">Privacy Aware Infrastructure</a></strong> - PAI overview</li>
+  <li><strong><a href="https://openlineage.io/">OpenLineage Project</a></strong> - Open standard for lineage metadata</li>
+  <li><strong><a href="https://www.oreilly.com/library/view/data-governance-the/9781492063483/">Data Governance at Scale</a></strong> - Broader context on data governance</li>
+  <li><strong><a href="https://gdpr-info.eu/issues/purpose-limitation/">GDPR Purpose Limitation</a></strong> - Regulatory requirements</li>
+</ul>
+
+<hr />
+
+<p><strong><a href="/handbook/handbook/_topics/meta-data-lineage-part-1-challenge/">← Back to Part 1: The Challenge</a></strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">case-study</span>, <span class="tag">meta</span>, <span class="tag">data-lineage</span>, <span class="tag">privacy</span>, <span class="tag">infrastructure</span>, <span class="tag">real-world</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2025 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>
