@@ -12,7 +12,7 @@
 
 <h2 id="introduction-the-architecture">Introduction: The Architecture</h2>
 
-<p>Remember the problem from Part 1: When a user enters their religion on Facebook Dating, how do you track where that data goes across Meta’s entire infrastructure?</p>
+<p>Remember the problem from Part 1: When a user shares a family photo with location data, how do you track where that data goes across Meta’s entire infrastructure?</p>
 
 <p><strong>Meta’s solution: A two-stage data lineage system</strong></p>
 
@@ -33,7 +33,7 @@ Stage 2: Identify Relevant Flows
 Result: End-to-end data flow visibility
 </code></pre></div></div>
 
-<p>Let’s walk through each part using the religion data example.</p>
+<p>Let’s walk through each part using the photo location data example.</p>
 
 <hr />
 
@@ -113,33 +113,34 @@ flowchart TD
 
 <h2 id="collecting-signals-web-systems">Collecting Signals: Web Systems</h2>
 
-<h3 id="step-1-user-enters-religion-data">Step 1: User Enters Religion Data</h3>
+<h3 id="step-1-user-shares-photo-with-location">Step 1: User Shares Photo with Location</h3>
 
-<div class="language-hack highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Dating profile endpoint (Hack code)</span>
-<span class="k">function</span> <span class="n">handleProfileUpdate</span><span class="p">(</span><span class="kt">user_id</span><span class="o">:</span> <span class="k">int</span><span class="p">,</span> <span class="kt">data</span><span class="o">:</span> <span class="k">array</span><span class="p">):</span> <span class="kt">void</span> <span class="p">{</span>
-  <span class="c1">// User enters religion</span>
-  <span class="nv">$religion</span> <span class="o">=</span> <span class="nv">$data</span><span class="p">[</span><span class="s1">'religion'</span><span class="p">];</span>  <span class="c1">// "Buddhist"</span>
+<div class="language-hack highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Photo upload endpoint (Hack code)</span>
+<span class="k">function</span> <span class="n">handlePhotoUpload</span><span class="p">(</span><span class="kt">user_id</span><span class="o">:</span> <span class="k">int</span><span class="p">,</span> <span class="kt">photo_data</span><span class="o">:</span> <span class="k">array</span><span class="p">):</span> <span class="kt">void</span> <span class="p">{</span>
+  <span class="c1">// User shares photo with location</span>
+  <span class="nv">$location</span> <span class="o">=</span> <span class="nv">$photo_data</span><span class="p">[</span><span class="s1">'location'</span><span class="p">];</span>  <span class="c1">// "Home, 123 Main St"</span>
   
   <span class="c1">// Store in database</span>
-  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">db</span><span class="o">-&gt;</span><span class="nf">insert</span><span class="p">(</span><span class="s1">'dating_profiles'</span><span class="p">,</span> <span class="p">[</span>
+  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">db</span><span class="o">-&gt;</span><span class="nf">insert</span><span class="p">(</span><span class="s1">'photos'</span><span class="p">,</span> <span class="p">[</span>
     <span class="s1">'user_id'</span> <span class="o">=&gt;</span> <span class="nv">$user_id</span><span class="p">,</span>
-    <span class="s1">'religion'</span> <span class="o">=&gt;</span> <span class="nv">$religion</span><span class="p">,</span>
+    <span class="s1">'photo_url'</span> <span class="o">=&gt;</span> <span class="nv">$photo_data</span><span class="p">[</span><span class="s1">'url'</span><span class="p">],</span>
+    <span class="s1">'location'</span> <span class="o">=&gt;</span> <span class="nv">$location</span><span class="p">,</span>
   <span class="p">]);</span>
   
-  <span class="c1">// Log the update</span>
-  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">logger</span><span class="o">-&gt;</span><span class="nb">log</span><span class="p">(</span><span class="s1">'profile_updated'</span><span class="p">,</span> <span class="p">[</span>
+  <span class="c1">// Log the upload</span>
+  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">logger</span><span class="o">-&gt;</span><span class="nb">log</span><span class="p">(</span><span class="s1">'photo_uploaded'</span><span class="p">,</span> <span class="p">[</span>
     <span class="s1">'user_id'</span> <span class="o">=&gt;</span> <span class="nv">$user_id</span><span class="p">,</span>
-    <span class="s1">'religion'</span> <span class="o">=&gt;</span> <span class="nv">$religion</span><span class="p">,</span>
+    <span class="s1">'location'</span> <span class="o">=&gt;</span> <span class="nv">$location</span><span class="p">,</span>
   <span class="p">]);</span>
   
-  <span class="c1">// Call recommendation service</span>
-  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">api</span><span class="o">-&gt;</span><span class="nf">call</span><span class="p">(</span><span class="s1">'/recommendations/update'</span><span class="p">,</span> <span class="p">[</span>
-    <span class="s1">'profile'</span> <span class="o">=&gt;</span> <span class="nv">$data</span><span class="p">,</span>
+  <span class="c1">// Call nearby friends service</span>
+  <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">api</span><span class="o">-&gt;</span><span class="nf">call</span><span class="p">(</span><span class="s1">'/friends/nearby'</span><span class="p">,</span> <span class="p">[</span>
+    <span class="s1">'location'</span> <span class="o">=&gt;</span> <span class="nv">$location</span><span class="p">,</span>
   <span class="p">]);</span>
 <span class="p">}</span>
 </code></pre></div></div>
 
-<p><strong>Question:</strong> How do we track where <code class="language-plaintext highlighter-rouge">$religion</code> goes?</p>
+<p><strong>Question:</strong> How do we track where <code class="language-plaintext highlighter-rouge">$location</code> goes?</p>
 
 <h3 id="technique-1-static-code-analysis">Technique 1: Static Code Analysis</h3>
 
@@ -153,7 +154,7 @@ flowchart TD
 4. Build flow graph
 
 For our example:
-$religion (source)
+$location (source)
   ├─&gt; $this-&gt;db-&gt;insert (sink: database)
   ├─&gt; $this-&gt;logger-&gt;log (sink: logs)
   └─&gt; $this-&gt;api-&gt;call (sink: API)
@@ -176,10 +177,10 @@ Limitations:
 
 Example false positive:
 if (DEBUG_MODE) {  // Never true in production
-  $this-&gt;log('debug', $religion);
+  $this-&gt;log('debug', $location);
 }
 
-Static analysis says: "Religion logged here!"
+Static analysis says: "Location logged here!"
 Reality: This code never runs
 
 Need runtime signals to verify!
@@ -215,50 +216,50 @@ Need runtime signals to verify!
 <p>Privacy Probes compare source and sink payloads to verify data flows:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Request execution:
-1. User submits: religion = "Buddhist"
+1. User submits: location = "Home, 123 Main St"
 
 2. Privacy Probe captures SOURCE:
-   - Location: handleProfileUpdate()
-   - Payload: {religion: "Buddhist"}
+   - Location: handlePhotoUpload()
+   - Payload: {location: "Home, 123 Main St"}
    - Timestamp: 10:30:00.123
 
 3. Code executes...
 
 4. Privacy Probe captures SINK #1:
-   - Location: db.insert('dating_profiles')
-   - Payload: {user_id: 123, religion: "Buddhist"}
+   - Location: db.insert('photos')
+   - Payload: {user_id: 123, location: "Home, 123 Main St"}
    - Timestamp: 10:30:00.145
 
 5. Privacy Probe captures SINK #2:
-   - Location: logger.log('profile_updated')
-   - Payload: {user_id: 123, religion: "Buddhist"}
+   - Location: logger.log('photo_uploaded')
+   - Payload: {user_id: 123, location: "Home, 123 Main St"}
    - Timestamp: 10:30:00.156
 
 6. Compare payloads:
-   SOURCE: "Buddhist"
-   SINK #1: "Buddhist" ← EXACT_MATCH ✅
-   SINK #2: "Buddhist" ← EXACT_MATCH ✅
+   SOURCE: "Home, 123 Main St"
+   SINK #1: "Home, 123 Main St" ← EXACT_MATCH ✅
+   SINK #2: "Home, 123 Main St" ← EXACT_MATCH ✅
 
 7. Emit lineage signals:
-   - Flow confirmed: religion → dating_profiles table
-   - Flow confirmed: religion → profile_updated logs
+   - Flow confirmed: location → photos table
+   - Flow confirmed: location → photo_uploaded logs
 </code></pre></div></div>
 
 <p><strong>Handling transformations:</strong></p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Case 1: Exact copy
-Source: "Buddhist"
-Sink:   "Buddhist"
+Source: "Home, 123 Main St"
+Sink:   "Home, 123 Main St"
 Result: EXACT_MATCH (high confidence) ✅
 
 Case 2: Contained in larger structure
-Source: "Buddhist"
-Sink:   {metadata: {religion: "Buddhist", verified: true}}
+Source: "Home, 123 Main St"
+Sink:   {metadata: {location: "Home, 123 Main St", lat: 40.7, lon: -74.0}}
 Result: CONTAINS (high confidence) ✅
 
 Case 3: Transformed
-Source: {religions: ["Buddhist", "Hindu"]}
-Sink:   {count: 2}
+Source: {locations: ["Home", "Work", "School"]}
+Sink:   {location_count: 3}
 Result: NO_MATCH (low confidence) ⚠️
 </code></pre></div></div>
 
@@ -298,26 +299,26 @@ Combined:
 
 <p><strong>Real example:</strong></p>
 
-<div class="language-hack highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function</span> <span class="n">processProfile</span><span class="p">(</span><span class="kt">data</span><span class="o">:</span> <span class="k">array</span><span class="p">):</span> <span class="kt">void</span> <span class="p">{</span>
-  <span class="k">if</span> <span class="p">(</span><span class="nf">should_log_religion</span><span class="p">())</span> <span class="p">{</span>  <span class="c1">// Complex business logic</span>
-    <span class="nb">log</span><span class="p">(</span><span class="s1">'religion'</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">'religion'</span><span class="p">]);</span>
+<div class="language-hack highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function</span> <span class="n">processPhoto</span><span class="p">(</span><span class="kt">data</span><span class="o">:</span> <span class="k">array</span><span class="p">):</span> <span class="kt">void</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nf">should_log_location</span><span class="p">())</span> <span class="p">{</span>  <span class="c1">// Complex business logic</span>
+    <span class="nb">log</span><span class="p">(</span><span class="s1">'location'</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">'location'</span><span class="p">]);</span>
   <span class="p">}</span>
   
-  <span class="k">if</span> <span class="p">(</span><span class="nf">should_send_to_recommendations</span><span class="p">())</span> <span class="p">{</span>  <span class="c1">// More complex logic</span>
-    <span class="n">api</span><span class="o">-&gt;</span><span class="nf">call</span><span class="p">(</span><span class="s1">'/recommendations'</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nf">should_send_to_ads</span><span class="p">())</span> <span class="p">{</span>  <span class="c1">// More complex logic</span>
+    <span class="n">api</span><span class="o">-&gt;</span><span class="nf">call</span><span class="p">(</span><span class="s1">'/ad_targeting'</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
   <span class="p">}</span>
 <span class="p">}</span>
 
 <span class="k">Static</span> <span class="n">analysis</span> <span class="n">says</span><span class="o">:</span>
-<span class="s2">"Religion might flow to logs AND recommendations"</span>
+<span class="s2">"Location might flow to logs AND ad targeting"</span>
 
 <span class="nc">Privacy</span> <span class="nc">Probes</span> <span class="nf">observe</span> <span class="p">(</span><span class="n">over</span> <span class="mi">1</span> <span class="n">week</span><span class="p">)</span><span class="o">:</span>
 <span class="o">-</span> <span class="nc">Logs</span><span class="o">:</span> <span class="nc">Observed</span> <span class="mi">10</span><span class="p">,</span><span class="mo">000</span> <span class="n">times</span> <span class="err">✅</span> <span class="nc">Definitely</span> <span class="n">happens</span>
-<span class="o">-</span> <span class="nc">Recommendations</span><span class="o">:</span> <span class="nc">Observed</span> <span class="mi">0</span> <span class="n">times</span> <span class="err">❌</span> <span class="nc">Likely</span> <span class="n">gated</span>
+<span class="o">-</span> <span class="nc">Ad</span> <span class="n">targeting</span><span class="o">:</span> <span class="nc">Observed</span> <span class="mi">0</span> <span class="n">times</span> <span class="err">❌</span> <span class="nc">Likely</span> <span class="n">gated</span><span class="o">/</span><span class="n">blocked</span>
 
 <span class="nc">Conclusion</span><span class="o">:</span>
 <span class="o">-</span> <span class="nc">Log</span> <span class="n">flow</span><span class="o">:</span> <span class="nf">REAL</span> <span class="p">(</span><span class="k">include</span> <span class="n">in</span> <span class="n">lineage</span><span class="p">)</span>
-<span class="o">-</span> <span class="nc">Recommendation</span> <span class="n">flow</span><span class="o">:</span> <span class="kc">FALSE</span> <span class="nf">POSITIVE</span> <span class="p">(</span><span class="n">exclude</span><span class="p">)</span>
+<span class="o">-</span> <span class="nc">Ad</span> <span class="n">targeting</span> <span class="n">flow</span><span class="o">:</span> <span class="kc">FALSE</span> <span class="nf">POSITIVE</span> <span class="p">(</span><span class="n">exclude</span><span class="p">)</span>
 </code></pre></div></div>
 
 <h3 id="instrumentation-points">Instrumentation Points</h3>
@@ -355,17 +356,17 @@ Coverage: 90%+ of data flows
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Data warehouse jobs process billions of rows</span>
 <span class="c1">-- How do we track lineage through SQL?</span>
 
-<span class="c1">-- Example: Safety training data job</span>
-<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">safety_training_tbl</span>
+<span class="c1">-- Example: Location analytics job</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">location_analytics_tbl</span>
 <span class="k">SELECT</span> 
   <span class="n">user_id</span> <span class="k">as</span> <span class="n">target_user_id</span><span class="p">,</span>
-  <span class="n">religion</span> <span class="k">as</span> <span class="n">target_religion</span><span class="p">,</span>
-  <span class="n">reported_count</span><span class="p">,</span>
+  <span class="k">location</span> <span class="k">as</span> <span class="n">user_location</span><span class="p">,</span>
+  <span class="n">photo_count</span><span class="p">,</span>
   <span class="k">CASE</span> 
-    <span class="k">WHEN</span> <span class="n">religion</span> <span class="k">IN</span> <span class="p">(</span><span class="s1">'Muslim'</span><span class="p">,</span> <span class="s1">'Jewish'</span><span class="p">)</span> <span class="k">THEN</span> <span class="s1">'high_sensitivity'</span>
-    <span class="k">ELSE</span> <span class="s1">'normal'</span>
-  <span class="k">END</span> <span class="k">as</span> <span class="n">sensitivity_level</span>
-<span class="k">FROM</span> <span class="n">dating_profiles_log</span>
+    <span class="k">WHEN</span> <span class="k">location</span> <span class="k">LIKE</span> <span class="s1">'%Home%'</span> <span class="k">THEN</span> <span class="s1">'residential'</span>
+    <span class="k">ELSE</span> <span class="s1">'public'</span>
+  <span class="k">END</span> <span class="k">as</span> <span class="n">location_type</span>
+<span class="k">FROM</span> <span class="n">photo_metadata_log</span>
 <span class="k">WHERE</span> <span class="nb">date</span> <span class="o">&gt;=</span> <span class="s1">'2025-01-01'</span>
   <span class="k">AND</span> <span class="n">user_id</span> <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
 </code></pre></div></div>
@@ -374,7 +375,7 @@ Coverage: 90%+ of data flows
 <ul>
   <li>Which columns flow where?</li>
   <li>What transformations happen?</li>
-  <li>Where does <code class="language-plaintext highlighter-rouge">religion</code> end up?</li>
+  <li>Where does <code class="language-plaintext highlighter-rouge">location</code> end up?</li>
 </ul>
 
 <h3 id="technique-sql-query-analysis">Technique: SQL Query Analysis</h3>
@@ -401,19 +402,19 @@ Coverage: 90%+ of data flows
 <p><strong>SQL analyzer example:</strong></p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Original query</span>
-<span class="k">SELECT</span> <span class="n">religion</span> <span class="k">as</span> <span class="n">target_religion</span>
-<span class="k">FROM</span> <span class="n">dating_profiles_log</span>
+<span class="k">SELECT</span> <span class="k">location</span> <span class="k">as</span> <span class="n">user_location</span>
+<span class="k">FROM</span> <span class="n">photo_metadata_log</span>
 
 <span class="c1">-- Analyzer output</span>
 <span class="p">{</span>
-  <span class="nv">"input_table"</span><span class="p">:</span> <span class="nv">"dating_profiles_log"</span><span class="p">,</span>
-  <span class="nv">"input_columns"</span><span class="p">:</span> <span class="p">[</span><span class="nv">"religion"</span><span class="p">],</span>
-  <span class="nv">"output_table"</span><span class="p">:</span> <span class="nv">"safety_training_tbl"</span><span class="p">,</span>
-  <span class="nv">"output_columns"</span><span class="p">:</span> <span class="p">[</span><span class="nv">"target_religion"</span><span class="p">],</span>
+  <span class="nv">"input_table"</span><span class="p">:</span> <span class="nv">"photo_metadata_log"</span><span class="p">,</span>
+  <span class="nv">"input_columns"</span><span class="p">:</span> <span class="p">[</span><span class="nv">"location"</span><span class="p">],</span>
+  <span class="nv">"output_table"</span><span class="p">:</span> <span class="nv">"location_analytics_tbl"</span><span class="p">,</span>
+  <span class="nv">"output_columns"</span><span class="p">:</span> <span class="p">[</span><span class="nv">"user_location"</span><span class="p">],</span>
   <span class="nv">"column_lineage"</span><span class="p">:</span> <span class="p">[</span>
     <span class="p">{</span>
-      <span class="nv">"source"</span><span class="p">:</span> <span class="nv">"dating_profiles_log.religion"</span><span class="p">,</span>
-      <span class="nv">"target"</span><span class="p">:</span> <span class="nv">"safety_training_tbl.target_religion"</span><span class="p">,</span>
+      <span class="nv">"source"</span><span class="p">:</span> <span class="nv">"photo_metadata_log.location"</span><span class="p">,</span>
+      <span class="nv">"target"</span><span class="p">:</span> <span class="nv">"location_analytics_tbl.user_location"</span><span class="p">,</span>
       <span class="nv">"transformation"</span><span class="p">:</span> <span class="nv">"RENAME"</span>
     <span class="p">}</span>
   <span class="p">],</span>
@@ -426,12 +427,12 @@ Coverage: 90%+ of data flows
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Granular tracking:
 
 Table-level:
-dating_profiles_log → safety_training_tbl
+photo_metadata_log → location_analytics_tbl
 (Not very useful: what about other columns?)
 
 Column-level:
-dating_profiles_log.religion → safety_training_tbl.target_religion
-dating_profiles_log.user_id → safety_training_tbl.target_user_id
+photo_metadata_log.location → location_analytics_tbl.user_location
+photo_metadata_log.user_id → location_analytics_tbl.target_user_id
 (Much more useful for privacy!)
 </code></pre></div></div>
 
@@ -443,39 +444,39 @@ dating_profiles_log.user_id → safety_training_tbl.target_user_id
 <span class="k">SELECT</span> 
   <span class="n">user_id</span><span class="p">,</span>
   <span class="c1">-- Direct copy</span>
-  <span class="n">religion</span><span class="p">,</span>
+  <span class="k">location</span><span class="p">,</span>
   
   <span class="c1">-- Aggregation</span>
-  <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">match_count</span><span class="p">,</span>
+  <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">photo_count</span><span class="p">,</span>
   
   <span class="c1">-- CASE statement</span>
   <span class="k">CASE</span> 
-    <span class="k">WHEN</span> <span class="n">religion</span> <span class="o">=</span> <span class="s1">'Buddhist'</span> <span class="k">THEN</span> <span class="mi">1</span> 
+    <span class="k">WHEN</span> <span class="k">location</span> <span class="k">LIKE</span> <span class="s1">'%Home%'</span> <span class="k">THEN</span> <span class="mi">1</span> 
     <span class="k">ELSE</span> <span class="mi">0</span> 
-  <span class="k">END</span> <span class="k">as</span> <span class="n">is_buddhist</span><span class="p">,</span>
+  <span class="k">END</span> <span class="k">as</span> <span class="n">is_home</span><span class="p">,</span>
   
   <span class="c1">-- Concatenation</span>
-  <span class="n">CONCAT</span><span class="p">(</span><span class="n">religion</span><span class="p">,</span> <span class="s1">'_'</span><span class="p">,</span> <span class="n">ethnicity</span><span class="p">)</span> <span class="k">as</span> <span class="n">religion_ethnicity</span><span class="p">,</span>
+  <span class="n">CONCAT</span><span class="p">(</span><span class="k">location</span><span class="p">,</span> <span class="s1">'_'</span><span class="p">,</span> <span class="n">city</span><span class="p">)</span> <span class="k">as</span> <span class="n">full_location</span><span class="p">,</span>
   
   <span class="c1">-- Subquery</span>
-  <span class="p">(</span><span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">matches</span> <span class="k">WHERE</span> <span class="n">matches</span><span class="p">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">user_id</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_matches</span>
+  <span class="p">(</span><span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">friends</span> <span class="k">WHERE</span> <span class="n">friends</span><span class="p">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">user_id</span><span class="p">)</span> <span class="k">as</span> <span class="n">friend_count</span>
   
-<span class="k">FROM</span> <span class="n">dating_profiles_log</span> <span class="n">p</span><span class="p">;</span>
+<span class="k">FROM</span> <span class="n">photo_metadata_log</span> <span class="n">p</span><span class="p">;</span>
 </code></pre></div></div>
 
 <p><strong>SQL analyzer handles:</strong></p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>For each output column, track dependencies:
 
-religion → religion (direct copy) ✅
-religion → is_buddhist (derived) ✅
-religion → religion_ethnicity (concatenation) ✅
+location → location (direct copy) ✅
+location → is_home (derived) ✅
+location → full_location (concatenation) ✅
 
-Match count:
+Photo count:
 - Depends on: COUNT(*) aggregate
-- Does NOT contain religion data ✅
+- Does NOT contain location data ✅
 
-Total_matches:
+Friend_count:
 - Depends on: subquery
 - Need to analyze subquery separately ✅
 </code></pre></div></div>
@@ -486,10 +487,10 @@ Total_matches:
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Job logs might be incomplete:
 
-Log 1: "Read from dating_profiles_log"
+Log 1: "Read from photo_metadata_log"
 [No write logged]
 
-Log 2: "Write to safety_training_tbl"
+Log 2: "Write to location_analytics_tbl"
 [No read logged]
 
 Question: Are these the same job?
@@ -509,16 +510,16 @@ Context matching:
 Example:
 Log 1: 
   job_id: spark_job_12345
-  action: READ dating_profiles_log
+  action: READ photo_metadata_log
   timestamp: 10:30:00
 
 Log 2:
   job_id: spark_job_12345  ← Same job!
-  action: WRITE safety_training_tbl
+  action: WRITE location_analytics_tbl
   timestamp: 10:30:15
 
 Conclusion: These are connected!
-Flow: dating_profiles_log → safety_training_tbl ✅
+Flow: photo_metadata_log → location_analytics_tbl ✅
 </code></pre></div></div>
 
 <hr />
@@ -529,14 +530,14 @@ Flow: dating_profiles_log → safety_training_tbl ✅
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Model training config
 </span><span class="n">training_config</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="sh">"</span><span class="s">model_name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">dating_ranking_model</span><span class="sh">"</span><span class="p">,</span>
-  <span class="sh">"</span><span class="s">input_dataset</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">asset://hive.table/dating_training_tbl</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">model_name</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">nearby_friends_model</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">input_dataset</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">asset://hive.table/photo_location_features</span><span class="sh">"</span><span class="p">,</span>
   <span class="sh">"</span><span class="s">features</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span>
-    <span class="sh">"</span><span class="s">DATING_USER_AGE</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">DATING_USER_LOCATION</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">DATING_USER_RELIGION_SCORE</span><span class="sh">"</span><span class="p">,</span>  <span class="c1"># ← Religion feature!
+    <span class="sh">"</span><span class="s">USER_AGE</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">USER_ACTIVITY_LEVEL</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">USER_HOME_LOCATION</span><span class="sh">"</span><span class="p">,</span>  <span class="c1"># ← Home location feature!
 </span>  <span class="p">],</span>
-  <span class="sh">"</span><span class="s">output_model</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">asset://ai.model/dating_ranking_model</span><span class="sh">"</span><span class="p">,</span>
+  <span class="sh">"</span><span class="s">output_model</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">asset://ai.model/nearby_friends_model</span><span class="sh">"</span><span class="p">,</span>
   <span class="sh">"</span><span class="s">training_params</span><span class="sh">"</span><span class="p">:</span> <span class="p">{...}</span>
 <span class="p">}</span>
 </code></pre></div></div>
@@ -555,27 +556,27 @@ Flow: dating_profiles_log → safety_training_tbl ✅
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Parse training configs to extract relationships:
 
 Input:
-- Dataset: dating_training_tbl
-- Features: DATING_USER_RELIGION_SCORE
+- Dataset: photo_location_features
+- Features: USER_HOME_LOCATION
 
 Output:
-- Model: dating_ranking_model
+- Model: nearby_friends_model
 
 Lineage:
-dating_training_tbl 
-  → DATING_USER_RELIGION_SCORE
-  → dating_ranking_model ✅
+photo_location_features 
+  → USER_HOME_LOCATION
+  → nearby_friends_model ✅
 </code></pre></div></div>
 
 <p><strong>Full AI lineage chain:</strong></p>
 
 <div class="mermaid">
 flowchart TD
-    DATA["Input Dataset<br />dating_training_tbl"]
-    FEATURE["Feature<br />DATING_USER_RELIGION_SCORE"]
-    MODEL["Model<br />dating_ranking_model"]
-    INFERENCE["Inference Service<br />dating_recommendations"]
-    PRODUCT["Product<br />Dating App"]
+    DATA["Input Dataset<br />photo_location_features"]
+    FEATURE["Feature<br />USER_HOME_LOCATION"]
+    MODEL["Model<br />nearby_friends_model"]
+    INFERENCE["Inference Service<br />friend_suggestions"]
+    PRODUCT["Product<br />Facebook App"]
     
     DATA --&gt; FEATURE
     FEATURE --&gt; MODEL
@@ -610,35 +611,35 @@ Result: End-to-end AI lineage ✅
 
 <h3 id="real-example-ai-lineage">Real Example: AI Lineage</h3>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Starting point: Religion data in dating_training_tbl
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Starting point: Location data in photo_location_features
 
 Lineage trace:
 
 1. Data loading:
-   dating_training_tbl.religion 
+   photo_location_features.home_location 
    → DPP loads into feature store
 
 2. Feature engineering:
-   feature_store.religion
-   → DATING_USER_RELIGION_SCORE (computed feature)
+   feature_store.home_location
+   → USER_HOME_LOCATION (computed feature)
 
 3. Model training:
-   DATING_USER_RELIGION_SCORE
-   → dating_ranking_model (training input)
+   USER_HOME_LOCATION
+   → nearby_friends_model (training input)
 
 4. Model deployment:
-   dating_ranking_model
+   nearby_friends_model
    → inference_service (model serving)
 
 5. Product:
    inference_service
-   → Dating app recommendations
+   → Facebook friend suggestions
 
 6. Privacy check:
-   Is religion used outside Dating?
+   Is home location used for ads?
    - Check inference_service callers
-   - If any non-Dating caller: VIOLATION ❌
-   - If only Dating callers: COMPLIANT ✅
+   - If ad_targeting calls it: VIOLATION ❌
+   - If only friend_suggestions: COMPLIANT ✅
 </code></pre></div></div>
 
 <hr />
@@ -661,7 +662,7 @@ Challenge: How do you query this efficiently?
 <h3 id="the-iterative-discovery-process">The Iterative Discovery Process</h3>
 
 <blockquote>
-  <p><strong>Problem:</strong> Given a source (religion data), find all relevant downstream flows.</p>
+  <p><strong>Problem:</strong> Given a source (photo location data), find all relevant downstream flows.</p>
 </blockquote>
 
 <p><strong>Naive approach (doesn’t work):</strong></p>
@@ -700,80 +701,84 @@ Why? The graph is too large and interconnected!
 Result: Only relevant flows, manageable size
 </code></pre></div></div>
 
-<h3 id="example-finding-religion-data-flows">Example: Finding Religion Data Flows</h3>
+<h3 id="example-finding-photo-location-data-flows">Example: Finding Photo Location Data Flows</h3>
 
 <p><strong>Iteration 1:</strong></p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: dating_profiles.religion
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: photos.location
 
 Discover (automatic):
-├─ dating_profiles_log (high confidence) ✅
-├─ profile_update_events (high confidence) ✅
-├─ recommendation_temp_table (low confidence) ⚠️
+├─ photo_metadata_log (high confidence) ✅
+├─ photo_upload_events (high confidence) ✅
+├─ nearby_friends_temp_table (low confidence) ⚠️
 └─ generic_analytics_table (low confidence) ⚠️
 
 Human review:
-├─ dating_profiles_log: INCLUDE ✅
+├─ photo_metadata_log: INCLUDE ✅
 │  └─ Action: Apply privacy controls
 │
-├─ profile_update_events: INCLUDE ✅
+├─ photo_upload_events: INCLUDE ✅
 │  └─ Action: Apply privacy controls
 │
-├─ recommendation_temp_table: EXCLUDE ❌
-│  └─ Reason: Doesn't actually contain religion
+├─ nearby_friends_temp_table: EXCLUDE ❌
+│  └─ Reason: Only uses approximate location
 │
 └─ generic_analytics_table: EXCLUDE ❌
-   └─ Reason: Aggregated, no sensitive data
+   └─ Reason: Aggregated, no precise locations
 
-Confirmed nodes: 2 (dating_profiles_log, profile_update_events)
+Confirmed nodes: 2 (photo_metadata_log, photo_upload_events)
 </code></pre></div></div>
 
 <p><strong>Iteration 2:</strong></p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: dating_profiles_log, profile_update_events
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: photo_metadata_log, photo_upload_events
 
-Discover from dating_profiles_log:
-├─ safety_training_tbl (high confidence) ✅
+Discover from photo_metadata_log:
+├─ location_analytics_tbl (high confidence) ✅
 ├─ data_warehouse_agg_daily (low confidence) ⚠️
 └─ export_table_xyz (low confidence) ⚠️
 
 Human review:
-├─ safety_training_tbl: INCLUDE ✅
+├─ location_analytics_tbl: INCLUDE ✅
 │  └─ Action: Apply privacy controls
 │
 └─ Others: EXCLUDE ❌
 
-Confirmed nodes: +1 (safety_training_tbl)
+Confirmed nodes: +1 (location_analytics_tbl)
 </code></pre></div></div>
 
 <p><strong>Iteration 3:</strong></p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: safety_training_tbl
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: location_analytics_tbl
 
-Discover from safety_training_tbl:
-├─ ai_feature_store (high confidence) ✅
+Discover from location_analytics_tbl:
+├─ ai_location_feature_store (high confidence) ✅
 └─ No other high-confidence flows
 
 Human review:
-└─ ai_feature_store: INCLUDE ✅
+└─ ai_location_feature_store: INCLUDE ✅
 
-Confirmed nodes: +1 (ai_feature_store)
+Confirmed nodes: +1 (ai_location_feature_store)
 </code></pre></div></div>
 
 <p><strong>Iteration 4:</strong></p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: ai_feature_store
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>New sources: ai_location_feature_store
 
 Discover:
-├─ dating_ranking_model (high confidence) ✅
-└─ No other flows
+├─ nearby_friends_model (high confidence) ✅
+└─ ad_targeting_model (high confidence) ⚠️
 
 Human review:
-└─ dating_ranking_model: INCLUDE ✅
-   └─ Final destination: Dating app only
-   └─ Privacy requirement: SATISFIED ✅
+├─ nearby_friends_model: INCLUDE ✅
+│  └─ Final destination: Friend suggestions only
+│  └─ Privacy requirement: SATISFIED ✅
+│
+└─ ad_targeting_model: VIOLATION ❌
+   └─ Home location used for ads!
+   └─ Action: BLOCK and alert teams
 
-Done! No more relevant flows.
+Done! Privacy violation detected and prevented.
 </code></pre></div></div>
 
 <h3 id="the-power-of-cascading-exclusions">The Power of Cascading Exclusions</h3>
@@ -806,9 +811,9 @@ you avoid reviewing 100,000 downstream assets!
 
 <p><strong>Before PZM (manual):</strong></p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Engineer task: "Protect religion data in Dating"
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Engineer task: "Protect photo location data"
 
-Week 1-4: Find where religion is used
+Week 1-4: Find where location is used
 - Read code manually
 - Interview teams
 - Build spreadsheet
@@ -828,11 +833,11 @@ Total: 3 months, high error rate ❌
 
 <p><strong>After PZM (with lineage):</strong></p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Engineer task: "Protect religion data in Dating"
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Engineer task: "Protect photo location data"
 
 Hour 1: Query lineage
 - Open PZM tool
-- Query: "Find all flows from dating_profiles.religion"
+- Query: "Find all flows from photos.location"
 - Results: Visual graph in 30 seconds ✅
 
 Hour 2-4: Review flows
@@ -892,7 +897,7 @@ PZM monitors continuously:
 ├─ New data flows detected
 ├─ Check against policies
 ├─ Alert if violation:
-│  └─ "New flow detected: religion → ads"
+│  └─ "New flow detected: home_location → ad_targeting"
 │  └─ "BLOCK: Violates purpose limitation"
 └─ Automatic enforcement ✅
 </code></pre></div></div>
@@ -1232,18 +1237,18 @@ Result: Continuous improvement
 <p><strong>The problem:</strong></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Original data
-</span><span class="n">religion</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Buddhist</span><span class="sh">"</span>
+</span><span class="n">location</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Home, 123 Main St</span><span class="sh">"</span>
 
 <span class="c1"># Transformation 1: Encoding
-</span><span class="n">religion_encoded</span> <span class="o">=</span> <span class="nf">encode</span><span class="p">(</span><span class="n">religion</span><span class="p">)</span>  <span class="c1"># "B01"
+</span><span class="n">location_encoded</span> <span class="o">=</span> <span class="nf">geocode</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>  <span class="c1"># lat: 40.7, lon: -74.0
 </span>
 <span class="c1"># Transformation 2: Aggregation
-</span><span class="n">religion_count</span> <span class="o">=</span> <span class="nf">count_values</span><span class="p">([</span><span class="n">religion_encoded</span><span class="p">,</span> <span class="p">...])</span>  <span class="c1"># 42
+</span><span class="n">location_count</span> <span class="o">=</span> <span class="nf">count_unique</span><span class="p">([</span><span class="n">location_encoded</span><span class="p">,</span> <span class="p">...])</span>  <span class="c1"># 42
 </span>
 <span class="c1"># Transformation 3: ML embedding
-</span><span class="n">religion_vector</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">embed</span><span class="p">(</span><span class="n">religion</span><span class="p">)</span>  <span class="c1"># [0.23, -0.15, 0.67, ...]
+</span><span class="n">location_vector</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">embed</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>  <span class="c1"># [0.23, -0.15, 0.67, ...]
 </span>
-<span class="n">Question</span><span class="p">:</span> <span class="n">Is</span> <span class="n">religion_vector</span> <span class="n">still</span> <span class="sh">"</span><span class="s">religion data</span><span class="sh">"</span><span class="err">?</span>
+<span class="n">Question</span><span class="p">:</span> <span class="n">Is</span> <span class="n">location_vector</span> <span class="n">still</span> <span class="sh">"</span><span class="s">location data</span><span class="sh">"</span><span class="err">?</span>
 </code></pre></div></div>
 
 <p><strong>Current approach:</strong></p>
