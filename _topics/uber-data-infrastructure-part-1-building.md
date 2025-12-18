@@ -19,6 +19,8 @@ related:
 
 > **Part 1 of the Uber Data Infrastructure Series**
 > 
+> **Important Note:** This article is based on my understanding after reading the [Uber Engineering blog](https://www.uber.com/blog/engineering/) and various articles about their data infrastructure evolution. I'm trying to demystify and explain these concepts in an accessible way. If you want to understand exactly what Uber built, please refer to the original articles linked in the Further Reading section.
+> 
 > This article explains how Uber built one of the world's largest data infrastructures from scratch. You'll learn why traditional databases don't work at Uber's scale and how they solved it with specialized tools.
 > 
 > **Next:** [Part 2 - Modernizing with Google Cloud →]({{ site.baseurl }}{% link _topics/uber-data-infrastructure-part-2-modernization.md %})
@@ -1040,6 +1042,7 @@ Layer 5: Analytics
 
 ## Further Reading
 
+- **[Uber Engineering Blog](https://www.uber.com/blog/engineering/)** - Original articles and case studies
 - [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
 - [Hadoop HDFS Architecture](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html)
 - [Apache Hudi Documentation](https://hudi.apache.org/docs/overview)

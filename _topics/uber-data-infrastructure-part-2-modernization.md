@@ -18,6 +18,8 @@ related:
 
 > **Part 2 of the Uber Data Infrastructure Series**
 > 
+> **Important Note:** This article is based on my understanding after reading the [Uber Engineering blog](https://www.uber.com/blog/engineering/) and various articles about their cloud migration. I'm trying to demystify and explain these concepts in an accessible way. If you want to understand exactly what Uber built, please refer to the original articles linked in the Further Reading section.
+> 
 > **Previously:** [Part 1 - Building the Original Infrastructure]({{ site.baseurl }}{% link _topics/uber-data-infrastructure-part-1-building.md %}) explained how Uber built a custom data platform with Kafka, HDFS, Spark, Flink, and more.
 > 
 > **This article** explains why Uber decided to migrate everything to Google Cloud Platform (GCP) and how they did it without breaking anything.

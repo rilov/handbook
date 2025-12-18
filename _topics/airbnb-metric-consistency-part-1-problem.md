@@ -17,6 +17,8 @@ related:
 
 > **Part 1 of the Airbnb Metric Consistency Series**
 > 
+> **Important Note:** This article is based on my understanding after reading the [Airbnb Engineering blog](https://medium.com/airbnb-engineering) and various articles about their Minerva platform. I'm trying to demystify and explain these concepts in an accessible way. If you want to understand exactly what Airbnb built, please refer to the original articles linked in the Further Reading section.
+> 
 > **The surprising problem:** Airbnb had world-class data infrastructure handling billions of events. But they couldn't agree on basic numbers like "How many bookings did we have yesterday?"
 > 
 > **This article** explains why metric inconsistency is one of the hardest problems in data — and why it matters more than you think.
@@ -970,7 +972,8 @@ After (with Minerva):
 
 ## Further Reading
 
-- **[Airbnb Engineering Blog](https://medium.com/airbnb-engineering)** - Original article
+- **[Airbnb Engineering Blog](https://medium.com/airbnb-engineering)** - Original articles and case studies
+- **[Original Airbnb Minerva Article](https://medium.com/airbnb-engineering/how-airbnb-achieved-metric-consistency-at-scale-f23cc53dea70)** - The source article
 - **[Data Quality at Scale](https://www.oreilly.com/library/view/data-quality-at/9781492063742/)** - Book on data quality
 - **[dbt: Metrics as Code](https://www.getdbt.com/blog/how-do-you-build-a-metrics-layer)** - Similar approach
 - **[The Data Warehouse Toolkit](https://www.amazon.com/Data-Warehouse-Toolkit-Definitive-Dimensional/dp/1118530802)** - Dimensional modeling
