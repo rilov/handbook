@@ -73,6 +73,28 @@ flowchart LR
 | **Best For** | Small datasets, sharing data |
 | **File Size** | Medium |
 
+**When to use CSV:**
+```
+✅ Export data from a database for a colleague
+✅ Share data with non-technical users (opens in Excel)
+✅ Small datasets (< 100 MB)
+✅ Simple reporting or one-time analysis
+✅ Testing/prototyping data pipelines
+
+❌ Large-scale analytics (use Parquet instead)
+❌ Complex nested data (use JSON instead)
+❌ When data contains lots of commas (use TSV)
+```
+
+**Real-world example:**
+```
+Use case: Monthly sales report for business team
+- Export 50,000 sales records to CSV
+- Email to business analysts
+- They open in Excel, make pivot tables
+- Perfect! CSV is simple and works everywhere
+```
+
 ---
 
 ### TSV (Tab-Separated Values)
@@ -90,6 +112,29 @@ Jane	30	Los Angeles
 |-----------------|---------|
 | Data contains commas | Addresses: "123 Main St, Apt 4" |
 | Exporting from databases | More reliable than CSV |
+
+**When to use TSV:**
+```
+✅ Data with addresses ("123 Main St, Apt 5, NYC")
+✅ Text that naturally contains commas
+✅ Database exports (PostgreSQL COPY)
+✅ When CSV parsing keeps breaking
+
+❌ Sharing with Excel users (CSV is more common)
+❌ When data contains both commas AND tabs
+```
+
+**Real-world example:**
+```
+Use case: Exporting customer addresses
+Customers: 10,000 records with addresses
+
+CSV problem: "John Smith, 123 Main St, Apt 5"
+Result: Parser thinks these are 3 columns!
+
+TSV solution: John Smith[TAB]123 Main St, Apt 5
+Result: Works perfectly! ✅
+```
 
 ---
 
@@ -109,6 +154,29 @@ Whatever you want to write.
 | **Pros** | Simplest possible, works anywhere |
 | **Cons** | No structure, hard to parse |
 | **Best For** | Logs, notes, unstructured data |
+
+**When to use TXT:**
+```
+✅ Application logs
+✅ Error messages
+✅ Documentation/notes
+✅ Simple data dumps
+✅ Human-readable output
+
+❌ Structured data (use CSV/JSON)
+❌ Machine parsing (too unstructured)
+❌ Large-scale processing
+```
+
+**Real-world example:**
+```
+Use case: Application error logs
+2025-01-15 10:30:00 ERROR: Database connection timeout
+2025-01-15 10:30:05 ERROR: Retry attempt 1 failed
+2025-01-15 10:30:10 INFO: Connection restored
+
+Perfect for debugging, grep searching, human reading
+```
 
 ---
 
@@ -161,6 +229,49 @@ flowchart TD
 | **Best For** | APIs, config files, web applications |
 | **File Size** | Large (human-readable) |
 
+**When to use JSON:**
+```
+✅ REST API responses
+✅ Configuration files (settings.json)
+✅ NoSQL databases (MongoDB)
+✅ Nested/hierarchical data
+✅ JavaScript/web applications
+✅ When data has varying structure
+
+❌ Large datasets (use Parquet)
+❌ High-performance analytics
+❌ When file size matters (too verbose)
+```
+
+**Real-world examples:**
+```
+Example 1: API response
+GET /api/users/123
+{
+  "id": 123,
+  "name": "John",
+  "orders": [
+    {"id": 1, "total": 99.99},
+    {"id": 2, "total": 149.99}
+  ]
+}
+
+Example 2: Application config
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "credentials": {...}
+  },
+  "features": {
+    "darkMode": true,
+    "notifications": false
+  }
+}
+
+Perfect for nested, hierarchical data!
+```
+
 ---
 
 ### XML (eXtensible Markup Language)
@@ -187,6 +298,36 @@ flowchart TD
 | **Best For** | Enterprise systems, SOAP APIs, legacy systems |
 | **Modern Usage** | Being replaced by JSON |
 
+**When to use XML:**
+```
+✅ Legacy enterprise systems (you have no choice!)
+✅ SOAP APIs (older web services)
+✅ When you need strict schema validation (XSD)
+✅ Microsoft Office formats (docx, xlsx are XML!)
+✅ RSS feeds, sitemaps
+
+❌ New projects (use JSON)
+❌ Performance-critical systems (too verbose)
+❌ Human readability (JSON is cleaner)
+```
+
+**Real-world example:**
+```
+Use case: Enterprise SOAP API integration
+Your company's 20-year-old ERP system only speaks XML
+
+Request:
+<soap:Envelope>
+  <soap:Body>
+    <GetCustomer>
+      <CustomerId>12345</CustomerId>
+    </GetCustomer>
+  </soap:Body>
+</soap:Envelope>
+
+You don't choose XML - XML chooses you! 😅
+```
+
 ---
 
 ### YAML (YAML Ain't Markup Language)
@@ -211,6 +352,48 @@ address:
 | **Pros** | Very readable, clean, supports comments |
 | **Cons** | Whitespace-sensitive (can be fragile) |
 | **Best For** | Config files (Kubernetes, Docker Compose) |
+
+**When to use YAML:**
+```
+✅ Kubernetes manifests
+✅ Docker Compose files
+✅ CI/CD pipelines (GitHub Actions, GitLab CI)
+✅ Configuration files (human-edited frequently)
+✅ When you need comments in config
+
+❌ APIs (use JSON)
+❌ Large data files (use Parquet)
+❌ When precision matters (whitespace errors!)
+```
+
+**Real-world examples:**
+```
+Example 1: Docker Compose
+version: '3'
+services:
+  web:
+    image: nginx
+    ports:
+      - "80:80"
+  db:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: secret
+
+Example 2: GitHub Actions
+name: Deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm test
+
+Clean, readable, perfect for DevOps!
+```
 
 <div class="mermaid">
 flowchart LR
@@ -244,6 +427,15 @@ flowchart LR
 | **Status** | ⚠️ Deprecated — don't use for new projects |
 | **Opens In** | Excel, LibreOffice |
 
+**When to use XLS:**
+```
+❌ Never for new projects!
+✅ Only if forced to support old Excel (pre-2007)
+✅ Legacy systems that can't be upgraded
+
+Real talk: If someone asks for XLS, give them XLSX instead
+```
+
 ---
 
 ### XLSX (Excel Open XML Format - Modern)
@@ -268,6 +460,40 @@ flowchart LR
 | **Pros** | Formulas, formatting, multiple sheets |
 | **Cons** | Bloated for large data, proprietary |
 | **Best For** | Business reports, sharing with non-technical users |
+
+**When to use XLSX:**
+```
+✅ Sharing data with business users (Excel is universal)
+✅ Reports with formatting, charts, formulas
+✅ Multiple sheets in one file
+✅ < 100K rows (stays performant)
+✅ Monthly/quarterly business reports
+
+❌ Large datasets (>1M rows hits Excel limits)
+❌ Data pipeline intermediate storage (use Parquet)
+❌ Production systems (too slow)
+❌ Version control (binary, can't diff)
+```
+
+**Real-world examples:**
+```
+Example 1: Monthly executive dashboard
+- Sheet 1: Revenue by region (with chart)
+- Sheet 2: Top 10 customers (formatted table)
+- Sheet 3: YoY comparison (with formulas)
+Send to CEO - they open in Excel, perfect! ✅
+
+Example 2: Ad-hoc analysis for business analyst
+- Export 50K customer records
+- Business analyst adds pivot tables
+- Shares with their manager
+- Everyone has Excel, everyone's happy!
+
+Example 3: When NOT to use XLSX
+- 5 million log records ❌
+- Real-time data pipeline ❌
+- Use Parquet instead!
+```
 
 **Fun Fact:** Rename `.xlsx` to `.zip` and unzip it — you'll see the XML files inside!
 
@@ -308,6 +534,44 @@ flowchart LR
 | **Best For** | Data warehouses, analytics, Spark/Hadoop |
 | **Tools** | Spark, Pandas, DuckDB, Snowflake |
 
+**When to use Parquet:**
+```
+✅ Large datasets (> 100 MB)
+✅ Analytics queries (SELECT specific columns)
+✅ Data warehouses / data lakes
+✅ Apache Spark / Hadoop processing
+✅ When you need compression (10x smaller than CSV!)
+✅ Cloud storage (S3, GCS) - saves $$
+
+❌ Streaming data (use Avro)
+❌ Transactional updates (use Delta Lake)
+❌ Need Excel compatibility (use CSV/XLSX)
+❌ Very small files (< 1 MB, overhead not worth it)
+```
+
+**Real-world examples:**
+```
+Example 1: Data warehouse storage
+Situation: 1 billion e-commerce orders
+- CSV size: 500 GB
+- Parquet size: 50 GB (10x smaller!)
+- Query time: 100x faster for analytics
+- Cloud storage cost: 10x cheaper
+Perfect choice! ✅
+
+Example 2: Spark analytics pipeline
+Raw data (CSV) → Transform in Spark → Save as Parquet
+- Read 100 GB CSV: 10 minutes
+- Save as Parquet: 10 GB
+- Future queries: 10 seconds (100x faster!)
+
+Example 3: AWS Athena / Google BigQuery
+Upload Parquet to S3 → Query with SQL
+- 1 TB CSV: $5 per query scan
+- 100 GB Parquet: $0.50 per query scan
+10x cost savings!
+```
+
 **Real-World Analogy:** Instead of reading entire books to find all mentions of "data," you have an index that lists every page with "data."
 
 📖 **[Deep dive into Parquet →](/handbook/topics/parquet-deep-dive/)** Learn how Parquet actually stores data, encoding schemes, and performance optimization.
@@ -340,6 +604,39 @@ flowchart TD
 | **Compression** | Excellent | Slightly better |
 | **Speed** | Very fast | Slightly faster |
 | **Use In** | Most cases | Hadoop-heavy environments |
+
+**When to use ORC:**
+```
+✅ Using Apache Hive extensively
+✅ Heavy Hadoop ecosystem (not Spark)
+✅ Need best possible compression
+✅ ACID transactions in Hive
+
+❌ Using Spark (Parquet is better integrated)
+❌ Using Python/Pandas (Parquet has better support)
+❌ Cloud-native (Parquet is more common)
+```
+
+**Real-world examples:**
+```
+Example 1: Legacy Hadoop cluster
+Company has:
+- 1000-node Hadoop cluster
+- All data in Hive
+- Hive queries for everything
+Use ORC! Perfect fit ✅
+
+Example 2: Modern cloud stack
+Company has:
+- AWS S3 data lake
+- Spark for processing
+- Python for data science
+Use Parquet! Better ecosystem ✅
+
+Rule of thumb:
+Hive/Hadoop → ORC
+Everything else → Parquet
+```
 
 **Which to choose?** Use Parquet unless you're deep in the Hadoop ecosystem.
 
@@ -384,10 +681,47 @@ flowchart LR
 | **Best For** | Kafka, streaming, evolving schemas |
 | **Speed** | Fast writes, slower reads than Parquet |
 
-**When to Use:**
-- ✅ Kafka / event streaming
-- ✅ Schema evolution (adding fields over time)
-- ❌ Analytics (use Parquet instead)
+**When to use Avro:**
+```
+✅ Apache Kafka streaming (most common use!)
+✅ Schema evolution (adding fields without breaking)
+✅ High-throughput writes
+✅ When schema changes frequently
+✅ Event streaming / message queues
+
+❌ Analytics queries (use Parquet)
+❌ Data warehouse storage (use Parquet)
+❌ When schema never changes
+```
+
+**Real-world examples:**
+```
+Example 1: Kafka event streaming (MOST COMMON)
+Producer: Website clicks → Kafka (Avro format)
+Consumer: Read from Kafka → Process events
+
+Why Avro?
+- Fast writes (1M events/sec)
+- Schema embedded (self-documenting)
+- Compact binary format
+- Schema Registry handles evolution
+
+Example 2: Schema evolution
+Week 1: User event { user_id, action }
+Week 5: Add field { user_id, action, timestamp }
+Week 10: Add field { user_id, action, timestamp, device }
+
+Old consumers still work! Avro handles it ✅
+
+Example 3: When NOT to use Avro
+Storing 1 TB of sales data for analytics ❌
+- Avro is row-based (slow for analytics)
+- Use Parquet instead (100x faster queries)
+
+Rule of thumb:
+Streaming/Kafka → Avro
+Analytics/Storage → Parquet
+```
 
 📖 **[Deep dive into Avro →](/handbook/topics/avro-deep-dive/)** Understand schema evolution, Schema Registry, and why Kafka uses Avro.
 
@@ -417,6 +751,41 @@ INSERT INTO users VALUES (2, 'Jane', 30);
 | **Pros** | Portable, human-readable |
 | **Cons** | Slow for large datasets |
 | **Best For** | Sharing database structures, small exports |
+
+**When to use SQL dumps:**
+```
+✅ Database migration (MySQL → PostgreSQL)
+✅ Sharing database schema with team
+✅ Version controlling database structure
+✅ Small database backups (< 100 MB)
+✅ Seeding test databases
+
+❌ Large production backups (too slow)
+❌ Big data transfers (use binary dumps)
+❌ Analytics (export to Parquet)
+```
+
+**Real-world examples:**
+```
+Example 1: Share database schema with new developer
+$ pg_dump --schema-only my_db > schema.sql
+Send schema.sql to developer
+They run: psql < schema.sql
+Perfect! They have exact same structure ✅
+
+Example 2: Version control migrations
+git repository:
+migrations/
+  001_create_users.sql
+  002_add_email_column.sql
+  003_create_orders.sql
+Team always knows database history!
+
+Example 3: When NOT to use SQL
+Backing up 500 GB production database ❌
+- SQL dump takes 10 hours
+- Use pg_dump -Fc (binary) instead: 30 minutes
+```
 
 ---
 
@@ -456,6 +825,53 @@ flowchart LR
 | **Best For** | ML models, temporary Python data |
 | **⚠️ Warning** | Never load untrusted pickle files! |
 
+**When to use Pickle:**
+```
+✅ Temporary ML model storage (prototyping)
+✅ Caching Python objects during development
+✅ Saving complex Python data structures
+✅ Quick experiments / notebooks
+
+❌ Production ML models (use ONNX, SavedModel)
+❌ Sharing between languages
+❌ Long-term storage (pickle breaks across Python versions!)
+❌ Untrusted data (SECURITY RISK! Can execute code)
+```
+
+**Real-world examples:**
+```
+Example 1: ML model prototyping (OK for dev)
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier()
+model.fit(X_train, y_train)
+pickle.dump(model, open('model.pkl', 'wb'))
+
+Dev environment: ✅ Fast and easy
+Production: ❌ Use proper model serving
+
+Example 2: Caching expensive computations
+expensive_result = run_10_hour_computation()
+pickle.dump(expensive_result, 'cache.pkl')
+# Next time: just load in 1 second!
+
+Example 3: THE DANGER ⚠️
+# Someone sends you data.pkl
+import pickle
+data = pickle.load(open('data.pkl', 'rb'))  # ☠️ DANGER!
+# This can execute arbitrary code! Could delete your files!
+
+NEVER load pickle from untrusted sources!
+
+Example 4: Version incompatibility
+# Python 3.8: save model
+pickle.dump(model, 'model.pkl')
+
+# Python 3.11: load model
+model = pickle.load('model.pkl')  # ERROR: incompatible!
+
+Use JSON/ONNX for long-term storage
+```
+
 ---
 
 ## Compressed Formats
@@ -480,6 +896,44 @@ flowchart LR
 | **Speed** | Fast |
 | **Best For** | Single files, log files, streaming |
 | **Common Use** | `data.csv.gz`, `logs.txt.gz` |
+
+**When to use GZIP:**
+```
+✅ Compress any file before storing/sending
+✅ Log files (they compress amazingly well!)
+✅ CSV files for storage
+✅ Transferring data over network
+✅ Cloud storage (S3, GCS) - save costs
+
+❌ Already compressed files (JPEG, PNG, video)
+❌ When you need to read data without decompressing
+```
+
+**Real-world examples:**
+```
+Example 1: Saving storage costs on S3
+data.csv: 1 GB
+data.csv.gz: 100 MB (10x smaller!)
+S3 cost: $0.023/GB/month
+- CSV: $0.023/month
+- GZ: $0.0023/month
+10x savings! ✅
+
+Example 2: Log file compression
+application.log: 10 GB/day
+application.log.gz: 500 MB/day (20x smaller!)
+Store 30 days of logs:
+- Uncompressed: 300 GB
+- Compressed: 15 GB
+Massive savings!
+
+Example 3: Pandas can read GZ directly!
+import pandas as pd
+df = pd.read_csv('data.csv.gz')  # Automatic decompression!
+No need to decompress first ✅
+
+Rule: Always gzip CSVs before storing
+```
 
 **Example:**
 ```bash
@@ -523,6 +977,45 @@ flowchart TD
 | **Best For** | Sharing multiple files, downloads |
 | **Opens In** | Every OS built-in |
 
+**When to use ZIP:**
+```
+✅ Distributing software / code
+✅ Sharing multiple files with users
+✅ Email attachments (multiple files)
+✅ Archiving project backups
+✅ Website downloads
+
+❌ Single large file (use gzip instead)
+❌ Production data pipelines (Parquet has better compression)
+```
+
+**Real-world examples:**
+```
+Example 1: Sending project files to client
+project/
+  code/
+  docs/
+  images/
+  
+$ zip -r project.zip project/
+Email project.zip to client
+Client unzips - gets exact folder structure ✅
+
+Example 2: Monthly report package
+monthly_report.zip containing:
+  - sales_report.xlsx
+  - customer_data.csv
+  - charts/graph1.png
+  - charts/graph2.png
+  - readme.txt
+
+Perfect for business users!
+
+Example 3: Code repository downloads
+GitHub → Download as ZIP
+Get entire repository in one file
+```
+
 ---
 
 ### BZIP2 (.bz2)
@@ -534,6 +1027,37 @@ flowchart TD
 | **GZIP** | Good | Fast | Default choice |
 | **BZIP2** | Better | Slower | Archiving, storage |
 | **ZIP** | Good | Fast | Multiple files |
+
+**When to use BZIP2:**
+```
+✅ Long-term archival (best compression)
+✅ When storage space is expensive
+✅ When compression time doesn't matter
+✅ Maximum compression needed
+
+❌ Real-time processing (too slow)
+❌ Frequently accessed files
+❌ Most normal use cases (use gzip instead)
+```
+
+**Real-world example:**
+```
+Compressing 1 GB log file:
+
+GZIP:
+- Result: 100 MB
+- Time: 10 seconds
+- Use for: Active logs ✅
+
+BZIP2:
+- Result: 80 MB (20% smaller!)
+- Time: 60 seconds (6x slower)
+- Use for: Archive old logs ✅
+
+Rule of thumb:
+- Active files → GZIP (fast)
+- Archive/storage → BZIP2 (smaller)
+```
 
 **Real-World Analogy:**
 - GZIP = Quick packing for a trip
@@ -601,6 +1125,66 @@ ALTER TABLE users ADD COLUMN email STRING;
 | **Updates** | ✅ Efficient UPDATE/DELETE |
 | **Ecosystem** | Databricks, Spark |
 
+**When to use Delta Lake:**
+```
+✅ Need ACID transactions on data lake
+✅ Frequent UPDATE/DELETE operations
+✅ Need to undo changes (time travel)
+✅ Using Databricks or Apache Spark
+✅ Data quality requirements (schema enforcement)
+✅ Regulatory compliance (audit trail)
+
+❌ Simple read-only analytics (Parquet is simpler)
+❌ Not using Spark ecosystem
+❌ Real-time streaming (consider Hudi)
+```
+
+**Real-world examples:**
+```
+Example 1: GDPR compliance (Delete user data)
+Traditional Parquet:
+- Find user data across 1000 files
+- Rewrite all files without that user
+- Hours of work! ❌
+
+Delta Lake:
+DELETE FROM users WHERE user_id = 12345;
+- Done in seconds!
+- Transactional - either all data deleted or none
+- Can rollback if mistake! ✅
+
+Example 2: Time travel for debugging
+User: "Report was correct yesterday, wrong today!"
+
+Traditional:
+- No way to see yesterday's data ❌
+
+Delta Lake:
+SELECT * FROM revenue 
+  VERSION AS OF 5;  -- Yesterday's version
+  
+Find exactly what changed! ✅
+
+Example 3: Concurrent writes
+Situation: 10 Spark jobs writing to same table
+
+Traditional Parquet:
+- Data corruption possible! ❌
+- Manual coordination needed
+
+Delta Lake:
+- ACID transactions prevent corruption ✅
+- All writes succeed or fail cleanly
+
+Example 4: Slowly changing dimensions
+UPDATE customers 
+  SET address = '123 New St' 
+  WHERE customer_id = 456;
+  
+Traditional: Rewrite entire file
+Delta Lake: Just write changes, super fast!
+```
+
 📖 **[Deep dive into Delta Lake →](/handbook/topics/delta-lake-deep-dive/)** Learn about transaction logs, time travel, ACID guarantees, and optimization strategies.
 
 ---
@@ -632,6 +1216,50 @@ flowchart TD
 | **Schema Evolution** | ✅ Safe column changes |
 | **Ecosystem** | Engine-agnostic (Spark, Flink, Trino) |
 
+**When to use Iceberg:**
+```
+✅ Multi-engine environment (Spark + Trino + Flink)
+✅ Need vendor independence (avoid lock-in)
+✅ Large tables with complex partitioning
+✅ Open-source requirements
+✅ Using AWS, Azure, or GCP (good cloud support)
+
+❌ Only using Databricks (Delta Lake is better integrated)
+❌ Simple use case (Parquet is simpler)
+❌ Small team (Delta Lake has more resources)
+```
+
+**Real-world examples:**
+```
+Example 1: Multi-engine analytics platform
+Company uses:
+- Apache Spark for ETL
+- Trino for interactive queries  
+- Flink for streaming
+
+Delta Lake: Only works well with Spark ❌
+Iceberg: Works with all three! ✅
+
+Example 2: Hidden partitioning (awesome feature!)
+Traditional:
+SELECT * FROM events 
+WHERE date = '2025-01-15'
+You must remember table is partitioned by date!
+
+Iceberg:
+SELECT * FROM events 
+WHERE timestamp = '2025-01-15 10:30:00'
+Iceberg automatically finds right partition! ✅
+
+Example 3: Avoiding vendor lock-in
+Databricks offers Delta Lake... but worried about lock-in?
+Iceberg is vendor-neutral, works anywhere ✅
+- AWS Athena: ✅
+- Google BigQuery: ✅  
+- Azure Synapse: ✅
+- Apache Spark: ✅
+```
+
 ---
 
 ### Apache Hudi
@@ -658,6 +1286,54 @@ flowchart LR
 | **Incremental Processing** | ✅ Read only changes |
 | **Best For** | Streaming data, frequent updates |
 | **Write Modes** | Copy-on-Write, Merge-on-Read |
+
+**When to use Hudi:**
+```
+✅ High-frequency updates (every minute/second)
+✅ CDC (Change Data Capture) from databases
+✅ Streaming ingestion from Kafka
+✅ Need incremental processing (only read new data)
+✅ Uber-style use case (constantly updating data)
+
+❌ Read-only data lake (use Parquet)
+❌ Batch updates only (Delta Lake or Iceberg simpler)
+❌ Small team (less documentation than Delta/Iceberg)
+```
+
+**Real-world examples:**
+```
+Example 1: Real-time CDC from database
+MySQL → Debezium → Kafka → Hudi
+
+Updates streaming every second!
+- User updates profile: Immediate
+- Order status changes: Immediate  
+- Analytics always current ✅
+
+Hudi's Merge-on-Read perfect for this!
+
+Example 2: Incremental processing
+Situation: Daily ETL on 1 billion records
+
+Traditional:
+- Process entire 1 billion records daily
+- 8 hours to complete ❌
+
+Hudi:
+- Read only records changed today (1 million)
+- 5 minutes to complete ✅
+- 100x faster!
+
+Example 3: Uber ride updates
+10 million rides in progress
+Each ride status updates every 30 seconds
+- Traditional: Impossible to keep current ❌
+- Hudi: Designed for exactly this! ✅
+
+Rule of thumb:
+- Batch updates → Delta Lake or Iceberg
+- Streaming updates → Hudi
+```
 
 ---
 
