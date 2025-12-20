@@ -1552,3 +1552,4 @@ As data ecosystems grow more complex, lineage will evolve from a "nice to have" 
 ---
 
 **[← Back to Part 1: The Challenge]({{ site.baseurl }}{% link _topics/meta-data-lineage-part-1-challenge.md %})**
+

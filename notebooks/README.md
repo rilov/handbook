@@ -165,3 +165,4 @@ Start with Part 1 and work your way through. By the end, you'll have built real 
 **Note**: These notebooks use OpenAI's GPT models which require API credits. Check pricing at https://openai.com/pricing
 
 
+
