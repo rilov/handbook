@@ -1524,3 +1524,4 @@ Uber's journey teaches us:
 **Series Navigation:**
 - ← [Part 1: Building the Original Infrastructure]({{ site.baseurl }}{% link _topics/uber-data-infrastructure-part-1-building.md %})
 - Part 2: Modernizing with GCP ← You are here
+

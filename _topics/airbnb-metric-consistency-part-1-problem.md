@@ -977,3 +977,4 @@ After (with Minerva):
 - **[Data Quality at Scale](https://www.oreilly.com/library/view/data-quality-at/9781492063742/)** - Book on data quality
 - **[dbt: Metrics as Code](https://www.getdbt.com/blog/how-do-you-build-a-metrics-layer)** - Similar approach
 - **[The Data Warehouse Toolkit](https://www.amazon.com/Data-Warehouse-Toolkit-Definitive-Dimensional/dp/1118530802)** - Dimensional modeling
+

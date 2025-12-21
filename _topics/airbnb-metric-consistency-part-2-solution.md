@@ -1628,3 +1628,4 @@ Payback period: 10 days
 **Series Navigation:**
 - ← [Part 1: The Problem]({{ site.baseurl }}{% link _topics/airbnb-metric-consistency-part-1-problem.md %})
 - Part 2: The Solution (Minerva) ← You are here
+
