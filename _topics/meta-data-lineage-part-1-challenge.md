@@ -15,7 +15,7 @@ related:
   - meta-data-lineage-part-2-solution
 ---
 
-![Meta Data Lineage]({{ site.baseurl }}/assets/img/Gemini_Generated_Image_u9udjuu9udjuu9ud.png)
+<img src="{{ site.baseurl }}/assets/img/Gemini_Generated_Image_u9udjuu9udjuu9ud.png" alt="Meta Data Lineage" width="25%" />
 
 > **Part 1 of the Meta Data Lineage Series**
 > 
