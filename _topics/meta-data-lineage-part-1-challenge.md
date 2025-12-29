@@ -15,6 +15,8 @@ related:
   - meta-data-lineage-part-2-solution
 ---
 
+![Meta Data Lineage]({{ site.baseurl }}/assets/img/Gemini_Generated_Image_u9udjuu9udjuu9ud.png)
+
 > **Part 1 of the Meta Data Lineage Series**
 > 
 > **Important Note:** This article is based on my understanding after reading the [Meta Engineering blog post](https://engineering.fb.com/2025/01/22/security/how-meta-discovers-data-flows-via-lineage-at-scale/) and several related articles. I'm trying to demystify and explain these concepts in an accessible way. If you want to understand exactly what Meta built, please refer to the original article linked in the Further Reading section.
