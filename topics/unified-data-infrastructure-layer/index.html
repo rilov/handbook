@@ -1,0 +1,2082 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Unified Data Infrastructure Layer (EDW + Snowflake + Databricks)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>Unified Data Infrastructure Layer (EDW + Snowflake + Databricks)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h2 id="modernizing-data-infrastructure-from-legacy-edw-to-unified-platform">Modernizing Data Infrastructure: From Legacy EDW to Unified Platform</h2>
+
+<p><strong>Your data warehouse is becoming your biggest bottleneck.</strong> The on-prem EDW that powered your business for the last decade can’t keep up with AI, real-time analytics, and cloud-scale workloads. It’s expensive to scale, slow to adapt, and wasn’t built for the demands of modern data and ML.</p>
+
+<p><strong>AI needs a unified data foundation.</strong> You can’t train models on fragmented data. You can’t govern data across three different systems. You can’t move fast when teams spend days reconciling numbers and searching for datasets.</p>
+
+<p><strong>The reality:</strong></p>
+
+<p>You have a <strong>legacy on-prem EDW</strong> built over 10-15 years. It holds critical historical data, runs finance and compliance workloads, and has hundreds of reports depending on it. You can’t just “lift and shift” it to the cloud — the risk is too high, the cost is unclear, and the business won’t tolerate downtime.</p>
+
+<p>You also have an <strong>on-prem Enterprise Data Lake (EDL)</strong> — typically Cloudera Data Platform (CDP) with Hadoop and Spark. It was built to handle big data workloads that the EDW couldn’t, but it’s become another silo with its own data, governance, and access patterns.</p>
+
+<p>But you also <strong>can’t scale on-prem anymore.</strong> Storage is expensive, compute is limited, and your team wants cloud-native tools and flexibility. So you’ve added cloud platforms — Snowflake for analytics, Databricks for engineering and ML.</p>
+
+<p><strong>Now you have a hybrid mess:</strong></p>
+<ul>
+  <li>Your <strong>new cloud infrastructure</strong> needs to fetch data from <strong>both EDW and CDP/EDL</strong></li>
+  <li>Data exists in three places: EDW (structured), CDP/Hadoop (big data), and cloud (Snowflake/Databricks)</li>
+  <li>Teams build the same pipelines multiple times (EDW, CDP, cloud)</li>
+  <li>Data is duplicated, governance diverges, and nobody knows which system has the “truth”</li>
+  <li>You’re paying for four platforms (EDW + CDP + Snowflake + Databricks) but getting one fragmented experience</li>
+</ul>
+
+<p><strong>You can’t put all data in the cloud.</strong> Compliance, latency, and legacy dependencies keep some data on-prem.</p>
+
+<p><strong>You can’t stay fully on-prem.</strong> You need cloud scale, modern tools, and flexibility to power AI and modern analytics.</p>
+
+<p><strong>The solution:</strong> A unified data infrastructure layer built on <strong>on-prem object storage + Iceberg + Spark + federated query</strong> that makes EDW + Snowflake + Databricks feel like one platform — giving you the strong data foundation needed to scale AI, without forcing a big-bang migration.</p>
+
+<p><strong>The core layer:</strong></p>
+<ul>
+  <li><strong>On-prem object storage</strong> (MinIO, Ceph, Dell ECS) as your lakehouse foundation</li>
+  <li><strong>Apache Iceberg</strong> for open table format (works everywhere)</li>
+  <li><strong>Spark</strong> for transformations (on-prem or cloud)</li>
+  <li><strong>Federated query</strong> (Trino/Presto) to query across on-prem and cloud seamlessly</li>
+</ul>
+
+<blockquote>
+  <p><strong>Think of it like a city with old and new infrastructure.</strong> You don’t tear down the old water system overnight. You build new pipes (object storage + Iceberg) that connect to the old ones (EDW), standardize the quality checks (Spark), and give everyone one map (federated query) to find what they need — even if data lives both on-prem and in cloud.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="the-pain-which-platform-should-we-use">The Pain: Which Platform Should We Use?</h2>
+
+<h3 id="problem-1-platform-paralysis">Problem 1: Platform Paralysis</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Data Engineer: "Where should I build this new pipeline?"
+  Option A: EDW (legacy, but finance depends on it)
+  Option B: Databricks (modern, but not everyone has access)
+  Option C: Snowflake (fast, but expensive for large transforms)
+
+Result: 3-day debate, no decision, project delayed
+</code></pre></div></div>
+
+<p><strong>The real issue:</strong> You don’t have a clear answer to “which platform for what workload?”</p>
+
+<h3 id="problem-2-every-team-picks-a-different-platform">Problem 2: Every Team Picks a Different Platform</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Finance team: "We only trust the EDW"
+Data Science team: "We only use Databricks"
+BI team: "We only use Snowflake"
+Analytics Engineering: "We use dbt... but where do we run it?"
+
+Result: Data scattered across 3 platforms, no one can find anything
+</code></pre></div></div>
+
+<p><strong>The real issue:</strong> No unified strategy, every team optimizes locally.</p>
+
+<h3 id="problem-3-same-dataset-three-different-versions">Problem 3: Same Dataset, Three Different Versions</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Customer data exists in:
+- EDW: customer_master (legacy schema)
+- Databricks: silver.customers (Delta Lake)
+- Snowflake: analytics.dim_customer (star schema)
+
+Which one is the source of truth? Nobody knows.
+
+Result: Teams build their own versions, making it worse
+</code></pre></div></div>
+
+<p><strong>The real issue:</strong> No single system of record for curated data.</p>
+
+<h3 id="problem-4-platform-lock-in-fears">Problem 4: Platform Lock-In Fears</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Executive: "If we go all-in on Snowflake, what if we need to move?"
+Architect: "If we standardize on Databricks, can BI teams still use Tableau?"
+CFO: "Why are we paying for three platforms?"
+
+Result: Analysis paralysis, no modernization happens
+</code></pre></div></div>
+
+<p><strong>The real issue:</strong> Fear of vendor lock-in prevents any decision.</p>
+
+<h3 id="problem-5-new-workloads-dont-know-where-to-go">Problem 5: New Workloads Don’t Know Where to Go</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ML Engineer: "I need to train a model on customer data"
+  - EDW has historical data (but no GPU, no Spark)
+  - Databricks has ML tools (but data is in EDW)
+  - Snowflake has some data (but expensive for training)
+
+Result: Copy data everywhere, waste time, duplicate storage costs
+</code></pre></div></div>
+
+<p><strong>The real issue:</strong> No clear platform strategy for different workload types.</p>
+
+<p><strong>The root cause?</strong> You have multiple platforms, but no <strong>unified strategy</strong> or <strong>clear decision framework</strong> for which platform to use for what.</p>
+
+<hr />
+
+<h2 id="the-solution-one-logical-platform-not-one-physical-system">The Solution: One Logical Platform (Not One Physical System)</h2>
+
+<blockquote>
+  <p><strong>Key insight:</strong> You don’t need to replace everything with one tool. You need to standardize <strong>how things work together</strong> — including on-prem platforms like EDL/CDP, EDW, and cloud platforms like Snowflake and Databricks.</p>
+</blockquote>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','secondaryColor':'#f0f0f0','tertiaryColor':'#fff','fontSize':'14px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    subgraph BEFORE["❌ BEFORE: Fragmented"]
+        direction TB
+        EDW1["🏢<br />EDW<br />(on-prem)"]
+        CDP1["🐘<br />CDP/EDL<br />(on-prem)"]
+        SNOW1["❄️<br />Snowflake<br />(cloud)"]
+        DBX1["⚡<br />Databricks<br />(cloud)"]
+        
+        EDW1 -."different<br />rules".-&gt; CDP1
+        CDP1 -."different<br />rules".-&gt; SNOW1
+        SNOW1 -."different<br />rules".-&gt; DBX1
+        DBX1 -."different<br />rules".-&gt; EDW1
+    end
+    
+    ARROW["⬇️<br />TRANSFORM"]
+    
+    subgraph AFTER["✅ AFTER: Unified"]
+        direction TB
+        UNIFIED["📦 Unified Data Infra Layer<br />━━━━━━━━━━━━━━━━━━<br />📚 Catalog | 🔒 Governance | 📋 Contracts | 🗄️ Object Storage + Iceberg"]
+        
+        EDW2["🏢<br />EDW"]
+        CDP2["🐘<br />CDP/EDL"]
+        SNOW2["❄️<br />Snowflake"]
+        DBX2["⚡<br />Databricks"]
+        
+        UNIFIED ==&gt;|"same<br />rules"| EDW2
+        UNIFIED ==&gt;|"same<br />rules"| CDP2
+        UNIFIED ==&gt;|"same<br />rules"| SNOW2
+        UNIFIED ==&gt;|"same<br />rules"| DBX2
+    end
+    
+    BEFORE --&gt; ARROW
+    ARROW --&gt; AFTER
+    
+    style BEFORE fill:#ffcdd2,stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5
+    style AFTER fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style UNIFIED fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style ARROW fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    style EDW1 fill:#fff,stroke:#000,stroke-width:2px
+    style CDP1 fill:#fff,stroke:#000,stroke-width:2px
+    style SNOW1 fill:#fff,stroke:#000,stroke-width:2px
+    style DBX1 fill:#fff,stroke:#000,stroke-width:2px
+    style EDW2 fill:#fff,stroke:#000,stroke-width:2px
+    style CDP2 fill:#fff,stroke:#000,stroke-width:2px
+    style SNOW2 fill:#fff,stroke:#000,stroke-width:2px
+    style DBX2 fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<p>What makes it feel like “one platform”? You standardize:</p>
+
+<ul>
+  <li><strong>How data lands</strong> (ingestion contracts)</li>
+  <li><strong>How it’s stored</strong> (one open table format + consistent zones)</li>
+  <li><strong>How it’s governed</strong> (one catalog + one policy model)</li>
+  <li><strong>How it’s observed</strong> (lineage + data quality)</li>
+  <li><strong>How it’s consumed</strong> (semantic layer + APIs)</li>
+</ul>
+
+<p>If you do <em>just that</em>, you can modernize without a big-bang migration.</p>
+
+<hr />
+
+<h2 id="the-2-plane-model-control-plane-vs-data-plane">The 2-Plane Model (Control Plane vs Data Plane)</h2>
+
+<blockquote>
+  <p><strong>Think of it like air traffic control.</strong> The control tower (Control Plane) coordinates all the planes (Data Plane), but the planes still fly independently. The tower ensures they don’t crash into each other and follow the same rules.</p>
+</blockquote>
+
+<p>Most enterprises end up with this split:</p>
+
+<ul>
+  <li><strong>Control Plane</strong>: the <em>unified experience</em> (catalog, policies, contracts, quality, lineage, portal)</li>
+  <li><strong>Data Plane</strong>: where <em>data + compute</em> actually live (EDW / Snowflake / Databricks / object storage)</li>
+</ul>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    subgraph CP["🎯 CONTROL PLANE: Unified Data Infrastructure Layer"]
+        direction LR
+        CATALOG["📚<br />Catalog +<br />Discovery"]
+        POLICY["🔒<br />Policy<br />Engine"]
+        CONTRACTS["📋<br />Data<br />Contracts"]
+        LINEAGE["🔗<br />Lineage +<br />Audit"]
+        QUALITY["✅<br />Quality<br />Framework"]
+        PORTAL["🌐<br />Self-serve<br />Portal"]
+    end
+
+    subgraph DP["💾 DATA PLANE: Where Data Lives"]
+        subgraph ONPREM["🏢 ON-PREM"]
+            direction TB
+            EDW["🏢 EDW<br />(Legacy)"]
+            CDP["🐘 CDP/Hadoop<br />(Legacy EDL)"]
+            SRC1["💾 DBs<br />📁 Files<br />📱 Apps"]
+            OBJ["🗄️ Object Storage<br />━━━━━━━━━━━━<br />MinIO/Ceph/Dell ECS<br />📊 Iceberg Tables<br />🥉 Bronze | 🥈 Silver | 🥇 Gold"]
+            SPARK["⚡ Spark<br />(CDP or standalone)<br />Transformations"]
+        end
+
+        subgraph CLOUD["☁️ CLOUD"]
+            direction TB
+            DBX["⚡ Databricks<br />Engineering + ML"]
+            SNOW["❄️ Snowflake<br />Analytics + BI"]
+            SAAS["🌍 SaaS<br />Sources"]
+        end
+    end
+
+    SRC1 ==&gt;|"📥 Batch<br />CDC<br />Streams"| OBJ
+    SAAS ==&gt;|"📥 Batch<br />Streams"| OBJ
+
+    OBJ &lt;===&gt;|"read/write"| SPARK
+    OBJ &lt;===&gt;|"read via VPN<br />(Iceberg)"| DBX
+    OBJ &lt;===&gt;|"read via VPN<br />(Iceberg)"| SNOW
+    EDW -.-&gt;|"optional sync"| OBJ
+    CDP -.-&gt;|"optional sync"| OBJ
+
+    CP -."🔐 governs".-&gt; EDW
+    CP -."🔐 governs".-&gt; OBJ
+    CP -."🔐 governs".-&gt; DBX
+    CP -."🔐 governs".-&gt; SNOW
+    
+    style CP fill:#e3f2fd,stroke:#1565c0,stroke-width:4px
+    style DP fill:#fff8e1,stroke:#f57f17,stroke-width:4px
+    style ONPREM fill:#ffebee,stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5
+    style CLOUD fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style OBJ fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style CATALOG fill:#fff,stroke:#000,stroke-width:2px
+    style POLICY fill:#fff,stroke:#000,stroke-width:2px
+    style CONTRACTS fill:#fff,stroke:#000,stroke-width:2px
+    style LINEAGE fill:#fff,stroke:#000,stroke-width:2px
+    style QUALITY fill:#fff,stroke:#000,stroke-width:2px
+    style PORTAL fill:#fff,stroke:#000,stroke-width:2px
+    style EDW fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+    style CDP fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+    style SRC1 fill:#fff,stroke:#000,stroke-width:2px
+    style SPARK fill:#fff,stroke:#000,stroke-width:2px
+    style DBX fill:#fff,stroke:#000,stroke-width:2px
+    style SNOW fill:#fff,stroke:#000,stroke-width:2px
+    style SAAS fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<p><strong>The Control Plane</strong> is what makes teams say: “This feels unified.”</p>
+
+<p><strong>The Data Plane</strong> is where the actual work happens (storage + compute).</p>
+
+<hr />
+
+<h2 id="how-data-flows-through-the-system">How Data Flows Through the System</h2>
+
+<blockquote>
+  <p><strong>Real example:</strong> A customer places an order on your website. Let’s trace that data through the entire platform.</p>
+</blockquote>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    subgraph ONPREM_FLOW["🏢 ON-PREM"]
+        ORDER["🛍️<br />Order Placed<br />━━━━━━━<br />Website DB"]
+        
+        INGEST["📥<br />Ingestion<br />Layer<br />━━━━━━<br />CDC Capture"]
+        
+        LANDING["🥉 BRONZE<br />On-Prem Object Storage<br />━━━━━━━━<br />Raw Order Data<br />Iceberg Table"]
+        
+        CURATED["🥈 SILVER<br />On-Prem Object Storage<br />━━━━━━━━<br />Cleaned + Joined<br />Orders + Customers"]
+        
+        PRODUCTS["🥇 GOLD<br />On-Prem Object Storage<br />━━━━━━━━<br />Order Analytics<br />Customer 360"]
+        
+        EDW_FIN["🏢<br />EDW (Legacy)<br />━━━━━━<br />Finance Reports"]
+    end
+    
+    subgraph CLOUD_FLOW["☁️ CLOUD"]
+        SNOW_BI["❄️<br />Snowflake<br />━━━━━━<br />BI Dashboards"]
+        DBX_ML["⚡<br />Databricks<br />━━━━━━<br />ML Models"]
+    end
+    
+    ORDER ==&gt;|"❶ Capture"| INGEST
+    INGEST ==&gt;|"❷ Validate +<br />Publish"| LANDING
+    LANDING ==&gt;|"❸ Transform<br />(Spark)"| CURATED
+    CURATED ==&gt;|"❹ Build<br />Products"| PRODUCTS
+    
+    PRODUCTS ==&gt;|"❺ Read via VPN<br />(Iceberg)"| SNOW_BI
+    PRODUCTS ==&gt;|"❻ Read via VPN<br />(Iceberg)"| DBX_ML
+    PRODUCTS -.-&gt;|"❼ Optional<br />sync"| EDW_FIN
+    
+    style ONPREM_FLOW fill:#ffebee,stroke:#c62828,stroke-width:4px,stroke-dasharray: 5 5
+    style CLOUD_FLOW fill:#e8f5e9,stroke:#2e7d32,stroke-width:4px
+    style ORDER fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style INGEST fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style LANDING fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style CURATED fill:#bbdefb,stroke:#1565c0,stroke-width:3px
+    style PRODUCTS fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style SNOW_BI fill:#fff,stroke:#000,stroke-width:2px
+    style DBX_ML fill:#fff,stroke:#000,stroke-width:2px
+    style EDW_FIN fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+</div>
+
+<p><strong>Step-by-step:</strong></p>
+
+<ol>
+  <li><strong>Order placed</strong> → captured by CDC (Change Data Capture)</li>
+  <li><strong>Ingestion</strong> → validated against contract, published to Landing zone</li>
+  <li><strong>Curation</strong> → cleaned, joined with customer data, published to Curated zone</li>
+  <li><strong>Data Products</strong> → domain team builds “Order Analytics” product</li>
+  <li><strong>Consumption</strong> → served to Snowflake (BI), Databricks (ML), EDW (Finance)</li>
+</ol>
+
+<p><strong>Key point:</strong> Data flows through <strong>one path</strong>, but can be consumed by <strong>multiple engines</strong>.</p>
+
+<hr />
+
+<h2 id="the-lakehouse-zones-bronze--silver--gold">The Lakehouse Zones (Bronze → Silver → Gold)</h2>
+
+<blockquote>
+  <p><strong>Think of it like a factory assembly line.</strong> Raw materials come in (Bronze), get processed (Silver), and become finished products (Gold).</p>
+</blockquote>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    subgraph BRONZE["🥉 BRONZE: Landing Zone"]
+        direction TB
+        B1["✅ Raw, Immutable<br />✅ Source-aligned<br />✅ No transformations"]
+        B2["📝 Example:<br />• raw_orders<br />• raw_customers<br />• raw_events"]
+    end
+    
+    subgraph SILVER["🥈 SILVER: Curated Zone"]
+        direction TB
+        S1["✅ Cleaned, Standardized<br />✅ Conformed dimensions<br />✅ Quality checks passed"]
+        S2["📝 Example:<br />• clean_orders<br />• clean_customers<br />• conformed_products"]
+    end
+    
+    subgraph GOLD["🥇 GOLD: Products Zone"]
+        direction TB
+        G1["✅ Business-ready<br />✅ Dimensional models<br />✅ Feature sets<br />✅ Aggregates"]
+        G2["📝 Example:<br />• order_analytics<br />• customer_360<br />• ml_features"]
+    end
+    
+    BRONZE ==&gt;|"⚙️ Transform<br />+ Clean"| SILVER
+    SILVER ==&gt;|"🛠️ Build<br />Products"| GOLD
+    
+    style BRONZE fill:#ffcdd2,stroke:#c62828,stroke-width:4px
+    style SILVER fill:#bbdefb,stroke:#1565c0,stroke-width:4px
+    style GOLD fill:#c8e6c9,stroke:#2e7d32,stroke-width:4px
+    style B1 fill:#fff,stroke:#000,stroke-width:2px
+    style B2 fill:#fff,stroke:#000,stroke-width:2px
+    style S1 fill:#fff,stroke:#000,stroke-width:2px
+    style S2 fill:#fff,stroke:#000,stroke-width:2px
+    style G1 fill:#fff,stroke:#000,stroke-width:2px
+    style G2 fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<h3 id="bronze-zone-landing">Bronze Zone (Landing)</h3>
+
+<p><strong>Purpose:</strong> Store raw data exactly as it arrived</p>
+
+<p><strong>Characteristics:</strong></p>
+<ul>
+  <li>Immutable (never modified)</li>
+  <li>Source-aligned (one table per source table)</li>
+  <li>No transformations</li>
+  <li>Keep everything (even bad data goes to quarantine)</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s3://lakehouse/bronze/orders/
+  - raw_orders_2024_01_11.parquet
+  - raw_orders_2024_01_12.parquet
+</code></pre></div></div>
+
+<h3 id="silver-zone-curated">Silver Zone (Curated)</h3>
+
+<p><strong>Purpose:</strong> Cleaned, standardized, ready for analytics</p>
+
+<p><strong>Characteristics:</strong></p>
+<ul>
+  <li>Data quality checks passed</li>
+  <li>Standardized formats (dates, currencies, etc.)</li>
+  <li>Conformed dimensions (one customer table, not five)</li>
+  <li>Deduplicated</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s3://lakehouse/silver/orders/
+  - clean_orders/ (Iceberg table)
+  - clean_customers/ (Iceberg table)
+</code></pre></div></div>
+
+<h3 id="gold-zone-products">Gold Zone (Products)</h3>
+
+<p><strong>Purpose:</strong> Business-ready datasets for specific use cases</p>
+
+<p><strong>Characteristics:</strong></p>
+<ul>
+  <li>Domain-owned (Finance owns revenue tables)</li>
+  <li>Documented + versioned</li>
+  <li>Optimized for consumption</li>
+  <li>SLAs enforced</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s3://lakehouse/gold/finance/
+  - revenue_daily/ (dimensional model)
+  - customer_lifetime_value/ (aggregate)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="reference-architecture-the-7-layers">Reference Architecture: The 7 Layers</h2>
+
+<blockquote>
+  <p><strong>Each layer solves a specific problem.</strong> You can implement them incrementally (you don’t need all 7 on day one).</p>
+</blockquote>
+
+<h3 id="layer-a-connectivity-and-ingestion">Layer A: Connectivity and Ingestion</h3>
+
+<p><strong>Goal:</strong> Move data reliably between on-prem and cloud, batch + streaming</p>
+
+<p><strong>Typical sources:</strong></p>
+<ul>
+  <li>On-prem databases (CDC / log-based replication)</li>
+  <li>Legacy file drops (SFTP, NFS)</li>
+  <li>Application events / streams (Kafka, Kinesis)</li>
+  <li>SaaS and cloud databases (Salesforce, Workday, etc.)</li>
+</ul>
+
+<p><strong>Standard pattern:</strong> Treat ingestion as <strong>pipelines with contracts</strong></p>
+
+<p>A contract should include:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Schema</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">{order_id: int, amount: decimal, customer_id: int}</code></td>
+    </tr>
+    <tr>
+      <td><strong>SLA</strong></td>
+      <td>Freshness: &lt; 15 minutes, Latency: &lt; 5 minutes</td>
+    </tr>
+    <tr>
+      <td><strong>PII tags</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">customer_email</code> tagged as PII</td>
+    </tr>
+    <tr>
+      <td><strong>Owner</strong></td>
+      <td>Team: Orders, Escalation: orders-oncall@company.com</td>
+    </tr>
+    <tr>
+      <td><strong>Retention</strong></td>
+      <td>Keep raw data for 90 days</td>
+    </tr>
+    <tr>
+      <td><strong>Expected volume</strong></td>
+      <td>10K-50K records/hour</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Pipeline shape</strong> (standardize this everywhere):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ingest → validate → quarantine → publish
+</code></pre></div></div>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    SOURCE["💾<br />Data Source<br />━━━━━━━<br />DB / API / File"]
+    INGEST["📥<br />Ingest<br />━━━━━━<br />CDC / Batch"]
+    VALIDATE["✅<br />Validate<br />━━━━━━━<br />Against Contract<br />Schema + SLA"]
+    QUARANTINE["❌<br />Quarantine<br />━━━━━━━━<br />Bad Data<br />Alert Owner"]
+    PUBLISH["📤<br />Publish<br />━━━━━━<br />Landing Zone<br />Iceberg Table"]
+    
+    SOURCE ==&gt; INGEST
+    INGEST ==&gt; VALIDATE
+    VALIDATE ==&gt;|"✅ Valid"| PUBLISH
+    VALIDATE ==&gt;|"❌ Invalid"| QUARANTINE
+    
+    style SOURCE fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style INGEST fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style VALIDATE fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style QUARANTINE fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style PUBLISH fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+</div>
+
+<p><strong>Why this matters:</strong> This single pattern prevents “every team reinvents ingestion differently.”</p>
+
+<hr />
+
+<h3 id="layer-b-unified-storage-lakehouse-foundation">Layer B: Unified Storage (Lakehouse Foundation)</h3>
+
+<p><strong>Goal:</strong> One consistent data representation across platforms using <strong>object storage + Iceberg</strong></p>
+
+<p><strong>The core architecture: On-prem object storage as your lakehouse</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>🏢 On-Prem Object Storage (Primary Option)
+├── MinIO (S3-compatible, open source)
+├── Ceph (enterprise-grade, scalable)
+├── Dell ECS (enterprise storage)
+└── NetApp StorageGRID (hybrid cloud)
+
++ Apache Iceberg tables
++ Spark for transformations
++ Trino/Presto for federated query
+</code></pre></div></div>
+
+<p><strong>Why on-prem object storage?</strong></p>
+
+<ul>
+  <li>✅ <strong>Data stays on-prem</strong> (compliance, latency, governance)</li>
+  <li>✅ <strong>S3-compatible API</strong> (works with all modern tools)</li>
+  <li>✅ <strong>No cloud egress costs</strong> (data doesn’t leave your datacenter)</li>
+  <li>✅ <strong>Scales like cloud</strong> (petabyte-scale, elastic)</li>
+  <li>✅ <strong>Works with Iceberg</strong> (same as S3/ADLS/GCS)</li>
+</ul>
+
+<p><strong>Use a single “platform default” open table format:</strong></p>
+
+<ul>
+  <li><strong>Apache Iceberg</strong> (recommended - works everywhere: on-prem, Snowflake, Databricks, Trino)</li>
+  <li>Delta Lake or Hudi can work too, but <strong>pick one</strong> to reduce fragmentation</li>
+</ul>
+
+<p><strong>Why open format (Iceberg)?</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Proprietary format (Snowflake-only):
+- Data locked in Snowflake
+- Can't use Databricks without copying
+- Can't query from on-prem Spark
+- Vendor lock-in
+
+Open format (Iceberg on object storage):
+- On-prem Spark can read it ✅
+- Snowflake can read it (external tables) ✅
+- Databricks can read it ✅
+- Trino/Presto can read it ✅
+- Future tools can read it ✅
+</code></pre></div></div>
+
+<p><strong>Key rule:</strong> Object storage (on-prem or cloud) becomes your <strong>system-of-record for analytical data</strong> going forward.</p>
+
+<p><strong>Deployment options:</strong></p>
+
+<ol>
+  <li><strong>On-prem only:</strong> Object storage + Iceberg on-prem, federated query to cloud when needed</li>
+  <li><strong>Hybrid:</strong> Primary data on-prem, replicate to cloud for specific workloads</li>
+  <li><strong>Cloud primary:</strong> S3/ADLS/GCS, replicate back to on-prem if needed</li>
+</ol>
+
+<p><strong>The directional goal:</strong></p>
+<ul>
+  <li>Publish curated datasets to object storage (on-prem or cloud) in Iceberg format</li>
+  <li>Let Spark, Snowflake, Databricks, Trino all read from that same truth</li>
+  <li>Use federated query (Trino/Presto) to query across locations seamlessly</li>
+</ul>
+
+<h4 id="detailed-hybrid-architecture-object-storage--iceberg-internals">Detailed Hybrid Architecture: Object Storage + Iceberg Internals</h4>
+
+<blockquote>
+  <p><strong>This shows how on-prem and cloud connect, and what’s inside the lakehouse storage layer.</strong></p>
+</blockquote>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'12px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    subgraph ONPREM["🏢 ON-PREM DATA CENTER"]
+        direction TB
+        
+        EDW_SYS["🏢 EDW (Legacy)<br />━━━━━━<br />Teradata/Oracle<br />Netezza"]
+        APPS["📱 Apps<br />━━━━━━<br />CRM/ERP<br />Legacy Systems"]
+        DBS["💾 Databases<br />━━━━━━<br />SQL Server<br />PostgreSQL"]
+        
+        subgraph ONPREM_STORAGE["🗄️ ON-PREM OBJECT STORAGE (Primary)"]
+            direction TB
+            MINIO["MinIO / Ceph / Dell ECS<br />━━━━━━━━━━━━━━━━<br />S3-compatible API"]
+            
+            subgraph ICEBERG["📊 ICEBERG TABLE STRUCTURE"]
+                direction LR
+                META["📋 Metadata<br />━━━━━━━━<br />metadata.json<br />snapshots/"]
+                MANIFEST["📑 Manifest Files<br />━━━━━━━━━━━<br />manifest.avro<br />(pointers to data)"]
+                DATA["📦 Data Files<br />━━━━━━━━━━<br />parquet files<br />immutable"]
+            end
+            
+            BRONZE_S["🥉 bronze/<br />raw_orders/<br />raw_customers/"]
+            SILVER_S["🥈 silver/<br />clean_orders/<br />clean_customers/"]
+            GOLD_S["🥇 gold/<br />order_analytics/<br />customer_360/"]
+        end
+        
+        SPARK_ONPREM["⚡ Spark (On-Prem)<br />━━━━━━━━━━━<br />Transformations<br />reads/writes Iceberg"]
+        
+        TRINO["🔍 Trino/Presto<br />━━━━━━━━━━━<br />Federated Query<br />across on-prem + cloud"]
+    end
+    
+    subgraph CLOUD["☁️ CLOUD (AWS/Azure/GCP)"]
+        direction TB
+        
+        CLOUD_STORAGE["🗄️ Cloud Object Storage<br />━━━━━━━━━━━━━━<br />S3/ADLS/GCS<br />(Optional: replicated data)"]
+        
+        subgraph CATALOG_SYS["📚 CATALOG SYSTEM"]
+            direction TB
+            CATALOG_DB["📚 Catalog<br />━━━━━━━━<br />DataHub/Atlan<br />Unity Catalog"]
+            LINEAGE_DB["🔗 Lineage<br />━━━━━━━━<br />Table → Table<br />Column → Column"]
+        end
+        
+        subgraph COMPUTE["⚙️ COMPUTE ENGINES"]
+            direction LR
+            DBX_ENG["⚡ Databricks<br />━━━━━━━━━<br />Spark clusters<br />reads Iceberg"]
+            SNOW_ENG["❄️ Snowflake<br />━━━━━━━━━<br />Virtual warehouses<br />reads Iceberg"]
+        end
+        
+        VPN["🔐 VPN / Direct Connect<br />━━━━━━━━━━━━━━━━<br />Secure tunnel"]
+    end
+    
+    EDW_SYS -.-&gt;|"optional sync"| ONPREM_STORAGE
+    APPS ==&gt;|"CDC/Batch"| ONPREM_STORAGE
+    DBS ==&gt;|"CDC/Batch"| ONPREM_STORAGE
+    
+    ONPREM_STORAGE &lt;===&gt;|"read/write"| SPARK_ONPREM
+    ONPREM_STORAGE &lt;===&gt;|"federated<br />query"| TRINO
+    
+    ONPREM_STORAGE -.-&gt;|"optional<br />replication"| CLOUD_STORAGE
+    CLOUD_STORAGE &lt;===&gt;|"via VPN"| VPN
+    
+    META -.-&gt;|"points to"| MANIFEST
+    MANIFEST -.-&gt;|"points to"| DATA
+    
+    ONPREM_STORAGE -.-&gt;|"registers tables"| CATALOG_DB
+    CATALOG_DB -.-&gt;|"tracks"| LINEAGE_DB
+    
+    CLOUD_STORAGE &lt;===&gt;|"read/write<br />via Iceberg API"| DBX_ENG
+    CLOUD_STORAGE &lt;===&gt;|"read/write<br />via Iceberg API"| SNOW_ENG
+    
+    TRINO &lt;===&gt;|"federated query<br />via VPN"| DBX_ENG
+    TRINO &lt;===&gt;|"federated query<br />via VPN"| SNOW_ENG
+    
+    DBX_ENG -.-&gt;|"pushes metadata"| CATALOG_DB
+    SNOW_ENG -.-&gt;|"pushes metadata"| CATALOG_DB
+    SPARK_ONPREM -.-&gt;|"pushes metadata"| CATALOG_DB
+    
+    style ONPREM fill:#ffebee,stroke:#c62828,stroke-width:4px
+    style CLOUD fill:#e8f5e9,stroke:#2e7d32,stroke-width:4px
+    style ONPREM_STORAGE fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+    style CLOUD_STORAGE fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style ICEBERG fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style CATALOG_SYS fill:#f3e5f5,stroke:#6a1b9a,stroke-width:3px
+    style COMPUTE fill:#fff3e0,stroke:#e65100,stroke-width:3px
+    style VPN fill:#fff,stroke:#000,stroke-width:3px
+    style EDW_SYS fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+    style APPS fill:#fff,stroke:#000,stroke-width:2px
+    style DBS fill:#fff,stroke:#000,stroke-width:2px
+    style MINIO fill:#fff,stroke:#000,stroke-width:2px
+    style SPARK_ONPREM fill:#fff,stroke:#000,stroke-width:2px
+    style TRINO fill:#fff,stroke:#000,stroke-width:2px
+    style META fill:#fff,stroke:#000,stroke-width:2px
+    style MANIFEST fill:#fff,stroke:#000,stroke-width:2px
+    style DATA fill:#fff,stroke:#000,stroke-width:2px
+    style BRONZE_S fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style SILVER_S fill:#bbdefb,stroke:#1565c0,stroke-width:2px
+    style GOLD_S fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style CATALOG_DB fill:#fff,stroke:#000,stroke-width:2px
+    style LINEAGE_DB fill:#fff,stroke:#000,stroke-width:2px
+    style DBX_ENG fill:#fff,stroke:#000,stroke-width:2px
+    style SNOW_ENG fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<p><strong>Key components explained:</strong></p>
+
+<ol>
+  <li><strong>On-prem object storage (Primary)</strong>: MinIO/Ceph/Dell ECS as your lakehouse foundation
+    <ul>
+      <li>S3-compatible API (works with all modern tools)</li>
+      <li>Data stays on-prem (compliance, latency, governance)</li>
+      <li>Holds Bronze/Silver/Gold zones in Iceberg format</li>
+    </ul>
+  </li>
+  <li><strong>Iceberg structure</strong>:
+    <ul>
+      <li><strong>Metadata files</strong>: Track table schema, snapshots, and versions</li>
+      <li><strong>Manifest files</strong>: Point to actual data files (like an index)</li>
+      <li><strong>Data files</strong>: Immutable Parquet files with the actual data</li>
+    </ul>
+  </li>
+  <li>
+    <p><strong>On-prem Spark</strong>: Transformations run on-prem, read/write Iceberg tables directly</p>
+  </li>
+  <li><strong>Trino/Presto (Federated Query)</strong>: Query across on-prem and cloud seamlessly
+    <ul>
+      <li>Single SQL query can join on-prem Iceberg tables with cloud Snowflake tables</li>
+      <li>No data movement required</li>
+      <li>Users don’t need to know where data lives</li>
+    </ul>
+  </li>
+  <li>
+    <p><strong>Catalog</strong>: Registers all tables (on-prem and cloud) and tracks lineage</p>
+  </li>
+  <li>
+    <p><strong>Cloud compute engines</strong>: Databricks and Snowflake can read Iceberg tables (via replication or federated query)</p>
+  </li>
+  <li><strong>Optional cloud replication</strong>: Replicate specific datasets to cloud for cloud-native workloads</li>
+</ol>
+
+<p><strong>Why this works:</strong></p>
+<ul>
+  <li><strong>Primary data stays on-prem</strong> (compliance, cost, control)</li>
+  <li><strong>Multiple engines can read it</strong> (Spark, Trino, Snowflake, Databricks via Iceberg)</li>
+  <li><strong>Federated query</strong> eliminates need to copy data everywhere</li>
+  <li><strong>Catalog knows about everything</strong> (unified discovery across on-prem and cloud)</li>
+  <li><strong>Gradual cloud adoption</strong> (replicate only what needs to be in cloud)</li>
+</ul>
+
+<hr />
+
+<h3 id="layer-c-compute-multi-engine-same-rules">Layer C: Compute (Multi-Engine, Same Rules)</h3>
+
+<p><strong>Goal:</strong> Allow Snowflake and Databricks to coexist without duplicated logic or governance</p>
+
+<p><strong>Use each engine for what it’s good at:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Engine</th>
+      <th>Best For</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Databricks</strong></td>
+      <td>Engineering, streaming, heavy transforms, ML/feature pipelines</td>
+      <td>Spark-native, notebooks, MLflow integration</td>
+    </tr>
+    <tr>
+      <td><strong>Snowflake</strong></td>
+      <td>SQL analytics, BI concurrency, governed marts, data sharing</td>
+      <td>Fast SQL, easy to use, great for BI tools</td>
+    </tr>
+    <tr>
+      <td><strong>On-prem CDP/Hadoop</strong></td>
+      <td>Legacy big data workloads, existing Spark jobs</td>
+      <td>Already exists, Spark/Hive workloads depend on it</td>
+    </tr>
+    <tr>
+      <td><strong>On-prem EDW</strong></td>
+      <td>Legacy structured workloads (finance, compliance)</td>
+      <td>Already exists, critical SQL reports depend on it</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Important rule:</strong> Avoid building <em>two different curated layers</em> (one in Snowflake and one in Databricks) that drift.</p>
+
+<p><strong>Prefer:</strong></p>
+<ul>
+  <li>Curate once in open format (Iceberg on on-prem object storage)</li>
+  <li>Serve through either engine (via VPN or replication)</li>
+  <li>Build engine-specific marts only when there’s a strong reason (cost, performance, concurrency)</li>
+</ul>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    subgraph ONPREM_COMP["🏢 ON-PREM"]
+        CURATED["🥈 Curated Zone<br />━━━━━━━━━━━━<br />📊 Iceberg Tables<br />🗄️ MinIO/Ceph/Dell ECS"]
+        CDP_COMP["🐘<br />CDP/Hadoop (Legacy)<br />━━━━━━━━<br />Spark/Hive jobs"]
+        EDW["🏢<br />EDW (Legacy)<br />━━━━━━━━<br />Finance"]
+    end
+    
+    subgraph CLOUD_COMP["☁️ CLOUD"]
+        DBX["⚡<br />Databricks<br />━━━━━━━━<br />Heavy transforms<br />+ ML"]
+        SNOW["❄️<br />Snowflake<br />━━━━━━━━<br />BI + Analytics"]
+    end
+    
+    CURATED ==&gt;|"📖 Read via VPN<br />(Iceberg)"| DBX
+    CURATED ==&gt;|"📖 Read via VPN<br />(Iceberg)"| SNOW
+    CURATED -.-&gt;|"🔄 Optional sync"| CDP_COMP
+    CURATED -.-&gt;|"🔄 Optional sync"| EDW
+    
+    DBX ==&gt;|"✏️ Write"| DBX_MARTS["⚡ Databricks-specific<br />━━━━━━━━━━━━━━<br />ML Feature Store<br />(Cloud)"]
+    SNOW ==&gt;|"✏️ Write"| SNOW_MARTS["❄️ Snowflake-specific<br />━━━━━━━━━━━━━━<br />BI Aggregates<br />(Cloud)"]
+    
+    style ONPREM_COMP fill:#ffebee,stroke:#c62828,stroke-width:4px,stroke-dasharray: 5 5
+    style CLOUD_COMP fill:#e8f5e9,stroke:#2e7d32,stroke-width:4px
+    style CURATED fill:#bbdefb,stroke:#1565c0,stroke-width:4px
+    style DBX fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style SNOW fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style CDP_COMP fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+    style EDW fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+    style DBX_MARTS fill:#fff,stroke:#000,stroke-width:2px
+    style SNOW_MARTS fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<hr />
+
+<h3 id="layer-c-federated-query-query-anywhere-data-stays-put">Layer C+: Federated Query (Query Anywhere, Data Stays Put)</h3>
+
+<p><strong>Goal:</strong> Query data across on-prem and cloud without moving it</p>
+
+<blockquote>
+  <p><strong>The problem:</strong> You have data in on-prem object storage (Iceberg), Snowflake, Databricks, and legacy EDW. Users need to join data across all of them. Copying data everywhere is expensive and slow.</p>
+</blockquote>
+
+<p><strong>The solution:</strong> Federated query engine (Trino or Presto)</p>
+
+<p><strong>What is federated query?</strong></p>
+
+<p>A single SQL query that can access multiple data sources simultaneously:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Query joins on-prem Iceberg table with cloud Snowflake table</span>
+<span class="c1">-- No data movement required!</span>
+
+<span class="k">SELECT</span> 
+    <span class="n">o</span><span class="p">.</span><span class="n">order_id</span><span class="p">,</span>
+    <span class="n">o</span><span class="p">.</span><span class="n">amount</span><span class="p">,</span>
+    <span class="k">c</span><span class="p">.</span><span class="n">customer_name</span><span class="p">,</span>
+    <span class="k">c</span><span class="p">.</span><span class="n">segment</span>
+<span class="k">FROM</span> <span class="n">onprem_lakehouse</span><span class="p">.</span><span class="n">gold</span><span class="p">.</span><span class="n">orders</span> <span class="n">o</span>
+<span class="k">JOIN</span> <span class="n">snowflake</span><span class="p">.</span><span class="n">analytics</span><span class="p">.</span><span class="n">customers</span> <span class="k">c</span>
+    <span class="k">ON</span> <span class="n">o</span><span class="p">.</span><span class="n">customer_id</span> <span class="o">=</span> <span class="k">c</span><span class="p">.</span><span class="n">customer_id</span>
+<span class="k">WHERE</span> <span class="n">o</span><span class="p">.</span><span class="n">order_date</span> <span class="o">&gt;=</span> <span class="s1">'2024-01-01'</span>
+</code></pre></div></div>
+
+<p><strong>How it works:</strong></p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    USER["👤 User<br />━━━━━━<br />SQL Query"]
+    
+    TRINO["🔍 Trino/Presto<br />━━━━━━━━━━━<br />Federated Query Engine"]
+    
+    ONPREM_LAKE["🏢 On-Prem<br />Iceberg Tables<br />━━━━━━━━━<br />orders table"]
+    
+    SNOW["❄️ Snowflake<br />━━━━━━━━━<br />customers table"]
+    
+    DBX["⚡ Databricks<br />━━━━━━━━━<br />events table"]
+    
+    EDW["🏢 EDW<br />━━━━━━━━━<br />finance table"]
+    
+    USER ==&gt;|"1. Submit query"| TRINO
+    TRINO ==&gt;|"2a. Fetch orders"| ONPREM_LAKE
+    TRINO ==&gt;|"2b. Fetch customers"| SNOW
+    TRINO ==&gt;|"2c. Fetch events"| DBX
+    TRINO ==&gt;|"2d. Fetch finance"| EDW
+    TRINO ==&gt;|"3. Join + return"| USER
+    
+    style USER fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style TRINO fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+    style ONPREM_LAKE fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style SNOW fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style DBX fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style EDW fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+</div>
+
+<p><strong>Trino/Presto connectors:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Connector</th>
+      <th>What It Connects To</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Iceberg</strong></td>
+      <td>On-prem object storage (MinIO/Ceph) with Iceberg tables</td>
+    </tr>
+    <tr>
+      <td><strong>Snowflake</strong></td>
+      <td>Snowflake tables (via JDBC)</td>
+    </tr>
+    <tr>
+      <td><strong>Delta Lake</strong></td>
+      <td>Databricks Delta tables</td>
+    </tr>
+    <tr>
+      <td><strong>Hive</strong></td>
+      <td>Legacy Hive tables on HDFS</td>
+    </tr>
+    <tr>
+      <td><strong>PostgreSQL/MySQL</strong></td>
+      <td>Operational databases</td>
+    </tr>
+    <tr>
+      <td><strong>MongoDB</strong></td>
+      <td>NoSQL databases</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Real-world example:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Business question: "What's the revenue by customer segment for Q1 2024?"
+
+Data needed:
+- Orders (on-prem Iceberg lakehouse)
+- Customers (Snowflake)
+- Product catalog (Databricks)
+- Revenue adjustments (legacy EDW)
+
+Traditional approach:
+1. Copy orders to Snowflake (2 hours)
+2. Copy product catalog to Snowflake (1 hour)
+3. Copy revenue adjustments to Snowflake (30 min)
+4. Run query in Snowflake
+Total: 3.5 hours + storage costs
+
+Federated query approach:
+1. Run Trino query joining all 4 sources
+Total: 5 minutes, no data movement
+</code></pre></div></div>
+
+<p><strong>When to use federated query:</strong></p>
+
+<p>✅ <strong>Use federated query when:</strong></p>
+<ul>
+  <li>Ad-hoc analytics across multiple sources</li>
+  <li>Exploratory data analysis</li>
+  <li>One-time reports</li>
+  <li>Data validation (comparing on-prem vs cloud)</li>
+  <li>Low-latency requirements (&lt; 1 minute)</li>
+</ul>
+
+<p>❌ <strong>Don’t use federated query when:</strong></p>
+<ul>
+  <li>High-frequency queries (&gt; 100/sec)</li>
+  <li>Complex aggregations on large datasets</li>
+  <li>Production dashboards with strict SLAs</li>
+  <li>→ Instead: Replicate data to a single location and optimize there</li>
+</ul>
+
+<p><strong>Deployment:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>On-Prem Trino Cluster:
+- 1 coordinator node (query planning)
+- 5-10 worker nodes (query execution)
+- Connects to: on-prem Iceberg, Snowflake (via VPN), Databricks (via VPN), EDW
+
+Cost: ~$50K-100K/year (hardware + maintenance)
+Benefit: Query across all systems without data movement
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="layer-d-metadata-catalog-and-discovery">Layer D: Metadata, Catalog, and Discovery</h3>
+
+<p><strong>Goal:</strong> One place to discover, understand, and trust data</p>
+
+<blockquote>
+  <p><strong>Think of it like Google for your data.</strong> Instead of asking “Does anyone know where the customer table is?”, you search the catalog and find it in 10 seconds.</p>
+</blockquote>
+
+<p>Your catalog experience should hold:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metadata Type</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Technical</strong></td>
+      <td>Schema: <code class="language-plaintext highlighter-rouge">{customer_id: int, email: string}</code>, Partitions: <code class="language-plaintext highlighter-rouge">date</code>, Format: Iceberg</td>
+    </tr>
+    <tr>
+      <td><strong>Business</strong></td>
+      <td>Domain: Customer, Owner: Customer Team, Glossary: “Active customer = purchased in last 90 days”</td>
+    </tr>
+    <tr>
+      <td><strong>Lineage</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">raw_orders</code> → <code class="language-plaintext highlighter-rouge">clean_orders</code> → <code class="language-plaintext highlighter-rouge">customer_360</code> → <code class="language-plaintext highlighter-rouge">revenue_dashboard</code></td>
+    </tr>
+    <tr>
+      <td><strong>Quality</strong></td>
+      <td>Score: 95%, Last check: 2 hours ago, Issues: 3 null emails</td>
+    </tr>
+    <tr>
+      <td><strong>Access</strong></td>
+      <td>Tags: PII, Confidential, Policy: Mask email for non-finance users</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Example catalog entry:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Table: customer_360
+Location: s3://lakehouse/gold/customer/customer_360/
+Format: Iceberg
+Owner: Customer Analytics Team
+Domain: Customer
+Tags: PII, Confidential
+Quality Score: 98%
+
+Schema:
+  customer_id (int) - Primary key
+  email (string) - PII, masked for non-finance
+  lifetime_value (decimal) - Calculated monthly
+  last_purchase_date (date)
+
+Lineage:
+  ← raw_customers (bronze)
+  ← raw_orders (bronze)
+  → revenue_dashboard (Tableau)
+  → churn_model (Databricks ML)
+
+Access:
+  Finance team: Full access
+  Marketing team: Email masked
+  External contractors: No access
+</code></pre></div></div>
+
+<p><strong>This is the “unified layer” people feel daily.</strong></p>
+
+<hr />
+
+<h3 id="layer-e-governance-and-security-policy-everywhere">Layer E: Governance and Security (Policy Everywhere)</h3>
+
+<p><strong>Goal:</strong> Consistent access control across all stores/engines</p>
+
+<blockquote>
+  <p><strong>The problem:</strong> You set up masking in Snowflake, but forget to do it in Databricks. Now PII is leaking.</p>
+</blockquote>
+
+<p><strong>The solution:</strong> Central policy engine that enforces rules everywhere.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    POLICY["🎯 Policy Decision Point<br />━━━━━━━━━━━━━━━<br />🔒 Central Policy Engine<br />OPA / Immuta / Privacera"]
+    
+    SNOW_PEP["❄️ Snowflake<br />━━━━━━━━━<br />🛡️ Policy Enforcement<br />Masking + RBAC"]
+    DBX_PEP["⚡ Databricks<br />━━━━━━━━━<br />🛡️ Policy Enforcement<br />Dynamic Views"]
+    EDW_PEP["🏢 EDW<br />━━━━━━━━━<br />🛡️ Policy Enforcement<br />Row-level Security"]
+    
+    USER["👤 User<br />━━━━━━━━━<br />analyst@company.com"]
+    
+    USER ==&gt;|"❶ Request:<br />SELECT * FROM customers"| SNOW_PEP
+    SNOW_PEP ==&gt;|"❷ Check policy"| POLICY
+    POLICY ==&gt;|"❸ Decision:<br />Mask email"| SNOW_PEP
+    SNOW_PEP ==&gt;|"❹ Return<br />masked data"| USER
+    
+    POLICY -."enforces".-&gt; DBX_PEP
+    POLICY -."enforces".-&gt; EDW_PEP
+    
+    style POLICY fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+    style SNOW_PEP fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style DBX_PEP fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style EDW_PEP fill:#ffcdd2,stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5
+    style USER fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+</div>
+
+<p><strong>Design around:</strong></p>
+
+<ul>
+  <li><strong>Identity</strong>: SSO + groups/roles (use existing AD/Okta)</li>
+  <li><strong>Authorization</strong>: RBAC + ABAC (tags like <code class="language-plaintext highlighter-rouge">PII</code>, <code class="language-plaintext highlighter-rouge">PCI</code>, <code class="language-plaintext highlighter-rouge">Confidential</code>)</li>
+  <li><strong>Masking / row filtering</strong>: Enforced centrally where possible</li>
+  <li><strong>Key management</strong>: Encryption at rest + in transit (CMK if needed)</li>
+</ul>
+
+<p><strong>Example policy:</strong></p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">Policy</span><span class="pi">:</span> <span class="s">mask_customer_email</span>
+<span class="na">Applies to</span><span class="pi">:</span> <span class="s">Tables tagged with "PII"</span>
+<span class="na">Rule</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">IF user.role IN ["Finance", "Legal"]</span>
+    <span class="s">THEN show full email</span>
+  <span class="pi">-</span> <span class="s">ELSE mask email (show first 3 chars + "***@***.com")</span>
+  
+<span class="na">Enforcement</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">Snowflake</span><span class="pi">:</span> <span class="s">Column masking policy</span>
+  <span class="pi">-</span> <span class="na">Databricks</span><span class="pi">:</span> <span class="s">Dynamic view with CASE statement</span>
+  <span class="pi">-</span> <span class="na">EDW</span><span class="pi">:</span> <span class="s">Row-level security view</span>
+</code></pre></div></div>
+
+<p><strong>Best practice:</strong> Use a <strong>Policy Decision Point (PDP)</strong> with engine-specific <strong>Policy Enforcement Points (PEPs)</strong>.</p>
+
+<p>That’s how you stop “Snowflake rules” and “Databricks rules” from drifting.</p>
+
+<hr />
+
+<h3 id="layer-f-data-product-and-consumption">Layer F: Data Product and Consumption</h3>
+
+<p><strong>Goal:</strong> Stop everyone querying raw tables forever</p>
+
+<blockquote>
+  <p><strong>Think of data products like APIs.</strong> You don’t give everyone direct database access. You publish well-defined products with contracts.</p>
+</blockquote>
+
+<p><strong>Publish Data Products (domain-owned) with:</strong></p>
+
+<ul>
+  <li>Contract + schema guarantees</li>
+  <li>Documentation + examples</li>
+  <li>Versioning + deprecation</li>
+  <li>Access modes (SQL/BI, APIs, streaming topics)</li>
+</ul>
+
+<p><strong>Example data product:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Product: customer_360
+Owner: Customer Analytics Team
+Version: 2.1.0
+SLA: Updated daily by 6 AM EST
+
+Contract:
+  - Schema: {customer_id, email, lifetime_value, segment, ...}
+  - Freshness: &lt; 24 hours
+  - Quality: &gt; 95% completeness
+  - Breaking changes: 30-day deprecation notice
+
+Access modes:
+  - SQL: SELECT * FROM gold.customer_360
+  - API: GET /api/v2/customers/{id}
+  - Streaming: kafka://customer-updates
+
+Documentation:
+  - README: How to use this product
+  - Examples: Common queries
+  - Changelog: What changed in v2.1.0
+</code></pre></div></div>
+
+<p><strong>Add a semantic layer</strong> for consistent metrics:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Metric: Revenue
+Definition: SUM(order_amount) WHERE order_status = 'completed'
+Owner: Finance Team
+Used in: 47 dashboards
+
+This ensures "Revenue" means the same thing everywhere.
+</code></pre></div></div>
+
+<p><strong>Consumption modes:</strong></p>
+
+<ul>
+  <li><strong>BI/SQL</strong>: Snowflake or SQL over lakehouse (Tableau, Looker, Power BI)</li>
+  <li><strong>ML/features</strong>: Databricks pipelines (feature engineering, model training)</li>
+  <li><strong>Real-time services</strong>: Streams + materialized views (fraud detection, recommendations)</li>
+</ul>
+
+<hr />
+
+<h3 id="layer-g-observability-and-operations">Layer G: Observability and Operations</h3>
+
+<p><strong>Goal:</strong> Treat data pipelines like production software</p>
+
+<blockquote>
+  <p><strong>If your website goes down, you get paged. If your data pipeline fails, you should also get paged.</strong></p>
+</blockquote>
+
+<p><strong>Platform-wide monitoring:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>What to Monitor</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Pipeline health</strong></td>
+      <td>Latency: orders pipeline running 2 hours late ⚠️</td>
+    </tr>
+    <tr>
+      <td><strong>Data quality</strong></td>
+      <td>Anomaly: customer count dropped 50% today 🚨</td>
+    </tr>
+    <tr>
+      <td><strong>Cost</strong></td>
+      <td>Alert: Databricks spend up 200% this week 💰</td>
+    </tr>
+    <tr>
+      <td><strong>SLAs</strong></td>
+      <td>Violation: customer_360 not updated in 36 hours ❌</td>
+    </tr>
+    <tr>
+      <td><strong>Access</strong></td>
+      <td>Audit: user@external.com accessed PII table 🔒</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    PIPELINES["⚙️ Data Pipelines<br />━━━━━━━━━━━<br />Ingestion<br />Transformation<br />Publishing"]
+    
+    MONITOR["📊 Monitoring<br />━━━━━━━━━<br />Datadog/Grafana<br />Latency + Errors"]
+    QUALITY["✅ Quality Checks<br />━━━━━━━━━━━<br />Great Expectations<br />Anomaly Detection"]
+    COST["💰 Cost Tracking<br />━━━━━━━━━━<br />Per domain/product<br />Budget alerts"]
+    AUDIT["🔒 Audit Logs<br />━━━━━━━━━<br />Who accessed what<br />Compliance"]
+    
+    PIPELINES ==&gt; MONITOR
+    PIPELINES ==&gt; QUALITY
+    PIPELINES ==&gt; COST
+    PIPELINES ==&gt; AUDIT
+    
+    MONITOR ==&gt;|"🚨 Alert"| ONCALL["👨‍🔧 On-call Engineer<br />━━━━━━━━━━━━<br />PagerDuty/Slack<br />Runbooks"]
+    QUALITY ==&gt;|"🚨 Alert"| ONCALL
+    COST ==&gt;|"🚨 Alert"| ONCALL
+    
+    style PIPELINES fill:#e1f5fe,stroke:#01579b,stroke-width:4px
+    style MONITOR fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style QUALITY fill:#bbdefb,stroke:#1565c0,stroke-width:3px
+    style COST fill:#fff3e0,stroke:#e65100,stroke-width:3px
+    style AUDIT fill:#f3e5f5,stroke:#6a1b9a,stroke-width:3px
+    style ONCALL fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+</div>
+
+<p><strong>Example alert:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>🚨 ALERT: Data Quality Violation
+
+Pipeline: customer_360_daily
+Issue: NULL values in customer_id column
+Impact: 1,247 rows affected (2.3% of total)
+SLA: Quality threshold is 98%, currently at 97.7%
+
+Action required:
+1. Check upstream raw_customers table
+2. Review data quality rules
+3. Quarantine bad records
+
+Runbook: https://wiki.company.com/data/runbooks/customer-360
+On-call: @data-platform-oncall
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="concrete-enterprise-deployment-shape">Concrete Enterprise Deployment Shape</h2>
+
+<h3 id="control-plane-unified-data-infra-layer">Control Plane (Unified Data Infra Layer)</h3>
+
+<p>This is what you build once and everyone uses:</p>
+
+<ul>
+  <li><strong>Catalog + lineage + glossary</strong> (e.g., DataHub, Atlan, Collibra)</li>
+  <li><strong>Policy engine + RBAC/ABAC + masking</strong> (e.g., Immuta, Privacera, Open Policy Agent)</li>
+  <li><strong>Data contracts + schema registry</strong> (e.g., Confluent Schema Registry, custom)</li>
+  <li><strong>Quality framework + scorecards</strong> (e.g., Great Expectations, Monte Carlo, Soda)</li>
+  <li><strong>Orchestration standards</strong> (e.g., Airflow, Prefect, Dagster)</li>
+  <li><strong>Self-serve portal</strong> (e.g., Backstage, custom)</li>
+</ul>
+
+<h3 id="data-plane-where-data-lives">Data Plane (Where Data Lives)</h3>
+
+<p>This is where the actual data and compute happen:</p>
+
+<p><strong>On-Prem:</strong></p>
+<ul>
+  <li><strong>Object storage</strong> (MinIO/Ceph/Dell ECS with Iceberg tables)</li>
+  <li><strong>Spark</strong> (transformations on-prem, can use CDP Spark)</li>
+  <li><strong>CDP/Hadoop</strong> (legacy EDL, gradual modernization)</li>
+  <li><strong>EDW</strong> (legacy, gradual modernization)</li>
+</ul>
+
+<p><strong>Cloud:</strong></p>
+<ul>
+  <li><strong>Databricks</strong> (engineering + ML workloads)</li>
+  <li><strong>Snowflake</strong> (analytics marts + BI workloads)</li>
+</ul>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    subgraph CONTROL["🎯 CONTROL PLANE"]
+        direction LR
+        CATALOG2["📚<br />Catalog"]
+        POLICY2["🔒<br />Policy"]
+        QUALITY2["✅<br />Quality"]
+        LINEAGE2["🔗<br />Lineage"]
+    end
+    
+    subgraph DATA["💾 DATA PLANE"]
+        subgraph ONPREM_DEP["🏢 ON-PREM"]
+            direction TB
+            LAKE["🗄️ Object Storage<br />━━━━━━━━━<br />MinIO/Ceph + Iceberg<br />🥉 🥈 🥇"]
+            SPARK_DEP["⚡ Spark<br />(CDP or standalone)<br />Transformations"]
+            CDP_DEP["🐘 CDP/Hadoop<br />(Legacy EDL)"]
+            EDW2["🏢 EDW<br />(Legacy)"]
+        end
+        
+        subgraph CLOUD_DEP["☁️ CLOUD"]
+            direction TB
+            DBX2["⚡<br />Databricks"]
+            SNOW2["❄️<br />Snowflake"]
+        end
+    end
+    
+    CONTROL -."🔐 governs".-&gt; ONPREM_DEP
+    CONTROL -."🔐 governs".-&gt; CLOUD_DEP
+    
+    LAKE &lt;==&gt; SPARK_DEP
+    LAKE ==&gt;|"read via VPN"| DBX2
+    LAKE ==&gt;|"read via VPN"| SNOW2
+    LAKE -.-&gt;|"optional sync"| CDP_DEP
+    LAKE -.-&gt;|"optional sync"| EDW2
+    
+    style CONTROL fill:#e3f2fd,stroke:#1565c0,stroke-width:4px
+    style DATA fill:#fff8e1,stroke:#f57f17,stroke-width:4px
+    style ONPREM_DEP fill:#ffebee,stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5
+    style CLOUD_DEP fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style LAKE fill:#bbdefb,stroke:#1565c0,stroke-width:3px
+    style SPARK_DEP fill:#fff,stroke:#000,stroke-width:2px
+    style CDP_DEP fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+    style CATALOG2 fill:#fff,stroke:#000,stroke-width:2px
+    style POLICY2 fill:#fff,stroke:#000,stroke-width:2px
+    style QUALITY2 fill:#fff,stroke:#000,stroke-width:2px
+    style LINEAGE2 fill:#fff,stroke:#000,stroke-width:2px
+    style DBX2 fill:#fff,stroke:#000,stroke-width:2px
+    style SNOW2 fill:#fff,stroke:#000,stroke-width:2px
+    style EDW2 fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+</div>
+
+<hr />
+
+<h2 id="implementation-strategy-avoid-a-2-year-project">Implementation Strategy (Avoid a 2-Year Project)</h2>
+
+<blockquote>
+  <p><strong>Start small, deliver value quickly, expand incrementally.</strong></p>
+</blockquote>
+
+<h3 id="phase-1-unify-discovery--governance-first-months-1-3">Phase 1: Unify Discovery + Governance First (Months 1-3)</h3>
+
+<p><strong>Goal:</strong> Give everyone one place to find and understand data</p>
+
+<p><strong>What to build:</strong></p>
+<ul>
+  <li>Deploy catalog tool (DataHub, Atlan, etc.)</li>
+  <li>Register existing datasets (EDW, Snowflake, Databricks)</li>
+  <li>Capture lineage for top 20 critical pipelines</li>
+  <li>Define RBAC/ABAC tags (PII, Confidential, etc.)</li>
+  <li>Set up data product registration process</li>
+</ul>
+
+<p><strong>Success metrics:</strong></p>
+<ul>
+  <li>80% of datasets discoverable in catalog</li>
+  <li>Lineage visible for critical pipelines</li>
+  <li>Teams can request access via portal</li>
+</ul>
+
+<p><strong>Effort:</strong> 2-3 engineers, 3 months</p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    CURRENT1["❌ Current State<br />━━━━━━━━━━━<br />🔴 Data scattered<br />🔴 No discovery<br />🔴 Manual lineage"]
+    
+    PHASE1["✅ Phase 1<br />━━━━━━━━━━━<br />🟢 Catalog deployed<br />🟢 Lineage captured<br />🟢 Access governed"]
+    
+    CURRENT1 ==&gt;|"📅 3 months<br />👥 2-3 engineers"| PHASE1
+    
+    style CURRENT1 fill:#ffcdd2,stroke:#c62828,stroke-width:4px,stroke-dasharray: 5 5
+    style PHASE1 fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+</div>
+
+<hr />
+
+<h3 id="phase-2-unify-the-curated-layer-months-4-9">Phase 2: Unify the Curated Layer (Months 4-9)</h3>
+
+<p><strong>Goal:</strong> One source of truth for curated data</p>
+
+<p><strong>What to build:</strong></p>
+<ul>
+  <li>Adopt Iceberg as platform standard</li>
+  <li>Migrate top 10 curated datasets to Iceberg on S3</li>
+  <li>Connect Snowflake to read Iceberg tables (external tables)</li>
+  <li>Connect Databricks to read Iceberg tables (native)</li>
+  <li>Deprecate duplicate curated tables</li>
+</ul>
+
+<p><strong>Success metrics:</strong></p>
+<ul>
+  <li>Top 10 datasets available in open format</li>
+  <li>Both Snowflake and Databricks reading from same tables</li>
+  <li>50% reduction in duplicate datasets</li>
+</ul>
+
+<p><strong>Effort:</strong> 3-4 engineers, 6 months</p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    PHASE1B["✅ Phase 1 Complete<br />━━━━━━━━━━━━<br />🟢 Catalog live<br />🟢 Teams onboarded"]
+    
+    PHASE2["✅ Phase 2<br />━━━━━━━━━━━<br />🟢 Iceberg adopted<br />🟢 Curated layer unified<br />🟢 Duplicates removed"]
+    
+    PHASE1B ==&gt;|"📅 6 months<br />👥 3-4 engineers"| PHASE2
+    
+    style PHASE1B fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+    style PHASE2 fill:#bbdefb,stroke:#1565c0,stroke-width:4px
+</div>
+
+<hr />
+
+<h3 id="phase-3-modernize-edw-usage-months-10-18">Phase 3: Modernize EDW Usage (Months 10-18)</h3>
+
+<p><strong>Goal:</strong> Reduce EDW dependency, move workloads to lakehouse</p>
+
+<p><strong>What to build:</strong></p>
+<ul>
+  <li>Identify EDW workloads that can move to lakehouse</li>
+  <li>Migrate non-critical reports to Snowflake/Databricks</li>
+  <li>Keep critical finance/compliance workloads on EDW</li>
+  <li>Set up bi-directional sync (EDW ↔ Lakehouse)</li>
+</ul>
+
+<p><strong>Success metrics:</strong></p>
+<ul>
+  <li>30% of EDW workloads migrated</li>
+  <li>EDW costs reduced by 20%</li>
+  <li>Critical workloads still running on EDW</li>
+</ul>
+
+<p><strong>Effort:</strong> 4-5 engineers, 9 months</p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    PHASE2B["✅ Phase 2 Complete<br />━━━━━━━━━━━━<br />🟢 Unified curated layer<br />🟢 Multi-engine access"]
+    
+    PHASE3["✅ Phase 3<br />━━━━━━━━━━━<br />🟢 EDW modernized<br />🟢 Workloads migrated<br />🟢 Costs reduced 20%"]
+    
+    PHASE2B ==&gt;|"📅 9 months<br />👥 4-5 engineers"| PHASE3
+    
+    style PHASE2B fill:#bbdefb,stroke:#1565c0,stroke-width:4px
+    style PHASE3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:4px
+</div>
+
+<hr />
+
+<h2 id="edw-migration-strategies-how-to-retire-your-legacy-platform">EDW Migration Strategies: How to Retire Your Legacy Platform</h2>
+
+<blockquote>
+  <p><strong>The goal is not to replace the EDW overnight. The goal is to gradually reduce dependency until you can retire it safely.</strong></p>
+</blockquote>
+
+<h3 id="critical-principle-invert-the-dependency">Critical Principle: Invert the Dependency</h3>
+
+<p><strong>The biggest mistake:</strong> Building your new modern system (DataHub, Snowflake, Databricks) that depends on the old EDW for data.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ WRONG: New system depends on old system
+
+Sources → EDW (old) → Lakehouse (new) → Snowflake/Databricks
+                ↓
+         DataHub catalogs EDW tables
+
+Problem: You can NEVER retire the EDW because everything depends on it.
+</code></pre></div></div>
+
+<p><strong>The right approach:</strong> Invert the dependency. Make the lakehouse the source of truth, and let the EDW sync FROM the lakehouse if needed.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>✅ RIGHT: Old system depends on new system (or coexists independently)
+
+Sources → Lakehouse (new) → Snowflake/Databricks
+            ↓                     ↓
+         DataHub            (Optional: EDW syncs FROM lakehouse
+         catalogs           for legacy reports that can't move yet)
+         lakehouse
+         
+Result: You CAN retire the EDW when legacy reports are migrated.
+</code></pre></div></div>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'12px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    subgraph WRONG["❌ WRONG ARCHITECTURE"]
+        direction TB
+        SRC1["📊 Sources"]
+        EDW_OLD["🏢 EDW (Old)<br />━━━━━━━━━<br />System of Record"]
+        LAKE_WRONG["☁️ Lakehouse (New)<br />━━━━━━━━━<br />Depends on EDW"]
+        
+        SRC1 --&gt; EDW_OLD
+        EDW_OLD --&gt; LAKE_WRONG
+    end
+    
+    subgraph RIGHT["✅ RIGHT ARCHITECTURE"]
+        direction TB
+        SRC2["📊 Sources"]
+        LAKE_RIGHT["☁️ Lakehouse (New)<br />━━━━━━━━━<br />System of Record"]
+        EDW_NEW["🏢 EDW (Old)<br />━━━━━━━━━<br />Syncs FROM lakehouse<br />(optional, temporary)"]
+        
+        SRC2 --&gt; LAKE_RIGHT
+        LAKE_RIGHT -.-&gt;|"optional sync"| EDW_NEW
+    end
+    
+    style WRONG fill:#ffcdd2,stroke:#c62828,stroke-width:4px
+    style RIGHT fill:#c8e6c9,stroke:#2e7d32,stroke-width:4px
+    style EDW_OLD fill:#fff,stroke:#000,stroke-width:2px
+    style LAKE_WRONG fill:#fff,stroke:#000,stroke-width:2px
+    style SRC1 fill:#fff,stroke:#000,stroke-width:2px
+    style EDW_NEW fill:#fff,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5
+    style LAKE_RIGHT fill:#fff,stroke:#000,stroke-width:2px
+    style SRC2 fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<p><strong>How to implement this:</strong></p>
+
+<ol>
+  <li><strong>Replicate sources directly to lakehouse</strong> (not through EDW)
+    <ul>
+      <li>Set up CDC from source databases → Lakehouse Bronze</li>
+      <li>Bypass the EDW entirely for new data flows</li>
+    </ul>
+  </li>
+  <li><strong>Build curated layers in lakehouse</strong> (not in EDW)
+    <ul>
+      <li>Transform Bronze → Silver → Gold in Databricks/Spark</li>
+      <li>Store as Iceberg tables in object storage</li>
+    </ul>
+  </li>
+  <li><strong>Catalog the lakehouse</strong> (not the EDW)
+    <ul>
+      <li>DataHub/Atlan catalogs lakehouse tables</li>
+      <li>EDW tables are NOT in the catalog (they’re legacy)</li>
+    </ul>
+  </li>
+  <li><strong>Optional: Sync lakehouse → EDW</strong> (temporary, for legacy reports)
+    <ul>
+      <li>If you have critical reports that can’t move yet</li>
+      <li>Reverse ETL: Push curated data FROM lakehouse TO EDW</li>
+      <li>This keeps EDW alive temporarily, but it’s now a downstream consumer</li>
+    </ul>
+  </li>
+  <li><strong>Retire EDW when ready</strong>
+    <ul>
+      <li>Once all reports migrate off EDW</li>
+      <li>Stop the reverse ETL sync</li>
+      <li>Decommission the EDW</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>Key insight:</strong> The new system must be the source of truth from day one. The old system can consume from the new system temporarily, but never the other way around.</p>
+
+<hr />
+
+<h3 id="the-three-migration-strategies">The Three Migration Strategies</h3>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'13px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    START["🏢 Legacy EDW<br />━━━━━━━━━━━<br />All workloads<br />on-prem"]
+    
+    ASSESS["📊 Assess Workloads<br />━━━━━━━━━━━━━<br />Categorize by:<br />• Criticality<br />• Complexity<br />• Dependencies"]
+    
+    STRATEGY1["🟢 Strategy 1:<br />COEXIST<br />━━━━━━━━━━━<br />Keep EDW for critical<br />Sync to lakehouse<br />New work in cloud"]
+    
+    STRATEGY2["🟡 Strategy 2:<br />GRADUAL SUNSET<br />━━━━━━━━━━━<br />Migrate workloads<br />in waves<br />Retire EDW in 18-24mo"]
+    
+    STRATEGY3["🔴 Strategy 3:<br />FULL REPLACEMENT<br />━━━━━━━━━━━<br />Rebuild everything<br />in cloud<br />High risk, high cost"]
+    
+    START ==&gt; ASSESS
+    ASSESS ==&gt; STRATEGY1
+    ASSESS ==&gt; STRATEGY2
+    ASSESS ==&gt; STRATEGY3
+    
+    style START fill:#ffcdd2,stroke:#c62828,stroke-width:4px,stroke-dasharray: 5 5
+    style ASSESS fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+    style STRATEGY1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:4px
+    style STRATEGY2 fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+    style STRATEGY3 fill:#ffcdd2,stroke:#c62828,stroke-width:4px
+</div>
+
+<h3 id="strategy-1-coexist-recommended-for-most">Strategy 1: Coexist (Recommended for Most)</h3>
+
+<p><strong>When to use:</strong> You have critical workloads that can’t move, but want to stop growing EDW footprint.</p>
+
+<p><strong>Approach:</strong></p>
+<ul>
+  <li>Keep EDW for critical finance/compliance workloads</li>
+  <li>Set up bi-directional sync (EDW ↔ Lakehouse)</li>
+  <li>Route all new workloads to cloud (Snowflake/Databricks)</li>
+  <li>Gradually migrate non-critical workloads when safe</li>
+</ul>
+
+<p><strong>Timeline:</strong> Indefinite coexistence, EDW becomes smaller over time</p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'12px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart LR
+    subgraph YEAR0["📅 Year 0: Current State"]
+        EDW0["🏢 EDW<br />━━━━━━<br />100% workloads<br />$500K/year"]
+    end
+    
+    subgraph YEAR1["📅 Year 1: Coexist"]
+        EDW1["🏢 EDW<br />━━━━━━<br />60% workloads<br />$400K/year"]
+        CLOUD1["☁️ Cloud<br />━━━━━━<br />40% workloads<br />$200K/year"]
+    end
+    
+    subgraph YEAR2["📅 Year 2: Steady State"]
+        EDW2["🏢 EDW<br />━━━━━━<br />30% workloads<br />$250K/year"]
+        CLOUD2["☁️ Cloud<br />━━━━━━<br />70% workloads<br />$400K/year"]
+    end
+    
+    YEAR0 ==&gt; YEAR1
+    YEAR1 ==&gt; YEAR2
+    
+    style YEAR0 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style YEAR1 fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style YEAR2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style EDW0 fill:#fff,stroke:#000,stroke-width:2px
+    style EDW1 fill:#fff,stroke:#000,stroke-width:2px
+    style EDW2 fill:#fff,stroke:#000,stroke-width:2px
+    style CLOUD1 fill:#fff,stroke:#000,stroke-width:2px
+    style CLOUD2 fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<p><strong>Pros:</strong></p>
+<ul>
+  <li>✅ Low risk (critical workloads stay put)</li>
+  <li>✅ Gradual cost reduction</li>
+  <li>✅ Teams learn cloud at their own pace</li>
+</ul>
+
+<p><strong>Cons:</strong></p>
+<ul>
+  <li>❌ Maintain two systems indefinitely</li>
+  <li>❌ Sync complexity</li>
+  <li>❌ EDW costs never go to zero</li>
+</ul>
+
+<hr />
+
+<h3 id="strategy-2-gradual-sunset-aggressive-modernization">Strategy 2: Gradual Sunset (Aggressive Modernization)</h3>
+
+<p><strong>When to use:</strong> You have executive buy-in to retire EDW completely in 18-24 months.</p>
+
+<p><strong>Critical principle: Don’t modernize what you’re retiring</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ WRONG: Modernize EDW pipelines before migrating
+
+"Let's refactor this 10-year-old ETL job in the EDW first,
+then migrate it to Databricks"
+
+Problem: You spend 3 months modernizing code you'll throw away.
+No business value. Wasted effort.
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>✅ RIGHT: Freeze EDW, rebuild in new platform
+
+"Leave the old ETL job as-is. Build the new version directly
+in Databricks with modern patterns. Run parallel. Cut over. 
+Decommission old."
+
+Result: You only invest in the new platform. Business gets
+modern pipeline immediately.
+</code></pre></div></div>
+
+<p><strong>The EDW is frozen, not modernized:</strong></p>
+<ul>
+  <li><strong>No new features</strong> in EDW pipelines (they’re being retired)</li>
+  <li><strong>No refactoring</strong> of EDW code (it’s legacy, leave it alone)</li>
+  <li><strong>Only bug fixes</strong> if critical (minimal investment)</li>
+  <li><strong>All new work</strong> goes to lakehouse/Snowflake/Databricks</li>
+</ul>
+
+<p><strong>Approach:</strong></p>
+<ul>
+  <li>Categorize all EDW workloads (critical → nice-to-have)</li>
+  <li><strong>Rebuild</strong> (not refactor) in waves (easiest first, critical last)</li>
+  <li>Set hard deadline to decommission EDW</li>
+  <li>Allocate dedicated migration team</li>
+  <li><strong>Freeze EDW development</strong> (no new features, only critical fixes)</li>
+</ul>
+
+<p><strong>Timeline:</strong> 18-24 months to full retirement</p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'12px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TB
+    subgraph WAVE1["🌊 Wave 1 (Months 1-6)<br />Low-hanging fruit"]
+        W1_ITEMS["📊 Reports (non-critical)<br />🔄 ETL jobs (simple)<br />📈 Dashboards (BI)"]
+    end
+    
+    subgraph WAVE2["🌊 Wave 2 (Months 7-12)<br />Medium complexity"]
+        W2_ITEMS["📊 Operational reports<br />🔄 Complex ETL<br />🗄️ Data marts"]
+    end
+    
+    subgraph WAVE3["🌊 Wave 3 (Months 13-18)<br />Critical workloads"]
+        W3_ITEMS["💰 Finance reports<br />📋 Compliance<br />🏛️ Regulatory"]
+    end
+    
+    subgraph FINAL["✅ Month 18-24<br />Decommission"]
+        RETIRE["🏢 EDW Retired<br />━━━━━━━━━━<br />Hardware returned<br />Licenses cancelled<br />Team reassigned"]
+    end
+    
+    WAVE1 ==&gt; WAVE2
+    WAVE2 ==&gt; WAVE3
+    WAVE3 ==&gt; FINAL
+    
+    style WAVE1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style WAVE2 fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style WAVE3 fill:#ffcdd2,stroke:#c62828,stroke-width:3px
+    style FINAL fill:#bbdefb,stroke:#1565c0,stroke-width:4px
+    style W1_ITEMS fill:#fff,stroke:#000,stroke-width:2px
+    style W2_ITEMS fill:#fff,stroke:#000,stroke-width:2px
+    style W3_ITEMS fill:#fff,stroke:#000,stroke-width:2px
+    style RETIRE fill:#fff,stroke:#000,stroke-width:2px
+</div>
+
+<p><strong>Pros:</strong></p>
+<ul>
+  <li>✅ Clear end date</li>
+  <li>✅ Full cost elimination</li>
+  <li>✅ Forces modernization</li>
+</ul>
+
+<p><strong>Cons:</strong></p>
+<ul>
+  <li>❌ High risk if timeline slips</li>
+  <li>❌ Requires significant investment</li>
+  <li>❌ Business disruption</li>
+</ul>
+
+<hr />
+
+<h3 id="strategy-3-full-replacement-not-recommended">Strategy 3: Full Replacement (Not Recommended)</h3>
+
+<p><strong>When to use:</strong> Rarely. Only if EDW is completely broken or vendor is EOL.</p>
+
+<p><strong>Approach:</strong></p>
+<ul>
+  <li>Rebuild everything in cloud from scratch</li>
+  <li>Big-bang cutover</li>
+  <li>High risk, high cost</li>
+</ul>
+
+<p><strong>We don’t recommend this.</strong> Use Strategy 1 or 2 instead.</p>
+
+<hr />
+
+<h3 id="workload-migration-decision-framework">Workload Migration Decision Framework</h3>
+
+<p>Use this framework to decide which workloads to migrate first:</p>
+
+<div class="mermaid">
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#000','lineColor':'#000','fontSize':'12px','fontFamily':'Comic Sans MS, cursive'}}}%%
+flowchart TD
+    START["🔍 Evaluate Workload"]
+    
+    CRITICAL{"❓ Business Critical?<br />(Finance, Compliance,<br />Regulatory)"}
+    
+    COMPLEX{"❓ High Complexity?<br />(Many dependencies,<br />custom code)"}
+    
+    USAGE{"❓ High Usage?<br />(Daily users,<br />SLA requirements)"}
+    
+    MIGRATE_LAST["🔴 MIGRATE LAST<br />━━━━━━━━━━━<br />Keep on EDW<br />until Wave 3"]
+    
+    MIGRATE_MID["🟡 MIGRATE MID<br />━━━━━━━━━━━<br />Wave 2<br />Months 7-12"]
+    
+    MIGRATE_FIRST["🟢 MIGRATE FIRST<br />━━━━━━━━━━━<br />Wave 1<br />Quick wins"]
+    
+    START --&gt; CRITICAL
+    CRITICAL --&gt;|Yes| MIGRATE_LAST
+    CRITICAL --&gt;|No| COMPLEX
+    COMPLEX --&gt;|Yes| MIGRATE_MID
+    COMPLEX --&gt;|No| USAGE
+    USAGE --&gt;|High| MIGRATE_MID
+    USAGE --&gt;|Low| MIGRATE_FIRST
+    
+    style START fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    style CRITICAL fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style COMPLEX fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style USAGE fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style MIGRATE_LAST fill:#ffcdd2,stroke:#c62828,stroke-width:4px
+    style MIGRATE_MID fill:#fff9c4,stroke:#f57f17,stroke-width:4px
+    style MIGRATE_FIRST fill:#c8e6c9,stroke:#2e7d32,stroke-width:4px
+</div>
+
+<hr />
+
+<h3 id="practical-migration-patterns">Practical Migration Patterns</h3>
+
+<h4 id="pattern-1-report-migration">Pattern 1: Report Migration</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>EDW Report → Snowflake Report
+
+Steps:
+1. Identify source tables in EDW
+2. Replicate tables to lakehouse (CDC or batch)
+3. Rebuild report logic in Snowflake SQL
+4. Run parallel (EDW + Snowflake) for 2-4 weeks
+5. Validate numbers match
+6. Cut over to Snowflake
+7. Decommission EDW report
+
+Timeline: 2-4 weeks per report
+Risk: Low
+</code></pre></div></div>
+
+<h4 id="pattern-2-etl-pipeline-migration">Pattern 2: ETL Pipeline Migration</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>EDW ETL → Databricks Pipeline
+
+Steps:
+1. Document current ETL logic
+2. Identify source systems
+3. Set up CDC/streaming ingestion to lakehouse
+4. Rebuild transformation logic in Spark
+5. Run parallel pipelines
+6. Validate data quality
+7. Cut over to Databricks
+8. Decommission EDW ETL
+
+Timeline: 4-8 weeks per pipeline
+Risk: Medium
+</code></pre></div></div>
+
+<h4 id="pattern-3-data-mart-migration">Pattern 3: Data Mart Migration</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>EDW Mart → Lakehouse Gold Zone
+
+Steps:
+1. Understand mart schema and business logic
+2. Migrate source data to lakehouse Silver zone
+3. Rebuild mart as Iceberg tables in Gold zone
+4. Create external tables in Snowflake (for BI access)
+5. Migrate downstream reports one by one
+6. Validate with business users
+7. Decommission EDW mart
+
+Timeline: 2-3 months per mart
+Risk: Medium-High
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="cost-comparison-edw-vs-cloud">Cost Comparison: EDW vs Cloud</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>On-Prem EDW</th>
+      <th>Cloud (Snowflake + Databricks)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Hardware</strong></td>
+      <td>$200K-500K/year (depreciation)</td>
+      <td>$0 (pay-as-you-go)</td>
+    </tr>
+    <tr>
+      <td><strong>Licenses</strong></td>
+      <td>$300K-800K/year</td>
+      <td>$200K-600K/year (usage-based)</td>
+    </tr>
+    <tr>
+      <td><strong>Storage</strong></td>
+      <td>$50K-100K/year</td>
+      <td>$10K-30K/year (object storage)</td>
+    </tr>
+    <tr>
+      <td><strong>Maintenance</strong></td>
+      <td>3-5 FTEs ($300K-500K/year)</td>
+      <td>1-2 FTEs ($100K-200K/year)</td>
+    </tr>
+    <tr>
+      <td><strong>Scaling</strong></td>
+      <td>Requires hardware purchase (6-12 months lead time)</td>
+      <td>Instant (scale up/down in minutes)</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td>$850K-1.9M/year</td>
+      <td>$310K-830K/year</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Typical savings: 40-60% after full migration</strong></p>
+
+<hr />
+
+<h2 id="common-traps-to-avoid">Common Traps to Avoid</h2>
+
+<h3 id="trap-1-building-two-curated-layers">Trap 1: Building Two Curated Layers</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ Bad:
+Databricks: silver.customers (version A)
+Snowflake: silver.customers (version B)
+Result: They drift, teams confused
+
+✅ Good:
+Lakehouse: silver.customers (Iceberg)
+Databricks: reads from lakehouse
+Snowflake: reads from lakehouse
+Result: One source of truth
+</code></pre></div></div>
+
+<h3 id="trap-2-no-data-product-ownership">Trap 2: No Data Product Ownership</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ Bad:
+Platform team owns all data products
+Result: Bottleneck, slow delivery
+
+✅ Good:
+Domain teams own their products
+Platform team provides tools + standards
+Result: Scalable, fast delivery
+</code></pre></div></div>
+
+<h3 id="trap-3-governance-as-documentation-only">Trap 3: Governance as Documentation Only</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ Bad:
+Policy: "Don't share PII"
+Enforcement: Trust developers to follow it
+Result: PII leaks happen
+
+✅ Good:
+Policy: "Don't share PII"
+Enforcement: Automated masking in catalog
+Result: Impossible to leak PII
+</code></pre></div></div>
+
+<h3 id="trap-4-ad-hoc-ingestion">Trap 4: Ad-Hoc Ingestion</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>❌ Bad:
+Every team builds custom ingestion scripts
+Result: No standards, maintenance nightmare
+
+✅ Good:
+Standard ingestion framework with contracts
+Result: Reusable, maintainable, governed
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="summary-the-north-star">Summary: The North Star</h2>
+
+<blockquote>
+  <p><strong>Create one logical platform, not one physical system.</strong></p>
+</blockquote>
+
+<p>You can keep multiple engines (on-prem EDW, Snowflake, Databricks). What makes it feel like “one platform” is that you standardize:</p>
+
+<ul>
+  <li><strong>How data lands</strong> (ingestion contracts)</li>
+  <li><strong>How it’s stored</strong> (one open table format + consistent zones)</li>
+  <li><strong>How it’s governed</strong> (one catalog + one policy model)</li>
+  <li><strong>How it’s observed</strong> (lineage + data quality)</li>
+  <li><strong>How it’s consumed</strong> (semantic layer + APIs)</li>
+</ul>
+
+<p>If you do <em>just that</em>, you can modernize without a big-bang migration.</p>
+
+<hr />
+
+<h2 id="two-questions-to-tailor-this-to-your-environment">Two Questions to Tailor This to Your Environment</h2>
+
+<ol>
+  <li>
+    <p><strong>Are you aiming for Iceberg as the common table format, or are you already standardized on Delta somewhere?</strong></p>
+
+    <p>If you’re already deep into Delta Lake (Databricks-native), you might stick with Delta. But if you want true multi-engine interoperability (Snowflake + Databricks + Trino), Iceberg is the better choice.</p>
+  </li>
+  <li>
+    <p><strong>Is the “CDP” (EDL) mainly a customer-event platform (streaming + identity), or a data lake landing zone?</strong></p>
+
+    <p>If it’s event-focused (Segment, mParticle style), treat it as a streaming source. If it’s a landing zone, treat it as Bronze storage.</p>
+  </li>
+</ol>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">data-architecture</span>, <span class="tag">data-platform</span>, <span class="tag">lakehouse</span>, <span class="tag">snowflake</span>, <span class="tag">iceberg</span>, <span class="tag">governance</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>
