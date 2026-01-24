@@ -582,9 +582,9 @@ Because the answer determines whether you're building a demo or building infrast
 
 ## Further Reading
 
-- [Skills vs MCP vs Agents](/topics/anthropic-skills-vs-mcp) - Understanding the agent ecosystem
-- [LangGraph & Agents](/topics/langgraph-agents) - Building intelligent workflows
-- [RAG Basics](/topics/langchain-rag-basics) - Teaching AI about your documents
+- [Skills vs MCP vs Agents](/handbook/topics/anthropic-skills-vs-mcp/) - Understanding the agent ecosystem
+- [LangGraph & Agents](/handbook/topics/langgraph-agents/) - Building intelligent workflows
+- [RAG Basics](/handbook/topics/langchain-rag-basics/) - Teaching AI about your documents
 
 ## Try It Yourself
 
