@@ -7,7 +7,7 @@ tags:
   - agents
   - workflows
   - architecture
-summary: Why Agentic AI isn't failing because it's weak—it's failing because we're asking it to do the wrong job. Agents should orchestrate workflows, not replace them.
+summary: Why Agentic AI isn't failing because it's weak it's failing because we're asking it to do the wrong job. Agents should orchestrate workflows, not replace them.
 date: 2025-01-24
 ---
 
@@ -17,7 +17,7 @@ date: 2025-01-24
 
 ## The Complaint I Keep Hearing
 
-Whenever I speak with friends—mostly outside my organization—they usually complain that there's a **huge push for generative AI, but not many visible success stories.**
+Whenever I speak with friends mostly outside my organization they usually complain that there's a **huge push for generative AI, but not many visible success stories.**
 
 Everyone's excited about demos. Few are confident about production.
 
@@ -166,7 +166,7 @@ graph LR
 - Pipelines are for **deterministic execution**
 - Use the right tool for the right job
 
-**You need to understand what that pipeline does.** If it's deterministic, repeatable, and needs audit trails—it's a pipeline. Call it directly. Don't wrap it in MCP just because you can.
+**You need to understand what that pipeline does.** If it's deterministic, repeatable, and needs audit trails it's a pipeline. Call it directly. Don't wrap it in MCP just because you can.
 
 ---
 
