@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monkey Chase - Run Away!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8C8 100%);
+            border: 5px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        #player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #FFD700;
+            border-radius: 50%;
+            transition: all 0.1s;
+            z-index: 10;
+        }
+
+        #player::before {
+            content: '🏃';
+            position: absolute;
+            font-size: 35px;
+            top: -5px;
+            left: -5px;
+        }
+
+        .monkey {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            background: #8B4513;
+            border-radius: 50%;
+            transition: all 0.15s;
+        }
+
+        .monkey::before {
+            content: '🐵';
+            position: absolute;
+            font-size: 40px;
+            top: -5px;
+            left: -5px;
+        }
+
+        .tree {
+            position: absolute;
+            font-size: 60px;
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        #lives {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        #gameOver, #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #gameOver h1, #startScreen h1 {
+            color: #ff4444;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+
+        #startScreen h1 {
+            color: #FFD700;
+        }
+
+        #gameOver p, #startScreen p {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #45a049;
+            transform: scale(1.1);
+        }
+
+        .jumpscare {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            animation: shake 0.5s;
+        }
+
+        .jumpscare.active {
+            display: flex;
+        }
+
+        .jumpscare::before {
+            content: '🙈';
+            font-size: 300px;
+            animation: scream 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+
+        @keyframes scream {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .instructions {
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .difficulty {
+            color: #FFD700;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="score">Score: 0</div>
+        <div id="lives">❤️ Lives: 3</div>
+        <div id="player"></div>
+        
+        <div id="startScreen">
+            <h1>🐵 MONKEY CHASE! 🏃</h1>
+            <p>Use Arrow Keys or WASD to run away from the monkeys!</p>
+            <div class="instructions">
+                <p>⚠️ Warning: Contains jumpscares! ⚠️</p>
+                <p>Avoid the monkeys and trees!</p>
+                <p>Survive as long as you can!</p>
+            </div>
+            <button onclick="startGame()">START GAME</button>
+        </div>
+
+        <div id="gameOver" style="display: none;">
+            <h1>GAME OVER!</h1>
+            <p id="finalScore"></p>
+            <div class="difficulty" id="difficulty"></div>
+            <button onclick="restartGame()">PLAY AGAIN</button>
+        </div>
+
+        <div class="jumpscare" id="jumpscare"></div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const gameOverScreen = document.getElementById('gameOver');
+        const startScreen = document.getElementById('startScreen');
+        const jumpscareScreen = document.getElementById('jumpscare');
+
+        let playerX = 400;
+        let playerY = 300;
+        let score = 0;
+        let lives = 3;
+        let gameActive = false;
+        let monkeys = [];
+        let trees = [];
+        let keys = {};
+        let monkeySpeed = 1.5;
+        let jumpscareTimeout = null;
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameActive = true;
+            score = 0;
+            lives = 3;
+            playerX = 400;
+            playerY = 300;
+            monkeySpeed = 1.5;
+            monkeys = [];
+            trees = [];
+            
+            // Create initial monkeys
+            createMonkey();
+            
+            // Create trees as obstacles
+            for (let i = 0; i < 5; i++) {
+                createTree();
+            }
+            
+            updateScore();
+            updateLives();
+            gameLoop();
+        }
+
+        function createMonkey() {
+            const monkey = document.createElement('div');
+            monkey.className = 'monkey';
+            
+            // Spawn from random edge
+            const edge = Math.floor(Math.random() * 4);
+            if (edge === 0) { // top
+                monkey.style.left = Math.random() * 750 + 'px';
+                monkey.style.top = '0px';
+            } else if (edge === 1) { // right
+                monkey.style.left = '750px';
+                monkey.style.top = Math.random() * 550 + 'px';
+            } else if (edge === 2) { // bottom
+                monkey.style.left = Math.random() * 750 + 'px';
+                monkey.style.top = '550px';
+            } else { // left
+                monkey.style.left = '0px';
+                monkey.style.top = Math.random() * 550 + 'px';
+            }
+            
+            gameContainer.appendChild(monkey);
+            monkeys.push({
+                element: monkey,
+                x: parseFloat(monkey.style.left),
+                y: parseFloat(monkey.style.top)
+            });
+        }
+
+        function createTree() {
+            const tree = document.createElement('div');
+            tree.className = 'tree';
+            tree.textContent = '🌳';
+            tree.style.left = Math.random() * 740 + 'px';
+            tree.style.top = Math.random() * 540 + 'px';
+            gameContainer.appendChild(tree);
+            trees.push({
+                element: tree,
+                x: parseFloat(tree.style.left),
+                y: parseFloat(tree.style.top)
+            });
+        }
+
+        function movePlayer() {
+            const speed = 5;
+            let newX = playerX;
+            let newY = playerY;
+
+            if (keys['arrowup'] || keys['w']) newY -= speed;
+            if (keys['arrowdown'] || keys['s']) newY += speed;
+            if (keys['arrowleft'] || keys['a']) newX -= speed;
+            if (keys['arrowright'] || keys['d']) newX += speed;
+
+            // Keep player in bounds
+            newX = Math.max(0, Math.min(760, newX));
+            newY = Math.max(0, Math.min(560, newY));
+
+            // Check tree collision
+            let collision = false;
+            trees.forEach(tree => {
+                if (checkCollision(newX, newY, 40, tree.x, tree.y, 60)) {
+                    collision = true;
+                }
+            });
+
+            if (!collision) {
+                playerX = newX;
+                playerY = newY;
+            }
+
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+        }
+
+        function moveMonkeys() {
+            monkeys.forEach(monkey => {
+                // Calculate direction to player
+                const dx = playerX - monkey.x;
+                const dy = playerY - monkey.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 0) {
+                    monkey.x += (dx / distance) * monkeySpeed;
+                    monkey.y += (dy / distance) * monkeySpeed;
+                }
+
+                monkey.element.style.left = monkey.x + 'px';
+                monkey.element.style.top = monkey.y + 'px';
+
+                // Check collision with player
+                if (checkCollision(playerX, playerY, 40, monkey.x, monkey.y, 45)) {
+                    loseLife();
+                }
+            });
+        }
+
+        function checkCollision(x1, y1, size1, x2, y2, size2) {
+            return Math.abs(x1 - x2) < (size1 + size2) / 2 &&
+                   Math.abs(y1 - y2) < (size1 + size2) / 2;
+        }
+
+        function loseLife() {
+            if (!gameActive) return;
+            
+            lives--;
+            updateLives();
+            
+            // Trigger jumpscare
+            triggerJumpscare();
+            
+            if (lives <= 0) {
+                endGame();
+            } else {
+                // Reset player position
+                playerX = 400;
+                playerY = 300;
+                
+                // Remove all monkeys and respawn
+                monkeys.forEach(m => m.element.remove());
+                monkeys = [];
+                setTimeout(() => {
+                    if (gameActive) createMonkey();
+                }, 1000);
+            }
+        }
+
+        function triggerJumpscare() {
+            jumpscareScreen.classList.add('active');
+            
+            // Play sound effect (if you want to add audio)
+            // const audio = new Audio('scream.mp3');
+            // audio.play();
+            
+            setTimeout(() => {
+                jumpscareScreen.classList.remove('active');
+            }, 500);
+        }
+
+        function updateScore() {
+            score++;
+            scoreDisplay.textContent = 'Score: ' + score;
+            
+            // Increase difficulty
+            if (score % 100 === 0) {
+                monkeySpeed += 0.3;
+                createMonkey();
+            }
+        }
+
+        function updateLives() {
+            const hearts = '❤️'.repeat(lives);
+            livesDisplay.textContent = `Lives: ${hearts}`;
+        }
+
+        function endGame() {
+            gameActive = false;
+            document.getElementById('finalScore').textContent = `Your Score: ${score}`;
+            
+            let difficulty = 'Beginner';
+            if (score > 500) difficulty = 'Survivor';
+            if (score > 1000) difficulty = 'Expert';
+            if (score > 2000) difficulty = 'Monkey Master';
+            
+            document.getElementById('difficulty').textContent = `Rank: ${difficulty}`;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            monkeys.forEach(m => m.element.remove());
+            trees.forEach(t => t.element.remove());
+            startGame();
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            movePlayer();
+            moveMonkeys();
+            updateScore();
+
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
