@@ -13,6 +13,8 @@ date: 2025-01-24
 
 # Saturday Morning Coffee ☕ Thoughts on Agentic AI
 
+![Agentic AI](/handbook/assets/img/agentimage.png)
+
 ## The Complaint I Keep Hearing
 
 Whenever I speak with friends—mostly outside my organization—they usually complain that there's a **huge push for generative AI, but not many visible success stories.**
