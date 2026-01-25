@@ -655,3 +655,254 @@ plan = assistant.create_plan(intent)
 Start simple. Add complexity as you learn. Keep agents and pipelines separate.
 
 That's how you go from demo to production.
+
+---
+
+## Connection: Why Evals Prove This Architecture Works
+
+Anthropic recently published [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents), and it perfectly validates the agent orchestration pattern.
+
+### The Key Insight from Anthropic's Evals Article
+
+**Evals work best when you can separate what to test:**
+
+<div class="mermaid">
+graph LR
+    subgraph "What Anthropic Tests"
+        A["🤖 Agent Behavior<br/>(Model-based graders)"]
+        B["⚙️ Pipeline Outcomes<br/>(Code-based graders)"]
+        C["👤 User Experience<br/>(Human graders)"]
+    end
+    
+    A -->|"Did agent understand intent?"| Test1["LLM judges"]
+    B -->|"Did pipeline execute correctly?"| Test2["Deterministic checks"]
+    C -->|"Is output acceptable?"| Test3["Human review"]
+    
+    style A fill:#e1f5ff,stroke:#0066cc,stroke-width:2px
+    style B fill:#fff4e6,stroke:#ff9800,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+</div>
+
+**This maps perfectly to our architecture:**
+
+| **Component** | **What to Test** | **How to Test (per Anthropic)** |
+|---------------|------------------|----------------------------------|
+| **Agent Layer** | Intent understanding, plan creation | Model-based graders (LLM judges) |
+| **Pipeline Layer** | Correct execution, policy compliance | Code-based graders (deterministic) |
+| **Human Layer** | Final output quality, user satisfaction | Human graders (expert review) |
+
+### Why This Matters
+
+**If you mix agents and pipelines, evals become impossible:**
+
+```python
+# Bad: Agent does everything (can't eval properly)
+def process_refund(email):
+    # Agent decides AND executes
+    # How do you test this?
+    # - Can't separate intent understanding from execution
+    # - Can't use code-based graders (non-deterministic)
+    # - Can't use model-based graders (too complex)
+    # - Must rely on expensive human review
+    result = agent.do_everything(email)
+    return result
+```
+
+**Good: Separate layers, separate evals:**
+
+```python
+# Good: Agent orchestrates, pipelines execute
+def process_refund(email):
+    # Test 1: Agent intent understanding (model-based grader)
+    intent = agent.analyze_email(email)
+    # ✅ Eval: Does agent correctly identify refund intent?
+    
+    # Test 2: Pipeline execution (code-based grader)
+    result = refund_pipeline.execute(intent)
+    # ✅ Eval: Does pipeline check order correctly?
+    # ✅ Eval: Does pipeline verify eligibility?
+    # ✅ Eval: Does pipeline log audit trail?
+    
+    # Test 3: Response quality (human grader)
+    response = agent.generate_response(result)
+    # ✅ Eval: Is response empathetic and clear?
+    
+    return response
+```
+
+### Anthropic's Three Types of Graders Match Our Three Layers
+
+**1. Code-based graders → Test Pipelines**
+```python
+# Anthropic recommends: Deterministic checks for outcomes
+def test_refund_pipeline():
+    result = refund_pipeline.execute(order_id="12345")
+    
+    # Code-based assertions (deterministic)
+    assert result["order_checked"] == True
+    assert result["refund_amount"] == 99.99
+    assert result["audit_logged"] == True
+    assert result["compliance_verified"] == True
+```
+
+**Why this works:** Pipelines are deterministic, so code-based graders are perfect.
+
+**2. Model-based graders → Test Agents**
+```python
+# Anthropic recommends: LLM judges for intent understanding
+def test_agent_intent():
+    email = "I want a refund for order #12345"
+    intent = agent.analyze_email(email)
+    
+    # Model-based grader (LLM judge)
+    grader_prompt = f"""
+    Did the agent correctly identify:
+    - Category: support
+    - Intent: refund
+    - Order ID: 12345
+    
+    Agent output: {intent}
+    Return: PASS or FAIL
+    """
+    grade = llm_judge.grade(grader_prompt)
+```
+
+**Why this works:** Agent behavior varies, so model-based graders handle nuance.
+
+**3. Human graders → Test Final Output**
+```python
+# Anthropic recommends: Human review for subjective quality
+def test_response_quality():
+    response = agent.generate_response(refund_result)
+    
+    # Human grader evaluates:
+    # - Is tone empathetic?
+    # - Is explanation clear?
+    # - Does it meet brand standards?
+    
+    human_score = human_grader.review(response)
+```
+
+**Why this works:** Subjective quality needs human judgment.
+
+### The Non-Determinism Problem
+
+Anthropic highlights two key metrics:
+- **pass@k** - Did agent succeed at least once in k attempts?
+- **pass^k** - Did agent succeed consistently across all k attempts?
+
+**This is exactly why you need pipelines:**
+
+```python
+# Agent layer (non-deterministic)
+# pass@1 = 75%, pass^3 = 42%
+# Varies between runs - needs model-based evals
+
+intent = agent.analyze_email(email)
+
+# Pipeline layer (deterministic)
+# pass@1 = 100%, pass^3 = 100%
+# Same result every time - needs code-based evals
+
+result = refund_pipeline.execute(intent)
+```
+
+**The pattern:**
+- **Agents** handle non-determinism (intent understanding)
+- **Pipelines** guarantee determinism (execution)
+- **Evals** test each layer appropriately
+
+### What Anthropic's Article Confirms
+
+1. **"Agent harness orchestrates tool calls"** → Exactly our pattern
+2. **"Code-based graders for deterministic outcomes"** → Test pipelines
+3. **"Model-based graders for agent behavior"** → Test agents
+4. **"Transcript vs outcome"** → Agent conversation vs pipeline results
+5. **"Evals prevent reactive loops"** → Pipelines enable testability
+
+### The Eval-Driven Development Loop
+
+<div class="mermaid">
+graph TB
+    subgraph "Development Cycle"
+        Write["Write Agent Logic<br/>(Intent understanding)"]
+        Build["Build Pipeline<br/>(Deterministic execution)"]
+        Eval1["Eval Agent<br/>(Model-based graders)"]
+        Eval2["Eval Pipeline<br/>(Code-based graders)"]
+        Deploy["Deploy to Production"]
+        Monitor["Monitor & Collect Failures"]
+    end
+    
+    Write --> Eval1
+    Eval1 -->|"Pass"| Build
+    Eval1 -->|"Fail"| Write
+    Build --> Eval2
+    Eval2 -->|"Pass"| Deploy
+    Eval2 -->|"Fail"| Build
+    Deploy --> Monitor
+    Monitor -->|"New test cases"| Write
+    
+    style Write fill:#e1f5ff,stroke:#0066cc,stroke-width:2px
+    style Build fill:#fff4e6,stroke:#ff9800,stroke-width:2px
+    style Eval1 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style Eval2 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style Deploy fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    style Monitor fill:#fff3e0,stroke:#ff6f00,stroke-width:2px
+</div>
+
+**The cycle:**
+1. Write agent logic (intent understanding)
+2. Eval with model-based graders
+3. Build deterministic pipeline
+4. Eval with code-based graders
+5. Deploy to production
+6. Monitor failures → Create new test cases
+
+### Why Teams Without This Pattern Struggle
+
+Anthropic says: **"Teams without evals get bogged down in reactive loops - fixing one failure, creating another, unable to distinguish real regressions from noise."**
+
+**This happens when agents and pipelines are mixed:**
+- Can't write deterministic tests (agent is non-deterministic)
+- Can't use model-based graders (too complex)
+- Must rely on expensive human review
+- Failures in production become the only signal
+- No way to prevent regressions
+
+**With separated layers:**
+- ✅ Test agent intent with model-based graders
+- ✅ Test pipeline execution with code-based graders
+- ✅ Test final output with human graders
+- ✅ Catch failures before production
+- ✅ Prevent regressions automatically
+
+### The Practical Takeaway
+
+**Anthropic's eval framework assumes you've separated concerns:**
+
+```
+Agent harness (orchestrates) → Tools/Pipelines (execute) → Outcome (test)
+```
+
+**If your architecture is:**
+```
+Agent does everything → ??? → Hope it works
+```
+
+**You can't build effective evals.**
+
+**The connection is clear:**
+- **Our philosophy:** Agents orchestrate, pipelines execute
+- **Anthropic's evals:** Test agents and pipelines separately
+- **The result:** Eval-driven development that actually works
+
+### Further Reading
+
+- [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) - Anthropic's comprehensive guide
+- [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) - Anthropic's agent architecture patterns
+
+---
+
+**The bottom line:** If you can't eval it, you can't ship it confidently. And you can't eval it if agents and pipelines are tangled together.
+
+Separate them. Test them independently. Ship with confidence.
