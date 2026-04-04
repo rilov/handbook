@@ -1,6 +1,6 @@
 ---
 title: "How Apache Iceberg Actually Works (And Why It's Perfect for AI)"
-category: Data Engineering
+category: Data
 order: 2
 tags:
   - iceberg
