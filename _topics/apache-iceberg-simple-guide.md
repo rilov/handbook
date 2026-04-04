@@ -16,23 +16,23 @@ summary: A user-friendly technical guide to Apache Iceberg's architecture - how 
 
 ## The Definitive Winner of the Table Format Wars
 
-Apache Iceberg has emerged as the **definitive winner in the table format wars of 2024–2025**. With Databricks acquiring Tabular (founded by Iceberg's creators), Snowflake launching Polaris (an Iceberg-based catalog), and major cloud providers standardizing on Iceberg, it's clear that this isn't just another data technology.
+Apache Iceberg has emerged as the **definitive winner in the table format wars**. The industry has spoken with decisive action: Apache Polaris (the open-source Iceberg catalog) graduated to an Apache Top-Level Project, Snowflake and Microsoft Fabric achieved full zero-copy interoperability via Iceberg, and enterprises are eliminating millions in "data tax" by standardizing on this open format.
 
 **Apache Iceberg isn't just a table format; it's the foundation of the modern data lakehouse**, turning chaos into a structured, reliable, and blazing-fast platform.
 
-### Industry Adoption in 2025
+### Industry Adoption
 
 The momentum behind Iceberg is undeniable:
 
-- **Databricks + Tabular:** Databricks acquired Tabular (founded by Iceberg creators Ryan Blue, Dan Weeks, and Jason Reid) to double down on Iceberg support
-- **Snowflake Polaris:** Snowflake's open-source Iceberg catalog service, making Iceberg a first-class citizen
-- **AWS, Azure, GCP:** All three major cloud providers now offer native Iceberg support in their data lake services
-- **Netflix, Apple, Adobe, LinkedIn, Airbnb:** Production deployments at petabyte scale
-- **Query engines:** Spark, Flink, Trino, Presto, Hive, Impala, Dremio, StarRocks all support Iceberg
+- **Apache Polaris:** Graduated to Apache Top-Level Project status, providing vendor-neutral catalog governance across Snowflake, Dremio, Spark, Trino, and Flink
+- **Zero-Copy Interoperability:** Snowflake and Microsoft Fabric now share Iceberg tables with no data duplication or egress fees—enterprises are saving $2M-$7M annually
+- **Universal Cloud Support:** AWS (Athena, EMR, Glue), Azure (Synapse, OneLake), and GCP (BigQuery BigLake) all offer native Iceberg support
+- **Production at Scale:** Netflix, Apple, Adobe, LinkedIn, Airbnb, and Fortune 500 companies running petabyte-scale deployments
+- **Multi-Engine Ecosystem:** Spark (96.4% adoption), Trino, Flink, Presto, Hive, Dremio, StarRocks, and DuckDB all support Iceberg
 
 **But what makes Iceberg so revolutionary? And more importantly, how does it actually work under the hood?**
 
-This guide will take you on a journey from the fundamental problems Iceberg solves to the cutting-edge features arriving in 2025.
+This guide will take you on a journey from the fundamental problems Iceberg solves to the cutting-edge features that make it the go-to choice for modern data architectures.
 
 ---
 
@@ -289,7 +289,7 @@ s3://warehouse/customers/
         └── data-003.parquet
 ```
 
-**Visual representation of the metadata hierarchy:**
+**metadata hierarchy:**
 
 <div class="mermaid">
 graph LR
