@@ -129,7 +129,7 @@ A specification (and library implementations) for how to manage table metadata. 
 
 Iceberg's power comes from its **three-layer architecture**. Understanding these layers is key to understanding how Iceberg works.
 
-```mermaid
+<div class="mermaid">
 graph TD
     A["<b>Query Engine</b><br/>Spark/Trino/Flink"] --> B["<b>Catalog Layer</b>"]
     B --> C["<b>Metadata File</b><br/>v42.metadata.json"]
@@ -157,7 +157,7 @@ graph TD
     style F4 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
     style F5 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
     style F6 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
-```
+</div>
 
 ### Layer 1: The Catalog
 
@@ -291,7 +291,7 @@ s3://warehouse/customers/
 
 **Visual representation of the metadata hierarchy:**
 
-```mermaid
+<div class="mermaid">
 graph LR
     A["<b>Catalog</b><br/>Hive/Glue/Nessie"] -->|"<b>points to</b>"| B["<b>v42.metadata.json</b>"]
     B -->|"<b>current snapshot</b>"| C["<b>Snapshot</b><br/>3051729675574597004"]
@@ -307,7 +307,7 @@ graph LR
     style E fill:#607D8B,stroke:#455A64,stroke-width:3px,color:#fff
     style F1 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
     style F2 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
-```
+</div>
 
 ## How Queries Work: The Power of Metadata
 
@@ -430,7 +430,7 @@ spark.sql("SELECT * FROM customers.snapshots").show()
 
 ### Snapshot Lifecycle
 
-```mermaid
+<div class="mermaid">
 graph LR
     A["<b>Snapshot 1</b><br/>Jan 15, 10am<br/>ID: ...7004"] --> B["<b>Snapshot 2</b><br/>Jan 15, 2pm<br/>ID: ...7005"]
     B --> C["<b>Snapshot 3</b><br/>Jan 16, 9am<br/>ID: ...7006"]
@@ -448,7 +448,7 @@ graph LR
     style D1 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
     style D2 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
     style D3 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
-```
+</div>
 
 **Important:** Old data files are NOT deleted when new snapshots are created. They're kept for time travel and rollback.
 
@@ -677,8 +677,7 @@ Iceberg uses **optimistic concurrency control** with atomic metadata swaps:
 
 **Scenario:** Two writers append data simultaneously
 
-```mermaid
-%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#2196F3','primaryTextColor':'#fff','primaryBorderColor':'#1976D2','lineColor':'#1976D2','secondaryColor':'#4CAF50','tertiaryColor':'#FF9800','noteBkgColor':'#FFF9C4','noteTextColor':'#000','noteBorderColor':'#F57F17'}}}%%
+<div class="mermaid">
 sequenceDiagram
     participant W1 as Writer 1
     participant Cat as Catalog
@@ -703,7 +702,7 @@ sequenceDiagram
     Note over W2: Create v44.metadata<br/>(parent: v43)
     W2->>+Cat: Commit v43→v44 ✅
     Cat-->>-W2: Success!
-```
+</div>
 
 **Result:** Both writes succeed, no data loss, table is consistent.
 
@@ -924,7 +923,7 @@ WHERE metadata:event.category::STRING = 'purchase';
 
 Row lineage enables efficient change data capture by tracking row evolution:
 
-```mermaid
+<div class="mermaid">
 graph LR
     A["<b>Original Row</b><br/>customer_id: 123<br/>name: Alice<br/>version: 1"] -->|"<b>UPDATE</b>"| B["<b>Updated Row</b><br/>customer_id: 123<br/>name: Alice Smith<br/>version: 2"]
     B -->|"<b>UPDATE</b>"| C["<b>Updated Row</b><br/>customer_id: 123<br/>name: Alice Johnson<br/>version: 3"]
@@ -937,7 +936,7 @@ graph LR
     style B fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
     style C fill:#E91E63,stroke:#C2185B,stroke-width:3px,color:#fff
     style D fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
-```
+</div>
 
 ```sql
 -- Enable row lineage
@@ -1044,7 +1043,7 @@ CALL system.rewrite_data_files(
 **How it works:**
 Z-ordering interleaves values from multiple columns, creating a space-filling curve that preserves locality across all dimensions.
 
-```mermaid
+<div class="mermaid">
 graph TD
     subgraph S1["<b>Without Z-Ordering (Row-based)</b>"]
         A1["<b>user_id:</b> 1,1,1,2,2,2,3,3,3"]
@@ -1064,7 +1063,7 @@ graph TD
     style A3 fill:#F44336,stroke:#B71C1C,stroke-width:3px,color:#fff
     style B1 fill:#66BB6A,stroke:#2E7D32,stroke-width:2px,color:#fff
     style B2 fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-```
+</div>
 
 **Visual representation of Z-ordering space-filling curve:**
 
