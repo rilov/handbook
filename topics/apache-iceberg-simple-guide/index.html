@@ -1,0 +1,1779 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>How Apache Iceberg Actually Works (And Why It's Perfect for AI)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data-engineering">Data Engineering</a> &mdash;
+    </nav>
+    <h2>How Apache Iceberg Actually Works (And Why It's Perfect for AI)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data-engineering">Data Engineering</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="how-apache-iceberg-actually-works-and-why-its-perfect-for-ai">How Apache Iceberg Actually Works (And Why It’s Perfect for AI)</h1>
+
+<h2 id="the-definitive-winner-of-the-table-format-wars">The Definitive Winner of the Table Format Wars</h2>
+
+<p>Apache Iceberg has emerged as the <strong>definitive winner in the table format wars of 2024–2025</strong>. With Databricks acquiring Tabular (founded by Iceberg’s creators), Snowflake launching Polaris (an Iceberg-based catalog), and major cloud providers standardizing on Iceberg, it’s clear that this isn’t just another data technology.</p>
+
+<p><strong>Apache Iceberg isn’t just a table format; it’s the foundation of the modern data lakehouse</strong>, turning chaos into a structured, reliable, and blazing-fast platform.</p>
+
+<h3 id="industry-adoption-in-2025">Industry Adoption in 2025</h3>
+
+<p>The momentum behind Iceberg is undeniable:</p>
+
+<ul>
+  <li><strong>Databricks + Tabular:</strong> Databricks acquired Tabular (founded by Iceberg creators Ryan Blue, Dan Weeks, and Jason Reid) to double down on Iceberg support</li>
+  <li><strong>Snowflake Polaris:</strong> Snowflake’s open-source Iceberg catalog service, making Iceberg a first-class citizen</li>
+  <li><strong>AWS, Azure, GCP:</strong> All three major cloud providers now offer native Iceberg support in their data lake services</li>
+  <li><strong>Netflix, Apple, Adobe, LinkedIn, Airbnb:</strong> Production deployments at petabyte scale</li>
+  <li><strong>Query engines:</strong> Spark, Flink, Trino, Presto, Hive, Impala, Dremio, StarRocks all support Iceberg</li>
+</ul>
+
+<p><strong>But what makes Iceberg so revolutionary? And more importantly, how does it actually work under the hood?</strong></p>
+
+<p>This guide will take you on a journey from the fundamental problems Iceberg solves to the cutting-edge features arriving in 2025.</p>
+
+<hr />
+
+<h2 id="the-data-lake-problems-iceberg-was-built-to-solve">The Data Lake Problems Iceberg Was Built to Solve</h2>
+
+<p>Every data engineer who has wrangled a large data lake knows the pain points. Traditional Hive-style tables on HDFS or cloud storage tend to accumulate a lot of baggage over time. Apache Iceberg was created to tackle several of these very real problems head-on:</p>
+
+<h3 id="1-the-small-files-problem">1. The Small Files Problem</h3>
+
+<p><strong>The Issue:</strong>
+As data volumes grow, you often end up with thousands of tiny files scattered across your data lake. Each file requires separate I/O operations, metadata tracking, and planning overhead.</p>
+
+<p><strong>Real-world impact:</strong></p>
+<ul>
+  <li>A simple query on a day’s data can take <strong>minutes just to plan</strong> because it has to scan every partition directory and open thousands of files</li>
+  <li>10,000 small files (10MB each) vs. 100 large files (1GB each): Same data, 100x slower queries</li>
+  <li>Cloud storage charges per API call: More files = higher costs</li>
+</ul>
+
+<p><strong>How Iceberg solves it:</strong></p>
+<ul>
+  <li>Manifest files track all data files with statistics</li>
+  <li>Query planning reads manifests (small), not data files (large)</li>
+  <li>Built-in compaction to merge small files</li>
+  <li>Planning time: Seconds instead of minutes</li>
+</ul>
+
+<h3 id="2-data-corruption-and-inconsistency">2. Data Corruption and Inconsistency</h3>
+
+<p><strong>The Issue:</strong>
+Without proper ACID guarantees, concurrent writes or job failures leave behind partial data. Maybe one process deletes rows by overwriting files while another reads mid-change; the result is often half-updated data and corruption.</p>
+
+<p><strong>Real-world scenarios:</strong></p>
+<ul>
+  <li>Job A deletes old data by removing files</li>
+  <li>Job B reads the table at the same time</li>
+  <li>Job B sees partial data (some files deleted, some not)</li>
+  <li>Result: Incorrect analytics, broken pipelines</li>
+</ul>
+
+<p><strong>How Iceberg solves it:</strong></p>
+<ul>
+  <li>Full ACID transactions with snapshot isolation</li>
+  <li>Atomic commits: All changes succeed or all fail</li>
+  <li>Readers always see consistent snapshots</li>
+  <li>No more “eventually consistent” data lakes</li>
+</ul>
+
+<h3 id="3-brittle-partitioning-schemes">3. Brittle Partitioning Schemes</h3>
+
+<p><strong>The Issue:</strong>
+In older systems, how you partitioned the data was something every user had to know. If the table was partitioned by date, but a user’s query forgot to filter on that column, it would inadvertently scan the whole dataset.</p>
+
+<p><strong>The Hive problem:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Table partitioned as: /data/year=2024/month=01/day=15/</span>
+<span class="c1">-- User MUST include partition columns in WHERE clause</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">events</span> 
+<span class="k">WHERE</span> <span class="nb">year</span><span class="o">=</span><span class="mi">2024</span> <span class="k">AND</span> <span class="k">month</span><span class="o">=</span><span class="mi">1</span> <span class="k">AND</span> <span class="k">day</span><span class="o">=</span><span class="mi">15</span>  <span class="c1">-- Forgot this? Full scan!</span>
+  <span class="k">AND</span> <span class="n">user_id</span> <span class="o">=</span> <span class="mi">12345</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>How Iceberg solves it:</strong></p>
+<ul>
+  <li><strong>Hidden partitioning:</strong> Users query natural columns, Iceberg handles partition pruning</li>
+  <li><strong>Partition evolution:</strong> Change partitioning without rewriting data</li>
+  <li>No more exposing physical layout to users</li>
+</ul>
+
+<h3 id="4-painful-schema-changes">4. Painful Schema Changes</h3>
+
+<p><strong>The Issue:</strong>
+Evolving a table’s schema (adding columns, changing data types) used to be a risky operation. In Hive you might have to rebuild the table or live with awkward hacks. Many teams avoided schema updates altogether because renaming or removing a column could break downstream jobs or require rewriting all your data.</p>
+
+<p><strong>Traditional approach:</strong></p>
+<ol>
+  <li>Create new table with new schema</li>
+  <li>Copy all data to new table (days/weeks for TB/PB)</li>
+  <li>Update all queries to use new table</li>
+  <li>Hope nothing breaks</li>
+</ol>
+
+<p><strong>How Iceberg solves it:</strong></p>
+<ul>
+  <li>Schema evolution in <strong>milliseconds</strong> (metadata-only)</li>
+  <li>Column IDs ensure backward compatibility</li>
+  <li>Add, rename, drop, reorder columns safely</li>
+  <li>Old files work with new schema automatically</li>
+</ul>
+
+<hr />
+
+<h2 id="what-exactly-is-apache-iceberg">What Exactly Is Apache Iceberg?</h2>
+
+<p>Apache Iceberg is a <strong>table format for large analytic datasets</strong>; essentially a set of rules and metadata that define how to treat a bunch of data files as a coherent table.</p>
+
+<p><strong>Key points:</strong></p>
+<ul>
+  <li><strong>Not a processing engine:</strong> Doesn’t replace Spark or Trino</li>
+  <li><strong>Not a file format:</strong> Your data stays in Parquet, ORC, or Avro</li>
+  <li><strong>Not a storage system:</strong> Works with S3, HDFS, Azure, GCS</li>
+</ul>
+
+<p><strong>What it IS:</strong>
+A specification (and library implementations) for how to manage table metadata. This means you can use Iceberg tables with your engine of choice; Spark, Flink, Trino, Presto, Hive, Impala can all read and write the same Iceberg table in a transactionally consistent way.</p>
+
+<p><strong>The key insight:</strong> Instead of treating data as a collection of files, Iceberg treats it as a <strong>table</strong> with full ACID guarantees, schema evolution, time travel, and partition evolution - all while keeping your data in open formats.</p>
+
+<h2 id="icebergs-architecture-the-three-layers">Iceberg’s Architecture: The Three Layers</h2>
+
+<p>Iceberg’s power comes from its <strong>three-layer architecture</strong>. Understanding these layers is key to understanding how Iceberg works.</p>
+
+<pre><code class="language-mermaid">graph TD
+    A["&lt;b&gt;Query Engine&lt;/b&gt;&lt;br/&gt;Spark/Trino/Flink"] --&gt; B["&lt;b&gt;Catalog Layer&lt;/b&gt;"]
+    B --&gt; C["&lt;b&gt;Metadata File&lt;/b&gt;&lt;br/&gt;v42.metadata.json"]
+    C --&gt; D["&lt;b&gt;Manifest List&lt;/b&gt;&lt;br/&gt;snap-123.avro"]
+    D --&gt; E1["&lt;b&gt;Manifest 1&lt;/b&gt;&lt;br/&gt;Jan 2024"]
+    D --&gt; E2["&lt;b&gt;Manifest 2&lt;/b&gt;&lt;br/&gt;Feb 2024"]
+    D --&gt; E3["&lt;b&gt;Manifest 3&lt;/b&gt;&lt;br/&gt;Mar 2024"]
+    E1 --&gt; F1["&lt;b&gt;Data Files&lt;/b&gt;&lt;br/&gt;data-001.parquet"]
+    E1 --&gt; F2["&lt;b&gt;Data Files&lt;/b&gt;&lt;br/&gt;data-002.parquet"]
+    E2 --&gt; F3["&lt;b&gt;Data Files&lt;/b&gt;&lt;br/&gt;data-003.parquet"]
+    E2 --&gt; F4["&lt;b&gt;Data Files&lt;/b&gt;&lt;br/&gt;data-004.parquet"]
+    E3 --&gt; F5["&lt;b&gt;Data Files&lt;/b&gt;&lt;br/&gt;data-005.parquet"]
+    E3 --&gt; F6["&lt;b&gt;Data Files&lt;/b&gt;&lt;br/&gt;data-006.parquet"]
+    
+    style A fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style B fill:#4CAF50,stroke:#388E3C,stroke-width:3px,color:#fff
+    style C fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
+    style D fill:#9C27B0,stroke:#7B1FA2,stroke-width:3px,color:#fff
+    style E1 fill:#607D8B,stroke:#455A64,stroke-width:2px,color:#fff
+    style E2 fill:#607D8B,stroke:#455A64,stroke-width:2px,color:#fff
+    style E3 fill:#607D8B,stroke:#455A64,stroke-width:2px,color:#fff
+    style F1 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style F2 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style F3 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style F4 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style F5 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style F6 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+</code></pre>
+
+<h3 id="layer-1-the-catalog">Layer 1: The Catalog</h3>
+
+<p><strong>What it is:</strong> A simple pointer to the current metadata file.</p>
+
+<p><strong>What it does:</strong> The catalog stores the location of the current metadata file for each table. That’s it. It’s intentionally simple.</p>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li><strong>Hive Metastore:</strong> Traditional choice, widely supported</li>
+  <li><strong>AWS Glue:</strong> Managed catalog for AWS</li>
+  <li><strong>Nessie:</strong> Git-like catalog with branching</li>
+  <li><strong>REST Catalog:</strong> HTTP-based catalog for cloud-native setups</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Catalog just points to metadata location
+</span><span class="n">catalog</span><span class="p">.</span><span class="nf">get_table</span><span class="p">(</span><span class="sh">"</span><span class="s">my_database.customers</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Returns: s3://warehouse/customers/metadata/v42.metadata.json
+</span></code></pre></div></div>
+
+<h3 id="layer-2-the-metadata-layer">Layer 2: The Metadata Layer</h3>
+
+<p>This is where the magic happens. The metadata layer consists of:</p>
+
+<h4 id="2a-metadata-files-json">2a. Metadata Files (JSON)</h4>
+
+<p><strong>What it stores:</strong></p>
+<ul>
+  <li>Current schema (columns, types)</li>
+  <li>Partition spec (how data is organized)</li>
+  <li>Snapshot history (every version of the table)</li>
+  <li>Current snapshot pointer</li>
+  <li>Table properties and configuration</li>
+</ul>
+
+<p><strong>Example metadata.json:</strong></p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"format-version"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"table-uuid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"9c12d441-03fe-4693-9a96-a0705ddf69c1"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"location"</span><span class="p">:</span><span class="w"> </span><span class="s2">"s3://warehouse/customers"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"last-updated-ms"</span><span class="p">:</span><span class="w"> </span><span class="mi">1704067200000</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"last-column-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"schema"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"struct"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+      </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"customer_id"</span><span class="p">,</span><span class="w"> </span><span class="nl">"required"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">},</span><span class="w">
+      </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"required"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+      </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"required"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+      </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"signup_date"</span><span class="p">,</span><span class="w"> </span><span class="nl">"required"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"date"</span><span class="p">}</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+  </span><span class="p">},</span><span class="w">
+  </span><span class="nl">"current-snapshot-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">3051729675574597004</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"snapshots"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"snapshot-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">3051729675574597004</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"timestamp-ms"</span><span class="p">:</span><span class="w"> </span><span class="mi">1704067200000</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"manifest-list"</span><span class="p">:</span><span class="w"> </span><span class="s2">"s3://warehouse/customers/metadata/snap-3051729675574597004-1-a4d5.avro"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nl">"partition-spec"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"signup_date_month"</span><span class="p">,</span><span class="w"> </span><span class="nl">"transform"</span><span class="p">:</span><span class="w"> </span><span class="s2">"month"</span><span class="p">,</span><span class="w"> </span><span class="nl">"source-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nl">"field-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Key insight:</strong> Metadata files are <strong>immutable</strong>. Each change creates a new metadata file. This enables atomic commits and time travel.</p>
+
+<h4 id="2b-manifest-lists-avro">2b. Manifest Lists (Avro)</h4>
+
+<p><strong>What it is:</strong> A list of manifest files for a snapshot.</p>
+
+<p><strong>What it stores:</strong></p>
+<ul>
+  <li>Paths to manifest files</li>
+  <li>Partition summaries (min/max values)</li>
+  <li>File counts and sizes</li>
+</ul>
+
+<p><strong>Why it matters:</strong> Query engines can skip entire manifest files based on partition filters without reading them.</p>
+
+<h4 id="2c-manifest-files-avro">2c. Manifest Files (Avro)</h4>
+
+<p><strong>What it is:</strong> A list of data files with detailed statistics.</p>
+
+<p><strong>What it stores for each data file:</strong></p>
+<ul>
+  <li>File path</li>
+  <li>File format (Parquet, ORC, Avro)</li>
+  <li>Partition values</li>
+  <li>Record count</li>
+  <li>File size</li>
+  <li>Column-level statistics (min, max, null count)</li>
+  <li>Lower/upper bounds for each column</li>
+</ul>
+
+<p><strong>Example manifest entry:</strong></p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"data_file"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"s3://warehouse/customers/data/signup_date_month=2024-01/data-001.parquet"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"file_format"</span><span class="p">:</span><span class="w"> </span><span class="s2">"PARQUET"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"partition"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"signup_date_month"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2024-01"</span><span class="p">},</span><span class="w">
+    </span><span class="nl">"record_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">125000</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"file_size_in_bytes"</span><span class="p">:</span><span class="w"> </span><span class="mi">52428800</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"column_sizes"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"1"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000000</span><span class="p">,</span><span class="w"> </span><span class="nl">"2"</span><span class="p">:</span><span class="w"> </span><span class="mi">5000000</span><span class="p">,</span><span class="w"> </span><span class="nl">"3"</span><span class="p">:</span><span class="w"> </span><span class="mi">3000000</span><span class="p">},</span><span class="w">
+    </span><span class="nl">"value_counts"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"1"</span><span class="p">:</span><span class="w"> </span><span class="mi">125000</span><span class="p">,</span><span class="w"> </span><span class="nl">"2"</span><span class="p">:</span><span class="w"> </span><span class="mi">125000</span><span class="p">,</span><span class="w"> </span><span class="nl">"3"</span><span class="p">:</span><span class="w"> </span><span class="mi">125000</span><span class="p">},</span><span class="w">
+    </span><span class="nl">"null_value_counts"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"1"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nl">"2"</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="nl">"3"</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">},</span><span class="w">
+    </span><span class="nl">"lower_bounds"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"1"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nl">"4"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2024-01-01"</span><span class="p">},</span><span class="w">
+    </span><span class="nl">"upper_bounds"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nl">"1"</span><span class="p">:</span><span class="w"> </span><span class="mi">125000</span><span class="p">,</span><span class="w"> </span><span class="nl">"4"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2024-01-31"</span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Why this matters:</strong> Query engines can skip data files based on column statistics without reading them. This is called <strong>data skipping</strong> or <strong>predicate pushdown</strong>.</p>
+
+<h3 id="layer-3-data-files">Layer 3: Data Files</h3>
+
+<p><strong>What it is:</strong> Your actual data in open formats (Parquet, ORC, Avro).</p>
+
+<p><strong>Key point:</strong> Iceberg doesn’t dictate the data file format. You can use Parquet (most common), ORC, or Avro. The data files are completely independent of Iceberg’s metadata.</p>
+
+<p><strong>File organization:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s3://warehouse/customers/
+├── metadata/
+│   ├── v1.metadata.json
+│   ├── v2.metadata.json
+│   ├── snap-3051729675574597004-1-a4d5.avro  (manifest list)
+│   └── a4d5-m0.avro  (manifest file)
+└── data/
+    ├── signup_date_month=2024-01/
+    │   ├── data-001.parquet
+    │   └── data-002.parquet
+    └── signup_date_month=2024-02/
+        └── data-003.parquet
+</code></pre></div></div>
+
+<p><strong>Visual representation of the metadata hierarchy:</strong></p>
+
+<pre><code class="language-mermaid">graph LR
+    A["&lt;b&gt;Catalog&lt;/b&gt;&lt;br/&gt;Hive/Glue/Nessie"] --&gt;|"&lt;b&gt;points to&lt;/b&gt;"| B["&lt;b&gt;v42.metadata.json&lt;/b&gt;"]
+    B --&gt;|"&lt;b&gt;current snapshot&lt;/b&gt;"| C["&lt;b&gt;Snapshot&lt;/b&gt;&lt;br/&gt;3051729675574597004"]
+    C --&gt;|"&lt;b&gt;manifest list&lt;/b&gt;"| D["&lt;b&gt;snap-305...a4d5.avro&lt;/b&gt;"]
+    D --&gt;|"&lt;b&gt;contains&lt;/b&gt;"| E["&lt;b&gt;Manifest&lt;/b&gt;&lt;br/&gt;a4d5-m0.avro"]
+    E --&gt;|"&lt;b&gt;lists&lt;/b&gt;"| F1["&lt;b&gt;data-001.parquet&lt;/b&gt;&lt;br/&gt;125K rows&lt;br/&gt;customer_id: 1-62500"]
+    E --&gt;|"&lt;b&gt;lists&lt;/b&gt;"| F2["&lt;b&gt;data-002.parquet&lt;/b&gt;&lt;br/&gt;125K rows&lt;br/&gt;customer_id: 62501-125000"]
+    
+    style A fill:#4CAF50,stroke:#388E3C,stroke-width:3px,color:#fff
+    style B fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
+    style C fill:#E91E63,stroke:#C2185B,stroke-width:3px,color:#fff
+    style D fill:#9C27B0,stroke:#7B1FA2,stroke-width:3px,color:#fff
+    style E fill:#607D8B,stroke:#455A64,stroke-width:3px,color:#fff
+    style F1 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style F2 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+</code></pre>
+
+<h2 id="how-queries-work-the-power-of-metadata">How Queries Work: The Power of Metadata</h2>
+
+<p>Let’s walk through what happens when you query an Iceberg table:</p>
+
+<h3 id="query-example">Query Example</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="n">name</span><span class="p">,</span> <span class="n">email</span> 
+<span class="k">FROM</span> <span class="n">customers</span> 
+<span class="k">WHERE</span> <span class="n">signup_date</span> <span class="o">&gt;=</span> <span class="s1">'2024-01-01'</span> 
+  <span class="k">AND</span> <span class="n">signup_date</span> <span class="o">&lt;</span> <span class="s1">'2024-02-01'</span>
+  <span class="k">AND</span> <span class="n">customer_id</span> <span class="o">&gt;</span> <span class="mi">50000</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="step-by-step-execution">Step-by-Step Execution</h3>
+
+<p><strong>Step 1: Catalog Lookup</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query Engine → Catalog: "Where is customers table?"
+Catalog → Query Engine: "s3://warehouse/customers/metadata/v42.metadata.json"
+</code></pre></div></div>
+
+<p><strong>Step 2: Read Metadata File</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query Engine reads v42.metadata.json
+- Current snapshot: 3051729675574597004
+- Manifest list: snap-3051729675574597004-1-a4d5.avro
+- Schema: customer_id (long), name (string), email (string), signup_date (date)
+- Partition spec: month(signup_date)
+</code></pre></div></div>
+
+<p><strong>Step 3: Read Manifest List</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query Engine reads manifest list
+- Manifest 1: signup_date_month=2024-01 (125,000 rows)
+- Manifest 2: signup_date_month=2024-02 (130,000 rows)
+- Manifest 3: signup_date_month=2024-03 (128,000 rows)
+
+Partition Pruning: Skip Manifests 2 and 3 (not in date range)
+</code></pre></div></div>
+
+<p><strong>Step 4: Read Manifest Files</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query Engine reads Manifest 1
+- data-001.parquet: customer_id range [1-62500]
+- data-002.parquet: customer_id range [62501-125000]
+
+Data Skipping: Skip data-001.parquet (customer_id max is 62500, query needs &gt; 50000)
+Read only data-002.parquet
+</code></pre></div></div>
+
+<p><strong>Step 5: Read Data Files</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query Engine reads data-002.parquet
+- Column pruning: Only read 'name' and 'email' columns (skip customer_id, signup_date)
+- Row filtering: Apply customer_id &gt; 50000 filter
+- Return results
+</code></pre></div></div>
+
+<h3 id="performance-impact">Performance Impact</h3>
+
+<p><strong>Traditional approach (no Iceberg):</strong></p>
+<ul>
+  <li>Read all 3 months of data (383,000 rows)</li>
+  <li>Read all columns</li>
+  <li>Filter in memory</li>
+  <li><strong>Time: 30 seconds</strong></li>
+</ul>
+
+<p><strong>With Iceberg:</strong></p>
+<ul>
+  <li>Partition pruning: Skip 2 months (255,000 rows)</li>
+  <li>Data skipping: Skip 1 data file (62,500 rows)</li>
+  <li>Column pruning: Read only 2 columns instead of 4</li>
+  <li><strong>Time: 2 seconds (15x faster)</strong></li>
+</ul>
+
+<p><strong>This is why Iceberg is so fast for AI/ML workloads that need to scan massive datasets.</strong></p>
+
+<h2 id="snapshots-and-time-travel">Snapshots and Time Travel</h2>
+
+<h3 id="what-is-a-snapshot">What is a Snapshot?</h3>
+
+<p>A <strong>snapshot</strong> is a complete state of the table at a specific point in time. Each snapshot has:</p>
+<ul>
+  <li>A unique snapshot ID</li>
+  <li>A timestamp</li>
+  <li>A pointer to a manifest list</li>
+  <li>The schema at that time</li>
+  <li>The partition spec at that time</li>
+</ul>
+
+<p><strong>Key insight:</strong> Snapshots are <strong>immutable</strong>. Once created, they never change.</p>
+
+<h3 id="how-snapshots-enable-time-travel">How Snapshots Enable Time Travel</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Current data
+</span><span class="n">df_current</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">customers</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Data as of specific timestamp
+</span><span class="n">df_yesterday</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span> \
+    <span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">as-of-timestamp</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-01-15 10:00:00</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">customers</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Data as of specific snapshot ID
+</span><span class="n">df_snapshot</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span> \
+    <span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">snapshot-id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">3051729675574597004</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">customers</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># View all snapshots
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">SELECT * FROM customers.snapshots</span><span class="sh">"</span><span class="p">).</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+--------------------+-------------------+----------+-----------+
+|      snapshot_id   |committed_at       |parent_id |operation  |
++--------------------+-------------------+----------+-----------+
+|3051729675574597004 |2024-01-15 10:00:00|null      |append     |
+|3051729675574597005 |2024-01-15 14:30:00|...97004  |append     |
+|3051729675574597006 |2024-01-16 09:15:00|...97005  |overwrite  |
++--------------------+-------------------+----------+-----------+
+</code></pre></div></div>
+
+<h3 id="snapshot-lifecycle">Snapshot Lifecycle</h3>
+
+<pre><code class="language-mermaid">graph LR
+    A["&lt;b&gt;Snapshot 1&lt;/b&gt;&lt;br/&gt;Jan 15, 10am&lt;br/&gt;ID: ...7004"] --&gt; B["&lt;b&gt;Snapshot 2&lt;/b&gt;&lt;br/&gt;Jan 15, 2pm&lt;br/&gt;ID: ...7005"]
+    B --&gt; C["&lt;b&gt;Snapshot 3&lt;/b&gt;&lt;br/&gt;Jan 16, 9am&lt;br/&gt;ID: ...7006"]
+    
+    A -.-&gt;|"&lt;b&gt;references&lt;/b&gt;"| D1["&lt;b&gt;100 data files&lt;/b&gt;"]
+    B -.-&gt;|"&lt;b&gt;references&lt;/b&gt;"| D1
+    B -.-&gt;|"&lt;b&gt;adds&lt;/b&gt;"| D2["&lt;b&gt;2 new files&lt;/b&gt;"]
+    C -.-&gt;|"&lt;b&gt;references&lt;/b&gt;"| D1
+    C -.-&gt;|"&lt;b&gt;references&lt;/b&gt;"| D2
+    C -.-&gt;|"&lt;b&gt;adds&lt;/b&gt;"| D3["&lt;b&gt;3 new files&lt;/b&gt;"]
+    
+    style A fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style B fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
+    style C fill:#E91E63,stroke:#C2185B,stroke-width:3px,color:#fff
+    style D1 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style D2 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style D3 fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+</code></pre>
+
+<p><strong>Important:</strong> Old data files are NOT deleted when new snapshots are created. They’re kept for time travel and rollback.</p>
+
+<p><strong>Snapshot evolution over time:</strong></p>
+<ul>
+  <li>Snapshot 1: 100 files</li>
+  <li>Snapshot 2: 102 files (100 old + 2 new)</li>
+  <li>Snapshot 3: 105 files (100 old + 2 from S2 + 3 new)</li>
+</ul>
+
+<h3 id="snapshot-expiration">Snapshot Expiration</h3>
+
+<p>To prevent unlimited growth, old snapshots are eventually expired:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Expire snapshots older than 7 days</span>
+<span class="k">CALL</span> <span class="k">catalog</span><span class="p">.</span><span class="k">system</span><span class="p">.</span><span class="n">expire_snapshots</span><span class="p">(</span>
+  <span class="k">table</span> <span class="o">=&gt;</span> <span class="s1">'customers'</span><span class="p">,</span>
+  <span class="n">older_than</span> <span class="o">=&gt;</span> <span class="nb">TIMESTAMP</span> <span class="s1">'2024-01-08 00:00:00'</span><span class="p">,</span>
+  <span class="n">retain_last</span> <span class="o">=&gt;</span> <span class="mi">10</span>  <span class="c1">-- Always keep at least 10 snapshots</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>What happens:</strong></p>
+<ul>
+  <li>Snapshots older than 7 days are removed from metadata</li>
+  <li>Data files referenced ONLY by expired snapshots are deleted</li>
+  <li>Data files referenced by retained snapshots are kept</li>
+</ul>
+
+<h2 id="schema-evolution-adding-columns-without-rewrites">Schema Evolution: Adding Columns Without Rewrites</h2>
+
+<h3 id="the-problem-with-traditional-tables">The Problem with Traditional Tables</h3>
+
+<p>In traditional data lakes, adding a column requires:</p>
+<ol>
+  <li>Rewrite every single data file with the new column</li>
+  <li>Update partition folders</li>
+  <li>Rebuild indexes</li>
+  <li><strong>Time:</strong> Days or weeks for petabyte-scale data</li>
+  <li><strong>Cost:</strong> Thousands of dollars in compute</li>
+</ol>
+
+<h3 id="how-iceberg-handles-schema-evolution">How Iceberg Handles Schema Evolution</h3>
+
+<p>Iceberg uses <strong>schema-on-read</strong> with column IDs:</p>
+
+<p><strong>Initial schema:</strong></p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"customer_id"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>Add a column:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">ADD</span> <span class="k">COLUMN</span> <span class="n">phone</span> <span class="n">STRING</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>New schema:</strong></p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"customer_id"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"long"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"phone"</span><span class="p">,</span><span class="w"> </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}</span><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="err">NEW!</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>What happens:</strong></p>
+<ol>
+  <li>New metadata file created with updated schema (takes milliseconds)</li>
+  <li>Old data files: Don’t have column 4, readers return NULL</li>
+  <li>New data files: Include column 4</li>
+  <li><strong>Time:</strong> Instant (metadata-only operation)</li>
+  <li><strong>Cost:</strong> Free</li>
+</ol>
+
+<h3 id="supported-schema-changes">Supported Schema Changes</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Add column (safe)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">ADD</span> <span class="k">COLUMN</span> <span class="n">loyalty_points</span> <span class="nb">INT</span><span class="p">;</span>
+
+<span class="c1">-- Rename column (safe - uses column IDs)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">RENAME</span> <span class="k">COLUMN</span> <span class="n">email</span> <span class="k">TO</span> <span class="n">email_address</span><span class="p">;</span>
+
+<span class="c1">-- Drop column (safe - column ID marked as deleted)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">DROP</span> <span class="k">COLUMN</span> <span class="n">old_field</span><span class="p">;</span>
+
+<span class="c1">-- Change column type (safe if compatible)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">ALTER</span> <span class="k">COLUMN</span> <span class="n">customer_id</span> <span class="k">TYPE</span> <span class="nb">BIGINT</span><span class="p">;</span>
+
+<span class="c1">-- Reorder columns (safe - uses column IDs)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">ALTER</span> <span class="k">COLUMN</span> <span class="n">phone</span> <span class="k">AFTER</span> <span class="n">name</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Why this works:</strong> Iceberg uses <strong>column IDs</strong> instead of column positions. Old files with column ID 1 map to <code class="language-plaintext highlighter-rouge">customer_id</code> regardless of position.</p>
+
+<h2 id="partition-evolution-changing-organization-without-rewrites">Partition Evolution: Changing Organization Without Rewrites</h2>
+
+<h3 id="the-problem-with-traditional-partitioning">The Problem with Traditional Partitioning</h3>
+
+<p>Traditional Hive-style partitioning is <strong>physical</strong> - the partition is part of the file path:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s3://data/customers/signup_year=2024/signup_month=01/data.parquet
+</code></pre></div></div>
+
+<p><strong>Problems:</strong></p>
+<ol>
+  <li>Users must include partition filters: <code class="language-plaintext highlighter-rouge">WHERE signup_year=2024 AND signup_month=01</code></li>
+  <li>Forget the filter? Full table scan!</li>
+  <li>Change partitioning? Rewrite all data!</li>
+</ol>
+
+<h3 id="icebergs-hidden-partitioning">Iceberg’s Hidden Partitioning</h3>
+
+<p>Iceberg uses <strong>logical partitioning</strong> - partitions are derived from column values:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">events</span> <span class="p">(</span>
+  <span class="n">event_id</span> <span class="nb">BIGINT</span><span class="p">,</span>
+  <span class="n">event_time</span> <span class="nb">TIMESTAMP</span><span class="p">,</span>
+  <span class="n">user_id</span> <span class="nb">BIGINT</span>
+<span class="p">)</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">days</span><span class="p">(</span><span class="n">event_time</span><span class="p">));</span>
+</code></pre></div></div>
+
+<p><strong>User query (no partition knowledge needed):</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">events</span> 
+<span class="k">WHERE</span> <span class="n">event_time</span> <span class="o">&gt;=</span> <span class="s1">'2024-01-15'</span> 
+  <span class="k">AND</span> <span class="n">event_time</span> <span class="o">&lt;</span> <span class="s1">'2024-01-16'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>What Iceberg does:</strong></p>
+<ol>
+  <li>Transforms <code class="language-plaintext highlighter-rouge">event_time &gt;= '2024-01-15'</code> to <code class="language-plaintext highlighter-rouge">days(event_time) = 19737</code></li>
+  <li>Reads only files with partition value 19737</li>
+  <li>User doesn’t need to know about partitioning!</li>
+</ol>
+
+<h3 id="partition-spec-evolution">Partition Spec Evolution</h3>
+
+<p><strong>Start with daily partitions:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">days</span><span class="p">(</span><span class="n">event_time</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p><strong>Later, change to hourly (no data rewrite!):</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">events</span> 
+<span class="k">SET</span> <span class="k">PARTITION</span> <span class="n">SPEC</span> <span class="p">(</span><span class="n">hours</span><span class="p">(</span><span class="n">event_time</span><span class="p">));</span>
+</code></pre></div></div>
+
+<p><strong>What happens:</strong></p>
+<ul>
+  <li>Old data: Still partitioned by day</li>
+  <li>New data: Partitioned by hour</li>
+  <li>Queries work on both!</li>
+  <li>Metadata tracks which files use which partition spec</li>
+</ul>
+
+<p><strong>Partition transforms available:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Temporal</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">years</span><span class="p">(</span><span class="n">timestamp_col</span><span class="p">))</span>   <span class="c1">-- Year</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">months</span><span class="p">(</span><span class="n">timestamp_col</span><span class="p">))</span>  <span class="c1">-- Month</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">days</span><span class="p">(</span><span class="n">timestamp_col</span><span class="p">))</span>    <span class="c1">-- Day</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">hours</span><span class="p">(</span><span class="n">timestamp_col</span><span class="p">))</span>   <span class="c1">-- Hour</span>
+
+<span class="c1">-- Bucketing</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">bucket</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">user_id</span><span class="p">))</span>    <span class="c1">-- 16 buckets</span>
+
+<span class="c1">-- Truncation</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="k">truncate</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>     <span class="c1">-- First 10 chars</span>
+
+<span class="c1">-- Identity</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">region</span><span class="p">)</span>                 <span class="c1">-- Use value as-is</span>
+</code></pre></div></div>
+
+<h2 id="acid-transactions-and-optimistic-concurrency">ACID Transactions and Optimistic Concurrency</h2>
+
+<h3 id="the-problem-concurrent-writes">The Problem: Concurrent Writes</h3>
+
+<p>Multiple writers updating the same table simultaneously can cause:</p>
+<ul>
+  <li><strong>Lost updates:</strong> Writer 2 overwrites Writer 1’s changes</li>
+  <li><strong>Partial writes:</strong> Failure leaves table in inconsistent state</li>
+  <li><strong>Duplicate data:</strong> Same data written twice</li>
+</ul>
+
+<h3 id="how-iceberg-provides-acid-guarantees">How Iceberg Provides ACID Guarantees</h3>
+
+<p>Iceberg uses <strong>optimistic concurrency control</strong> with atomic metadata swaps:</p>
+
+<p><strong>Write Process:</strong></p>
+
+<ol>
+  <li><strong>Writer reads current metadata</strong>
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Current metadata: v42.metadata.json
+Current snapshot: 3051729675574597004
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Writer creates new data files</strong>
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Write new data to: data-new-001.parquet, data-new-002.parquet
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Writer creates new manifest</strong>
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Create manifest listing new data files
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Writer creates new metadata file</strong>
+```
+Create v43.metadata.json:
+    <ul>
+      <li>Parent snapshot: 3051729675574597004</li>
+      <li>New snapshot: 3051729675574597007</li>
+      <li>New manifest list pointing to new manifests
+```</li>
+    </ul>
+  </li>
+  <li><strong>Atomic commit</strong>
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Catalog.compareAndSwap(
+  expected: "v42.metadata.json",
+  new: "v43.metadata.json"
+)
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<p><strong>If successful:</strong> Table now points to v43
+<strong>If failed:</strong> Another writer updated first, retry with new base</p>
+
+<h3 id="concurrent-write-example">Concurrent Write Example</h3>
+
+<p><strong>Scenario:</strong> Two writers append data simultaneously</p>
+
+<pre><code class="language-mermaid">%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#2196F3','primaryTextColor':'#fff','primaryBorderColor':'#1976D2','lineColor':'#1976D2','secondaryColor':'#4CAF50','tertiaryColor':'#FF9800','noteBkgColor':'#FFF9C4','noteTextColor':'#000','noteBorderColor':'#F57F17'}}}%%
+sequenceDiagram
+    participant W1 as Writer 1
+    participant Cat as Catalog
+    participant W2 as Writer 2
+    
+    W1-&gt;&gt;Cat: Read current metadata (v42)
+    W2-&gt;&gt;Cat: Read current metadata (v42)
+    
+    Note over W1: Write data-w1.parquet
+    Note over W2: Write data-w2.parquet
+    
+    Note over W1: Create v43.metadata&lt;br/&gt;(parent: v42)
+    Note over W2: Create v43.metadata&lt;br/&gt;(parent: v42, different!)
+    
+    W1-&gt;&gt;+Cat: Commit v42→v43 ✅
+    Cat--&gt;&gt;-W1: Success!
+    
+    W2-&gt;&gt;+Cat: Commit v42→v43 ❌
+    Cat--&gt;&gt;-W2: Conflict! Current is v43
+    
+    W2-&gt;&gt;Cat: Read current metadata (v43)
+    Note over W2: Create v44.metadata&lt;br/&gt;(parent: v43)
+    W2-&gt;&gt;+Cat: Commit v43→v44 ✅
+    Cat--&gt;&gt;-W2: Success!
+</code></pre>
+
+<p><strong>Result:</strong> Both writes succeed, no data loss, table is consistent.</p>
+
+<p><strong>Key insight:</strong> Optimistic concurrency with atomic compare-and-swap ensures ACID guarantees without locks.</p>
+
+<h3 id="supported-operations">Supported Operations</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Append (add new data)
+</span><span class="n">df</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">customers</span><span class="sh">"</span><span class="p">).</span><span class="nf">append</span><span class="p">()</span>
+
+<span class="c1"># Overwrite (replace all data)
+</span><span class="n">df</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">customers</span><span class="sh">"</span><span class="p">).</span><span class="nf">overwrite</span><span class="p">()</span>
+
+<span class="c1"># Overwrite partition (replace specific partition)
+</span><span class="n">df</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">customers</span><span class="sh">"</span><span class="p">)</span> \
+  <span class="p">.</span><span class="nf">overwritePartitions</span><span class="p">()</span>
+
+<span class="c1"># Merge (upsert)
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+  MERGE INTO customers t
+  USING updates s
+  ON t.customer_id = s.customer_id
+  WHEN MATCHED THEN UPDATE SET *
+  WHEN NOT MATCHED THEN INSERT *
+</span><span class="sh">"""</span><span class="p">)</span>
+
+<span class="c1"># Delete
+</span><span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">DELETE FROM customers WHERE signup_date &lt; </span><span class="sh">'</span><span class="s">2020-01-01</span><span class="sh">'"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>All operations are <strong>atomic</strong> - either fully succeed or fully fail.</p>
+
+<h2 id="why-iceberg-is-perfect-for-aiml-workloads">Why Iceberg is Perfect for AI/ML Workloads</h2>
+
+<h3 id="1-fast-data-scanning-with-partition-pruning">1. Fast Data Scanning with Partition Pruning</h3>
+
+<p><strong>AI training needs to scan billions of rows.</strong> Iceberg’s partition pruning makes this 10-100x faster.</p>
+
+<p><strong>Example: Training a recommendation model</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Need last 90 days of user interactions
+</span><span class="n">training_data</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">user_interactions</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">filter</span><span class="p">(</span><span class="sh">"</span><span class="s">event_date &gt;= current_date() - interval 90 days</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Without Iceberg:</strong></p>
+<ul>
+  <li>Scan all 2 years of data (730 days)</li>
+  <li>Read 10 billion rows</li>
+  <li>Time: 2 hours</li>
+</ul>
+
+<p><strong>With Iceberg:</strong></p>
+<ul>
+  <li>Partition pruning: Read only 90 days</li>
+  <li>Read 1.2 billion rows</li>
+  <li>Time: 8 minutes (15x faster)</li>
+</ul>
+
+<h3 id="2-reproducible-ml-with-time-travel">2. Reproducible ML with Time Travel</h3>
+
+<p><strong>Problem:</strong> “Our model performed better last week. What changed?”</p>
+
+<p><strong>Solution:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Current training data
+</span><span class="n">current_data</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">training_corpus</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">model_v2</span> <span class="o">=</span> <span class="nf">train_model</span><span class="p">(</span><span class="n">current_data</span><span class="p">)</span>
+<span class="c1"># Accuracy: 87%
+</span>
+<span class="c1"># Last week's training data (exact snapshot)
+</span><span class="n">last_week_data</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span> \
+    <span class="p">.</span><span class="nf">option</span><span class="p">(</span><span class="sh">"</span><span class="s">as-of-timestamp</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">2024-01-15 10:00:00</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">training_corpus</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">model_v1</span> <span class="o">=</span> <span class="nf">train_model</span><span class="p">(</span><span class="n">last_week_data</span><span class="p">)</span>
+<span class="c1"># Accuracy: 92%
+</span>
+<span class="c1"># Compare data distributions
+</span><span class="n">current_stats</span> <span class="o">=</span> <span class="n">current_data</span><span class="p">.</span><span class="nf">describe</span><span class="p">()</span>
+<span class="n">last_week_stats</span> <span class="o">=</span> <span class="n">last_week_data</span><span class="p">.</span><span class="nf">describe</span><span class="p">()</span>
+<span class="c1"># Found: Data quality dropped due to new source
+</span></code></pre></div></div>
+
+<p><strong>Use cases:</strong></p>
+<ul>
+  <li><strong>Model reproducibility:</strong> Retrain with exact same data</li>
+  <li><strong>A/B testing:</strong> Compare models trained on different snapshots</li>
+  <li><strong>Debugging:</strong> Identify when data quality degraded</li>
+  <li><strong>Compliance:</strong> “What data was used to train this model?”</li>
+</ul>
+
+<h3 id="3-schema-evolution-for-feature-engineering">3. Schema Evolution for Feature Engineering</h3>
+
+<p><strong>AI models need new features constantly.</strong> Iceberg makes this instant.</p>
+
+<p><strong>Week 1: Basic features</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">features</span> <span class="p">(</span>
+  <span class="n">user_id</span> <span class="nb">BIGINT</span><span class="p">,</span>
+  <span class="n">total_purchases</span> <span class="nb">DOUBLE</span><span class="p">,</span>
+  <span class="n">avg_session_duration</span> <span class="nb">DOUBLE</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>Week 2: Add embeddings (instant!)</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">features</span> 
+<span class="k">ADD</span> <span class="k">COLUMN</span> <span class="n">user_embedding</span> <span class="n">ARRAY</span><span class="o">&lt;</span><span class="nb">FLOAT</span><span class="o">&gt;</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Week 3: Add sentiment scores (instant!)</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">features</span> 
+<span class="k">ADD</span> <span class="k">COLUMN</span> <span class="n">avg_sentiment</span> <span class="nb">DOUBLE</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>No data rewrites, no downtime, no cost.</strong></p>
+
+<h3 id="4-concurrent-access-for-real-time-features">4. Concurrent Access for Real-Time Features</h3>
+
+<p><strong>Modern ML needs real-time feature updates while training.</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Streaming job: Update features every minute
+</span><span class="n">streaming_features</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">readStream</span> \
+    <span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">kafka</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">load</span><span class="p">()</span> \
+    <span class="p">.</span><span class="nf">select</span><span class="p">(</span><span class="sh">"</span><span class="s">user_id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">last_click</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">session_duration</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">streaming_features</span><span class="p">.</span><span class="n">writeStream</span> \
+    <span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="sh">"</span><span class="s">iceberg</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">outputMode</span><span class="p">(</span><span class="sh">"</span><span class="s">append</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">toTable</span><span class="p">(</span><span class="sh">"</span><span class="s">features.user_behavior</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Training job: Read features (concurrent!)
+</span><span class="n">training_data</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">features.user_behavior</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">filter</span><span class="p">(</span><span class="sh">"</span><span class="s">timestamp &gt;= current_date() - interval 30 days</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nf">train_model</span><span class="p">(</span><span class="n">training_data</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Both jobs run simultaneously without conflicts!</strong></p>
+
+<h3 id="5-efficient-storage-for-embeddings">5. Efficient Storage for Embeddings</h3>
+
+<p><strong>AI generates massive embedding datasets.</strong> Iceberg handles this efficiently.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Generate embeddings for 1 billion documents
+</span><span class="n">embeddings</span> <span class="o">=</span> <span class="n">documents</span><span class="p">.</span><span class="nf">select</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">doc_id</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">category</span><span class="sh">"</span><span class="p">,</span>
+    <span class="nf">generate_embedding_udf</span><span class="p">(</span><span class="sh">"</span><span class="s">text</span><span class="sh">"</span><span class="p">).</span><span class="nf">alias</span><span class="p">(</span><span class="sh">"</span><span class="s">embedding</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># 768-dim vector
+</span><span class="p">)</span>
+
+<span class="c1"># Store in Iceberg with partitioning
+</span><span class="n">embeddings</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">embeddings.documents</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">partitionedBy</span><span class="p">(</span><span class="sh">"</span><span class="s">category</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">create</span><span class="p">()</span>
+
+<span class="c1"># Query similar documents (partition pruning!)
+</span><span class="n">query_embedding</span> <span class="o">=</span> <span class="nf">generate_embedding</span><span class="p">(</span><span class="sh">"</span><span class="s">machine learning</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">similar</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">read</span><span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="sh">"</span><span class="s">embeddings.documents</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">filter</span><span class="p">(</span><span class="sh">"</span><span class="s">category = </span><span class="sh">'</span><span class="s">technology</span><span class="sh">'"</span><span class="p">)</span>  <span class="c1"># Reads only tech partition \
+</span>    <span class="p">.</span><span class="nf">select</span><span class="p">(</span>
+        <span class="sh">"</span><span class="s">doc_id</span><span class="sh">"</span><span class="p">,</span>
+        <span class="nf">cosine_similarity</span><span class="p">(</span><span class="sh">"</span><span class="s">embedding</span><span class="sh">"</span><span class="p">,</span> <span class="n">query_embedding</span><span class="p">).</span><span class="nf">alias</span><span class="p">(</span><span class="sh">"</span><span class="s">score</span><span class="sh">"</span><span class="p">)</span>
+    <span class="p">)</span> \
+    <span class="p">.</span><span class="nf">orderBy</span><span class="p">(</span><span class="sh">"</span><span class="s">score</span><span class="sh">"</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">limit</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Iceberg only reads the ‘technology’ partition, skipping millions of irrelevant documents.</strong></p>
+
+<hr />
+
+<h2 id="format-version-3-the-future-is-here-2025">Format Version 3: The Future is Here (2025)</h2>
+
+<p>Apache Iceberg v3, arriving in 2025, brings revolutionary new capabilities that further cement its position as the lakehouse standard.</p>
+
+<h3 id="new-data-types-for-modern-workloads">New Data Types for Modern Workloads</h3>
+
+<p><strong>Geospatial Support:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Native geospatial data types</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">locations</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="nb">BIGINT</span><span class="p">,</span>
+    <span class="n">point</span> <span class="n">GEOMETRY</span><span class="p">,</span>
+    <span class="n">region</span> <span class="n">GEOGRAPHY</span><span class="p">,</span>
+    <span class="nb">timestamp</span> <span class="nb">TIMESTAMP</span> <span class="k">WITH</span> <span class="nb">TIME</span> <span class="k">ZONE</span>  <span class="c1">-- Nanosecond precision</span>
+<span class="p">);</span>
+
+<span class="c1">-- Query with spatial predicates</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">locations</span>
+<span class="k">WHERE</span> <span class="n">ST_Within</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">ST_MakeEnvelope</span><span class="p">(</span><span class="o">-</span><span class="mi">122</span><span class="p">.</span><span class="mi">5</span><span class="p">,</span> <span class="mi">37</span><span class="p">.</span><span class="mi">7</span><span class="p">,</span> <span class="o">-</span><span class="mi">122</span><span class="p">.</span><span class="mi">3</span><span class="p">,</span> <span class="mi">37</span><span class="p">.</span><span class="mi">9</span><span class="p">));</span>
+</code></pre></div></div>
+
+<p><strong>Semi-Structured Data with VARIANT Type:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Flexible schema for JSON-like data</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">events</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="nb">BIGINT</span><span class="p">,</span>
+    <span class="n">metadata</span> <span class="n">VARIANT</span><span class="p">,</span>  <span class="c1">-- Stores any JSON structure</span>
+    <span class="nb">timestamp</span> <span class="nb">TIMESTAMP</span> <span class="k">WITH</span> <span class="nb">TIME</span> <span class="k">ZONE</span>
+<span class="p">);</span>
+
+<span class="c1">-- Query nested fields without schema definition</span>
+<span class="k">SELECT</span> 
+    <span class="n">id</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span><span class="k">user</span><span class="p">.</span><span class="n">name</span><span class="p">::</span><span class="n">STRING</span> <span class="k">as</span> <span class="n">user_name</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span><span class="n">event</span><span class="p">.</span><span class="k">type</span><span class="p">::</span><span class="n">STRING</span> <span class="k">as</span> <span class="n">event_type</span>
+<span class="k">FROM</span> <span class="n">events</span>
+<span class="k">WHERE</span> <span class="n">metadata</span><span class="p">:</span><span class="n">event</span><span class="p">.</span><span class="n">category</span><span class="p">::</span><span class="n">STRING</span> <span class="o">=</span> <span class="s1">'purchase'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Why this matters for AI:</strong></p>
+<ul>
+  <li>Store embeddings, model metadata, and feature vectors in VARIANT columns</li>
+  <li>Geospatial AI for location-based predictions</li>
+  <li>Nanosecond timestamps for high-frequency trading and IoT data</li>
+</ul>
+
+<h3 id="row-lineage-and-advanced-cdc">Row Lineage and Advanced CDC</h3>
+
+<p>Row lineage enables efficient change data capture by tracking row evolution:</p>
+
+<pre><code class="language-mermaid">graph LR
+    A["&lt;b&gt;Original Row&lt;/b&gt;&lt;br/&gt;customer_id: 123&lt;br/&gt;name: Alice&lt;br/&gt;version: 1"] --&gt;|"&lt;b&gt;UPDATE&lt;/b&gt;"| B["&lt;b&gt;Updated Row&lt;/b&gt;&lt;br/&gt;customer_id: 123&lt;br/&gt;name: Alice Smith&lt;br/&gt;version: 2"]
+    B --&gt;|"&lt;b&gt;UPDATE&lt;/b&gt;"| C["&lt;b&gt;Updated Row&lt;/b&gt;&lt;br/&gt;customer_id: 123&lt;br/&gt;name: Alice Johnson&lt;br/&gt;version: 3"]
+    
+    A -.-&gt;|"&lt;b&gt;lineage tracked&lt;/b&gt;"| D["&lt;b&gt;Row ID: abc-123&lt;/b&gt;"]
+    B -.-&gt;|"&lt;b&gt;lineage tracked&lt;/b&gt;"| D
+    C -.-&gt;|"&lt;b&gt;lineage tracked&lt;/b&gt;"| D
+    
+    style A fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style B fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
+    style C fill:#E91E63,stroke:#C2185B,stroke-width:3px,color:#fff
+    style D fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#fff
+</code></pre>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Enable row lineage</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">SET</span> <span class="n">TBLPROPERTIES</span> <span class="p">(</span>
+    <span class="s1">'format-version'</span> <span class="o">=</span> <span class="s1">'3'</span><span class="p">,</span>
+    <span class="s1">'write.metadata.row-lineage.enabled'</span> <span class="o">=</span> <span class="s1">'true'</span>
+<span class="p">);</span>
+
+<span class="c1">-- Track changes over time</span>
+<span class="k">SELECT</span> 
+    <span class="n">customer_id</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">,</span>
+    <span class="n">_iceberg_row_id</span><span class="p">,</span>
+    <span class="n">_iceberg_row_version</span><span class="p">,</span>
+    <span class="n">_iceberg_commit_timestamp</span>
+<span class="k">FROM</span> <span class="n">customers</span><span class="p">.</span><span class="n">changes</span>
+<span class="k">WHERE</span> <span class="n">_iceberg_commit_timestamp</span> <span class="o">&gt;</span> <span class="nb">TIMESTAMP</span> <span class="s1">'2024-01-15 00:00:00'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+  <li>Efficient incremental processing (only process changed rows)</li>
+  <li>Complete audit trail for compliance</li>
+  <li>Simplified CDC pipelines</li>
+  <li>Track data lineage for ML feature stores</li>
+</ul>
+
+<h3 id="materialized-views">Materialized Views</h3>
+
+<p>V3 introduces native materialized view support:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Create a materialized view</span>
+<span class="k">CREATE</span> <span class="n">MATERIALIZED</span> <span class="k">VIEW</span> <span class="n">sales_summary</span> <span class="k">AS</span>
+<span class="k">SELECT</span> 
+    <span class="n">region</span><span class="p">,</span> 
+    <span class="n">date_trunc</span><span class="p">(</span><span class="s1">'day'</span><span class="p">,</span> <span class="n">order_date</span><span class="p">)</span> <span class="k">as</span> <span class="k">day</span><span class="p">,</span> 
+    <span class="k">sum</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span> <span class="k">as</span> <span class="n">total_sales</span><span class="p">,</span>
+    <span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">as</span> <span class="n">order_count</span>
+<span class="k">FROM</span> <span class="n">orders</span>
+<span class="k">GROUP</span> <span class="k">BY</span> <span class="n">region</span><span class="p">,</span> <span class="n">date_trunc</span><span class="p">(</span><span class="s1">'day'</span><span class="p">,</span> <span class="n">order_date</span><span class="p">);</span>
+
+<span class="c1">-- Automatic incremental refresh based on source changes</span>
+<span class="n">REFRESH</span> <span class="n">MATERIALIZED</span> <span class="k">VIEW</span> <span class="n">sales_summary</span><span class="p">;</span>
+
+<span class="c1">-- Query the materialized view (blazing fast!)</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">sales_summary</span>
+<span class="k">WHERE</span> <span class="n">region</span> <span class="o">=</span> <span class="s1">'US-WEST'</span> <span class="k">AND</span> <span class="k">day</span> <span class="o">&gt;=</span> <span class="s1">'2024-01-01'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Why this matters:</strong></p>
+<ul>
+  <li>Pre-aggregated data for real-time dashboards</li>
+  <li>Incremental refresh (only process new data)</li>
+  <li>Automatic dependency tracking</li>
+  <li>Perfect for ML feature stores with aggregated features</li>
+</ul>
+
+<hr />
+
+<h2 id="performance-optimization-making-iceberg-sing">Performance Optimization: Making Iceberg Sing</h2>
+
+<h3 id="file-layout-strategies-and-compaction">File Layout Strategies and Compaction</h3>
+
+<p>Compaction is crucial for maintaining performance as data accumulates:</p>
+
+<p><strong>The Problem:</strong></p>
+<ul>
+  <li>Streaming writes create many small files</li>
+  <li>Small files = slow queries (more I/O operations)</li>
+  <li>Cloud storage charges per API call</li>
+</ul>
+
+<p><strong>The Solution:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Compact small files into larger ones</span>
+<span class="k">CALL</span> <span class="k">system</span><span class="p">.</span><span class="n">rewrite_data_files</span><span class="p">(</span>
+    <span class="k">table</span> <span class="o">=&gt;</span> <span class="s1">'events'</span><span class="p">,</span>
+    <span class="n">strategy</span> <span class="o">=&gt;</span> <span class="s1">'binpack'</span><span class="p">,</span>
+    <span class="k">options</span> <span class="o">=&gt;</span> <span class="k">map</span><span class="p">(</span>
+        <span class="s1">'target-file-size-bytes'</span><span class="p">,</span> <span class="s1">'536870912'</span><span class="p">,</span>  <span class="c1">-- 512MB target</span>
+        <span class="s1">'min-input-files'</span><span class="p">,</span> <span class="s1">'5'</span>  <span class="c1">-- Only compact if 5+ small files</span>
+    <span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>Results:</strong></p>
+<ul>
+  <li>Before: 10,000 files @ 10MB each = 100GB</li>
+  <li>After: 200 files @ 512MB each = 100GB</li>
+  <li>Query planning: 30 seconds → 2 seconds</li>
+  <li>Query execution: 5 minutes → 30 seconds</li>
+</ul>
+
+<h3 id="z-ordering-for-multi-dimensional-queries">Z-Ordering for Multi-Dimensional Queries</h3>
+
+<p>Z-ordering optimizes data layout for queries across multiple dimensions:</p>
+
+<p><strong>The Problem:</strong>
+Traditional partitioning works for one dimension (e.g., date), but queries often filter on multiple columns (user_id, event_type, timestamp).</p>
+
+<p><strong>Z-Ordering Solution:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Apply Z-ordering during compaction</span>
+<span class="k">CALL</span> <span class="k">system</span><span class="p">.</span><span class="n">rewrite_data_files</span><span class="p">(</span>
+    <span class="k">table</span> <span class="o">=&gt;</span> <span class="s1">'events'</span><span class="p">,</span>
+    <span class="n">strategy</span> <span class="o">=&gt;</span> <span class="s1">'sort'</span><span class="p">,</span>
+    <span class="n">sort_order</span> <span class="o">=&gt;</span> <span class="s1">'zorder(user_id, event_time, session_id)'</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>How it works:</strong>
+Z-ordering interleaves values from multiple columns, creating a space-filling curve that preserves locality across all dimensions.</p>
+
+<pre><code class="language-mermaid">graph TD
+    subgraph S1["&lt;b&gt;Without Z-Ordering (Row-based)&lt;/b&gt;"]
+        A1["&lt;b&gt;user_id:&lt;/b&gt; 1,1,1,2,2,2,3,3,3"]
+        A2["&lt;b&gt;event_time:&lt;/b&gt; 10:00,10:05,10:10,10:00,10:05,10:10,10:00,10:05,10:10"]
+        A3["&lt;b&gt;Query: user_id=2 AND time=10:05&lt;/b&gt;&lt;br/&gt;Must scan entire dataset"]
+    end
+    
+    subgraph S2["&lt;b&gt;With Z-Ordering (Interleaved)&lt;/b&gt;"]
+        B1["&lt;b&gt;Z-curve:&lt;/b&gt; (1,10:00), (1,10:05), (2,10:00), (1,10:10), (2,10:05), (3,10:00)..."]
+        B2["&lt;b&gt;Query: user_id=2 AND time=10:05&lt;/b&gt;&lt;br/&gt;Skip to relevant section&lt;br/&gt;2.5x fewer rows scanned!"]
+    end
+    
+    style S1 fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#000
+    style S2 fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+    style A1 fill:#EF5350,stroke:#C62828,stroke-width:2px,color:#fff
+    style A2 fill:#EF5350,stroke:#C62828,stroke-width:2px,color:#fff
+    style A3 fill:#F44336,stroke:#B71C1C,stroke-width:3px,color:#fff
+    style B1 fill:#66BB6A,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style B2 fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
+</code></pre>
+
+<p><strong>Visual representation of Z-ordering space-filling curve:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Traditional (sorted by user_id only):
+  File 1: user_id [1-1000], all times mixed
+  File 2: user_id [1001-2000], all times mixed
+  → Query for user_id=1500 AND time=10:00 scans entire File 2
+
+Z-ordered (interleaved user_id and time):
+  File 1: user_id [1-500, time 09:00-10:00]
+  File 2: user_id [1-500, time 10:00-11:00]
+  File 3: user_id [501-1000, time 09:00-10:00]
+  → Query for user_id=1500 AND time=10:00 reads only relevant files
+</code></pre></div></div>
+
+<p><strong>Real-world benchmark:</strong></p>
+<ul>
+  <li>Query: <code class="language-plaintext highlighter-rouge">WHERE user_id = 12345 AND event_time BETWEEN '10:00' AND '11:00'</code></li>
+  <li>Without Z-ordering: Scan 5.4M rows → 5.0 seconds</li>
+  <li>With Z-ordering: Scan 1.2M rows → 2.1 seconds</li>
+  <li><strong>Improvement: 2.5x fewer rows scanned, 2.4x faster</strong></li>
+</ul>
+
+<h3 id="partition-evolution-in-action">Partition Evolution in Action</h3>
+
+<p>Iceberg allows you to change partitioning schemes without rewriting data:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Start with daily partitions (low data volume)</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">events</span> <span class="p">(</span>
+    <span class="n">event_id</span> <span class="nb">BIGINT</span><span class="p">,</span>
+    <span class="n">event_time</span> <span class="nb">TIMESTAMP</span><span class="p">,</span>
+    <span class="n">user_id</span> <span class="nb">BIGINT</span>
+<span class="p">)</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">days</span><span class="p">(</span><span class="n">event_time</span><span class="p">));</span>
+
+<span class="c1">-- 6 months later: Data volume increased, need hourly partitions</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">events</span> 
+<span class="k">ADD</span> <span class="k">PARTITION</span> <span class="n">FIELD</span> <span class="n">hours</span><span class="p">(</span><span class="n">event_time</span><span class="p">);</span>
+
+<span class="c1">-- Old data: Still uses daily partitions</span>
+<span class="c1">-- New data: Uses hourly partitions</span>
+<span class="c1">-- Queries work seamlessly across both schemes!</span>
+
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">events</span>
+<span class="k">WHERE</span> <span class="n">event_time</span> <span class="k">BETWEEN</span> <span class="s1">'2024-01-15 10:00:00'</span> <span class="k">AND</span> <span class="s1">'2024-01-15 11:00:00'</span><span class="p">;</span>
+<span class="c1">-- Iceberg automatically prunes both daily and hourly partitions</span>
+</code></pre></div></div>
+
+<p><strong>Why this matters:</strong></p>
+<ul>
+  <li>No downtime for partition changes</li>
+  <li>No expensive data rewrites</li>
+  <li>Adapt partitioning as data volume grows</li>
+  <li>Perfect for evolving AI workloads</li>
+</ul>
+
+<hr />
+
+<h2 id="real-world-performance-the-numbers-dont-lie">Real-World Performance: The Numbers Don’t Lie</h2>
+
+<p>Recent benchmarks demonstrate Iceberg’s performance advantages in production environments:</p>
+
+<h3 id="query-planning-speed">Query Planning Speed</h3>
+
+<p><strong>Traditional Hive on S3:</strong></p>
+<ul>
+  <li>Table: 10TB, 50,000 files</li>
+  <li>Query planning time: <strong>3-5 minutes</strong></li>
+  <li>Reason: Must list all files in S3, read partition metadata</li>
+</ul>
+
+<p><strong>Iceberg:</strong></p>
+<ul>
+  <li>Same table: 10TB, 50,000 files</li>
+  <li>Query planning time: <strong>&lt; 1 second</strong></li>
+  <li>Reason: Read single metadata file with all file statistics</li>
+</ul>
+
+<p><strong>Impact:</strong> 180-300x faster query planning</p>
+
+<h3 id="file-skipping-efficiency">File Skipping Efficiency</h3>
+
+<p><strong>Benchmark: TPC-DS Query on 1TB Dataset</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Configuration</th>
+      <th>Rows Scanned</th>
+      <th>Files Read</th>
+      <th>Query Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>No optimization</td>
+      <td>5.4M rows</td>
+      <td>1,200 files</td>
+      <td>5.0s</td>
+    </tr>
+    <tr>
+      <td>Partitioning only</td>
+      <td>3.2M rows</td>
+      <td>720 files</td>
+      <td>3.5s</td>
+    </tr>
+    <tr>
+      <td>Partitioning + Z-ordering</td>
+      <td>1.2M rows</td>
+      <td>280 files</td>
+      <td>2.1s</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Result: 2.4x faster with Z-ordering</strong></p>
+
+<h3 id="storage-efficiency-compaction-matters">Storage Efficiency: Compaction Matters</h3>
+
+<p><strong>Case Study: Streaming CDC Table (1 week of data)</strong></p>
+
+<p><strong>Without Compaction (Upsolver-optimized):</strong></p>
+<ul>
+  <li>Table size: 77GB</li>
+  <li>Storage used: 78GB (1% overhead)</li>
+  <li>File count: 141 files</li>
+  <li>Average file size: 545MB</li>
+  <li>Query time: 2.3 seconds</li>
+</ul>
+
+<p><strong>With Poor Compaction (AWS Glue default):</strong></p>
+<ul>
+  <li>Table size: 144GB</li>
+  <li>Storage used: 1,600GB (11x overhead!)</li>
+  <li>File count: 326 files</li>
+  <li>Average file size: 442MB</li>
+  <li>Query time: 8.7 seconds</li>
+</ul>
+
+<p><strong>Impact:</strong></p>
+<ul>
+  <li><strong>20x storage overhead</strong> with poor compaction</li>
+  <li><strong>3.8x slower queries</strong></li>
+  <li><strong>Higher cloud storage costs</strong></li>
+</ul>
+
+<p><strong>Lesson:</strong> Compaction strategy matters enormously!</p>
+
+<h3 id="real-time-analytics-performance">Real-Time Analytics Performance</h3>
+
+<p><strong>Use Case: Media Company Processing 50TB Daily</strong></p>
+
+<p><strong>Setup:</strong></p>
+<ul>
+  <li>Streaming ingestion with Apache Flink</li>
+  <li>Merge-on-read for high-frequency updates</li>
+  <li>Hidden partitioning by hour(timestamp)</li>
+  <li>Z-ordering on (user_id, content_id, timestamp)</li>
+</ul>
+
+<p><strong>Results:</strong></p>
+<ul>
+  <li>Ingestion throughput: 500K events/second</li>
+  <li>Query latency (p95): &lt; 500ms</li>
+  <li>Concurrent queries: 100+ without degradation</li>
+  <li>Data freshness: Real-time (&lt; 1 second lag)</li>
+</ul>
+
+<p><strong>Traditional approach would require:</strong></p>
+<ul>
+  <li>Separate streaming and batch systems</li>
+  <li>Data duplication (2x storage cost)</li>
+  <li>Minutes of latency for batch updates</li>
+</ul>
+
+<hr />
+
+<h2 id="real-world-examples">Real-World Examples</h2>
+
+<h3 id="example-1-training-chatgpt-style-ai">Example 1: Training ChatGPT-Style AI</h3>
+
+<p><strong>The Situation:</strong>
+OpenAI needs to train a new language model using text from websites, books, and code.</p>
+
+<p><strong>With Iceberg:</strong></p>
+<ol>
+  <li><strong>Collect data</strong> from different sources (websites, books, code) - all goes into one organized place</li>
+  <li><strong>Add quality ratings</strong> later when they figure out how to measure quality - takes 5 seconds</li>
+  <li><strong>Filter for best data</strong> - Iceberg instantly finds only high-quality English text from recent years</li>
+  <li><strong>Train the model</strong> - 100x faster because Iceberg skips irrelevant data</li>
+  <li><strong>Model not working well?</strong> Go back in time to see what data they used last month</li>
+  <li><strong>Compare versions</strong> - Figure out what changed and why</li>
+</ol>
+
+<h3 id="example-2-netflix-recommendations">Example 2: Netflix Recommendations</h3>
+
+<p><strong>The Situation:</strong>
+Netflix wants to recommend shows based on what you’re watching RIGHT NOW.</p>
+
+<p><strong>With Iceberg:</strong></p>
+<ul>
+  <li><strong>Real-time updates:</strong> Every time you click, that data is added immediately</li>
+  <li><strong>AI training:</strong> At the same time, their AI is learning from everyone’s clicks</li>
+  <li><strong>No conflicts:</strong> Both can happen simultaneously without breaking anything</li>
+  <li><strong>Always current:</strong> Recommendations get better every minute</li>
+</ul>
+
+<h3 id="example-3-self-driving-cars">Example 3: Self-Driving Cars</h3>
+
+<p><strong>The Situation:</strong>
+Tesla trains AI using videos from millions of cars.</p>
+
+<p><strong>With Iceberg:</strong></p>
+<ul>
+  <li><strong>Track every version:</strong> “Model v1.0 used data from January, Model v2.0 used data from February”</li>
+  <li><strong>Reproduce results:</strong> 6 months later, they can retrain Model v1.0 with the EXACT same data</li>
+  <li><strong>Debug problems:</strong> “Why did the car make a mistake?” → Check what training data was used</li>
+  <li><strong>Compliance:</strong> “What data trained this AI?” → Iceberg knows exactly</li>
+</ul>
+
+<h3 id="example-4-cross-engine-data-mesh">Example 4: Cross-Engine Data Mesh</h3>
+
+<p><strong>The Situation:</strong>
+An enterprise retail company runs a federated data mesh where different teams use their preferred tools.</p>
+
+<p><strong>With Iceberg:</strong></p>
+<ul>
+  <li><strong>Marketing team:</strong> Runs ad-hoc queries with Trino for campaign analysis</li>
+  <li><strong>Data engineering:</strong> Processes batch jobs with Spark for ETL</li>
+  <li><strong>Real-time team:</strong> Uses Flink for streaming aggregations</li>
+  <li><strong>ML team:</strong> Trains models with PyTorch reading Iceberg tables via Arrow</li>
+</ul>
+
+<p><strong>All teams read and write the same tables with full consistency:</strong></p>
+<ul>
+  <li>No data silos</li>
+  <li>No data duplication</li>
+  <li>No conflicts</li>
+  <li>Single source of truth</li>
+</ul>
+
+<h3 id="example-5-financial-services-cdc">Example 5: Financial Services CDC</h3>
+
+<p><strong>The Situation:</strong>
+A financial services firm uses Iceberg’s equality delete files to implement efficient CDC from transactional systems.</p>
+
+<p><strong>Implementation:</strong></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Updates to customer records captured as deletes + inserts</span>
+<span class="n">MERGE</span> <span class="k">INTO</span> <span class="n">customers</span> <span class="n">t</span>
+<span class="k">USING</span> <span class="n">customer_updates</span> <span class="n">s</span>
+<span class="k">ON</span> <span class="n">t</span><span class="p">.</span><span class="n">customer_id</span> <span class="o">=</span> <span class="n">s</span><span class="p">.</span><span class="n">customer_id</span>
+<span class="k">WHEN</span> <span class="n">MATCHED</span> <span class="k">THEN</span> <span class="k">UPDATE</span> <span class="k">SET</span> <span class="o">*</span>
+<span class="k">WHEN</span> <span class="k">NOT</span> <span class="n">MATCHED</span> <span class="k">THEN</span> <span class="k">INSERT</span> <span class="o">*</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+  <li>Complete audit trail for regulatory compliance</li>
+  <li>Fast incremental processing (only scan changed data)</li>
+  <li>Time travel for point-in-time regulatory reports</li>
+  <li>Efficient storage (equality deletes are small)</li>
+</ul>
+
+<hr />
+
+<h2 id="the-iceberg-ecosystem-right-now">The Iceberg Ecosystem Right Now</h2>
+
+<p>Based on the <strong>2025 State of the Apache Iceberg Ecosystem Survey</strong> with data professionals actively using Iceberg in production:</p>
+
+<h3 id="catalog-landscape-competitive-and-fragmented">Catalog Landscape: Competitive and Fragmented</h3>
+
+<p>The catalog market remains highly competitive with no single dominant player:</p>
+
+<p><strong>Leading Catalogs by Adoption:</strong></p>
+<ul>
+  <li><strong>AWS Glue (39.3%):</strong> Leading adoption due to AWS gravity, native Iceberg support with automatic compaction</li>
+  <li><strong>Project Nessie (28.6%):</strong> Git-like catalog with branching, merging, tagging, and cross-table transactions</li>
+  <li><strong>Amazon S3 Tables (25%):</strong> AWS-native Iceberg table management</li>
+  <li><strong>Apache Polaris (21.4%):</strong> Snowflake’s open-source catalog, now an Apache Top-Level Project with vendor-neutral REST API</li>
+  <li><strong>Lakekeeper (21.4%):</strong> Lightweight Rust-based catalog with single binary deployment</li>
+  <li><strong>Hive Metastore (17.9%):</strong> Traditional choice, still widely supported</li>
+</ul>
+
+<p><strong>Emerging Catalogs:</strong></p>
+<ul>
+  <li><strong>Apache Gravitino (Incubating):</strong> Federated metadata lake for multi-source governance</li>
+  <li><strong>Databricks Unity Catalog:</strong> Open-sourced in 2024, multi-format (Delta + Iceberg via UniForm), multi-engine governance</li>
+  <li><strong>REST Catalog:</strong> Lightweight HTTP-based catalog for cloud-native deployments</li>
+</ul>
+
+<p><strong>Key Insight:</strong> Polaris’s 21.4% adoption early in its Apache lifecycle signals strong momentum around open REST-aligned governance. The fragmented landscape reflects active competition in governance, federation, and metadata standardization.</p>
+
+<h3 id="cloud-and-infrastructure-patterns">Cloud and Infrastructure Patterns</h3>
+
+<p><strong>Primary Deployment Environments:</strong></p>
+<ul>
+  <li><strong>AWS (64.3%):</strong> Dominant cloud platform, driven by S3 performance and Glue integration</li>
+  <li><strong>Local Development (42.9%):</strong> Strong developer-driven experimentation</li>
+  <li><strong>On-Premises (28.6%):</strong> Significant enterprise deployments</li>
+  <li><strong>Multi-Cloud (21.4%):</strong> Growing hybrid architectures</li>
+  <li><strong>Azure (17.9%):</strong> Synapse Analytics integration</li>
+  <li><strong>GCP (17.9%):</strong> BigLake support</li>
+</ul>
+
+<p><strong>Managed Services:</strong></p>
+<ul>
+  <li><strong>AWS:</strong> Athena (serverless queries), EMR (Spark/Flink/Hive), Glue (catalog + ETL)</li>
+  <li><strong>Azure:</strong> Synapse Analytics with native Iceberg support</li>
+  <li><strong>GCP:</strong> BigLake for multi-cloud analytics</li>
+  <li><strong>Databricks:</strong> Unity Catalog with Delta-Iceberg interoperability</li>
+  <li><strong>Snowflake:</strong> Native Iceberg tables + Polaris catalog</li>
+</ul>
+
+<h3 id="query-engines-spark-dominates-multi-engine-reality">Query Engines: Spark Dominates, Multi-Engine Reality</h3>
+
+<p><strong>Survey Results - Engine Usage:</strong></p>
+<ul>
+  <li><strong>Apache Spark (96.4%):</strong> Near-universal adoption, foundational for ingestion, transformation, and metadata operations</li>
+  <li><strong>Trino OSS (60.7%):</strong> Strong traction for interactive analytics</li>
+  <li><strong>Apache Flink (32.1%):</strong> Stream processing and real-time ingestion</li>
+  <li><strong>DuckDB (28.6%):</strong> Growing interest in lightweight, embedded analytics</li>
+  <li><strong>Amazon Athena (21.4%):</strong> Serverless query engine</li>
+  <li><strong>Dremio (17.9%):</strong> High-performance lakehouse engine optimized for Iceberg</li>
+</ul>
+
+<p><strong>Full Iceberg Support by Category:</strong></p>
+
+<p><strong>Batch Processing:</strong></p>
+<ul>
+  <li>Apache Spark 3.5+ (full read/write, merge, delete, time travel)</li>
+  <li>Trino 400+ (full DML support, partition evolution)</li>
+  <li>Presto (read/write operations)</li>
+  <li>Apache Hive 4.0+ (legacy compatibility)</li>
+  <li>Dremio (optimized metadata handling)</li>
+</ul>
+
+<p><strong>Stream Processing:</strong></p>
+<ul>
+  <li>Apache Flink 1.18+ (streaming read/write, CDC)</li>
+  <li>Spark Structured Streaming (micro-batch + continuous)</li>
+  <li>Apache Kafka with Iceberg Sink Connector</li>
+</ul>
+
+<p><strong>Interactive Analytics:</strong></p>
+<ul>
+  <li>Snowflake (native Iceberg tables)</li>
+  <li>Databricks SQL (Delta + Iceberg via UniForm)</li>
+  <li>AWS Athena (serverless, native support)</li>
+  <li>Google BigQuery (via BigLake)</li>
+  <li>StarRocks (high-performance OLAP)</li>
+  <li>Apache Doris (real-time analytics)</li>
+</ul>
+
+<p><strong>Lightweight/Embedded:</strong></p>
+<ul>
+  <li>DuckDB (in-process analytics)</li>
+  <li>PyIceberg (Python-native library)</li>
+</ul>
+
+<p><strong>Key Insight:</strong> Iceberg is inherently multi-engine. While Spark dominates at 96.4%, the ecosystem supports diverse workloads from streaming (Flink) to interactive (Trino) to embedded (DuckDB).</p>
+
+<h3 id="ingestion-patterns-engine-centric-workflows">Ingestion Patterns: Engine-Centric Workflows</h3>
+
+<p><strong>Primary Ingestion Methods:</strong></p>
+<ul>
+  <li><strong>Distributed OSS Engines (71.4%):</strong> Spark or Flink for data landing</li>
+  <li><strong>Same Engine for Ingestion + Analytics (10.7%):</strong> Unified workflows</li>
+</ul>
+
+<p><strong>ETL and Streaming Tools:</strong></p>
+<ul>
+  <li><strong>Apache Kafka Connect (50%):</strong> Leading streaming integration</li>
+  <li><strong>AWS Glue Jobs (22.7%):</strong> Managed ETL service</li>
+  <li><strong>Debezium (18.2%):</strong> Change data capture</li>
+  <li><strong>Airbyte:</strong> Iceberg destination connector</li>
+  <li><strong>Fivetran:</strong> Iceberg connector for SaaS data</li>
+  <li><strong>Apache NiFi:</strong> Iceberg processors for data flow</li>
+</ul>
+
+<p><strong>Key Insight:</strong> The ecosystem remains oriented around open compute engines rather than turnkey SaaS ELT platforms.</p>
+
+<h3 id="data-transformation--modeling">Data Transformation &amp; Modeling</h3>
+
+<p><strong>SQL-Centric Tools:</strong></p>
+<ul>
+  <li><strong>dbt (dbt-iceberg):</strong> Iceberg models with incremental strategies</li>
+  <li><strong>SQL Interface (46.4%):</strong> Dominant interface preference</li>
+  <li><strong>Python (25%):</strong> PyIceberg, PySpark</li>
+  <li><strong>Java/Scala (25%):</strong> Spark, Flink applications</li>
+</ul>
+
+<h3 id="governance--observability">Governance &amp; Observability</h3>
+
+<p><strong>Access Control:</strong></p>
+<ul>
+  <li>Apache Ranger (fine-grained permissions)</li>
+  <li>Unity Catalog (unified governance)</li>
+  <li>Polaris (catalog-level access control)</li>
+  <li>Nessie (branch-based isolation)</li>
+</ul>
+
+<p><strong>Metadata Management:</strong></p>
+<ul>
+  <li>OpenMetadata (catalog and lineage)</li>
+  <li>DataHub (metadata discovery)</li>
+  <li>Apache Atlas (metadata governance)</li>
+</ul>
+
+<p><strong>Data Quality &amp; Observability:</strong></p>
+<ul>
+  <li>Monte Carlo (data observability)</li>
+  <li>Great Expectations (data validation)</li>
+  <li>Soda (data quality checks)</li>
+</ul>
+
+<h3 id="ml--ai-platforms">ML &amp; AI Platforms</h3>
+
+<p><strong>Feature Stores:</strong></p>
+<ul>
+  <li>Feast (feature store on Iceberg)</li>
+  <li>Tecton (real-time feature platform)</li>
+  <li>Databricks Feature Store (Unity Catalog integration)</li>
+</ul>
+
+<p><strong>ML Frameworks:</strong></p>
+<ul>
+  <li>Ray (distributed ML on Iceberg)</li>
+  <li>PyTorch/TensorFlow (via PyArrow)</li>
+  <li>MLflow (experiment tracking with Iceberg tables)</li>
+</ul>
+
+<p><strong>AI/ML Integration:</strong></p>
+<ul>
+  <li>PyIceberg (Python-native library for ML workflows)</li>
+  <li>Arrow Flight (high-performance data transfer)</li>
+  <li>Pandas/Polars (DataFrame integration)</li>
+</ul>
+
+<h3 id="production-scale-reality">Production Scale Reality</h3>
+
+<p><strong>Largest Iceberg Table Sizes in Production:</strong></p>
+<ul>
+  <li><strong>10-100 TB (28.6%):</strong> Most common production scale</li>
+  <li><strong>&lt; 1 TB (21.4%):</strong> Smaller workloads and experimentation</li>
+  <li><strong>1-10 TB (17.9%):</strong> Mid-size deployments</li>
+  <li><strong>100 TB - 1 PB (17.9%):</strong> Large-scale analytics</li>
+  <li><strong>&gt; 1 PB (10.7%):</strong> Massive data lakes</li>
+</ul>
+
+<p><strong>Key Insight:</strong> Iceberg is not confined to small datasets. Nearly half of production deployments manage tables larger than 10 TB, with 28.6% operating at petabyte scale.</p>
+
+<h3 id="feature-priorities-what-users-want">Feature Priorities: What Users Want</h3>
+
+<p><strong>Most Interesting v3 Features:</strong></p>
+<ul>
+  <li><strong>Row-Level Lineage (33.3%):</strong> Governance visibility and CDC</li>
+  <li><strong>Deletion Vectors (25.9%):</strong> Update efficiency</li>
+  <li><strong>Variant Datatype (22.2%):</strong> Semi-structured data support</li>
+  <li><strong>Geo Types:</strong> Geospatial analytics</li>
+</ul>
+
+<p><strong>Most Exciting Potential v4 Features:</strong></p>
+<ul>
+  <li><strong>Materialized Views (37%):</strong> Performance acceleration</li>
+  <li><strong>Parquet-Based Metadata (22.2%):</strong> Faster metadata operations</li>
+  <li><strong>Secondary Indexes (22.2%):</strong> Query optimization</li>
+  <li><strong>Relative Paths:</strong> Portability improvements</li>
+</ul>
+
+<p><strong>Key Insight:</strong> Production-driven concerns dominate. Users want performance optimization, governance visibility, and metadata intelligence layered onto the existing format foundation.</p>
+
+<h3 id="core-value-proposition">Core Value Proposition</h3>
+
+<p><strong>What Resonates Most with Users:</strong></p>
+<ul>
+  <li><strong>Interoperability Among Lakehouse Tools (35.7%):</strong> Multi-engine compatibility</li>
+  <li><strong>ACID Transactions with Less Duplicative Storage (35.7%):</strong> Reliability + efficiency</li>
+  <li><strong>Cost Reductions (14.3%):</strong> Lower storage and compute costs</li>
+  <li><strong>Faster Transactions vs Hive/Parquet (14.3%):</strong> Performance improvements</li>
+</ul>
+
+<h3 id="satisfaction-and-community-engagement">Satisfaction and Community Engagement</h3>
+
+<p><strong>Performance &amp; Reliability Satisfaction (5-point scale):</strong></p>
+<ul>
+  <li><strong>4 out of 5 (51.9%):</strong> Strong satisfaction</li>
+  <li><strong>5 out of 5 (18.5%):</strong> Excellent</li>
+  <li><strong>3 out of 5 (29.6%):</strong> Moderate satisfaction</li>
+  <li><strong>Low ratings:</strong> Negligible</li>
+</ul>
+
+<p><strong>Open Source Contribution:</strong></p>
+<ul>
+  <li><strong>Occasional Contributors (46.2%):</strong> Active participation</li>
+  <li><strong>Plans to Contribute (42.3%):</strong> Future engagement</li>
+  <li><strong>Active Contributors (7.7%):</strong> Core community members</li>
+</ul>
+
+<p><strong>Key Insight:</strong> The ecosystem is participatory and evolving through practitioner input. High satisfaction combined with strong contribution signals a healthy, production-ready technology.</p>
+
+<h3 id="strategic-observations-for-2025">Strategic Observations for 2025</h3>
+
+<ol>
+  <li><strong>Multi-Engine is Reality:</strong> Spark at 96.4% is foundational, but Iceberg’s value lies in cross-engine interoperability</li>
+  <li><strong>Catalog Fragmentation Persists:</strong> No dominant catalog; Glue leads at 39.3%, but Nessie (28.6%) and Polaris (21.4%) show strong momentum</li>
+  <li><strong>AWS Gravity:</strong> 64.3% on AWS, but multi-cloud (21.4%) and on-prem (28.6%) deployments are significant</li>
+  <li><strong>Production Scale:</strong> Nearly half manage tables &gt; 10 TB; this is not experimental technology</li>
+  <li><strong>Feature Direction:</strong> Materialized views (37%), deletion vectors (25.9%), and row lineage (33.3%) point toward performance and governance focus</li>
+  <li><strong>Interoperability Wins:</strong> 35.7% cite multi-tool compatibility as top value; Iceberg’s open standard is its strength</li>
+</ol>
+
+<p><strong>The Bottom Line:</strong> Iceberg has crossed the production threshold. The next phase focuses on metadata optimization, governance clarity, and multi-engine coherence rather than basic transactional guarantees.</p>
+
+<hr />
+
+<h2 id="quick-comparison">Quick Comparison</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>What You Want to Do</strong></th>
+      <th><strong>Old Way</strong></th>
+      <th><strong>Iceberg Way</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Find specific data</td>
+      <td>Check every file (slow)</td>
+      <td>Check smart index (100x faster)</td>
+    </tr>
+    <tr>
+      <td>Add new information</td>
+      <td>Rewrite everything (days)</td>
+      <td>Update index (seconds)</td>
+    </tr>
+    <tr>
+      <td>See old versions</td>
+      <td>❌ Can’t do it</td>
+      <td>✅ Go back to any date</td>
+    </tr>
+    <tr>
+      <td>Multiple people working</td>
+      <td>❌ Conflicts and errors</td>
+      <td>✅ Everyone works smoothly</td>
+    </tr>
+    <tr>
+      <td>Organize data</td>
+      <td>Manual work, easy to mess up</td>
+      <td>Automatic, always optimized</td>
+    </tr>
+    <tr>
+      <td>Fix mistakes</td>
+      <td>❌ Can’t undo</td>
+      <td>✅ Instant rollback</td>
+    </tr>
+    <tr>
+      <td>Use for AI</td>
+      <td>⚠️ Slow and difficult</td>
+      <td>✅ Fast and easy</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="the-bottom-line">The Bottom Line</h2>
+
+<p><strong>What is Iceberg?</strong>
+A super-smart filing system for massive amounts of data.</p>
+
+<p><strong>Why does it matter?</strong></p>
+<ul>
+  <li>Makes finding data 100x faster</li>
+  <li>Lets you go back in time to any version</li>
+  <li>Lets you add new information instantly</li>
+  <li>Lets multiple teams work together without conflicts</li>
+</ul>
+
+<p><strong>Why do AI companies love it?</strong></p>
+<ol>
+  <li><strong>Speed:</strong> Training AI models is 100x faster</li>
+  <li><strong>Time travel:</strong> Can reproduce any result from the past</li>
+  <li><strong>Flexibility:</strong> Can add new features in seconds, not weeks</li>
+  <li><strong>Reliability:</strong> Multiple teams can work on the same data safely</li>
+</ol>
+
+<p><strong>The simple truth:</strong>
+AI needs to read billions of pieces of data quickly, track every version, and let many people work together. Iceberg makes all of this easy.</p>
+
+<p>That’s why companies like Netflix, Apple, Adobe, LinkedIn, and Airbnb use Iceberg for their AI systems.</p>
+
+<hr />
+
+<h2 id="want-to-learn-more">Want to Learn More?</h2>
+
+<ul>
+  <li><strong>Official website:</strong> <a href="https://iceberg.apache.org/">Apache Iceberg</a></li>
+  <li><strong>Technical details:</strong> <a href="/handbook/topics/enterprise-data-modernization-strategy/">On-Premises Data Modernization Strategy</a></li>
+</ul>
+
+<hr />
+
+<h2 id="final-thought">Final Thought</h2>
+
+<p>Iceberg isn’t magic. It’s just a smart way to keep track of where your data is, so you don’t waste time looking in the wrong places.</p>
+
+<p>But when you’re working with billions of pieces of information (like training ChatGPT), that simple idea makes the difference between:</p>
+<ul>
+  <li>Waiting 5 hours ❌</li>
+  <li>Getting results in 5 minutes ✅</li>
+</ul>
+
+<p>That’s why every major AI company uses Iceberg. It’s the secret ingredient that makes modern AI possible.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">iceberg</span>, <span class="tag">data-architecture</span>, <span class="tag">generative-ai</span>, <span class="tag">machine-learning</span>, <span class="tag">table-format</span>, <span class="tag">lakehouse</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff'
+        }
+      });
+    </script>
+  </body>
+</html>
