@@ -1,0 +1,684 @@
+<h1 id="kubeflow-spark-operator---getting-started">Kubeflow Spark Operator - Getting Started</h1>
+
+<h2 id="what-is-this">What is This?</h2>
+
+<p><strong>Simple Answer:</strong> The Spark Operator lets you run Apache Spark jobs on Kubernetes by writing simple YAML files instead of complex <code class="language-plaintext highlighter-rouge">spark-submit</code> commands.</p>
+
+<p><strong>Why Should You Care?</strong></p>
+<ul>
+  <li>✅ No more manual <code class="language-plaintext highlighter-rouge">spark-submit</code> commands</li>
+  <li>✅ Jobs defined as code (YAML) - version control friendly</li>
+  <li>✅ Automatic retries and monitoring</li>
+  <li>✅ Native Kubernetes integration</li>
+  <li>✅ Schedule jobs like cron jobs</li>
+</ul>
+
+<h2 id="the-problem-it-solves">The Problem It Solves</h2>
+
+<h3 id="before-spark-operator-the-hard-way">Before Spark Operator (The Hard Way)</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># You had to run complex commands like this:</span>
+spark-submit <span class="se">\</span>
+  <span class="nt">--master</span> k8s://https://kubernetes.default.svc:443 <span class="se">\</span>
+  <span class="nt">--deploy-mode</span> cluster <span class="se">\</span>
+  <span class="nt">--name</span> spark-pi <span class="se">\</span>
+  <span class="nt">--class</span> org.apache.spark.examples.SparkPi <span class="se">\</span>
+  <span class="nt">--conf</span> spark.executor.instances<span class="o">=</span>5 <span class="se">\</span>
+  <span class="nt">--conf</span> spark.kubernetes.container.image<span class="o">=</span>spark:3.5.0 <span class="se">\</span>
+  <span class="nt">--conf</span> spark.kubernetes.authenticate.driver.serviceAccountName<span class="o">=</span>spark <span class="se">\</span>
+  <span class="nb">local</span>:///opt/spark/examples/jars/spark-examples.jar
+</code></pre></div></div>
+
+<p><strong>Problems:</strong></p>
+<ul>
+  <li>Hard to remember all the flags</li>
+  <li>No automatic retries if the job fails</li>
+  <li>Manual monitoring required</li>
+  <li>Difficult to schedule recurring jobs</li>
+  <li>Not version controlled</li>
+</ul>
+
+<h3 id="after-spark-operator-the-easy-way">After Spark Operator (The Easy Way)</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Just write a simple YAML file:</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">SparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-pi</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">Scala</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">cluster</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">spark:3.5.0</span>
+  <span class="na">mainClass</span><span class="pi">:</span> <span class="s">org.apache.spark.examples.SparkPi</span>
+  <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">local:///opt/spark/examples/jars/spark-examples.jar</span>
+  
+  <span class="na">driver</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s">512m</span>
+  
+  <span class="na">executor</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">instances</span><span class="pi">:</span> <span class="m">5</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s">1g</span>
+</code></pre></div></div>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+  <li>✅ Easy to read and understand</li>
+  <li>✅ Can be version controlled in Git</li>
+  <li>✅ Automatic retries built-in</li>
+  <li>✅ Apply with <code class="language-plaintext highlighter-rouge">kubectl apply -f spark-pi.yaml</code></li>
+</ul>
+
+<h2 id="how-it-works-simple-explanation">How It Works (Simple Explanation)</h2>
+
+<p>Think of the Spark Operator as a <strong>robot assistant</strong> that watches for Spark job requests and handles all the complexity for you.</p>
+
+<div class="mermaid">
+graph LR
+    YOU["<b>You</b><br />Write YAML file"] --&gt;|kubectl apply| K8S["<b>Kubernetes</b><br />Receives request"]
+    K8S --&gt;|Notifies| OPERATOR["<b>Spark Operator</b><br />Robot Assistant"]
+    OPERATOR --&gt;|Creates| DRIVER["<b>Driver Pod</b><br />Job Coordinator"]
+    DRIVER --&gt;|Creates| EXEC1["<b>Executor 1</b><br />Worker"]
+    DRIVER --&gt;|Creates| EXEC2["<b>Executor 2</b><br />Worker"]
+    DRIVER --&gt;|Creates| EXEC3["<b>Executor 3</b><br />Worker"]
+    
+    EXEC1 --&gt;|Process data| RESULT["<b>Results</b>"]
+    EXEC2 --&gt;|Process data| RESULT
+    EXEC3 --&gt;|Process data| RESULT
+    
+    style YOU fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px,color:#000
+    style K8S fill:#E3F2FD,stroke:#2196F3,stroke-width:2px,color:#000
+    style OPERATOR fill:#FFF3E0,stroke:#FF9800,stroke-width:3px,color:#000
+    style DRIVER fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px,color:#000
+    style EXEC1 fill:#E1F5FE,stroke:#0288D1,stroke-width:2px,color:#000
+    style EXEC2 fill:#E1F5FE,stroke:#0288D1,stroke-width:2px,color:#000
+    style EXEC3 fill:#E1F5FE,stroke:#0288D1,stroke-width:2px,color:#000
+    style RESULT fill:#C8E6C9,stroke:#388E3C,stroke-width:2px,color:#000
+</div>
+
+<p><strong>Step-by-Step:</strong></p>
+<ol>
+  <li><strong>You write</strong> a YAML file describing your Spark job</li>
+  <li><strong>You apply</strong> it to Kubernetes: <code class="language-plaintext highlighter-rouge">kubectl apply -f my-job.yaml</code></li>
+  <li><strong>Spark Operator sees</strong> the new job request</li>
+  <li><strong>Operator creates</strong> a Driver pod (the coordinator)</li>
+  <li><strong>Driver creates</strong> Executor pods (the workers)</li>
+  <li><strong>Executors process</strong> your data in parallel</li>
+  <li><strong>Results are saved</strong> to your specified location</li>
+  <li><strong>Pods clean up</strong> automatically when done</li>
+</ol>
+
+<h2 id="kubernetes-terms-simplified">Kubernetes Terms (Simplified)</h2>
+
+<p>Before we continue, here are the key Kubernetes concepts you need to know:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>Simple Explanation</th>
+      <th>Spark Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Pod</strong></td>
+      <td>A running container (like a Docker container)</td>
+      <td>Driver pod, Executor pods</td>
+    </tr>
+    <tr>
+      <td><strong>Namespace</strong></td>
+      <td>A folder to organize resources</td>
+      <td><code class="language-plaintext highlighter-rouge">team-a-spark</code>, <code class="language-plaintext highlighter-rouge">team-b-spark</code></td>
+    </tr>
+    <tr>
+      <td><strong>Service Account</strong></td>
+      <td>An identity/permission for pods</td>
+      <td>Allows driver to create executors</td>
+    </tr>
+    <tr>
+      <td><strong>ConfigMap</strong></td>
+      <td>A file with configuration settings</td>
+      <td>Log4j properties, Spark configs</td>
+    </tr>
+    <tr>
+      <td><strong>Secret</strong></td>
+      <td>Encrypted configuration (passwords, keys)</td>
+      <td>AWS credentials, database passwords</td>
+    </tr>
+    <tr>
+      <td><strong>CRD</strong></td>
+      <td>Custom Resource Definition - extends Kubernetes</td>
+      <td><code class="language-plaintext highlighter-rouge">SparkApplication</code> is a CRD</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="your-first-spark-job">Your First Spark Job</h2>
+
+<p>Let’s run a simple example that calculates Pi.</p>
+
+<h3 id="step-1-install-spark-operator">Step 1: Install Spark Operator</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add Helm repository</span>
+helm repo add spark-operator https://googlecloudplatform.github.io/spark-on-k8s-operator
+
+<span class="c"># Install the operator</span>
+helm <span class="nb">install </span>spark-operator spark-operator/spark-operator <span class="se">\</span>
+  <span class="nt">--namespace</span> spark-operator <span class="se">\</span>
+  <span class="nt">--create-namespace</span>
+</code></pre></div></div>
+
+<h3 id="step-2-create-a-namespace-for-your-jobs">Step 2: Create a Namespace for Your Jobs</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl create namespace spark-jobs
+</code></pre></div></div>
+
+<h3 id="step-3-create-a-service-account">Step 3: Create a Service Account</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># spark-rbac.yaml</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-role</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="na">rules</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">pods"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">services"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">configmaps"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">create"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">watch"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">delete"</span><span class="pi">]</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RoleBinding</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-role-binding</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="na">roleRef</span><span class="pi">:</span>
+  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
+  <span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-role</span>
+<span class="na">subjects</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl apply <span class="nt">-f</span> spark-rbac.yaml
+</code></pre></div></div>
+
+<h3 id="step-4-submit-your-first-job">Step 4: Submit Your First Job</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># spark-pi.yaml</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">SparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-pi</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">Scala</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">cluster</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">apache/spark:3.5.0</span>
+  <span class="na">imagePullPolicy</span><span class="pi">:</span> <span class="s">Always</span>
+  <span class="na">mainClass</span><span class="pi">:</span> <span class="s">org.apache.spark.examples.SparkPi</span>
+  <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">local:///opt/spark/examples/jars/spark-examples_2.12-3.5.0.jar</span>
+  
+  <span class="na">sparkVersion</span><span class="pi">:</span> <span class="s2">"</span><span class="s">3.5.0"</span>
+  
+  <span class="na">restartPolicy</span><span class="pi">:</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">Never</span>
+  
+  <span class="na">driver</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">coreLimit</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1200m"</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">512m"</span>
+    <span class="na">labels</span><span class="pi">:</span>
+      <span class="na">version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">3.5.0"</span>
+    <span class="na">serviceAccount</span><span class="pi">:</span> <span class="s">spark</span>
+  
+  <span class="na">executor</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">instances</span><span class="pi">:</span> <span class="m">2</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">512m"</span>
+    <span class="na">labels</span><span class="pi">:</span>
+      <span class="na">version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">3.5.0"</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Submit the job</span>
+kubectl apply <span class="nt">-f</span> spark-pi.yaml
+
+<span class="c"># Watch the job status</span>
+kubectl get sparkapplication <span class="nt">-n</span> spark-jobs <span class="nt">-w</span>
+
+<span class="c"># Check logs</span>
+kubectl logs <span class="nt">-n</span> spark-jobs spark-pi-driver
+</code></pre></div></div>
+
+<h3 id="step-5-check-the-results">Step 5: Check the Results</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Get job status</span>
+kubectl get sparkapplication spark-pi <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Output will show:</span>
+<span class="c"># NAME       STATUS      ATTEMPTS   START                  FINISH                 AGE</span>
+<span class="c"># spark-pi   COMPLETED   1          2026-04-20T21:00:00Z   2026-04-20T21:01:30Z   2m</span>
+</code></pre></div></div>
+
+<p><strong>Success!</strong> 🎉 You just ran your first Spark job on Kubernetes!</p>
+
+<h2 id="common-use-cases">Common Use Cases</h2>
+
+<h3 id="1-running-a-python-pyspark-job">1. Running a Python PySpark Job</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">SparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">pyspark-job</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">Python</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">cluster</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">apache/spark-py:3.5.0</span>
+  <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">s3a://my-bucket/jobs/process_data.py</span>
+  
+  <span class="na">sparkConf</span><span class="pi">:</span>
+    <span class="s2">"</span><span class="s">spark.hadoop.fs.s3a.access.key"</span><span class="err">:</span> <span class="s2">"</span><span class="s">YOUR_ACCESS_KEY"</span>
+    <span class="s2">"</span><span class="s">spark.hadoop.fs.s3a.secret.key"</span><span class="err">:</span> <span class="s2">"</span><span class="s">YOUR_SECRET_KEY"</span>
+  
+  <span class="na">driver</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1g"</span>
+    <span class="na">serviceAccount</span><span class="pi">:</span> <span class="s">spark</span>
+  
+  <span class="na">executor</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">2</span>
+    <span class="na">instances</span><span class="pi">:</span> <span class="m">5</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2g"</span>
+</code></pre></div></div>
+
+<h3 id="2-scheduled-job-runs-daily-at-2-am">2. Scheduled Job (Runs Daily at 2 AM)</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ScheduledSparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">daily-etl</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0</span><span class="nv"> </span><span class="s">2</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>  <span class="c1"># Cron format</span>
+  <span class="na">concurrencyPolicy</span><span class="pi">:</span> <span class="s">Forbid</span>  <span class="c1"># Don't run if previous job still running</span>
+  
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">Scala</span>
+    <span class="na">mode</span><span class="pi">:</span> <span class="s">cluster</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s">my-registry/spark-etl:latest</span>
+    <span class="na">mainClass</span><span class="pi">:</span> <span class="s">com.company.ETLPipeline</span>
+    <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">s3a://my-bucket/etl-pipeline.jar</span>
+    
+    <span class="na">driver</span><span class="pi">:</span>
+      <span class="na">cores</span><span class="pi">:</span> <span class="m">2</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2g"</span>
+      <span class="na">serviceAccount</span><span class="pi">:</span> <span class="s">spark</span>
+    
+    <span class="na">executor</span><span class="pi">:</span>
+      <span class="na">cores</span><span class="pi">:</span> <span class="m">4</span>
+      <span class="na">instances</span><span class="pi">:</span> <span class="m">10</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4g"</span>
+</code></pre></div></div>
+
+<h3 id="3-job-with-automatic-retries">3. Job with Automatic Retries</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">SparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">resilient-job</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">Scala</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">cluster</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">apache/spark:3.5.0</span>
+  <span class="na">mainClass</span><span class="pi">:</span> <span class="s">com.company.MyApp</span>
+  <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">s3a://my-bucket/my-app.jar</span>
+  
+  <span class="c1"># Retry configuration</span>
+  <span class="na">restartPolicy</span><span class="pi">:</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">OnFailure</span>
+    <span class="na">onFailureRetries</span><span class="pi">:</span> <span class="m">3</span>
+    <span class="na">onFailureRetryInterval</span><span class="pi">:</span> <span class="m">10</span>  <span class="c1"># Wait 10 seconds between retries</span>
+  
+  <span class="na">driver</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1g"</span>
+    <span class="na">serviceAccount</span><span class="pi">:</span> <span class="s">spark</span>
+  
+  <span class="na">executor</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">2</span>
+    <span class="na">instances</span><span class="pi">:</span> <span class="m">5</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2g"</span>
+</code></pre></div></div>
+
+<h2 id="job-lifecycle">Job Lifecycle</h2>
+
+<p>Understanding what happens to your job:</p>
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --&gt; NEW: kubectl apply
+    NEW --&gt; SUBMITTED: Operator picks up job
+    SUBMITTED --&gt; RUNNING: Driver pod starts
+    
+    RUNNING --&gt; COMPLETED: Job succeeds
+    RUNNING --&gt; FAILED: Job fails
+    
+    FAILED --&gt; RUNNING: Retry (if configured)
+    FAILED --&gt; [*]: Max retries reached
+    
+    COMPLETED --&gt; [*]: Job done
+    
+    note right of NEW
+        Job is queued
+    end note
+    
+    note right of RUNNING
+        Driver + Executors
+        processing data
+    end note
+    
+    note right of COMPLETED
+        Success!
+    end note
+</div>
+
+<p><strong>States Explained:</strong></p>
+<ul>
+  <li><strong>NEW</strong>: Job YAML applied, waiting to start</li>
+  <li><strong>SUBMITTED</strong>: Operator sent job to Kubernetes</li>
+  <li><strong>RUNNING</strong>: Driver and executors are processing data</li>
+  <li><strong>COMPLETED</strong>: Job finished successfully ✅</li>
+  <li><strong>FAILED</strong>: Job encountered an error ❌</li>
+</ul>
+
+<h2 id="monitoring-your-jobs">Monitoring Your Jobs</h2>
+
+<h3 id="check-job-status">Check Job Status</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># List all jobs</span>
+kubectl get sparkapplication <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Get detailed status</span>
+kubectl describe sparkapplication spark-pi <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Watch for changes</span>
+kubectl get sparkapplication <span class="nt">-n</span> spark-jobs <span class="nt">-w</span>
+</code></pre></div></div>
+
+<h3 id="view-logs">View Logs</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Driver logs</span>
+kubectl logs <span class="nt">-n</span> spark-jobs spark-pi-driver
+
+<span class="c"># Executor logs</span>
+kubectl logs <span class="nt">-n</span> spark-jobs spark-pi-exec-1
+
+<span class="c"># Follow logs in real-time</span>
+kubectl logs <span class="nt">-f</span> <span class="nt">-n</span> spark-jobs spark-pi-driver
+</code></pre></div></div>
+
+<h3 id="access-spark-ui">Access Spark UI</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Port-forward to access Spark UI</span>
+kubectl port-forward <span class="nt">-n</span> spark-jobs spark-pi-driver 4040:4040
+
+<span class="c"># Open in browser: http://localhost:4040</span>
+</code></pre></div></div>
+
+<h2 id="common-configuration-options">Common Configuration Options</h2>
+
+<h3 id="resource-allocation">Resource Allocation</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">driver</span><span class="pi">:</span>
+  <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>              <span class="c1"># Number of CPU cores</span>
+  <span class="na">coreLimit</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1200m"</span>    <span class="c1"># Max CPU (prevents throttling)</span>
+  <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1g"</span>          <span class="c1"># Memory allocation</span>
+  <span class="na">memoryOverhead</span><span class="pi">:</span> <span class="s2">"</span><span class="s">400m"</span>  <span class="c1"># Extra memory for off-heap usage</span>
+
+<span class="na">executor</span><span class="pi">:</span>
+  <span class="na">cores</span><span class="pi">:</span> <span class="m">2</span>
+  <span class="na">coreLimit</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2400m"</span>
+  <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2g"</span>
+  <span class="na">memoryOverhead</span><span class="pi">:</span> <span class="s2">"</span><span class="s">512m"</span>
+  <span class="na">instances</span><span class="pi">:</span> <span class="m">5</span>          <span class="c1"># Number of executor pods</span>
+</code></pre></div></div>
+
+<h3 id="environment-variables">Environment Variables</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">driver</span><span class="pi">:</span>
+  <span class="na">env</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">AWS_REGION</span>
+    <span class="na">value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">us-east-1"</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">LOG_LEVEL</span>
+    <span class="na">value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">INFO"</span>
+
+<span class="na">executor</span><span class="pi">:</span>
+  <span class="na">env</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">AWS_REGION</span>
+    <span class="na">value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">us-east-1"</span>
+</code></pre></div></div>
+
+<h3 id="using-secrets">Using Secrets</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># First, create a secret</span>
+<span class="c1"># kubectl create secret generic aws-creds \</span>
+<span class="c1">#   --from-literal=access-key=YOUR_KEY \</span>
+<span class="c1">#   --from-literal=secret-key=YOUR_SECRET \</span>
+<span class="c1">#   -n spark-jobs</span>
+
+<span class="na">driver</span><span class="pi">:</span>
+  <span class="na">envFrom</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">secretRef</span><span class="pi">:</span>
+      <span class="na">name</span><span class="pi">:</span> <span class="s">aws-creds</span>
+
+<span class="na">executor</span><span class="pi">:</span>
+  <span class="na">envFrom</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">secretRef</span><span class="pi">:</span>
+      <span class="na">name</span><span class="pi">:</span> <span class="s">aws-creds</span>
+</code></pre></div></div>
+
+<h3 id="mounting-configmaps">Mounting ConfigMaps</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">driver</span><span class="pi">:</span>
+  <span class="na">configMaps</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">spark-config</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">/opt/spark/conf</span>
+
+<span class="na">executor</span><span class="pi">:</span>
+  <span class="na">configMaps</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">spark-config</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">/opt/spark/conf</span>
+</code></pre></div></div>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="job-stuck-in-submitted-state">Job Stuck in SUBMITTED State</h3>
+
+<p><strong>Problem:</strong> Job never starts running.</p>
+
+<p><strong>Check:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check if driver pod was created</span>
+kubectl get pods <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Check operator logs</span>
+kubectl logs <span class="nt">-n</span> spark-operator deployment/spark-operator
+</code></pre></div></div>
+
+<p><strong>Common Causes:</strong></p>
+<ul>
+  <li>Service account doesn’t have permissions</li>
+  <li>Image pull errors</li>
+  <li>Resource quota exceeded</li>
+</ul>
+
+<h3 id="job-fails-immediately">Job Fails Immediately</h3>
+
+<p><strong>Problem:</strong> Job goes to FAILED state right away.</p>
+
+<p><strong>Check:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check driver pod events</span>
+kubectl describe pod spark-pi-driver <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Check driver logs</span>
+kubectl logs spark-pi-driver <span class="nt">-n</span> spark-jobs
+</code></pre></div></div>
+
+<p><strong>Common Causes:</strong></p>
+<ul>
+  <li>Wrong main class name</li>
+  <li>JAR file not found</li>
+  <li>Missing dependencies</li>
+</ul>
+
+<h3 id="executors-not-starting">Executors Not Starting</h3>
+
+<p><strong>Problem:</strong> Driver starts but executors don’t.</p>
+
+<p><strong>Check:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check if executor pods exist</span>
+kubectl get pods <span class="nt">-n</span> spark-jobs <span class="nt">-l</span> spark-role<span class="o">=</span>executor
+
+<span class="c"># Check driver logs for errors</span>
+kubectl logs spark-pi-driver <span class="nt">-n</span> spark-jobs | <span class="nb">grep</span> <span class="nt">-i</span> executor
+</code></pre></div></div>
+
+<p><strong>Common Causes:</strong></p>
+<ul>
+  <li>Service account can’t create pods</li>
+  <li>Resource quota exceeded</li>
+  <li>Node selector/affinity issues</li>
+</ul>
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="1-always-set-resource-limits">1. Always Set Resource Limits</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">driver</span><span class="pi">:</span>
+  <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">coreLimit</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1200m"</span>  <span class="c1"># Prevents CPU throttling</span>
+  <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1g"</span>
+  <span class="na">memoryOverhead</span><span class="pi">:</span> <span class="s2">"</span><span class="s">400m"</span>  <span class="c1"># Prevents OOM errors</span>
+</code></pre></div></div>
+
+<h3 id="2-use-specific-image-tags">2. Use Specific Image Tags</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ❌ Bad - uses latest</span>
+<span class="na">image</span><span class="pi">:</span> <span class="s">apache/spark:latest</span>
+
+<span class="c1"># ✅ Good - specific version</span>
+<span class="na">image</span><span class="pi">:</span> <span class="s">apache/spark:3.5.0</span>
+</code></pre></div></div>
+
+<h3 id="3-configure-retries-for-production">3. Configure Retries for Production</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">restartPolicy</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">OnFailure</span>
+  <span class="na">onFailureRetries</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">onFailureRetryInterval</span><span class="pi">:</span> <span class="m">10</span>
+</code></pre></div></div>
+
+<h3 id="4-add-labels-for-organization">4. Add Labels for Organization</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">team</span><span class="pi">:</span> <span class="s">data-engineering</span>
+    <span class="na">env</span><span class="pi">:</span> <span class="s">production</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">etl-pipeline</span>
+</code></pre></div></div>
+
+<h3 id="5-use-namespaces-for-isolation">5. Use Namespaces for Isolation</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Separate namespaces for different environments</span>
+kubectl create namespace spark-dev
+kubectl create namespace spark-staging
+kubectl create namespace spark-prod
+</code></pre></div></div>
+
+<h2 id="next-steps">Next Steps</h2>
+
+<p>Now that you understand the basics, you can explore:</p>
+
+<ul>
+  <li><strong><a href="kubeflow-spark-operator-enterprise.html">Multi-Tenant Architecture</a></strong> - Learn how to run Spark for multiple teams with centralized logging, cost tracking, and job submission portals</li>
+  <li><strong>Spark History Server</strong> - Set up persistent UI for completed jobs</li>
+  <li><strong>Advanced Scheduling</strong> - Complex cron patterns and dependencies</li>
+  <li><strong>Performance Tuning</strong> - Optimize resource allocation and parallelism</li>
+</ul>
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="common-commands">Common Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Submit a job</span>
+kubectl apply <span class="nt">-f</span> my-job.yaml
+
+<span class="c"># List jobs</span>
+kubectl get sparkapplication <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Get job status</span>
+kubectl get sparkapplication my-job <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Delete a job</span>
+kubectl delete sparkapplication my-job <span class="nt">-n</span> spark-jobs
+
+<span class="c"># View driver logs</span>
+kubectl logs my-job-driver <span class="nt">-n</span> spark-jobs
+
+<span class="c"># Access Spark UI</span>
+kubectl port-forward my-job-driver 4040:4040 <span class="nt">-n</span> spark-jobs
+</code></pre></div></div>
+
+<h3 id="job-template">Job Template</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">SparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-job</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-jobs</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">Scala</span>  <span class="c1"># or Python</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">cluster</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">apache/spark:3.5.0</span>
+  <span class="na">mainClass</span><span class="pi">:</span> <span class="s">com.company.MyApp</span>
+  <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">s3a://bucket/my-app.jar</span>
+  
+  <span class="na">driver</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1g"</span>
+    <span class="na">serviceAccount</span><span class="pi">:</span> <span class="s">spark</span>
+  
+  <span class="na">executor</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">2</span>
+    <span class="na">instances</span><span class="pi">:</span> <span class="m">5</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2g"</span>
+  
+  <span class="na">restartPolicy</span><span class="pi">:</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">OnFailure</span>
+    <span class="na">onFailureRetries</span><span class="pi">:</span> <span class="m">3</span>
+</code></pre></div></div>
+
+<h2 id="summary">Summary</h2>
+
+<p><strong>What You Learned:</strong></p>
+<ul>
+  <li>✅ Spark Operator replaces manual <code class="language-plaintext highlighter-rouge">spark-submit</code> commands with simple YAML</li>
+  <li>✅ Jobs are defined as Kubernetes resources</li>
+  <li>✅ Automatic retries and monitoring built-in</li>
+  <li>✅ Easy to schedule recurring jobs</li>
+  <li>✅ Version control friendly</li>
+</ul>
+
+<p><strong>Key Takeaway:</strong> The Spark Operator makes running Spark on Kubernetes as easy as writing a YAML file and running <code class="language-plaintext highlighter-rouge">kubectl apply</code>. No more complex commands or manual monitoring!</p>
+
+<p>Ready for enterprise features? Check out the <strong><a href="kubeflow-spark-operator-enterprise.html">Multi-Tenant Architecture Guide</a></strong> to learn about centralized logging, cost tracking, and self-service job submission portals.</p>

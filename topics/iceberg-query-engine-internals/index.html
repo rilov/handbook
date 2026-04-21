@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>How Iceberg Query Engines Work Internally — Trino, Spark & the REST Catalog</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>How Iceberg Query Engines Work Internally — Trino, Spark & the REST Catalog</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="how-iceberg-query-engines-work-internally">How Iceberg Query Engines Work Internally</h1>
+
+<blockquote>
+  <p><strong>What this guide covers:</strong> When you run <code class="language-plaintext highlighter-rouge">SELECT * FROM customers WHERE country = 'US'</code> against an Iceberg table, what actually happens? This guide traces every step — from the query engine contacting the catalog, to reading metadata from S3, to scanning only the relevant Parquet files. We cover Trino, Spark, and the REST Catalog protocol in detail.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="the-big-picture-what-happens-when-you-query-an-iceberg-table">The Big Picture: What Happens When You Query an Iceberg Table?</h2>
+
+<p>Every Iceberg query follows the same fundamental pattern, regardless of which engine you use. Understanding this pattern is the key to understanding Iceberg internals.</p>
+
+<div class="mermaid">
+graph TD
+    Q["<b>SQL Query</b><br />SELECT * FROM customers<br />WHERE country = 'US'"] --&gt; E["<b>Query Engine</b><br />Trino / Spark / Flink"]
+    E --&gt;|"<b>Step 1:</b> Load table"| CAT["<b>Catalog</b><br />REST / Hive / Glue / Polaris"]
+    CAT --&gt;|"<b>Returns:</b> metadata location"| E
+    E --&gt;|"<b>Step 2:</b> Read metadata"| META["<b>Metadata File</b><br />v42.metadata.json<br />(on S3)"]
+    META --&gt;|"<b>Returns:</b> current snapshot"| E
+    E --&gt;|"<b>Step 3:</b> Read manifest list"| ML["<b>Manifest List</b><br />snap-xxx.avro<br />(on S3)"]
+    ML --&gt;|"<b>Returns:</b> manifest entries"| E
+    E --&gt;|"<b>Step 4:</b> Read manifests + prune"| MF["<b>Manifest Files</b><br />xxx-m0.avro, xxx-m1.avro<br />(on S3)"]
+    MF --&gt;|"<b>Returns:</b> data file list<br />(after partition pruning)"| E
+    E --&gt;|"<b>Step 5:</b> Read data files"| DF["<b>Data Files</b><br />data-001.parquet<br />data-002.parquet<br />(on S3)"]
+    DF --&gt;|"<b>Returns:</b> query results"| E
+
+    style Q fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style E fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
+    style CAT fill:#4CAF50,stroke:#388E3C,stroke-width:3px,color:#fff
+    style META fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+    style ML fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+    style MF fill:#607D8B,stroke:#455A64,stroke-width:2px,color:#fff
+    style DF fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+</div>
+
+<h3 id="the-5-step-query-flow-every-engine-follows-this">The 5-Step Query Flow (Every Engine Follows This)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>What Happens</th>
+      <th>Where</th>
+      <th>I/O Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1. Load Table</strong></td>
+      <td>Engine asks catalog for table’s current metadata file location</td>
+      <td>Catalog (HTTP/Thrift)</td>
+      <td>1 API call</td>
+    </tr>
+    <tr>
+      <td><strong>2. Read Metadata</strong></td>
+      <td>Engine reads the JSON metadata file to find the current snapshot</td>
+      <td>S3 (single file)</td>
+      <td>1 S3 GET</td>
+    </tr>
+    <tr>
+      <td><strong>3. Read Manifest List</strong></td>
+      <td>Engine reads the Avro manifest list to find all manifest files</td>
+      <td>S3 (single file)</td>
+      <td>1 S3 GET</td>
+    </tr>
+    <tr>
+      <td><strong>4. Read Manifests</strong></td>
+      <td>Engine reads manifest files, applies partition pruning to eliminate irrelevant files</td>
+      <td>S3 (multiple files)</td>
+      <td>N S3 GETs</td>
+    </tr>
+    <tr>
+      <td><strong>5. Read Data</strong></td>
+      <td>Engine reads only the Parquet data files that survived pruning</td>
+      <td>S3 (multiple files)</td>
+      <td>M S3 GETs</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Key insight:</strong> Steps 1-4 are metadata operations. The actual data reading only happens in Step 5. This is why Iceberg can skip 90%+ of data files — it knows exactly which files contain relevant data before reading any of them.</p>
+
+<hr />
+
+<h2 id="the-iceberg-rest-catalog-protocol">The Iceberg REST Catalog Protocol</h2>
+
+<p>The REST Catalog is the standard way for query engines to interact with Iceberg catalogs. It’s a language-agnostic HTTP API that replaced the older pluggable Java-only catalog approach.</p>
+
+<h3 id="why-rest-catalog-exists">Why REST Catalog Exists</h3>
+
+<p>Before the REST protocol, every catalog (Hive Metastore, AWS Glue, Nessie) needed a separate client implementation in every language (Java, Python, Go, Rust). This created a combinatorial explosion:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Old approach (pluggable catalogs):
+  Trino (Java) → needs: HiveCatalog.java, GlueCatalog.java, NessieCatalog.java
+  Spark (Java) → needs: HiveCatalog.java, GlueCatalog.java, NessieCatalog.java
+  PyIceberg (Python) → needs: hive_catalog.py, glue_catalog.py, nessie_catalog.py
+  
+  = 3 engines × 3 catalogs × custom code each = 9 implementations
+
+REST approach:
+  Trino → RESTCatalog (HTTP client)
+  Spark → RESTCatalog (HTTP client)
+  PyIceberg → RESTCatalog (HTTP client)
+  
+  = 3 engines × 1 standard HTTP client = 3 implementations
+  Catalog server handles all backend logic
+</code></pre></div></div>
+
+<h3 id="rest-catalog-api--the-key-endpoints">REST Catalog API — The Key Endpoints</h3>
+
+<div class="mermaid">
+graph LR
+    ENGINE["<b>Query Engine</b><br />Trino / Spark"] --&gt;|"<b>HTTP GET/POST</b>"| REST["<b>REST Catalog Server</b><br />Polaris / Nessie / Lakekeeper"]
+    REST --&gt;|"<b>Reads/writes</b>"| S3["<b>Object Storage</b><br />S3 / GCS / ADLS"]
+    REST --&gt;|"<b>Manages</b>"| DB["<b>Catalog State</b><br />Postgres / DynamoDB"]
+
+    style ENGINE fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style REST fill:#4CAF50,stroke:#388E3C,stroke-width:3px,color:#fff
+    style S3 fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff
+    style DB fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+</div>
+
+<p>Here are the critical REST API endpoints that every query touches:</p>
+
+<h4 id="configuration--authentication">Configuration &amp; Authentication</h4>
+
+<div class="language-http highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err"># Step 0: Get catalog configuration
+GET /v1/config
+→ Returns: warehouse location, default settings, overrides
+
+# Step 0b: Get OAuth token (if using OAuth2)
+POST /v1/oauth/tokens
+Body: { "grant_type": "client_credentials", "client_id": "...", "client_secret": "..." }
+→ Returns: { "access_token": "...", "token_type": "bearer", "expires_in": 3600 }
+</span></code></pre></div></div>
+
+<h4 id="namespace--table-operations">Namespace &amp; Table Operations</h4>
+
+<div class="language-http highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err"># List namespaces (databases)
+GET /v1/{prefix}/namespaces
+→ Returns: { "namespaces": [["analytics"], ["raw_data"]] }
+
+# Load a table (THE KEY OPERATION)
+GET /v1/{prefix}/namespaces/{namespace}/tables/{table}
+→ Returns: {
+    "metadata-location": "s3://bucket/db/table/metadata/v42.metadata.json",
+    "metadata": { ... full table metadata ... },
+    "config": {
+      "s3.access-key-id": "...",        ← credential vending!
+      "s3.secret-access-key": "...",
+      "s3.session-token": "..."
+    }
+  }
+</span></code></pre></div></div>
+
+<h4 id="credential-vending--the-security-model">Credential Vending — The Security Model</h4>
+
+<p>One of the REST Catalog’s most powerful features is <strong>credential vending</strong>. Instead of the query engine having permanent S3 credentials, the catalog issues short-lived, scoped credentials:</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant E as Query Engine
+    participant RC as REST Catalog
+    participant IAM as IAM / STS
+    participant S3 as S3 Storage
+
+    E-&gt;&gt;RC: GET /v1/.../tables/customers
+    RC-&gt;&gt;IAM: AssumeRole(table-scoped policy)
+    IAM--&gt;&gt;RC: Temporary credentials (15 min TTL)
+    RC--&gt;&gt;E: Table metadata + scoped S3 credentials
+    E-&gt;&gt;S3: GET data-001.parquet (using temp creds)
+    S3--&gt;&gt;E: Parquet data
+    Note over E,S3: Credentials only allow access to THIS table's files
+</div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Why this matters:
+  ✅ Engine never has broad S3 access
+  ✅ Credentials expire automatically (15-60 min)
+  ✅ Access is scoped to specific table paths
+  ✅ Catalog controls WHO can access WHAT
+  ✅ No static credentials stored in engine config
+</code></pre></div></div>
+
+<h4 id="table-commits-writes">Table Commits (Writes)</h4>
+
+<div class="language-http highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err"># Commit a table update (atomic metadata swap)
+POST /v1/{prefix}/namespaces/{namespace}/tables/{table}
+Body: {
+  "requirements": [
+    { "type": "assert-current-schema-id", "current-schema-id": 1 },
+    { "type": "assert-table-uuid", "uuid": "abc-123" }
+  ],
+  "updates": [
+    { "action": "add-snapshot", "snapshot": { ... } },
+    { "action": "set-current-schema", "schema-id": 2 }
+  ]
+}
+→ Returns: updated table metadata (or 409 Conflict if requirements fail)
+</span></code></pre></div></div>
+
+<p><strong>The commit protocol is change-based, not state-based.</strong> The engine sends a list of requirements (preconditions) and updates (changes). The catalog server validates requirements atomically and applies updates. If another writer modified the table, the commit fails with a 409 Conflict and the engine retries.</p>
+
+<hr />
+
+<h2 id="how-trino-queries-iceberg-tables">How Trino Queries Iceberg Tables</h2>
+
+<p>Trino is a <strong>distributed SQL query engine</strong> with a coordinator-worker architecture. Here’s exactly what happens when you run an Iceberg query in Trino.</p>
+
+<h3 id="trino-architecture-overview">Trino Architecture Overview</h3>
+
+<div class="mermaid">
+graph TD
+    CLIENT["<b>SQL Client</b><br />JDBC / CLI / BI Tool"] --&gt;|"SQL query"| COORD["<b>Trino Coordinator</b><br />Query planning<br />Split generation<br />Result assembly"]
+    COORD --&gt;|"Assigns splits"| W1["<b>Worker 1</b>"]
+    COORD --&gt;|"Assigns splits"| W2["<b>Worker 2</b>"]
+    COORD --&gt;|"Assigns splits"| W3["<b>Worker 3</b>"]
+    
+    COORD --&gt;|"Metadata calls"| CONN["<b>Iceberg Connector</b><br />REST / Hive / Glue"]
+    
+    W1 --&gt;|"Reads data"| S3["<b>S3 / Object Storage</b>"]
+    W2 --&gt;|"Reads data"| S3
+    W3 --&gt;|"Reads data"| S3
+
+    style CLIENT fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style COORD fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
+    style CONN fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff
+    style W1 fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+    style W2 fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+    style W3 fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+    style S3 fill:#607D8B,stroke:#455A64,stroke-width:2px,color:#fff
+</div>
+
+<h3 id="step-by-step-trino-query-execution-on-iceberg">Step-by-Step: Trino Query Execution on Iceberg</h3>
+
+<p>Let’s trace what happens for this query:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="n">customer_id</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">total_spent</span>
+<span class="k">FROM</span> <span class="n">iceberg</span><span class="p">.</span><span class="n">analytics</span><span class="p">.</span><span class="n">customers</span>
+<span class="k">WHERE</span> <span class="n">country</span> <span class="o">=</span> <span class="s1">'US'</span> <span class="k">AND</span> <span class="n">signup_date</span> <span class="o">&gt;</span> <span class="nb">DATE</span> <span class="s1">'2024-01-01'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">total_spent</span> <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="mi">100</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h4 id="phase-1-query-parsing--planning-coordinator">Phase 1: Query Parsing &amp; Planning (Coordinator)</h4>
+
+<div class="mermaid">
+sequenceDiagram
+    participant CLI as SQL Client
+    participant C as Trino Coordinator
+    participant IC as Iceberg Connector
+    participant CAT as REST Catalog
+    participant S3 as S3
+
+    CLI-&gt;&gt;C: Submit SQL query
+    Note over C: 1. Parse SQL → AST
+    Note over C: 2. Analyze: resolve table "iceberg.analytics.customers"
+    
+    C-&gt;&gt;IC: getTableHandle("analytics", "customers")
+    IC-&gt;&gt;CAT: GET /v1/.../tables/customers
+    CAT--&gt;&gt;IC: metadata-location: s3://bucket/metadata/v42.metadata.json
+    IC-&gt;&gt;S3: GET v42.metadata.json
+    S3--&gt;&gt;IC: Table metadata (schema, partitions, current snapshot)
+    IC--&gt;&gt;C: TableHandle + schema + partition spec
+    
+    Note over C: 3. Optimize query plan
+    Note over C: 4. Push down predicates:<br />country = 'US'<br />signup_date &gt; 2024-01-01
+</div>
+
+<p><strong>What the coordinator does:</strong></p>
+
+<ol>
+  <li><strong>Parses</strong> the SQL into an Abstract Syntax Tree (AST)</li>
+  <li><strong>Resolves</strong> the table reference <code class="language-plaintext highlighter-rouge">iceberg.analytics.customers</code> through the Iceberg connector</li>
+  <li><strong>Fetches</strong> table metadata from the catalog (schema, partition spec, current snapshot)</li>
+  <li><strong>Creates</strong> a logical plan and optimizes it</li>
+  <li><strong>Pushes down</strong> predicates to the Iceberg connector — this is critical for performance</li>
+</ol>
+
+<h4 id="phase-2-split-generation-coordinator">Phase 2: Split Generation (Coordinator)</h4>
+
+<p>This is where Iceberg’s metadata really shines. The coordinator uses Iceberg’s metadata to determine exactly which files to read.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant C as Trino Coordinator
+    participant IC as Iceberg Connector
+    participant S3 as S3
+    
+    Note over C: Phase 2: Generate Splits
+    
+    IC-&gt;&gt;S3: GET snap-xxx.avro (manifest list)
+    S3--&gt;&gt;IC: List of manifest files with partition bounds
+    
+    Note over IC: Partition Pruning Round 1:<br />Check partition bounds in manifest list<br />Table partitioned by country, signup_month<br />Skip manifests with no 'US' partition
+    
+    IC-&gt;&gt;S3: GET manifest-m0.avro (only relevant ones)
+    IC-&gt;&gt;S3: GET manifest-m1.avro
+    S3--&gt;&gt;IC: File entries with column stats
+    
+    Note over IC: Partition Pruning Round 2:<br />Check each file's partition values<br />Skip files where country ≠ 'US'
+    
+    Note over IC: Min/Max Pruning Round 3:<br />Check column statistics per file<br />Skip files where max(signup_date) &lt; 2024-01-01
+    
+    IC--&gt;&gt;C: Final split list: [data-007.parquet, data-012.parquet, data-019.parquet]
+    
+    Note over C: Only 3 of 500 data files need scanning!<br />99.4% of data skipped
+</div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pruning example:
+  Table has 500 data files across all partitions
+  
+  Manifest list pruning:
+    → 100 manifests → 15 manifests (country='US' partition range)
+    
+  Manifest file pruning (partition values):
+    → 150 data files → 40 data files (exact country='US' match)
+    
+  Column statistics pruning (min/max on signup_date):
+    → 40 data files → 3 data files (signup_date &gt; 2024-01-01)
+    
+  Result: Read 3 files instead of 500 = 99.4% data skipped
+</code></pre></div></div>
+
+<p><strong>Each surviving data file becomes a “split”</strong> — a unit of work that Trino assigns to a worker.</p>
+
+<h4 id="phase-3-distributed-execution-workers">Phase 3: Distributed Execution (Workers)</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Coordinator assigns splits to workers:
+  Worker 1 → data-007.parquet (rows 0-125,000)
+  Worker 2 → data-012.parquet (rows 0-125,000)
+  Worker 3 → data-019.parquet (rows 0-125,000)
+
+Each worker independently:
+  1. Opens S3 connection to its assigned Parquet file
+  2. Reads Parquet footer to find column chunks
+  3. Reads only needed columns: customer_id, name, total_spent
+     (Parquet columnar format = skip unneeded columns)
+  4. Applies remaining filters in-memory
+  5. Streams results back to coordinator
+
+Coordinator:
+  1. Receives partial results from all workers
+  2. Merges, sorts by total_spent DESC
+  3. Takes top 100 rows
+  4. Returns to client
+</code></pre></div></div>
+
+<h3 id="trino-iceberg-connector-configuration">Trino Iceberg Connector Configuration</h3>
+
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/trino/catalog/iceberg.properties
+</span>
+<span class="c"># Using REST Catalog
+</span><span class="py">connector.name</span><span class="p">=</span><span class="s">iceberg</span>
+<span class="py">iceberg.catalog.type</span><span class="p">=</span><span class="s">rest</span>
+<span class="py">iceberg.rest-catalog.uri</span><span class="p">=</span><span class="s">https://polaris.example.com/api/catalog</span>
+<span class="py">iceberg.rest-catalog.warehouse</span><span class="p">=</span><span class="s">analytics_warehouse</span>
+
+<span class="c"># Using Hive Metastore
+</span><span class="py">connector.name</span><span class="p">=</span><span class="s">iceberg</span>
+<span class="py">iceberg.catalog.type</span><span class="p">=</span><span class="s">hive_metastore</span>
+<span class="py">hive.metastore.uri</span><span class="p">=</span><span class="s">thrift://hive-metastore:9083</span>
+
+<span class="c"># Using AWS Glue
+</span><span class="py">connector.name</span><span class="p">=</span><span class="s">iceberg</span>
+<span class="py">iceberg.catalog.type</span><span class="p">=</span><span class="s">glue</span>
+</code></pre></div></div>
+
+<h3 id="trino-specific-iceberg-behaviors">Trino-Specific Iceberg Behaviors</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>How Trino Handles It</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Deletes</strong></td>
+      <td>Merge-on-read: creates positional delete files (not copy-on-write)</td>
+    </tr>
+    <tr>
+      <td><strong>Updates</strong></td>
+      <td>Decomposes into delete + insert</td>
+    </tr>
+    <tr>
+      <td><strong>Predicate pushdown</strong></td>
+      <td>Pushes filters into Iceberg scan planning for partition and file pruning</td>
+    </tr>
+    <tr>
+      <td><strong>Column pruning</strong></td>
+      <td>Reads only referenced Parquet columns</td>
+    </tr>
+    <tr>
+      <td><strong>Statistics</strong></td>
+      <td>Uses Iceberg column stats for cost-based optimization</td>
+    </tr>
+    <tr>
+      <td><strong>Time travel</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">SELECT * FROM t FOR TIMESTAMP AS OF ...</code> or <code class="language-plaintext highlighter-rouge">FOR VERSION AS OF ...</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="how-spark-queries-iceberg-tables">How Spark Queries Iceberg Tables</h2>
+
+<p>Spark has a fundamentally different architecture from Trino. It’s a <strong>distributed compute engine</strong> with a driver-executor model, and uses the <strong>DataSource V2 API</strong> to integrate with Iceberg.</p>
+
+<h3 id="spark-architecture-overview">Spark Architecture Overview</h3>
+
+<div class="mermaid">
+graph TD
+    APP["<b>Spark Application</b><br />spark.sql() or DataFrame API"] --&gt; DRIVER["<b>Spark Driver</b><br />Query planning<br />Job scheduling<br />Task distribution"]
+    
+    DRIVER --&gt;|"<b>Uses Iceberg library</b>"| ICE["<b>Iceberg Library</b><br />(SparkSessionCatalog)<br />DataSource V2 API"]
+    ICE --&gt;|"Catalog calls"| CAT["<b>Catalog</b><br />REST / Hive / Glue"]
+    ICE --&gt;|"Metadata reads"| S3M["<b>S3 Metadata</b><br />metadata.json<br />manifest list/files"]
+    
+    DRIVER --&gt;|"<b>Task 1</b>"| EX1["<b>Executor 1</b><br />(JVM on worker node)"]
+    DRIVER --&gt;|"<b>Task 2</b>"| EX2["<b>Executor 2</b><br />(JVM on worker node)"]
+    DRIVER --&gt;|"<b>Task 3</b>"| EX3["<b>Executor 3</b><br />(JVM on worker node)"]
+    
+    EX1 --&gt;|"Reads data"| S3D["<b>S3 Data Files</b><br />Parquet files"]
+    EX2 --&gt;|"Reads data"| S3D
+    EX3 --&gt;|"Reads data"| S3D
+
+    style APP fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style DRIVER fill:#FF9800,stroke:#F57C00,stroke-width:3px,color:#fff
+    style ICE fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff
+    style CAT fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+    style S3M fill:#607D8B,stroke:#455A64,stroke-width:2px,color:#fff
+    style EX1 fill:#E91E63,stroke:#C2185B,stroke-width:2px,color:#fff
+    style EX2 fill:#E91E63,stroke:#C2185B,stroke-width:2px,color:#fff
+    style EX3 fill:#E91E63,stroke:#C2185B,stroke-width:2px,color:#fff
+    style S3D fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+</div>
+
+<h3 id="step-by-step-spark-query-execution-on-iceberg">Step-by-Step: Spark Query Execution on Iceberg</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># The query
+</span><span class="kn">from</span> <span class="n">pyspark.sql</span> <span class="kn">import</span> <span class="n">SparkSession</span>
+
+<span class="n">spark</span> <span class="o">=</span> <span class="n">SparkSession</span><span class="p">.</span><span class="n">builder</span> \
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">org.apache.iceberg.spark.SparkCatalog</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.type</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">rest</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.uri</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">https://polaris.example.com/api/catalog</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.warehouse</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">analytics_warehouse</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">getOrCreate</span><span class="p">()</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+    SELECT customer_id, name, total_spent
+    FROM my_catalog.analytics.customers
+    WHERE country = </span><span class="sh">'</span><span class="s">US</span><span class="sh">'</span><span class="s"> AND signup_date &gt; </span><span class="sh">'</span><span class="s">2024-01-01</span><span class="sh">'</span><span class="s">
+    ORDER BY total_spent DESC
+    LIMIT 100
+</span><span class="sh">"""</span><span class="p">)</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h4 id="phase-1-catalog-resolution-driver">Phase 1: Catalog Resolution (Driver)</h4>
+
+<div class="mermaid">
+sequenceDiagram
+    participant App as Spark App
+    participant D as Spark Driver
+    participant SC as SparkCatalog<br />(Iceberg)
+    participant RC as REST Catalog
+    participant S3 as S3
+
+    App-&gt;&gt;D: spark.sql("SELECT ... FROM my_catalog.analytics.customers ...")
+    
+    Note over D: 1. Parse SQL
+    Note over D: 2. Resolve catalog: "my_catalog" → SparkCatalog (Iceberg)
+    
+    D-&gt;&gt;SC: loadTable(Identifier["analytics", "customers"])
+    SC-&gt;&gt;RC: GET /v1/.../namespaces/analytics/tables/customers
+    RC--&gt;&gt;SC: metadata-location + credentials
+    SC-&gt;&gt;S3: GET v42.metadata.json
+    S3--&gt;&gt;SC: Full table metadata
+    SC--&gt;&gt;D: SparkTable object (schema, partitions, properties)
+    
+    Note over D: 3. Create logical plan
+    Note over D: 4. Catalyst optimizer pushes predicates
+</div>
+
+<h4 id="phase-2-scan-planning-via-datasource-v2-driver">Phase 2: Scan Planning via DataSource V2 (Driver)</h4>
+
+<p>Spark uses the <strong>DataSource V2 API</strong> — Iceberg implements this interface to control how scans are planned:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Spark calls Iceberg's DataSource V2 implementation:
+
+1. SparkScanBuilder.build()
+   → IcebergScan created with pushed-down filters
+
+2. IcebergScan.planInputPartitions()
+   → Iceberg library reads manifest list from S3
+   → Reads manifest files from S3
+   → Applies partition pruning (country = 'US')
+   → Applies column statistics pruning (signup_date &gt; 2024-01-01)
+   → Returns list of IcebergInputPartition objects
+   
+3. Each IcebergInputPartition maps to:
+   → One or more Parquet files on S3
+   → A specific set of columns to read
+   → Residual filters to apply after read
+</code></pre></div></div>
+
+<p><strong>The key difference from Trino:</strong> In Spark, the Iceberg Java library runs directly inside the Driver JVM. There’s no separate connector process — Iceberg’s scan planning code is embedded in the Spark application.</p>
+
+<h4 id="phase-3-task-execution-executors">Phase 3: Task Execution (Executors)</h4>
+
+<div class="mermaid">
+sequenceDiagram
+    participant D as Spark Driver
+    participant E1 as Executor 1
+    participant E2 as Executor 2
+    participant S3 as S3
+
+    Note over D: Distribute tasks based on<br />IcebergInputPartitions
+
+    D-&gt;&gt;E1: Task: read data-007.parquet<br />columns: [customer_id, name, total_spent]
+    D-&gt;&gt;E2: Task: read data-012.parquet<br />columns: [customer_id, name, total_spent]
+    
+    E1-&gt;&gt;S3: GET data-007.parquet (range request for column chunks)
+    S3--&gt;&gt;E1: Column data (only 3 columns, not all)
+    Note over E1: 1. Deserialize Parquet column chunks<br />2. Apply residual filters<br />3. Create InternalRow batch<br />4. Vectorized if enabled
+    
+    E2-&gt;&gt;S3: GET data-012.parquet (range request for column chunks)
+    S3--&gt;&gt;E2: Column data (only 3 columns, not all)
+    Note over E2: Same processing as Executor 1
+    
+    E1--&gt;&gt;D: Partial results (RDD partition)
+    E2--&gt;&gt;D: Partial results (RDD partition)
+    
+    Note over D: Shuffle + Sort by total_spent DESC<br />Take top 100 rows<br />Return to application
+</div>
+
+<h3 id="spark-specific-iceberg-behaviors">Spark-Specific Iceberg Behaviors</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>How Spark Handles It</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Write mode</strong></td>
+      <td>Copy-on-write (default) or merge-on-read (configurable)</td>
+    </tr>
+    <tr>
+      <td><strong>Deletes</strong></td>
+      <td>Copy-on-write: rewrites entire Parquet files without deleted rows</td>
+    </tr>
+    <tr>
+      <td><strong>DataSource V2</strong></td>
+      <td>Iceberg implements <code class="language-plaintext highlighter-rouge">TableProvider</code>, <code class="language-plaintext highlighter-rouge">ScanBuilder</code>, <code class="language-plaintext highlighter-rouge">WriteBuilder</code></td>
+    </tr>
+    <tr>
+      <td><strong>Predicate pushdown</strong></td>
+      <td>Catalyst optimizer pushes filters into <code class="language-plaintext highlighter-rouge">IcebergScanBuilder</code></td>
+    </tr>
+    <tr>
+      <td><strong>Vectorized reads</strong></td>
+      <td>Supports vectorized Parquet reading for better throughput</td>
+    </tr>
+    <tr>
+      <td><strong>Partitioned writes</strong></td>
+      <td>Automatically distributes data by partition using Spark shuffle</td>
+    </tr>
+    <tr>
+      <td><strong>Streaming</strong></td>
+      <td>Supports Structured Streaming for incremental reads/writes</td>
+    </tr>
+    <tr>
+      <td><strong>Time travel</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">spark.read.option("as-of-timestamp", "...").table("t")</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="spark-write-flow">Spark Write Flow</h3>
+
+<p>When Spark writes to an Iceberg table, the flow reverses:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Spark write
+</span><span class="n">df</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">my_catalog.analytics.customers</span><span class="sh">"</span><span class="p">).</span><span class="nf">append</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="mermaid">
+sequenceDiagram
+    participant D as Spark Driver
+    participant E1 as Executor 1
+    participant E2 as Executor 2
+    participant S3 as S3
+    participant RC as REST Catalog
+
+    D-&gt;&gt;E1: Write partition country='US'
+    D-&gt;&gt;E2: Write partition country='UK'
+    
+    E1-&gt;&gt;S3: PUT data-new-001.parquet
+    S3--&gt;&gt;E1: Success
+    E2-&gt;&gt;S3: PUT data-new-002.parquet
+    S3--&gt;&gt;E2: Success
+    
+    E1--&gt;&gt;D: File report: data-new-001.parquet (50K rows, stats)
+    E2--&gt;&gt;D: File report: data-new-002.parquet (30K rows, stats)
+    
+    Note over D: Assemble new snapshot:<br />- New manifest file listing new data files<br />- New manifest list pointing to new + existing manifests<br />- New metadata.json with new snapshot
+    
+    D-&gt;&gt;S3: PUT new manifest file
+    D-&gt;&gt;S3: PUT new manifest list  
+    D-&gt;&gt;S3: PUT v43.metadata.json
+    
+    D-&gt;&gt;RC: POST /v1/.../tables/customers (commit)
+    Note over RC: Validate: current metadata == v42<br />Update pointer: v42 → v43
+    RC--&gt;&gt;D: Success (or 409 Conflict → retry)
+</div>
+
+<hr />
+
+<h2 id="trino-vs-spark-how-they-differ-with-iceberg">Trino vs Spark: How They Differ with Iceberg</h2>
+
+<div class="mermaid">
+graph LR
+    subgraph TRINO["<b>Trino Architecture</b>"]
+        TC["Coordinator"]
+        TW1["Worker 1"]
+        TW2["Worker 2"]
+        TC --&gt; TW1
+        TC --&gt; TW2
+    end
+    
+    subgraph SPARK["<b>Spark Architecture</b>"]
+        SD["Driver"]
+        SE1["Executor 1"]
+        SE2["Executor 2"]
+        SD --&gt; SE1
+        SD --&gt; SE2
+    end
+
+    style TRINO fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000
+    style SPARK fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
+    style TC fill:#2196F3,stroke:#1976D2,stroke-width:2px,color:#fff
+    style TW1 fill:#64B5F6,stroke:#1976D2,stroke-width:2px,color:#fff
+    style TW2 fill:#64B5F6,stroke:#1976D2,stroke-width:2px,color:#fff
+    style SD fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff
+    style SE1 fill:#FFB74D,stroke:#F57C00,stroke-width:2px,color:#fff
+    style SE2 fill:#FFB74D,stroke:#F57C00,stroke-width:2px,color:#fff
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Trino</th>
+      <th>Spark</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Architecture</strong></td>
+      <td>Coordinator + stateless workers</td>
+      <td>Driver + executors (JVMs with memory)</td>
+    </tr>
+    <tr>
+      <td><strong>Iceberg integration</strong></td>
+      <td>Connector plugin (separate JAR)</td>
+      <td>Iceberg library in Driver classpath</td>
+    </tr>
+    <tr>
+      <td><strong>Scan planning</strong></td>
+      <td>Coordinator via Iceberg Connector</td>
+      <td>Driver via DataSource V2 API</td>
+    </tr>
+    <tr>
+      <td><strong>Data reading</strong></td>
+      <td>Workers read Parquet directly from S3</td>
+      <td>Executors read Parquet directly from S3</td>
+    </tr>
+    <tr>
+      <td><strong>Catalog access</strong></td>
+      <td>Coordinator only (connector layer)</td>
+      <td>Driver only (SparkCatalog)</td>
+    </tr>
+    <tr>
+      <td><strong>Split/Task unit</strong></td>
+      <td>One split ≈ one Parquet file</td>
+      <td>One task ≈ one InputPartition (1+ files)</td>
+    </tr>
+    <tr>
+      <td><strong>Default delete mode</strong></td>
+      <td>Merge-on-read (positional deletes)</td>
+      <td>Copy-on-write (rewrite files)</td>
+    </tr>
+    <tr>
+      <td><strong>Best for</strong></td>
+      <td>Ad-hoc SQL queries, interactive BI</td>
+      <td>ETL, batch processing, ML pipelines</td>
+    </tr>
+    <tr>
+      <td><strong>Latency</strong></td>
+      <td>Low (seconds) — always running</td>
+      <td>Higher (minutes) — JVM startup + shuffle</td>
+    </tr>
+    <tr>
+      <td><strong>Shuffle</strong></td>
+      <td>Pipeline-based (streaming between stages)</td>
+      <td>Disk-based (write shuffle files)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="deep-dive-reading-parquet-files-from-s3">Deep Dive: Reading Parquet Files from S3</h2>
+
+<p>Both Trino and Spark ultimately read Parquet files from S3. Here’s exactly what happens at the storage level.</p>
+
+<h3 id="parquet-file-internal-structure">Parquet File Internal Structure</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>data-007.parquet (125,000 rows, 15 columns)
+│
+├── Row Group 0 (rows 0-65,535)
+│   ├── Column Chunk: customer_id    [offset: 0,    length: 450KB]
+│   ├── Column Chunk: name           [offset: 450K, length: 2.1MB]
+│   ├── Column Chunk: email          [offset: 2.5M, length: 1.8MB]
+│   ├── Column Chunk: country        [offset: 4.3M, length: 180KB]
+│   ├── Column Chunk: signup_date    [offset: 4.5M, length: 290KB]
+│   ├── Column Chunk: total_spent    [offset: 4.8M, length: 510KB]
+│   └── ... (9 more columns)
+│
+├── Row Group 1 (rows 65,536-125,000)
+│   └── ... (same column chunk structure)
+│
+└── Footer (at end of file)
+    ├── Schema definition
+    ├── Row group metadata
+    │   ├── Column chunk locations (offset + size)
+    │   └── Column statistics (min, max, null count)
+    └── Key-value metadata
+</code></pre></div></div>
+
+<h3 id="s3-read-sequence">S3 Read Sequence</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant W as Trino Worker / Spark Executor
+    participant S3 as Amazon S3
+
+    Note over W: Need: customer_id, name, total_spent<br />from data-007.parquet
+
+    W-&gt;&gt;S3: GET data-007.parquet<br />Range: bytes=-8<br />(read magic bytes at end to find footer offset)
+    S3--&gt;&gt;W: Footer offset: 12,450,000
+
+    W-&gt;&gt;S3: GET data-007.parquet<br />Range: bytes=12450000-12451234<br />(read Parquet footer)
+    S3--&gt;&gt;W: Footer with column chunk offsets + stats
+
+    Note over W: Footer tells us:<br />customer_id @ offset 0, 450KB<br />name @ offset 450K, 2.1MB<br />total_spent @ offset 4.8M, 510KB<br /><br />Skip: email, country, signup_date, ...<br />(not in SELECT)
+
+    W-&gt;&gt;S3: GET data-007.parquet<br />Range: bytes=0-460800<br />(customer_id column chunk)
+    S3--&gt;&gt;W: Compressed column data
+
+    W-&gt;&gt;S3: GET data-007.parquet<br />Range: bytes=450000-2600000<br />(name column chunk)
+    S3--&gt;&gt;W: Compressed column data
+
+    W-&gt;&gt;S3: GET data-007.parquet<br />Range: bytes=4800000-5310000<br />(total_spent column chunk)
+    S3--&gt;&gt;W: Compressed column data
+
+    Note over W: Total: 5 S3 GET requests<br />Read: ~3MB of 15MB file<br />Skipped: 80% of file data
+</div>
+
+<p><strong>Key optimization — HTTP Range Requests:</strong></p>
+
+<p>S3 supports reading specific byte ranges from a file. The query engine uses this to:</p>
+<ol>
+  <li>Read just the footer (to discover column locations)</li>
+  <li>Read only the columns needed by the query</li>
+  <li>Skip entire row groups based on column statistics in the footer</li>
+</ol>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Without column pruning:
+  Read entire file: 15 MB × 500 files = 7.5 GB from S3
+
+With Iceberg partition pruning + Parquet column pruning:
+  Read 3 columns from 3 files: 3 MB × 3 files = 9 MB from S3
+  
+  Savings: 99.88% less data read from S3
+</code></pre></div></div>
+
+<h3 id="s3-request-costs">S3 Request Costs</h3>
+
+<p>Every S3 GET request has a cost beyond just data transfer:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operation</th>
+      <th>Cost (us-east-1)</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>GET request</td>
+      <td>$0.0004 per 1,000</td>
+      <td>Each range request = 1 GET</td>
+    </tr>
+    <tr>
+      <td>Data transfer</td>
+      <td>$0.00/GB (same region)</td>
+      <td>Free within same region</td>
+    </tr>
+    <tr>
+      <td>Data transfer</td>
+      <td>$0.09/GB (cross-region)</td>
+      <td>Expensive! Co-locate compute + storage</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query cost breakdown:
+  Metadata reads: ~5 GET requests (metadata.json + manifest list + manifests)
+  Data reads: 3 files × 5 range requests each = 15 GET requests
+  Total: ~20 GET requests = $0.008 (less than 1 cent)
+  
+  Without Iceberg pruning:
+  Data reads: 500 files × 5 range requests each = 2,500 GET requests
+  Total: ~2,505 GET requests = $1.00
+  
+  125x cost reduction with Iceberg metadata pruning
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="complete-end-to-end-flow-trino--rest-catalog--s3">Complete End-to-End Flow: Trino + REST Catalog + S3</h2>
+
+<p>Here’s the complete picture showing every network call for a single Trino query:</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant TC as Trino Coordinator
+    participant IC as Iceberg Connector
+    participant RC as REST Catalog<br />(Polaris)
+    participant S3 as Amazon S3
+    participant TW as Trino Workers
+
+    U-&gt;&gt;TC: SELECT ... FROM customers WHERE country='US'
+    
+    rect rgb(230, 245, 255)
+    Note over TC,RC: Phase 1: Table Resolution
+    TC-&gt;&gt;IC: getTableHandle("customers")
+    IC-&gt;&gt;RC: GET /v1/.../tables/customers
+    RC--&gt;&gt;IC: metadata-location + temp S3 credentials
+    end
+    
+    rect rgb(255, 243, 224)
+    Note over IC,S3: Phase 2: Metadata Traversal
+    IC-&gt;&gt;S3: GET v42.metadata.json
+    S3--&gt;&gt;IC: Schema, partition spec, current snapshot ID
+    IC-&gt;&gt;S3: GET snap-xxx.avro (manifest list)
+    S3--&gt;&gt;IC: List of manifests with partition bounds
+    IC-&gt;&gt;S3: GET manifest-m0.avro (only matching manifests)
+    S3--&gt;&gt;IC: Data file entries with column stats
+    end
+    
+    rect rgb(232, 245, 233)
+    Note over IC,TW: Phase 3: Pruning + Split Generation
+    Note over IC: Partition pruning: 500 → 40 files<br />Stats pruning: 40 → 3 files
+    IC--&gt;&gt;TC: 3 splits (one per data file)
+    TC-&gt;&gt;TW: Assign splits to workers
+    end
+    
+    rect rgb(243, 229, 245)
+    Note over TW,S3: Phase 4: Data Reading
+    TW-&gt;&gt;S3: GET data-007.parquet (footer)
+    S3--&gt;&gt;TW: Column offsets
+    TW-&gt;&gt;S3: GET data-007.parquet (column chunks)
+    S3--&gt;&gt;TW: Parquet column data
+    TW--&gt;&gt;TC: Partial results
+    end
+    
+    TC--&gt;&gt;U: Final result (100 rows)
+</div>
+
+<p><strong>Total network calls for this query:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>REST Catalog:  1 API call    (load table)
+S3 Metadata:   3 GET requests (metadata.json + manifest list + 1 manifest)
+S3 Data:      15 GET requests (3 files × 5 range requests each)
+─────────────────────────────────
+Total:        19 network calls
+Time:         ~2-5 seconds (mostly S3 latency)
+Data read:    ~9 MB (out of 7.5 GB total table size)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="complete-end-to-end-flow-spark--rest-catalog--s3">Complete End-to-End Flow: Spark + REST Catalog + S3</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Spark application
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+    SELECT customer_id, name, total_spent
+    FROM my_catalog.analytics.customers
+    WHERE country = </span><span class="sh">'</span><span class="s">US</span><span class="sh">'</span><span class="s"> AND signup_date &gt; </span><span class="sh">'</span><span class="s">2024-01-01</span><span class="sh">'</span><span class="s">
+</span><span class="sh">"""</span><span class="p">)</span>
+<span class="n">df</span><span class="p">.</span><span class="n">write</span><span class="p">.</span><span class="nf">mode</span><span class="p">(</span><span class="sh">"</span><span class="s">overwrite</span><span class="sh">"</span><span class="p">).</span><span class="nf">saveAsTable</span><span class="p">(</span><span class="sh">"</span><span class="s">my_catalog.analytics.us_customers</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="mermaid">
+sequenceDiagram
+    participant App as PySpark App
+    participant D as Spark Driver
+    participant ICE as Iceberg Library
+    participant RC as REST Catalog
+    participant S3 as S3
+    participant EX as Executors
+
+    App-&gt;&gt;D: spark.sql("SELECT ... WHERE country='US'")
+    
+    rect rgb(230, 245, 255)
+    Note over D,RC: Phase 1: Catalog Resolution
+    D-&gt;&gt;ICE: loadTable("analytics.customers")
+    ICE-&gt;&gt;RC: GET /v1/.../tables/customers
+    RC--&gt;&gt;ICE: metadata-location + credentials
+    end
+    
+    rect rgb(255, 243, 224)
+    Note over ICE,S3: Phase 2: Scan Planning (all on Driver)
+    ICE-&gt;&gt;S3: GET v42.metadata.json
+    ICE-&gt;&gt;S3: GET snap-xxx.avro
+    ICE-&gt;&gt;S3: GET manifest-m0.avro (pruned)
+    Note over ICE: Build InputPartitions:<br />3 Parquet files to read
+    ICE--&gt;&gt;D: List of InputPartitions
+    end
+    
+    rect rgb(232, 245, 233)
+    Note over D,EX: Phase 3: Distributed Read
+    D-&gt;&gt;EX: Task: read data-007.parquet
+    D-&gt;&gt;EX: Task: read data-012.parquet
+    EX-&gt;&gt;S3: GET Parquet files (range requests)
+    S3--&gt;&gt;EX: Column data
+    EX--&gt;&gt;D: InternalRow batches
+    end
+    
+    rect rgb(255, 235, 238)
+    Note over D,RC: Phase 4: Write Results
+    D-&gt;&gt;EX: Write tasks for us_customers table
+    EX-&gt;&gt;S3: PUT new Parquet data files
+    EX--&gt;&gt;D: File commit reports
+    D-&gt;&gt;S3: PUT new metadata files
+    D-&gt;&gt;RC: POST /v1/.../tables/us_customers (atomic commit)
+    RC--&gt;&gt;D: Commit success
+    end
+</div>
+
+<hr />
+
+<h2 id="performance-tips-reducing-s3-calls">Performance Tips: Reducing S3 Calls</h2>
+
+<p>Understanding the internal flow helps you optimize performance:</p>
+
+<h3 id="1-partition-your-tables-wisely">1. Partition Your Tables Wisely</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Good: queries frequently filter by country and date</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="p">(</span>
+    <span class="n">customer_id</span> <span class="nb">BIGINT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">STRING</span><span class="p">,</span>
+    <span class="n">country</span> <span class="n">STRING</span><span class="p">,</span>
+    <span class="n">signup_date</span> <span class="nb">DATE</span><span class="p">,</span>
+    <span class="n">total_spent</span> <span class="nb">DECIMAL</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="k">USING</span> <span class="n">iceberg</span>
+<span class="n">PARTITIONED</span> <span class="k">BY</span> <span class="p">(</span><span class="n">country</span><span class="p">,</span> <span class="n">months</span><span class="p">(</span><span class="n">signup_date</span><span class="p">));</span>
+
+<span class="c1">-- This means:</span>
+<span class="c1">-- WHERE country = 'US' → skips all non-US partitions in manifests</span>
+<span class="c1">-- WHERE signup_date &gt; '2024-01-01' → skips old month partitions</span>
+</code></pre></div></div>
+
+<h3 id="2-keep-metadata-compact">2. Keep Metadata Compact</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Too many small files = too many manifest entries = slow scan planning</span>
+<span class="c1">-- Run compaction regularly</span>
+<span class="k">CALL</span> <span class="k">system</span><span class="p">.</span><span class="n">rewrite_data_files</span><span class="p">(</span><span class="s1">'analytics.customers'</span><span class="p">);</span>
+<span class="k">CALL</span> <span class="k">system</span><span class="p">.</span><span class="n">rewrite_manifests</span><span class="p">(</span><span class="s1">'analytics.customers'</span><span class="p">);</span>
+
+<span class="c1">-- Expire old snapshots to reduce manifest list size</span>
+<span class="k">CALL</span> <span class="k">system</span><span class="p">.</span><span class="n">expire_snapshots</span><span class="p">(</span><span class="s1">'analytics.customers'</span><span class="p">,</span> <span class="nb">TIMESTAMP</span> <span class="s1">'2024-06-01 00:00:00'</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="3-use-column-statistics">3. Use Column Statistics</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Iceberg collects min/max stats per column per file</span>
+<span class="c1">-- This enables file-level pruning even without partitioning</span>
+<span class="c1">-- Make sure stats collection is enabled (it is by default)</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">customers</span> <span class="k">SET</span> <span class="n">TBLPROPERTIES</span> <span class="p">(</span>
+    <span class="s1">'write.metadata.metrics.default'</span> <span class="o">=</span> <span class="s1">'truncate(16)'</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="4-co-locate-compute-and-storage">4. Co-locate Compute and Storage</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad:  Trino in us-east-1, S3 bucket in eu-west-1
+      → Every S3 GET has cross-region latency + $0.09/GB transfer
+      
+Good: Trino in us-east-1, S3 bucket in us-east-1
+      → Low latency, free data transfer
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<h3 id="what-happens-when-you-query-iceberg">What Happens When You Query Iceberg</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. ENGINE → CATALOG: "Where is the table?"
+   Response: metadata file location + credentials
+
+2. ENGINE → S3: Read metadata.json
+   Response: current snapshot, schema, partition spec
+
+3. ENGINE → S3: Read manifest list (Avro)
+   Response: list of manifests with partition bounds
+
+4. ENGINE → S3: Read relevant manifests (Avro)
+   Response: list of data files with column stats
+   (engine prunes files based on query predicates)
+
+5. ENGINE → S3: Read data files (Parquet)
+   Response: actual column data
+   (engine reads only needed columns via range requests)
+</code></pre></div></div>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ul>
+  <li><strong>REST Catalog</strong> is a standard HTTP API — any engine that speaks HTTP can query Iceberg tables</li>
+  <li><strong>Trino</strong> does scan planning on the coordinator, distributes splits to stateless workers</li>
+  <li><strong>Spark</strong> does scan planning on the driver via DataSource V2, distributes tasks to executors</li>
+  <li><strong>Both engines</strong> use Iceberg’s metadata tree (metadata.json → manifest list → manifests) to prune files before reading any data</li>
+  <li><strong>Parquet range requests</strong> mean engines read only the columns they need, not entire files</li>
+  <li><strong>Credential vending</strong> from REST Catalog means engines get short-lived, scoped S3 credentials</li>
+  <li><strong>The real performance win:</strong> Iceberg’s metadata lets engines skip 90-99% of data files, turning a full table scan into a targeted read of a few files</li>
+</ul>
+
+<hr />
+
+<h2 id="further-reading">Further Reading</h2>
+
+<ul>
+  <li><a href="https://iceberg.apache.org/rest-catalog-spec/">Iceberg REST Catalog Spec</a></li>
+  <li><a href="https://trino.io/docs/current/connector/iceberg.html">Trino Iceberg Connector Docs</a></li>
+  <li><a href="https://trino.io/blog/2021/08/12/deep-dive-into-iceberg-internals.html">Trino on Ice: Deep Dive into Iceberg Internals</a></li>
+  <li><a href="https://iceberg.apache.org/spec/">Apache Iceberg Table Spec</a></li>
+  <li><a href="https://iceberg.apache.org/docs/latest/spark-queries/">Spark Iceberg Integration</a></li>
+  <li><a href="https://polaris.apache.org/">Apache Polaris Catalog</a></li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">iceberg</span>, <span class="tag">trino</span>, <span class="tag">spark</span>, <span class="tag">rest-catalog</span>, <span class="tag">query-engine</span>, <span class="tag">data-architecture</span>, <span class="tag">s3</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

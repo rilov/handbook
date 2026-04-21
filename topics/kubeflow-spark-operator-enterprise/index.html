@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kubeflow Spark Operator - Enterprise & Multi-Tenant</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>Kubeflow Spark Operator - Enterprise & Multi-Tenant</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="kubeflow-spark-operator---enterprise--multi-tenant-architecture">Kubeflow Spark Operator - Enterprise &amp; Multi-Tenant Architecture</h1>
+
+<h2 id="what-is-this">What is This?</h2>
+
+<p><strong>Simple Answer:</strong> This guide shows you how to run Spark for multiple teams on a shared Kubernetes cluster with centralized logging, cost tracking, and self-service job submission—<strong>without giving teams direct kubectl access</strong>.</p>
+
+<p><strong>Why Should You Care?</strong></p>
+<ul>
+  <li>🏢 <strong>Multi-Team Support</strong>: Multiple teams share one cluster safely</li>
+  <li>🔒 <strong>No kubectl Access Needed</strong>: Teams submit jobs via web portal or API</li>
+  <li>⏰ <strong>Self-Service Scheduling</strong>: Teams schedule their own recurring jobs (hourly, daily, weekly)</li>
+  <li>📊 <strong>Centralized Logging</strong>: All logs in one place (Elasticsearch/Kibana)</li>
+  <li>💰 <strong>Cost Tracking</strong>: Know exactly what each team is spending</li>
+  <li>🎯 <strong>Resource Quotas</strong>: Prevent teams from hogging resources</li>
+  <li>🔐 <strong>Security</strong>: Network isolation, RBAC, audit trails</li>
+</ul>
+
+<h2 id="the-enterprise-challenge">The Enterprise Challenge</h2>
+
+<h3 id="scenario-youre-a-platform-team">Scenario: You’re a Platform Team</h3>
+
+<p>You manage a Kubernetes cluster and need to support:</p>
+<ul>
+  <li><strong>Team A (Data Engineering)</strong>: Runs ETL pipelines daily</li>
+  <li><strong>Team B (ML Platform)</strong>: Trains models weekly</li>
+  <li><strong>Team C (Analytics)</strong>: Generates reports on-demand</li>
+</ul>
+
+<p><strong>Requirements:</strong></p>
+<ol>
+  <li>❌ Teams should <strong>NOT</strong> have <code class="language-plaintext highlighter-rouge">kubectl</code> or <code class="language-plaintext highlighter-rouge">oc</code> access</li>
+  <li>✅ Each team gets their own resource quota</li>
+  <li>✅ Teams can submit AND schedule jobs via web UI or API</li>
+  <li>✅ All logs go to a central location</li>
+  <li>✅ Track costs per team for chargeback</li>
+  <li>✅ Secure: teams can’t see each other’s data</li>
+</ol>
+
+<h2 id="architecture-overview">Architecture Overview</h2>
+
+<div class="mermaid">
+graph TB
+    subgraph PLATFORM["<b>Platform Team - Shared Services</b>"]
+        OPERATOR["<b>Spark Operator</b><br />Watches all namespaces"]
+        HISTORY["<b>History Server</b><br />Centralized Spark UI"]
+        LOGGING["<b>Logging Stack</b><br />Elasticsearch + Kibana"]
+        MONITORING["<b>Monitoring</b><br />Prometheus + Grafana"]
+        PORTAL["<b>Job Portal</b><br />Self-service UI"]
+    end
+    
+    subgraph TEAM_A["<b>Team A - Data Engineering</b>"]
+        NS_A["<b>Namespace</b><br />team-a-spark"]
+        QUOTA_A["<b>Quota</b><br />10 CPU, 40Gi RAM"]
+    end
+    
+    subgraph TEAM_B["<b>Team B - ML Platform</b>"]
+        NS_B["<b>Namespace</b><br />team-b-spark"]
+        QUOTA_B["<b>Quota</b><br />20 CPU, 80Gi RAM"]
+    end
+    
+    subgraph TEAM_C["<b>Team C - Analytics</b>"]
+        NS_C["<b>Namespace</b><br />team-c-spark"]
+        QUOTA_C["<b>Quota</b><br />5 CPU, 20Gi RAM"]
+    end
+    
+    PORTAL --&gt;|Submit jobs| OPERATOR
+    OPERATOR --&gt;|Manage| NS_A
+    OPERATOR --&gt;|Manage| NS_B
+    OPERATOR --&gt;|Manage| NS_C
+    
+    NS_A -.-&gt;|Logs| LOGGING
+    NS_B -.-&gt;|Logs| LOGGING
+    NS_C -.-&gt;|Logs| LOGGING
+    
+    NS_A -.-&gt;|Metrics| MONITORING
+    NS_B -.-&gt;|Metrics| MONITORING
+    NS_C -.-&gt;|Metrics| MONITORING
+    
+    NS_A -.-&gt;|Event logs| HISTORY
+    NS_B -.-&gt;|Event logs| HISTORY
+    NS_C -.-&gt;|Event logs| HISTORY
+    
+    style PLATFORM fill:#E8EAF6,stroke:#3F51B5,stroke-width:3px,color:#000
+    style TEAM_A fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px,color:#000
+    style TEAM_B fill:#FFF3E0,stroke:#FF9800,stroke-width:2px,color:#000
+    style TEAM_C fill:#FCE4EC,stroke:#E91E63,stroke-width:2px,color:#000
+</div>
+
+<p><strong>Key Components:</strong></p>
+<ul>
+  <li><strong>Platform Team</strong> manages shared services (operator, logging, monitoring, portal)</li>
+  <li><strong>Each Team</strong> gets their own namespace with resource quotas</li>
+  <li><strong>Centralized Services</strong> collect logs, metrics, and provide UIs</li>
+  <li><strong>Job Portal</strong> allows teams to submit jobs without kubectl access</li>
+</ul>
+
+<h2 id="part-1-multi-tenant-setup">Part 1: Multi-Tenant Setup</h2>
+
+<h3 id="step-1-create-team-namespaces">Step 1: Create Team Namespaces</h3>
+
+<p>Each team gets their own namespace with labels for tracking:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Team A namespace</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Namespace</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">team</span><span class="pi">:</span> <span class="s">data-engineering</span>
+    <span class="na">cost-center</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1001"</span>
+    <span class="na">environment</span><span class="pi">:</span> <span class="s">production</span>
+<span class="nn">---</span>
+<span class="c1"># Team B namespace</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Namespace</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">team-b-spark</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">team</span><span class="pi">:</span> <span class="s">ml-platform</span>
+    <span class="na">cost-center</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1002"</span>
+    <span class="na">environment</span><span class="pi">:</span> <span class="s">production</span>
+</code></pre></div></div>
+
+<h3 id="step-2-set-resource-quotas">Step 2: Set Resource Quotas</h3>
+
+<p>Prevent teams from using too many resources:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ResourceQuota</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-quota</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">hard</span><span class="pi">:</span>
+    <span class="na">requests.cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">10"</span>        <span class="c1"># Max 10 CPUs requested</span>
+    <span class="na">requests.memory</span><span class="pi">:</span> <span class="s">40Gi</span>     <span class="c1"># Max 40GB memory requested</span>
+    <span class="na">limits.cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">20"</span>          <span class="c1"># Max 20 CPUs total</span>
+    <span class="na">limits.memory</span><span class="pi">:</span> <span class="s">80Gi</span>       <span class="c1"># Max 80GB memory total</span>
+    <span class="na">pods</span><span class="pi">:</span> <span class="s2">"</span><span class="s">50"</span>                <span class="c1"># Max 50 pods</span>
+</code></pre></div></div>
+
+<p><strong>What This Means:</strong></p>
+<ul>
+  <li>Team A can run jobs using up to 10 CPUs and 40GB RAM</li>
+  <li>If they try to exceed this, new jobs will be rejected</li>
+  <li>Prevents one team from starving others</li>
+</ul>
+
+<h3 id="step-3-configure-rbac-permissions">Step 3: Configure RBAC (Permissions)</h3>
+
+<p><strong>Platform Team</strong> (has full access):</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-operator</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-system</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-operator-role</span>
+<span class="na">rules</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">sparkoperator.k8s.io"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">sparkapplications"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">scheduledsparkapplications"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">*"</span><span class="pi">]</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">pods"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">services"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">configmaps"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">*"</span><span class="pi">]</span>
+</code></pre></div></div>
+
+<p><strong>Team Service Accounts</strong> (namespace-scoped):</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Team A - Driver can create executors in team-a-spark namespace only</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-driver</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-driver-role</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+<span class="na">rules</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">pods"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">services"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">create"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">delete"</span><span class="pi">]</span>
+</code></pre></div></div>
+
+<p><strong>Result:</strong> Teams can only create resources in their own namespace.</p>
+
+<h2 id="part-2-centralized-logging">Part 2: Centralized Logging</h2>
+
+<h3 id="why-centralized-logging">Why Centralized Logging?</h3>
+
+<p><strong>Without it:</strong></p>
+<ul>
+  <li>Each team runs <code class="language-plaintext highlighter-rouge">kubectl logs</code> individually</li>
+  <li>Logs disappear when pods are deleted</li>
+  <li>Hard to search across multiple jobs</li>
+  <li>No historical analysis</li>
+</ul>
+
+<p><strong>With it:</strong></p>
+<ul>
+  <li>All logs in Elasticsearch</li>
+  <li>Search across all teams (with filters)</li>
+  <li>Logs persist after pods are deleted</li>
+  <li>Team-specific dashboards in Kibana</li>
+</ul>
+
+<h3 id="architecture">Architecture</h3>
+
+<div class="mermaid">
+graph LR
+    SPARK["<b>Spark Pods</b><br />All Teams"] --&gt;|stdout/stderr| FLUENTD["<b>Fluentd</b><br />Collects logs"]
+    FLUENTD --&gt;|Parse &amp; tag| ELASTIC["<b>Elasticsearch</b><br />Stores logs"]
+    ELASTIC --&gt;|Query| KIBANA["<b>Kibana</b><br />Search UI"]
+    
+    USER["<b>Team Member</b>"] --&gt;|Search logs| KIBANA
+    
+    style SPARK fill:#2196F3,stroke:#1976D2,stroke-width:2px,color:#fff
+    style FLUENTD fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff
+    style ELASTIC fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff
+    style KIBANA fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+    style USER fill:#E91E63,stroke:#C2185B,stroke-width:2px,color:#fff
+</div>
+
+<h3 id="fluentd-configuration">Fluentd Configuration</h3>
+
+<p>Fluentd runs on every Kubernetes node and:</p>
+<ol>
+  <li>Collects all container logs</li>
+  <li>Filters for Spark pods</li>
+  <li>Adds team metadata from namespace labels</li>
+  <li>Sends to Elasticsearch with team-specific indices</li>
+</ol>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Fluentd config (simplified)</span>
+<span class="s">&lt;source&gt;</span>
+  <span class="s">@type tail</span>
+  <span class="s">path /var/log/containers/*spark*.log</span>
+  <span class="s">tag kubernetes.*</span>
+<span class="s">&lt;/source&gt;</span>
+
+<span class="c1"># Add team metadata from namespace labels</span>
+<span class="s">&lt;filter kubernetes.**&gt;</span>
+  <span class="s">@type record_transformer</span>
+  <span class="s">&lt;record&gt;</span>
+    <span class="s">team ${record.dig("kubernetes", "namespace_labels", "team")}</span>
+    <span class="s">cost_center ${record.dig("kubernetes", "namespace_labels", "cost-center")}</span>
+    <span class="s">namespace ${record.dig("kubernetes", "namespace_name")}</span>
+  <span class="s">&lt;/record&gt;</span>
+<span class="s">&lt;/filter&gt;</span>
+
+<span class="c1"># Send to Elasticsearch with team-specific index</span>
+<span class="s">&lt;match kubernetes.**&gt;</span>
+  <span class="s">@type elasticsearch</span>
+  <span class="s">host elasticsearch.logging.svc.cluster.local</span>
+  <span class="s">logstash_prefix spark-${team}</span>  <span class="c1"># Creates spark-data-engineering-*, spark-ml-platform-*</span>
+<span class="s">&lt;/match&gt;</span>
+</code></pre></div></div>
+
+<p><strong>Result:</strong></p>
+<ul>
+  <li>Team A logs go to <code class="language-plaintext highlighter-rouge">spark-data-engineering-*</code> index</li>
+  <li>Team B logs go to <code class="language-plaintext highlighter-rouge">spark-ml-platform-*</code> index</li>
+  <li>Each team can only see their own logs in Kibana</li>
+</ul>
+
+<h3 id="kibana-dashboards">Kibana Dashboards</h3>
+
+<p>Teams get pre-configured dashboards showing:</p>
+<ul>
+  <li>Recent job failures</li>
+  <li>Error rate trends</li>
+  <li>Slowest jobs</li>
+  <li>Resource usage over time</li>
+</ul>
+
+<h2 id="part-3-centralized-history-server">Part 3: Centralized History Server</h2>
+
+<h3 id="what-is-spark-history-server">What is Spark History Server?</h3>
+
+<p>A web UI that shows:</p>
+<ul>
+  <li>All completed Spark jobs</li>
+  <li>Job timelines and stages</li>
+  <li>Task metrics and executor info</li>
+  <li>SQL query plans</li>
+</ul>
+
+<h3 id="setup">Setup</h3>
+
+<p><strong>S3 Bucket Structure:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s3://company-spark-logs/
+├── team-a-spark/
+│   ├── etl-pipeline-20260420-120000/
+│   └── data-quality-20260420-130000/
+├── team-b-spark/
+│   ├── feature-engineering-20260420-140000/
+│   └── model-training-20260420-150000/
+└── team-c-spark/
+    └── reporting-20260420-160000/
+</code></pre></div></div>
+
+<p><strong>History Server Deployment:</strong></p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-history-server</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">spark-history</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">spark-history-server</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s">apache/spark:3.5.0</span>
+    <span class="na">command</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">/opt/spark/bin/spark-class</span>
+    <span class="pi">-</span> <span class="s">org.apache.spark.deploy.history.HistoryServer</span>
+    <span class="na">env</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">SPARK_HISTORY_OPTS</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="pi">&gt;-</span>
+        <span class="s">-Dspark.history.fs.logDirectory=s3a://company-spark-logs</span>
+        <span class="s">-Dspark.history.ui.port=18080</span>
+</code></pre></div></div>
+
+<p><strong>Team Job Configuration:</strong></p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">SparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">etl-pipeline</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">sparkConf</span><span class="pi">:</span>
+    <span class="s2">"</span><span class="s">spark.eventLog.enabled"</span><span class="err">:</span> <span class="s2">"</span><span class="s">true"</span>
+    <span class="s2">"</span><span class="s">spark.eventLog.dir"</span><span class="err">:</span> <span class="s2">"</span><span class="s">s3a://company-spark-logs/team-a-spark"</span>
+</code></pre></div></div>
+
+<p><strong>Access:</strong> <code class="language-plaintext highlighter-rouge">https://spark-history.company.com</code> shows all teams’ jobs (with authentication)</p>
+
+<h2 id="part-4-cost-tracking">Part 4: Cost Tracking</h2>
+
+<h3 id="why-track-costs">Why Track Costs?</h3>
+
+<ul>
+  <li><strong>Chargeback</strong>: Bill teams for their usage</li>
+  <li><strong>Optimization</strong>: Identify expensive jobs</li>
+  <li><strong>Budgeting</strong>: Plan capacity needs</li>
+</ul>
+
+<h3 id="how-it-works">How It Works</h3>
+
+<p>Prometheus collects metrics → Recording rules calculate costs → Grafana displays dashboards</p>
+
+<p><strong>Prometheus Recording Rules:</strong></p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">groups</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">spark_cost_tracking</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="c1"># CPU usage by team</span>
+  <span class="pi">-</span> <span class="na">record</span><span class="pi">:</span> <span class="s">spark:cpu_usage:by_team</span>
+    <span class="na">expr</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">sum by (team, namespace) (</span>
+        <span class="s">rate(container_cpu_usage_seconds_total{</span>
+          <span class="s">namespace=~"team-.*-spark",</span>
+          <span class="s">pod=~".*-(driver|exec)-.*"</span>
+        <span class="s">}[5m])</span>
+      <span class="s">)</span>
+  
+  <span class="c1"># Cost calculation ($0.05 per CPU-hour, $0.01 per GB-hour)</span>
+  <span class="pi">-</span> <span class="na">record</span><span class="pi">:</span> <span class="s">spark:cost:hourly:by_team</span>
+    <span class="na">expr</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">(</span>
+        <span class="s">spark:cpu_usage:by_team * 0.05 +</span>
+        <span class="s">(spark:memory_usage:by_team / 1024 / 1024 / 1024) * 0.01</span>
+      <span class="s">)</span>
+</code></pre></div></div>
+
+<p><strong>Grafana Dashboard Shows:</strong></p>
+<ul>
+  <li>Team A: $45/day</li>
+  <li>Team B: $120/day</li>
+  <li>Team C: $18/day</li>
+  <li><strong>Total: $183/day</strong></li>
+</ul>
+
+<h2 id="part-5-job-submission-without-kubectl-access">Part 5: Job Submission Without kubectl Access</h2>
+
+<h3 id="the-problem">The Problem</h3>
+
+<p>You <strong>don’t want</strong> teams running:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl apply <span class="nt">-f</span> my-job.yaml
+</code></pre></div></div>
+
+<p><strong>Why not?</strong></p>
+<ul>
+  <li>Security risk (teams could modify other resources)</li>
+  <li>No validation (teams could exceed quotas)</li>
+  <li>No audit trail (who submitted what?)</li>
+</ul>
+
+<h3 id="solution-self-service-portal">Solution: Self-Service Portal</h3>
+
+<p>Teams submit jobs via a web UI or REST API instead of kubectl.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant User as Team Member
+    participant Portal as Web Portal
+    participant API as Backend API
+    participant K8s as Kubernetes
+    
+    User-&gt;&gt;Portal: Fill job form
+    Portal-&gt;&gt;API: POST /api/jobs/submit
+    API-&gt;&gt;API: Validate quota
+    API-&gt;&gt;API: Check S3 paths
+    API-&gt;&gt;K8s: Create SparkApplication
+    K8s--&gt;&gt;API: Created
+    API--&gt;&gt;Portal: Job submitted!
+    Portal--&gt;&gt;User: Success message
+</div>
+
+<h3 id="option-1-web-portal-recommended">Option 1: Web Portal (Recommended)</h3>
+
+<p><strong>User Experience:</strong></p>
+<ol>
+  <li>User opens <code class="language-plaintext highlighter-rouge">https://spark-portal.company.com</code></li>
+  <li>Fills out a form:
+    <ul>
+      <li>Team: Data Engineering</li>
+      <li>JAR path: <code class="language-plaintext highlighter-rouge">s3://team-a-data/etl.jar</code></li>
+      <li>Main class: <code class="language-plaintext highlighter-rouge">com.company.ETL</code></li>
+      <li>Resources: 5 executors, 2 cores each</li>
+      <li><strong>Schedule (Optional):</strong> <code class="language-plaintext highlighter-rouge">0 2 * * *</code> (daily at 2 AM)</li>
+    </ul>
+  </li>
+  <li>Clicks “Submit” or “Schedule”</li>
+  <li>Portal validates and creates SparkApplication or ScheduledSparkApplication</li>
+</ol>
+
+<p><strong>Backend API (Python/FastAPI):</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">fastapi</span> <span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">HTTPException</span>
+<span class="kn">from</span> <span class="n">kubernetes</span> <span class="kn">import</span> <span class="n">client</span><span class="p">,</span> <span class="n">config</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="nc">FastAPI</span><span class="p">()</span>
+<span class="n">config</span><span class="p">.</span><span class="nf">load_incluster_config</span><span class="p">()</span>
+<span class="n">k8s_custom</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="nc">CustomObjectsApi</span><span class="p">()</span>
+
+<span class="n">TEAM_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">data-engineering</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">namespace</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">team-a-spark</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">max_executor_instances</span><span class="sh">"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">allowed_s3_paths</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">s3://team-a-data/*</span><span class="sh">"</span><span class="p">]</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nd">@app.post</span><span class="p">(</span><span class="sh">"</span><span class="s">/api/jobs/submit</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">submit_job</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">SparkJobRequest</span><span class="p">):</span>
+    <span class="c1"># Validate team quota
+</span>    <span class="n">config</span> <span class="o">=</span> <span class="n">TEAM_CONFIG</span><span class="p">[</span><span class="n">request</span><span class="p">.</span><span class="n">team</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">request</span><span class="p">.</span><span class="n">executor_instances</span> <span class="o">&gt;</span> <span class="n">config</span><span class="p">[</span><span class="sh">"</span><span class="s">max_executor_instances</span><span class="sh">"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="nc">HTTPException</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="sh">"</span><span class="s">Too many executors</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="c1"># Check S3 path access
+</span>    <span class="k">if</span> <span class="ow">not</span> <span class="n">request</span><span class="p">.</span><span class="n">jar_path</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">"</span><span class="s">s3://team-a-data/</span><span class="sh">"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="nc">HTTPException</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="sh">"</span><span class="s">Access denied to S3 path</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="c1"># Build base job spec
+</span>    <span class="n">job_spec</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">type</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Scala</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">image</span><span class="sh">"</span><span class="p">:</span> <span class="sa">f</span><span class="sh">"</span><span class="s">company-registry/spark:3.5.0</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">mainClass</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">main_class</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">mainApplicationFile</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">jar_path</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">driver</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span><span class="sh">"</span><span class="s">cores</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">memory</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">1g</span><span class="sh">"</span><span class="p">},</span>
+        <span class="sh">"</span><span class="s">executor</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">cores</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">executor_cores</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">instances</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">executor_instances</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">memory</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">2g</span><span class="sh">"</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1"># Check if this is a scheduled job
+</span>    <span class="k">if</span> <span class="n">request</span><span class="p">.</span><span class="n">schedule</span><span class="p">:</span>
+        <span class="c1"># Create ScheduledSparkApplication
+</span>        <span class="n">spark_app</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">apiVersion</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">sparkoperator.k8s.io/v1beta2</span><span class="sh">"</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">kind</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">ScheduledSparkApplication</span><span class="sh">"</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">metadata</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">job_name</span><span class="p">,</span>
+                <span class="sh">"</span><span class="s">namespace</span><span class="sh">"</span><span class="p">:</span> <span class="n">config</span><span class="p">[</span><span class="sh">"</span><span class="s">namespace</span><span class="sh">"</span><span class="p">]</span>
+            <span class="p">},</span>
+            <span class="sh">"</span><span class="s">spec</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="sh">"</span><span class="s">schedule</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">schedule</span><span class="p">,</span>  <span class="c1"># Cron format
+</span>                <span class="sh">"</span><span class="s">concurrencyPolicy</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Forbid</span><span class="sh">"</span><span class="p">,</span>  <span class="c1"># Don't run if previous still running
+</span>                <span class="sh">"</span><span class="s">template</span><span class="sh">"</span><span class="p">:</span> <span class="n">job_spec</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">plural</span> <span class="o">=</span> <span class="sh">"</span><span class="s">scheduledsparkapplications</span><span class="sh">"</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Create one-time SparkApplication
+</span>        <span class="n">spark_app</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">apiVersion</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">sparkoperator.k8s.io/v1beta2</span><span class="sh">"</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">kind</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">SparkApplication</span><span class="sh">"</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">metadata</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">job_name</span><span class="p">,</span>
+                <span class="sh">"</span><span class="s">namespace</span><span class="sh">"</span><span class="p">:</span> <span class="n">config</span><span class="p">[</span><span class="sh">"</span><span class="s">namespace</span><span class="sh">"</span><span class="p">]</span>
+            <span class="p">},</span>
+            <span class="sh">"</span><span class="s">spec</span><span class="sh">"</span><span class="p">:</span> <span class="n">job_spec</span>
+        <span class="p">}</span>
+        <span class="n">plural</span> <span class="o">=</span> <span class="sh">"</span><span class="s">sparkapplications</span><span class="sh">"</span>
+    
+    <span class="c1"># Submit to Kubernetes (using portal's service account)
+</span>    <span class="n">k8s_custom</span><span class="p">.</span><span class="nf">create_namespaced_custom_object</span><span class="p">(</span>
+        <span class="n">group</span><span class="o">=</span><span class="sh">"</span><span class="s">sparkoperator.k8s.io</span><span class="sh">"</span><span class="p">,</span>
+        <span class="n">version</span><span class="o">=</span><span class="sh">"</span><span class="s">v1beta2</span><span class="sh">"</span><span class="p">,</span>
+        <span class="n">namespace</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="sh">"</span><span class="s">namespace</span><span class="sh">"</span><span class="p">],</span>
+        <span class="n">plural</span><span class="o">=</span><span class="n">plural</span><span class="p">,</span>
+        <span class="n">body</span><span class="o">=</span><span class="n">spark_app</span>
+    <span class="p">)</span>
+    
+    <span class="n">status</span> <span class="o">=</span> <span class="sh">"</span><span class="s">scheduled</span><span class="sh">"</span> <span class="k">if</span> <span class="n">request</span><span class="p">.</span><span class="n">schedule</span> <span class="k">else</span> <span class="sh">"</span><span class="s">submitted</span><span class="sh">"</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">status</span><span class="sh">"</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">job_name</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">job_name</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">schedule</span><span class="sh">"</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">schedule</span> <span class="k">if</span> <span class="n">request</span><span class="p">.</span><span class="n">schedule</span> <span class="k">else</span> <span class="bp">None</span>
+    <span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>Key Points:</strong></p>
+<ul>
+  <li>✅ Portal has a service account with SparkApplication create permissions</li>
+  <li>✅ Teams authenticate via OAuth (Okta, Azure AD, etc.)</li>
+  <li>✅ Backend validates quotas and S3 paths</li>
+  <li>✅ All submissions are logged for audit</li>
+</ul>
+
+<h3 id="option-2-rest-api-for-automation">Option 2: REST API (For Automation)</h3>
+
+<p>Teams can submit jobs from CI/CD pipelines or notebooks:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Client library for teams
+</span><span class="kn">import</span> <span class="n">requests</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="nc">SparkJobClient</span><span class="p">(</span>
+    <span class="n">api_url</span><span class="o">=</span><span class="sh">"</span><span class="s">https://spark-portal.company.com</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">team</span><span class="o">=</span><span class="sh">"</span><span class="s">data-engineering</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">api_token</span><span class="o">=</span><span class="sh">"</span><span class="s">team-a-token-xyz</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="c1"># Submit one-time job
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="nf">submit_job</span><span class="p">(</span>
+    <span class="n">job_name</span><span class="o">=</span><span class="sh">"</span><span class="s">etl-pipeline-20260420</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">jar_path</span><span class="o">=</span><span class="sh">"</span><span class="s">s3://team-a-data/etl-pipeline.jar</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">main_class</span><span class="o">=</span><span class="sh">"</span><span class="s">com.company.etl.Pipeline</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">executor_instances</span><span class="o">=</span><span class="mi">10</span>
+<span class="p">)</span>
+
+<span class="c1"># Schedule recurring job (daily at 2 AM)
+</span><span class="n">scheduled</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="nf">submit_job</span><span class="p">(</span>
+    <span class="n">job_name</span><span class="o">=</span><span class="sh">"</span><span class="s">daily-etl</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">jar_path</span><span class="o">=</span><span class="sh">"</span><span class="s">s3://team-a-data/etl-pipeline.jar</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">main_class</span><span class="o">=</span><span class="sh">"</span><span class="s">com.company.etl.DailyPipeline</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">executor_instances</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="o">=</span><span class="sh">"</span><span class="s">0 2 * * *</span><span class="sh">"</span>  <span class="c1"># Cron format
+</span><span class="p">)</span>
+
+<span class="c1"># Schedule hourly aggregation
+</span><span class="n">hourly</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="nf">submit_job</span><span class="p">(</span>
+    <span class="n">job_name</span><span class="o">=</span><span class="sh">"</span><span class="s">hourly-agg</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">jar_path</span><span class="o">=</span><span class="sh">"</span><span class="s">s3://team-a-data/aggregation.jar</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">main_class</span><span class="o">=</span><span class="sh">"</span><span class="s">com.company.agg.Hourly</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">executor_instances</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="o">=</span><span class="sh">"</span><span class="s">0 * * * *</span><span class="sh">"</span>  <span class="c1"># Every hour
+</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Common Cron Schedules:</strong></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">0 2 * * *</code> - Daily at 2 AM</li>
+  <li><code class="language-plaintext highlighter-rouge">0 * * * *</code> - Every hour</li>
+  <li><code class="language-plaintext highlighter-rouge">*/15 * * * *</code> - Every 15 minutes</li>
+  <li><code class="language-plaintext highlighter-rouge">0 0 * * 0</code> - Weekly on Sunday at midnight</li>
+  <li><code class="language-plaintext highlighter-rouge">0 0 1 * *</code> - Monthly on the 1st at midnight</li>
+</ul>
+
+<h3 id="option-3-gitops-for-production">Option 3: GitOps (For Production)</h3>
+
+<p>Teams push YAML files to Git → CI/CD validates and applies:</p>
+
+<p><strong>One-Time Job:</strong></p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># teams/data-engineering/etl-pipeline.yaml</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">SparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">etl-pipeline</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">Scala</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">company-registry/spark:3.5.0</span>
+  <span class="na">mainClass</span><span class="pi">:</span> <span class="s">com.company.etl.Pipeline</span>
+  <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">s3://team-a-data/etl.jar</span>
+  <span class="na">driver</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1g"</span>
+  <span class="na">executor</span><span class="pi">:</span>
+    <span class="na">cores</span><span class="pi">:</span> <span class="m">2</span>
+    <span class="na">instances</span><span class="pi">:</span> <span class="m">10</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2g"</span>
+</code></pre></div></div>
+
+<p><strong>Scheduled Job (Recurring):</strong></p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># teams/data-engineering/daily-etl.yaml</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sparkoperator.k8s.io/v1beta2</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ScheduledSparkApplication</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">daily-etl</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0</span><span class="nv"> </span><span class="s">2</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>  <span class="c1"># Daily at 2 AM</span>
+  <span class="na">concurrencyPolicy</span><span class="pi">:</span> <span class="s">Forbid</span>  <span class="c1"># Don't run if previous job still running</span>
+  <span class="na">successfulRunHistoryLimit</span><span class="pi">:</span> <span class="m">3</span>  <span class="c1"># Keep last 3 successful runs</span>
+  <span class="na">failedRunHistoryLimit</span><span class="pi">:</span> <span class="m">1</span>      <span class="c1"># Keep last failed run</span>
+  
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">Scala</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s">company-registry/spark:3.5.0</span>
+    <span class="na">mainClass</span><span class="pi">:</span> <span class="s">com.company.etl.DailyPipeline</span>
+    <span class="na">mainApplicationFile</span><span class="pi">:</span> <span class="s">s3://team-a-data/etl.jar</span>
+    <span class="na">driver</span><span class="pi">:</span>
+      <span class="na">cores</span><span class="pi">:</span> <span class="m">2</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2g"</span>
+    <span class="na">executor</span><span class="pi">:</span>
+      <span class="na">cores</span><span class="pi">:</span> <span class="m">4</span>
+      <span class="na">instances</span><span class="pi">:</span> <span class="m">10</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4g"</span>
+</code></pre></div></div>
+
+<p><strong>GitHub Actions Workflow:</strong></p>
+<ol>
+  <li>Developer pushes YAML to Git</li>
+  <li>CI validates against team quota</li>
+  <li>If valid, CI runs <code class="language-plaintext highlighter-rouge">kubectl apply</code></li>
+  <li>PR comment shows job status</li>
+</ol>
+
+<h3 id="team-scheduling-capabilities">Team Scheduling Capabilities</h3>
+
+<p><strong>What Teams Can Schedule:</strong></p>
+
+<p>Teams have full control to schedule their own Spark jobs using cron expressions:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Schedule Type</th>
+      <th>Cron Expression</th>
+      <th>Use Case</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Hourly</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">0 * * * *</code></td>
+      <td>Real-time aggregations</td>
+      <td>Hourly sales summaries</td>
+    </tr>
+    <tr>
+      <td><strong>Daily</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">0 2 * * *</code></td>
+      <td>Nightly ETL pipelines</td>
+      <td>Daily data warehouse refresh</td>
+    </tr>
+    <tr>
+      <td><strong>Weekly</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">0 0 * * 0</code></td>
+      <td>Weekly reports</td>
+      <td>Sunday night model training</td>
+    </tr>
+    <tr>
+      <td><strong>Monthly</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">0 0 1 * *</code></td>
+      <td>Monthly processing</td>
+      <td>First of month billing</td>
+    </tr>
+    <tr>
+      <td><strong>Custom</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">*/15 * * * *</code></td>
+      <td>High-frequency jobs</td>
+      <td>Every 15 minutes monitoring</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Scheduling Features:</strong></p>
+
+<p>✅ <strong>Concurrency Control</strong>: <code class="language-plaintext highlighter-rouge">concurrencyPolicy: Forbid</code> prevents overlapping runs</p>
+
+<p>✅ <strong>History Limits</strong>: Keep last N successful/failed runs for debugging</p>
+
+<p>✅ <strong>Timezone Support</strong>: Configure timezone for schedules</p>
+
+<p>✅ <strong>Suspend/Resume</strong>: Temporarily pause scheduled jobs without deleting</p>
+
+<p><strong>Example: Managing Scheduled Jobs</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># List all scheduled jobs for a team
+</span><span class="n">GET</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">jobs</span><span class="o">/</span><span class="n">data</span><span class="o">-</span><span class="n">engineering</span><span class="o">/</span><span class="n">scheduled</span>
+
+<span class="c1"># Suspend a scheduled job (pause it)
+</span><span class="n">PATCH</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">jobs</span><span class="o">/</span><span class="n">data</span><span class="o">-</span><span class="n">engineering</span><span class="o">/</span><span class="n">daily</span><span class="o">-</span><span class="n">etl</span>
+<span class="p">{</span>
+  <span class="sh">"</span><span class="s">suspend</span><span class="sh">"</span><span class="p">:</span> <span class="n">true</span>
+<span class="p">}</span>
+
+<span class="c1"># Resume a scheduled job
+</span><span class="n">PATCH</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">jobs</span><span class="o">/</span><span class="n">data</span><span class="o">-</span><span class="n">engineering</span><span class="o">/</span><span class="n">daily</span><span class="o">-</span><span class="n">etl</span>
+<span class="p">{</span>
+  <span class="sh">"</span><span class="s">suspend</span><span class="sh">"</span><span class="p">:</span> <span class="n">false</span>
+<span class="p">}</span>
+
+<span class="c1"># Delete a scheduled job
+</span><span class="n">DELETE</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">jobs</span><span class="o">/</span><span class="n">data</span><span class="o">-</span><span class="n">engineering</span><span class="o">/</span><span class="n">daily</span><span class="o">-</span><span class="n">etl</span>
+</code></pre></div></div>
+
+<h3 id="comparison">Comparison</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th>Best For</th>
+      <th>Scheduling Support</th>
+      <th>Pros</th>
+      <th>Cons</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Web Portal</strong></td>
+      <td>Non-technical users, ad-hoc jobs</td>
+      <td>✅ Yes - cron picker UI</td>
+      <td>Easy to use, visual validation</td>
+      <td>Requires portal maintenance</td>
+    </tr>
+    <tr>
+      <td><strong>REST API</strong></td>
+      <td>Automated pipelines, notebooks</td>
+      <td>✅ Yes - schedule parameter</td>
+      <td>Scriptable, CI/CD friendly</td>
+      <td>Requires API tokens</td>
+    </tr>
+    <tr>
+      <td><strong>GitOps</strong></td>
+      <td>Production jobs, compliance</td>
+      <td>✅ Yes - ScheduledSparkApplication</td>
+      <td>Version control, code review</td>
+      <td>Slower feedback loop</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="part-6-security--network-isolation">Part 6: Security &amp; Network Isolation</h2>
+
+<h3 id="network-policies">Network Policies</h3>
+
+<p>Prevent teams from talking to each other:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spark-isolation</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">podSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">spark-role</span><span class="pi">:</span> <span class="s">driver</span>
+  <span class="na">policyTypes</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">Ingress</span>
+  <span class="pi">-</span> <span class="s">Egress</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+  <span class="c1"># Only allow from executors in same namespace</span>
+  <span class="pi">-</span> <span class="na">from</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">namespaceSelector</span><span class="pi">:</span>
+        <span class="na">matchLabels</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+  <span class="na">egress</span><span class="pi">:</span>
+  <span class="c1"># Allow to executors and external services (S3)</span>
+  <span class="pi">-</span> <span class="na">to</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">namespaceSelector</span><span class="pi">:</span>
+        <span class="na">matchLabels</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">team-a-spark</span>
+  <span class="pi">-</span> <span class="na">to</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">namespaceSelector</span><span class="pi">:</span> <span class="pi">{}</span>
+    <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">443</span>  <span class="c1"># HTTPS for S3</span>
+</code></pre></div></div>
+
+<p><strong>Result:</strong> Team A’s Spark jobs can’t communicate with Team B’s jobs.</p>
+
+<h2 id="complete-architecture-summary">Complete Architecture Summary</h2>
+
+<div class="mermaid">
+graph TB
+    subgraph USERS["<b>Team Members</b>"]
+        DEV["<b>Developer</b>"]
+    end
+    
+    subgraph SUBMISSION["<b>Job Submission</b>"]
+        PORTAL["<b>Web Portal</b>"]
+        API["<b>REST API</b>"]
+    end
+    
+    subgraph PLATFORM["<b>Platform Services</b>"]
+        VALIDATE["<b>Validation</b><br />Check quotas &amp; policies"]
+        OPERATOR["<b>Spark Operator</b><br />Manages jobs"]
+        LOGGING["<b>Logging</b><br />Elasticsearch + Kibana"]
+        MONITORING["<b>Monitoring</b><br />Prometheus + Grafana"]
+        HISTORY["<b>History Server</b><br />Spark UI"]
+    end
+    
+    subgraph TEAMS["<b>Team Namespaces</b>"]
+        TEAM_A["<b>team-a-spark</b><br />Quota: 10 CPU, 40Gi"]
+        TEAM_B["<b>team-b-spark</b><br />Quota: 20 CPU, 80Gi"]
+    end
+    
+    DEV --&gt; PORTAL
+    DEV --&gt; API
+    
+    PORTAL --&gt; VALIDATE
+    API --&gt; VALIDATE
+    
+    VALIDATE --&gt; OPERATOR
+    OPERATOR --&gt; TEAM_A
+    OPERATOR --&gt; TEAM_B
+    
+    TEAM_A -.-&gt; LOGGING
+    TEAM_B -.-&gt; LOGGING
+    
+    TEAM_A -.-&gt; MONITORING
+    TEAM_B -.-&gt; MONITORING
+    
+    TEAM_A -.-&gt; HISTORY
+    TEAM_B -.-&gt; HISTORY
+    
+    style USERS fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px,color:#000
+    style SUBMISSION fill:#FFF3E0,stroke:#FF9800,stroke-width:2px,color:#000
+    style PLATFORM fill:#E3F2FD,stroke:#2196F3,stroke-width:3px,color:#000
+    style TEAMS fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px,color:#000
+</div>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+<h3 id="what-you-learned">What You Learned</h3>
+
+<p>✅ <strong>Multi-Tenancy</strong>: Multiple teams share one cluster safely with namespaces and quotas</p>
+
+<p>✅ <strong>No kubectl Access</strong>: Teams submit jobs via web portal or API</p>
+
+<p>✅ <strong>Self-Service Scheduling</strong>: Teams can schedule their own recurring jobs (hourly, daily, weekly, monthly)</p>
+
+<p>✅ <strong>Centralized Logging</strong>: All logs in Elasticsearch, searchable by team</p>
+
+<p>✅ <strong>Cost Tracking</strong>: Prometheus tracks usage, Grafana shows costs per team</p>
+
+<p>✅ <strong>History Server</strong>: Centralized Spark UI for all completed jobs</p>
+
+<p>✅ <strong>Security</strong>: Network policies, RBAC, and audit logging</p>
+
+<h3 id="benefits">Benefits</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Benefit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Platform Team</strong></td>
+      <td>Manage one cluster for all teams, centralized observability</td>
+    </tr>
+    <tr>
+      <td><strong>Application Teams</strong></td>
+      <td>Self-service job submission AND scheduling, no Kubernetes knowledge needed</td>
+    </tr>
+    <tr>
+      <td><strong>Finance</strong></td>
+      <td>Accurate cost tracking and chargeback per team</td>
+    </tr>
+    <tr>
+      <td><strong>Security</strong></td>
+      <td>Strong isolation, audit trails, no direct cluster access</td>
+    </tr>
+    <tr>
+      <td><strong>Compliance</strong></td>
+      <td>All actions logged, version-controlled job definitions</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="next-steps">Next Steps</h2>
+
+<p><strong>For Platform Teams:</strong></p>
+<ol>
+  <li>Set up namespaces and quotas for each team</li>
+  <li>Deploy centralized logging (Fluentd + Elasticsearch + Kibana)</li>
+  <li>Configure Prometheus for cost tracking</li>
+  <li>Build or deploy a job submission portal</li>
+</ol>
+
+<p><strong>For Application Teams:</strong></p>
+<ol>
+  <li>Get familiar with the job submission portal</li>
+  <li>Understand your team’s resource quota</li>
+  <li>Use the History Server to debug failed jobs</li>
+  <li>Check Kibana for logs instead of <code class="language-plaintext highlighter-rouge">kubectl logs</code></li>
+</ol>
+
+<h2 id="quick-reference">Quick Reference</h2>
+
+<h3 id="platform-team-checklist">Platform Team Checklist</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Install Spark Operator cluster-wide</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Create namespace per team with labels</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Set ResourceQuota per namespace</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Configure RBAC (service accounts, roles)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Deploy Fluentd for log collection</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Set up Elasticsearch + Kibana</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Deploy Spark History Server</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Configure Prometheus cost tracking</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Build job submission portal</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Set up network policies</li>
+</ul>
+
+<h3 id="team-onboarding-checklist">Team Onboarding Checklist</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Receive team namespace and quota</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Get portal/API credentials</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Understand S3 path restrictions</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Learn how to submit jobs via portal</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Access Kibana dashboard for logs</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Access History Server for job details</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Review cost dashboard in Grafana</li>
+</ul>
+
+<h2 id="summary">Summary</h2>
+
+<p><strong>Enterprise Spark on Kubernetes</strong> requires:</p>
+<ul>
+  <li><strong>Isolation</strong>: Namespaces + quotas + network policies</li>
+  <li><strong>Observability</strong>: Centralized logging + monitoring + history</li>
+  <li><strong>Self-Service</strong>: Web portal or API for job submission AND scheduling</li>
+  <li><strong>Scheduling</strong>: Teams can schedule their own recurring jobs (cron-based)</li>
+  <li><strong>Cost Tracking</strong>: Prometheus metrics + Grafana dashboards</li>
+  <li><strong>Security</strong>: RBAC + audit logging + no direct kubectl access</li>
+</ul>
+
+<p>This architecture allows you to run Spark for dozens of teams on a shared cluster while maintaining security, observability, cost control, and giving teams full autonomy to schedule their workloads.</p>
+
+<p><strong>Ready to get started?</strong> Check out the <strong><a href="kubeflow-spark-operator-basics.html">Getting Started Guide</a></strong> to learn the basics first, then come back here to implement the enterprise features.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">spark</span>, <span class="tag">kubernetes</span>, <span class="tag">multi-tenant</span>, <span class="tag">enterprise</span>, <span class="tag">devops</span>, <span class="tag">platform-engineering</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
