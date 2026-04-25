@@ -2,7 +2,12 @@
 title: "Chapter 4: Hypothesis Testing Methods"
 category: Data Science
 order: 4
-tags: [statistics, hypothesis-testing, t-test, z-test, chi-square]
+tags:
+  - statistics
+  - hypothesis-testing
+  - t-test
+  - z-test
+  - chi-square
 summary: "Comprehensive guide to statistical hypothesis testing methods - single sample tests, two sample tests, and proportion tests with practical examples."
 ---
 

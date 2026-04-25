@@ -2,7 +2,12 @@
 title: "Chapter 4.3: Proportion Tests"
 category: Data Science
 order: 7
-tags: [statistics, hypothesis-testing, proportion-test, z-test, percentages]
+tags:
+  - statistics
+  - hypothesis-testing
+  - proportion-test
+  - z-test
+  - percentages
 summary: "Learn proportion tests for testing percentages and proportions - one-sample and two-sample proportion tests with practical examples and Python code."
 ---
 

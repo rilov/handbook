@@ -2,7 +2,11 @@
 title: "Chapter 2: Inferential Statistics and Hypothesis Testing"
 category: Data Science
 order: 2
-tags: [statistics, inferential-statistics, hypothesis-testing, sampling]
+tags:
+  - statistics
+  - inferential-statistics
+  - hypothesis-testing
+  - sampling
 summary: "Learn how to make predictions about populations from samples, understand confidence intervals, and test hypotheses using statistical methods."
 ---
 

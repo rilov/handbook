@@ -2,7 +2,12 @@
 title: "Chapter 4.1: Single Sample Tests"
 category: Data Science
 order: 5
-tags: [statistics, hypothesis-testing, t-test, z-test, single-sample]
+tags:
+  - statistics
+  - hypothesis-testing
+  - t-test
+  - z-test
+  - single-sample
 summary: "Learn single sample hypothesis tests - z-tests and t-tests for comparing one sample to a claimed value, with practical examples and Python code."
 ---
 

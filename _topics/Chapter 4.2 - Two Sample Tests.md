@@ -2,7 +2,12 @@
 title: "Chapter 4.2: Two Sample Tests"
 category: Data Science
 order: 6
-tags: [statistics, hypothesis-testing, t-test, two-sample, paired-test]
+tags:
+  - statistics
+  - hypothesis-testing
+  - t-test
+  - two-sample
+  - paired-test
 summary: "Master two sample hypothesis tests - independent and paired t-tests for comparing two groups, with real-world examples and Python implementations."
 ---
 

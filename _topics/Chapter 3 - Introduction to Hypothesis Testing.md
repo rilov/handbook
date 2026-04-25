@@ -2,7 +2,11 @@
 title: "Chapter 3: Introduction to Hypothesis Testing"
 category: Data Science
 order: 3
-tags: [statistics, hypothesis-testing, p-value, significance]
+tags:
+  - statistics
+  - hypothesis-testing
+  - p-value
+  - significance
 summary: "Master the fundamentals of hypothesis testing - learn the 5-step process, understand p-values, and avoid common errors in statistical testing."
 ---
 

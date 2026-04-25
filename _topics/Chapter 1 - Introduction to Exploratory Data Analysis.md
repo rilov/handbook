@@ -2,7 +2,11 @@
 title: "Chapter 1: Exploratory Data Analysis"
 category: Data Science
 order: 1
-tags: [statistics, eda, data-analysis, visualization]
+tags:
+  - statistics
+  - eda
+  - data-analysis
+  - visualization
 summary: "Learn the fundamentals of Exploratory Data Analysis (EDA) - understanding your data through visualization, summary statistics, and pattern discovery."
 ---
 
