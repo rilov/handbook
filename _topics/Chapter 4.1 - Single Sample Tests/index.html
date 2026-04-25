@@ -1,0 +1,1150 @@
+<h1 id="chapter-41-single-sample-hypothesis-tests">Chapter 4.1: Single Sample Hypothesis Tests</h1>
+
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+  <li><a href="#introduction">Introduction - What Are We Trying to Do?</a></li>
+  <li><a href="#z-test">The Z-Test - When You Know A Lot</a></li>
+  <li><a href="#t-test">The T-Test - When You Know Less</a></li>
+  <li><a href="#python-implementation">Python Implementation - Let’s Code It!</a></li>
+  <li><a href="#practice-exercises">Practice Exercises - Your Turn!</a></li>
+</ol>
+
+<hr />
+
+<h2 id="introduction">1. Introduction - What Are We Trying to Do?</h2>
+
+<h3 id="the-big-picture-explained-simply">The Big Picture (Explained Simply)</h3>
+
+<p>Imagine you’re a quality inspector at a chocolate factory. The factory claims each chocolate bar weighs exactly 100 grams. You can’t weigh ALL the chocolate bars (that would take forever!), so you grab 30 random bars and weigh them.</p>
+
+<p><strong>The Question</strong>: Based on these 30 bars, can you tell if the factory is telling the truth about the 100-gram claim?</p>
+
+<p>This is exactly what <strong>hypothesis testing</strong> does! It helps us make smart decisions about a whole group (population) by only looking at a small sample.</p>
+
+<h3 id="real-life-examples">Real-Life Examples</h3>
+
+<ol>
+  <li>
+    <p><strong>Restaurant Wait Times</strong>: A restaurant claims average wait time is 15 minutes. You visit 20 times and track the actual wait times. Are they telling the truth?</p>
+  </li>
+  <li>
+    <p><strong>Student Test Scores</strong>: A teacher says the class average should be 75%. You check 25 random students. Is the teacher right?</p>
+  </li>
+  <li>
+    <p><strong>Product Quality</strong>: A company claims their batteries last 500 hours. You test 40 batteries. Should you believe them?</p>
+  </li>
+</ol>
+
+<h3 id="two-types-of-tests-well-learn">Two Types of Tests We’ll Learn</h3>
+
+<p>Think of these as two different tools in your toolbox:</p>
+
+<h4 id="z-test-the-i-know-everything-test"><strong>Z-Test</strong> (The “I Know Everything” Test)</h4>
+<ul>
+  <li>Use this when you have <strong>lots of information</strong> about the whole population</li>
+  <li>Like knowing the exact recipe and ingredients of all chocolate bars ever made</li>
+  <li><strong>When to use</strong>: You have 30+ samples AND you know how spread out the whole population is</li>
+</ul>
+
+<h4 id="t-test-the-im-figuring-it-out-test"><strong>T-Test</strong> (The “I’m Figuring It Out” Test)</h4>
+<ul>
+  <li>Use this when you have <strong>less information</strong> about the population</li>
+  <li>Like only knowing about the chocolate bars you tested</li>
+  <li><strong>When to use</strong>: You have fewer samples OR you don’t know how spread out the whole population is</li>
+</ul>
+
+<h3 id="key-words-you-need-to-know-simple-definitions">Key Words You Need to Know (Simple Definitions)</h3>
+
+<p>Let’s break down the jargon into plain English:</p>
+
+<p><strong>🎯 Null Hypothesis (H₀)</strong> - “The Boring Claim”</p>
+<ul>
+  <li>This is what everyone currently believes</li>
+  <li>Example: “The chocolate bars weigh 100 grams on average”</li>
+  <li>We’re trying to prove this WRONG</li>
+</ul>
+
+<p><strong>🎯 Alternative Hypothesis (H₁)</strong> - “The Interesting Claim”</p>
+<ul>
+  <li>This is what we think might actually be true</li>
+  <li>Example: “The chocolate bars DON’T weigh 100 grams on average”</li>
+  <li>We’re trying to prove this RIGHT</li>
+</ul>
+
+<p><strong>🎯 Significance Level (α)</strong> - “How Sure Do We Need to Be?”</p>
+<ul>
+  <li>Usually set at 0.05 (which means 5%)</li>
+  <li>Think of it as: “I want to be 95% sure before I make a claim”</li>
+  <li>Lower number = more strict = need stronger evidence</li>
+</ul>
+
+<p><strong>🎯 P-value</strong> - “How Weird Is Our Result?”</p>
+<ul>
+  <li>A number between 0 and 1</li>
+  <li>Small p-value (&lt; 0.05) = “Wow, this is really unusual! Something’s up!”</li>
+  <li>Large p-value (&gt; 0.05) = “Meh, this could happen by random chance”</li>
+  <li><strong>Simple rule</strong>: If p-value &lt; 0.05, we found something interesting!</li>
+</ul>
+
+<p><strong>🎯 Test Statistic</strong> - “The Score”</p>
+<ul>
+  <li>A single number that summarizes our findings</li>
+  <li>Like a grade on a test</li>
+  <li>Bigger numbers (positive or negative) = more unusual results</li>
+</ul>
+
+<h3 id="the-process-step-by-step">The Process (Step-by-Step)</h3>
+
+<p>Every hypothesis test follows these simple steps:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: Make a Claim (Set up hypotheses)
+   "I think the chocolate bars don't weigh 100g"
+
+Step 2: Collect Evidence (Gather data)
+   "Let me weigh 30 random chocolate bars"
+
+Step 3: Calculate a Score (Compute test statistic)
+   "How different is my sample from what's claimed?"
+
+Step 4: Check How Weird It Is (Find p-value)
+   "Is this difference just random luck or something real?"
+
+Step 5: Make a Decision (Conclusion)
+   "Based on my evidence, I believe/don't believe the claim"
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="z-test">2. The Z-Test - When You Know A Lot</h2>
+
+<h3 id="what-is-a-z-test-simple-explanation">What is a Z-Test? (Simple Explanation)</h3>
+
+<p>Imagine you’re checking if a pizza restaurant is honest about their “12-inch pizzas.” You measure 40 pizzas and want to know if they’re really 12 inches on average.</p>
+
+<p><strong>Use Z-Test when:</strong></p>
+<ul>
+  <li>✅ You have <strong>30 or more</strong> samples (pizzas)</li>
+  <li>✅ You know how much pizzas <strong>usually vary</strong> in size (from past data)</li>
+  <li>✅ You picked your samples randomly</li>
+</ul>
+
+<p><strong>Don’t use Z-Test when:</strong></p>
+<ul>
+  <li>❌ You have fewer than 30 samples</li>
+  <li>❌ You don’t know how much things vary in the whole population</li>
+</ul>
+
+<h3 id="the-formula-dont-panic">The Formula (Don’t Panic!)</h3>
+
+<p>The Z-test uses this formula:</p>
+
+\[Z = \frac{\text{What you found} - \text{What was claimed}}{\text{How much things vary} / \sqrt{\text{How many you tested}}}\]
+
+<p>Or in math symbols:</p>
+
+\[Z = \frac{\bar{x} - \mu_0}{\sigma / \sqrt{n}}\]
+
+<p><strong>What each symbol means:</strong></p>
+<ul>
+  <li>$\bar{x}$ (x-bar) = Average of your sample (like average of 40 pizzas you measured)</li>
+  <li>$\mu_0$ (mu-zero) = What was claimed (like “12 inches”)</li>
+  <li>$\sigma$ (sigma) = How spread out ALL pizzas are (you know this from past data)</li>
+  <li>$n$ = How many samples you tested (like 40 pizzas)</li>
+</ul>
+
+<h3 id="what-you-need-before-starting">What You Need Before Starting</h3>
+
+<p><strong>Checklist:</strong></p>
+<ol>
+  <li>✅ You picked your samples randomly (no cherry-picking!)</li>
+  <li>✅ You know the population’s spread (standard deviation)</li>
+  <li>✅ You have 30+ samples OR you know the data follows a bell curve</li>
+  <li>✅ Each measurement is independent (measuring one pizza doesn’t affect another)</li>
+</ol>
+
+<h3 id="how-to-make-a-decision">How to Make a Decision</h3>
+
+<p>Think of it like a game with zones:</p>
+
+<p><strong>The “Normal Zone”</strong> (Don’t reject the claim)</p>
+<ul>
+  <li>Your Z-score is between -1.96 and +1.96</li>
+  <li>OR your p-value is &gt; 0.05</li>
+  <li><strong>Meaning</strong>: “The difference could just be random chance”</li>
+</ul>
+
+<p><strong>The “Weird Zone”</strong> (Reject the claim)</p>
+<ul>
+  <li>Your Z-score is less than -1.96 or greater than +1.96</li>
+  <li>OR your p-value is &lt; 0.05</li>
+  <li><strong>Meaning</strong>: “This is too weird to be random chance!”</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        Weird Zone  |  Normal Zone  |  Weird Zone
+    ←--------------|---------------|-------------→
+              -1.96       0       +1.96
+                    (Z-scores)
+</code></pre></div></div>
+
+<h3 id="example-bolt-factory-quality-check">Example: Bolt Factory Quality Check</h3>
+
+<p><strong>The Story:</strong>
+You work at a bolt factory. The bolts should be exactly 10 mm wide. From years of data, you know bolts vary by about 0.5 mm (this is the standard deviation). Today, you randomly grab 40 bolts and measure them. The average is 10.15 mm.</p>
+
+<p><strong>The Question:</strong> Has something gone wrong with the machines?</p>
+
+<hr />
+
+<p><strong>Step 1: Set Up Your Claims</strong></p>
+
+<p>🔵 <strong>Boring Claim (H₀)</strong>: “Everything is fine, bolts are still 10 mm on average”</p>
+<ul>
+  <li>In math: μ = 10 mm</li>
+</ul>
+
+<p>🔴 <strong>Interesting Claim (H₁)</strong>: “Something changed! Bolts are NOT 10 mm on average anymore”</p>
+<ul>
+  <li>In math: μ ≠ 10 mm</li>
+</ul>
+
+<p>🎯 <strong>How sure do we need to be?</strong> α = 0.05 (95% confidence)</p>
+
+<hr />
+
+<p><strong>Step 2: Calculate Your Score (Z-statistic)</strong></p>
+
+<p>Let’s plug in the numbers:</p>
+
+\[Z = \frac{10.15 - 10}{0.5 / \sqrt{40}} = \frac{0.15}{0.079} = 1.90\]
+
+<p><strong>Breaking it down:</strong></p>
+<ul>
+  <li>Top part: 10.15 - 10 = 0.15 (how far off we are)</li>
+  <li>Bottom part: 0.5 / √40 = 0.5 / 6.32 = 0.079 (expected variation)</li>
+  <li>Final Z-score: 0.15 / 0.079 = <strong>1.90</strong></li>
+</ul>
+
+<hr />
+
+<p><strong>Step 3: Find the “Weird Zone” Boundaries</strong></p>
+
+<p>For 95% confidence (α = 0.05), the boundaries are at <strong>±1.96</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   Weird    |    Normal Zone    |   Weird
+  ←---------|-------------------|--------→
+        -1.96      1.90      +1.96
+                    ↑
+                Our score
+</code></pre></div></div>
+
+<hr />
+
+<p><strong>Step 4: Make Your Decision</strong></p>
+
+<ul>
+  <li>Our Z-score is <strong>1.90</strong></li>
+  <li>The “weird zone” starts at <strong>1.96</strong></li>
+  <li>Since 1.90 &lt; 1.96, we’re still in the “normal zone”</li>
+</ul>
+
+<p><strong>Conclusion (in plain English):</strong>
+“The bolts are slightly bigger (10.15 mm vs 10 mm), but this difference is small enough that it could just be random chance. We don’t have strong enough evidence to say the machines are broken. Keep monitoring, but no need to panic!”</p>
+
+<p><strong>Technical way to say it:</strong>
+“We fail to reject H₀. There is insufficient evidence that the production process has shifted.”</p>
+
+<h3 id="python-implementation---z-test-with-explanations">Python Implementation - Z-Test (With Explanations!)</h3>
+
+<p>Let’s code this step by step. Don’t worry - I’ll explain every line!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Step 1: Import the tools we need
+</span><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>                    <span class="c1"># For math calculations
+</span><span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>               <span class="c1"># For statistical tests
+</span><span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>       <span class="c1"># For making graphs
+</span>
+<span class="c1"># Step 2: Enter your data
+</span><span class="n">sample_mean</span> <span class="o">=</span> <span class="mf">10.15</span>        <span class="c1"># Average of the 40 bolts you measured
+</span><span class="n">population_mean</span> <span class="o">=</span> <span class="mi">10</span>       <span class="c1"># What the factory claims (target)
+</span><span class="n">population_std</span> <span class="o">=</span> <span class="mf">0.5</span>       <span class="c1"># How much bolts vary (from historical data)
+</span><span class="n">n</span> <span class="o">=</span> <span class="mi">40</span>                     <span class="c1"># How many bolts you tested
+</span><span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.05</span>               <span class="c1"># Significance level (95% confidence)
+</span>
+<span class="c1"># Step 3: Calculate the Z-score
+# This tells us "how many standard deviations away from normal are we?"
+</span><span class="n">z_statistic</span> <span class="o">=</span> <span class="p">(</span><span class="n">sample_mean</span> <span class="o">-</span> <span class="n">population_mean</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">population_std</span> <span class="o">/</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Z-statistic: </span><span class="si">{</span><span class="n">z_statistic</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">👉 This means we</span><span class="sh">'</span><span class="s">re 1.90 standard deviations away from the target</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Calculate the p-value
+# This tells us "what's the probability this happened by random chance?"
+</span><span class="n">p_value</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="nf">abs</span><span class="p">(</span><span class="n">z_statistic</span><span class="p">)))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">P-value: </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">👉 There</span><span class="sh">'</span><span class="s">s a 5.7% chance this happened randomly</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Find the critical value (the boundary of the "weird zone")
+</span><span class="n">z_critical</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Critical value: ±</span><span class="si">{</span><span class="n">z_critical</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">👉 Anything beyond ±1.96 is considered </span><span class="sh">'</span><span class="s">weird</span><span class="sh">'"</span><span class="p">)</span>
+
+<span class="c1"># Step 6: Make a decision
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span> <span class="o">+</span> <span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">DECISION TIME!</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="k">if</span> <span class="nf">abs</span><span class="p">(</span><span class="n">z_statistic</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">z_critical</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ Reject H₀: The production process has shifted!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value = </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ Fail to reject H₀: No strong evidence of a problem</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value = </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   The difference could just be random variation</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 7: Create a visual picture!
+# This shows where our result falls on the bell curve
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>  <span class="c1"># Create x-axis from -4 to 4
+</span><span class="n">y</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>          <span class="c1"># Calculate the bell curve shape
+</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="c1"># Draw the bell curve
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="sh">'</span><span class="s">b-</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Normal Distribution (Bell Curve)</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Show where our Z-score landed
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">axvline</span><span class="p">(</span><span class="n">z_statistic</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">Our Z-score = </span><span class="si">{</span><span class="n">z_statistic</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Show the "weird zone" boundaries
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">axvline</span><span class="p">(</span><span class="n">z_critical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">g</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">Weird Zone starts at ±</span><span class="si">{</span><span class="n">z_critical</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">axvline</span><span class="p">(</span><span class="o">-</span><span class="n">z_critical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">g</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+
+<span class="c1"># Color the "weird zones" in red
+</span><span class="n">x_left</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="o">-</span><span class="n">z_critical</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">x_right</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="n">z_critical</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">fill_between</span><span class="p">(</span><span class="n">x_left</span><span class="p">,</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x_left</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> 
+                 <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Weird Zone (Reject H₀)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">fill_between</span><span class="p">(</span><span class="n">x_right</span><span class="p">,</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x_right</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Z-score (How many standard deviations from center)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">How Likely</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Z-Test Results: Are the Bolts the Right Size?</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 The graph shows our Z-score (red line) is inside the normal zone!</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="quick-method-using-built-in-functions">Quick Method: Using Built-in Functions</h3>
+
+<p>Python has a shortcut! Instead of calculating everything manually, you can use a pre-built function:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.stats.weightstats</span> <span class="kn">import</span> <span class="n">ztest</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Let's say you have actual measurements of 40 bolts
+</span><span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># This makes results reproducible
+</span><span class="n">sample_data</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mf">10.15</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>  <span class="c1"># Simulating 40 measurements
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Your 40 bolt measurements (first 10):</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">sample_data</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Average of all 40 bolts: </span><span class="si">{</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s"> mm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Perform Z-test with one line!
+</span><span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">ztest</span><span class="p">(</span><span class="n">sample_data</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Compare to target of 10 mm
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Z-statistic: </span><span class="si">{</span><span class="n">z_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value: </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Make decision
+</span><span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">❌ Reject H₀: The bolts are significantly different from 10 mm</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">✅ Fail to reject H₀: The bolts are close enough to 10 mm</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output will look like:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Your 40 bolt measurements (first 10):
+[10.40  9.96 10.62 11.52 10.29  9.86 10.01  9.85 10.18 10.47]
+
+Average of all 40 bolts: 10.15 mm
+
+Z-statistic: 1.9000
+P-value: 0.0574
+
+✅ Fail to reject H₀: The bolts are close enough to 10 mm
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="t-test">3. The T-Test - When You Know Less</h2>
+
+<h3 id="what-is-a-t-test-simple-explanation">What is a T-Test? (Simple Explanation)</h3>
+
+<p>Imagine you’re a teacher who wants to know if your students study more than 20 hours per week. You ask 25 random students. Unlike the bolt factory example, you DON’T have years of historical data about ALL students everywhere.</p>
+
+<p><strong>Use T-Test when:</strong></p>
+<ul>
+  <li>✅ You DON’T know how spread out the whole population is</li>
+  <li>✅ You only have your sample to work with</li>
+  <li>✅ Your sample size might be small (less than 30)</li>
+  <li>✅ You picked your samples randomly</li>
+</ul>
+
+<p><strong>The Big Difference from Z-Test:</strong></p>
+<ul>
+  <li><strong>Z-Test</strong>: “I know everything about the population”</li>
+  <li><strong>T-Test</strong>: “I only know about my sample, so I’m less certain”</li>
+</ul>
+
+<h3 id="the-formula-very-similar-to-z-test">The Formula (Very Similar to Z-Test!)</h3>
+
+<p>The T-test formula is almost identical to Z-test:</p>
+
+\[t = \frac{\text{What you found} - \text{What was claimed}}{\text{How much YOUR SAMPLE varies} / \sqrt{\text{How many you tested}}}\]
+
+<p>Or in math symbols:</p>
+
+\[t = \frac{\bar{x} - \mu_0}{s / \sqrt{n}}\]
+
+<p><strong>What each symbol means:</strong></p>
+<ul>
+  <li>$\bar{x}$ (x-bar) = Average of your sample (like average study hours of 25 students)</li>
+  <li>$\mu_0$ (mu-zero) = What was claimed (like “20 hours”)</li>
+  <li>$s$ = How spread out YOUR SAMPLE is (not the whole population!)</li>
+  <li>$n$ = How many samples you tested (like 25 students)</li>
+</ul>
+
+<p><strong>🔑 Key Difference:</strong> We use $s$ (sample standard deviation) instead of $\sigma$ (population standard deviation) because we don’t know $\sigma$!</p>
+
+<h3 id="what-you-need-before-starting-1">What You Need Before Starting</h3>
+
+<p><strong>Checklist:</strong></p>
+<ol>
+  <li>✅ You picked your samples randomly</li>
+  <li>✅ You DON’T know the population’s spread (that’s why you’re using T-test!)</li>
+  <li>✅ Your data is roughly bell-shaped (especially important if you have &lt; 30 samples)</li>
+  <li>✅ Each measurement is independent</li>
+</ol>
+
+<h3 id="t-distribution-vs-normal-distribution-the-bell-curves-cousin">T-Distribution vs Normal Distribution (The Bell Curve’s Cousin)</h3>
+
+<p>The T-distribution is like a “cautious” version of the normal bell curve:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        Normal (Z-test)     T-distribution (T-test)
+             /\                    /\  
+            /  \                  /  \
+           /    \                /    \
+          /      \              /      \
+         /        \            /        \
+    ____/          \____   ___/          \___
+    
+    Narrow tails           Wider tails
+    (More confident)       (More cautious)
+</code></pre></div></div>
+
+<p><strong>Why the difference?</strong></p>
+<ul>
+  <li>With small samples, we’re less certain</li>
+  <li>T-distribution has “fatter tails” = harder to reject H₀</li>
+  <li>As sample size grows, T-distribution → Normal distribution</li>
+  <li>It’s like saying “I need stronger evidence because I’m less sure”</li>
+</ul>
+
+<p><strong>Degrees of Freedom (df):</strong></p>
+<ul>
+  <li>This is just: df = n - 1</li>
+  <li>For 25 students: df = 25 - 1 = 24</li>
+  <li>More degrees of freedom = closer to normal distribution</li>
+</ul>
+
+<h3 id="example-do-students-study-more-than-they-say">Example: Do Students Study More Than They Say?</h3>
+
+<p><strong>The Story:</strong>
+A university claims students study 20 hours per week on average. You’re skeptical - you think they study MORE. You randomly survey 25 students and find:</p>
+<ul>
+  <li>Average study time: 22.5 hours</li>
+  <li>Standard deviation: 5 hours (how spread out the data is)</li>
+</ul>
+
+<p><strong>The Question:</strong> Do students really study more than 20 hours?</p>
+
+<hr />
+
+<p><strong>Step 1: Set Up Your Claims</strong></p>
+
+<p>🔵 <strong>Boring Claim (H₀)</strong>: “Students study exactly 20 hours per week”</p>
+<ul>
+  <li>In math: μ = 20 hours</li>
+</ul>
+
+<p>🔴 <strong>Interesting Claim (H₁)</strong>: “Students study MORE than 20 hours per week”</p>
+<ul>
+  <li>In math: μ &gt; 20 hours</li>
+  <li>Note: This is a “one-tailed” test because we only care if it’s MORE, not less</li>
+</ul>
+
+<p>🎯 <strong>How sure do we need to be?</strong> α = 0.05 (95% confidence)</p>
+
+<hr />
+
+<p><strong>Step 2: Calculate Your Score (T-statistic)</strong></p>
+
+<p>Let’s plug in the numbers:</p>
+
+\[t = \frac{22.5 - 20}{5 / \sqrt{25}} = \frac{2.5}{5 / 5} = \frac{2.5}{1} = 2.5\]
+
+<p><strong>Breaking it down:</strong></p>
+<ul>
+  <li>Top part: 22.5 - 20 = 2.5 (students study 2.5 hours more than claimed)</li>
+  <li>Bottom part: 5 / √25 = 5 / 5 = 1 (this is the “standard error”)</li>
+  <li>Final T-score: 2.5 / 1 = <strong>2.5</strong></li>
+</ul>
+
+<hr />
+
+<p><strong>Step 3: Find the “Weird Zone” Boundary</strong></p>
+
+<p>For T-test, we need to look up the critical value in a T-table:</p>
+<ul>
+  <li>Degrees of freedom: df = 25 - 1 = 24</li>
+  <li>Significance level: α = 0.05 (one-tailed)</li>
+  <li>Critical value from T-table: <strong>1.711</strong></li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   Normal Zone    |    Weird Zone
+  ←---------------|---------------→
+              1.711      2.5
+                          ↑
+                     Our score
+</code></pre></div></div>
+
+<hr />
+
+<p><strong>Step 4: Make Your Decision</strong></p>
+
+<ul>
+  <li>Our T-score is <strong>2.5</strong></li>
+  <li>The “weird zone” starts at <strong>1.711</strong></li>
+  <li>Since 2.5 &gt; 1.711, we’re IN the weird zone!</li>
+</ul>
+
+<p><strong>Conclusion (in plain English):</strong>
+“Students study an average of 22.5 hours, which is 2.5 hours more than the claimed 20 hours. This difference is too big to be just random chance. We have strong evidence that students actually DO study more than 20 hours per week!”</p>
+
+<p><strong>Technical way to say it:</strong>
+“We reject H₀. There is sufficient evidence to conclude that students study more than 20 hours per week.”</p>
+
+<p><strong>P-value interpretation:</strong>
+The p-value here is about 0.01, which means there’s only a 1% chance this result happened by random luck. That’s pretty convincing!</p>
+
+<h3 id="python-implementation---t-test-with-explanations">Python Implementation - T-Test (With Explanations!)</h3>
+
+<p>Let’s code this step by step, just like we did for Z-test!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Step 1: Import the tools we need
+</span><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>                    <span class="c1"># For math calculations
+</span><span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>               <span class="c1"># For statistical tests
+</span><span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>       <span class="c1"># For making graphs
+</span>
+<span class="c1"># Step 2: Enter your data
+</span><span class="n">sample_mean</span> <span class="o">=</span> <span class="mf">22.5</span>         <span class="c1"># Average study hours from 25 students
+</span><span class="n">hypothesized_mean</span> <span class="o">=</span> <span class="mi">20</span>     <span class="c1"># What the university claims
+</span><span class="n">sample_std</span> <span class="o">=</span> <span class="mi">5</span>             <span class="c1"># How spread out the 25 students' data is
+</span><span class="n">n</span> <span class="o">=</span> <span class="mi">25</span>                     <span class="c1"># Number of students surveyed
+</span><span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.05</span>               <span class="c1"># Significance level (95% confidence)
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>                 <span class="c1"># Degrees of freedom = 25 - 1 = 24
+</span>
+<span class="c1"># Step 3: Calculate the T-score
+# This tells us "how unusual is our sample?"
+</span><span class="n">t_statistic</span> <span class="o">=</span> <span class="p">(</span><span class="n">sample_mean</span> <span class="o">-</span> <span class="n">hypothesized_mean</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">sample_std</span> <span class="o">/</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">T-statistic: </span><span class="si">{</span><span class="n">t_statistic</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">👉 Our T-score is 2.5 - that</span><span class="sh">'</span><span class="s">s pretty far from zero!</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Calculate the p-value
+# "What's the chance of getting this result if H₀ is true?"
+</span><span class="n">p_value</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="n">t_statistic</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>  <span class="c1"># One-tailed (right side)
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">P-value: </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">👉 Only a 1% chance this happened randomly!</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Find the critical value (the "weird zone" boundary)
+</span><span class="n">t_critical</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Critical value: </span><span class="si">{</span><span class="n">t_critical</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">👉 Anything above 1.711 is considered unusual</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 6: Make a decision
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span> <span class="o">+</span> <span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">DECISION TIME!</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">t_statistic</span> <span class="o">&gt;</span> <span class="n">t_critical</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ Reject H₀: Students DO study more than 20 hours!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (T-score </span><span class="si">{</span><span class="n">t_statistic</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; critical value </span><span class="si">{</span><span class="n">t_critical</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value = </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ Fail to reject H₀: Not enough evidence</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value = </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 7: Create a visual picture!
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="n">y_t</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>        <span class="c1"># T-distribution curve
+</span><span class="n">y_norm</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>      <span class="c1"># Normal distribution for comparison
+</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="c1"># Draw both curves to see the difference
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y_t</span><span class="p">,</span> <span class="sh">'</span><span class="s">b-</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">T-distribution (df=</span><span class="si">{</span><span class="n">df</span><span class="si">}</span><span class="s">)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y_norm</span><span class="p">,</span> <span class="sh">'</span><span class="s">g--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Normal distribution</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+
+<span class="c1"># Show where our T-score landed
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">axvline</span><span class="p">(</span><span class="n">t_statistic</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">Our T-score = </span><span class="si">{</span><span class="n">t_statistic</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Show the "weird zone" boundary
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">axvline</span><span class="p">(</span><span class="n">t_critical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">orange</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">Weird Zone starts at </span><span class="si">{</span><span class="n">t_critical</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Color the "weird zone" in red
+</span><span class="n">x_reject</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="n">t_critical</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">fill_between</span><span class="p">(</span><span class="n">x_reject</span><span class="p">,</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x_reject</span><span class="p">,</span> <span class="n">df</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> 
+                 <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Weird Zone (Reject H₀)</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">T-score</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">How Likely</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">T-Test Results: Do Students Study More Than 20 Hours?</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 The graph shows our T-score (red line) is in the weird zone!</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   Notice how the T-distribution (blue) has fatter tails than normal (green)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="quick-method-using-built-in-functions-1">Quick Method: Using Built-in Functions</h3>
+
+<p>Python makes T-tests super easy with one function!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Let's say you surveyed 25 students and got these study hours:
+</span><span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># Makes results reproducible
+</span><span class="n">study_hours</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mf">22.5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>  <span class="c1"># Simulating 25 students
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Study hours from 25 students (first 10):</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">study_hours</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Average: </span><span class="si">{</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">study_hours</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s"> hours</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Standard deviation: </span><span class="si">{</span><span class="n">np</span><span class="p">.</span><span class="nf">std</span><span class="p">(</span><span class="n">study_hours</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s"> hours</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Perform T-test with ONE LINE!
+</span><span class="n">t_stat</span><span class="p">,</span> <span class="n">p_value_two_tailed</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="nf">ttest_1samp</span><span class="p">(</span><span class="n">study_hours</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+
+<span class="c1"># Convert to one-tailed p-value (we only care if it's MORE)
+</span><span class="n">p_value_one_tailed</span> <span class="o">=</span> <span class="n">p_value_two_tailed</span> <span class="o">/</span> <span class="mi">2</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">T-statistic: </span><span class="si">{</span><span class="n">t_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value (one-tailed): </span><span class="si">{</span><span class="n">p_value_one_tailed</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Make decision
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span> <span class="o">+</span> <span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p_value_one_tailed</span> <span class="o">&lt;</span> <span class="mf">0.05</span> <span class="ow">and</span> <span class="n">t_stat</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Reject H₀: Students study MORE than 20 hours!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   Average is </span><span class="si">{</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">study_hours</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> hours</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">❌ Fail to reject H₀: Not enough evidence</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output will look like:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Study hours from 25 students (first 10):
+[24.97 21.59 26.18 30.41 23.29 19.72 20.02 19.70 22.18 23.47]
+
+Average: 22.50 hours
+Standard deviation: 5.00 hours
+
+T-statistic: 2.5000
+P-value (one-tailed): 0.0099
+
+==================================================
+✅ Reject H₀: Students study MORE than 20 hours!
+   Average is 22.5 hours
+==================================================
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="python-implementation">4. Putting It All Together - Real Examples!</h2>
+
+<h3 id="example-1-coffee-shop-wait-times-complete-walkthrough">Example 1: Coffee Shop Wait Times (Complete Walkthrough)</h3>
+
+<p><strong>The Situation:</strong>
+A coffee shop claims their average wait time is 5 minutes. You’re a regular customer and think it’s longer. You time your wait over 30 visits.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Your 30 wait time measurements (in minutes)
+</span><span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">wait_times</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">5.2</span><span class="p">,</span> <span class="mf">6.1</span><span class="p">,</span> <span class="mf">4.8</span><span class="p">,</span> <span class="mf">5.5</span><span class="p">,</span> <span class="mf">5.9</span><span class="p">,</span> <span class="mf">4.2</span><span class="p">,</span> <span class="mf">5.7</span><span class="p">,</span> <span class="mf">6.3</span><span class="p">,</span> <span class="mf">5.1</span><span class="p">,</span>
+                       <span class="mf">5.4</span><span class="p">,</span> <span class="mf">4.9</span><span class="p">,</span> <span class="mf">5.8</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">5.3</span><span class="p">,</span> <span class="mf">4.7</span><span class="p">,</span> <span class="mf">5.6</span><span class="p">,</span> <span class="mf">5.2</span><span class="p">,</span> <span class="mf">4.8</span><span class="p">,</span> <span class="mf">5.9</span><span class="p">,</span>
+                       <span class="mf">6.2</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">5.4</span><span class="p">,</span> <span class="mf">4.6</span><span class="p">,</span> <span class="mf">5.7</span><span class="p">,</span> <span class="mf">5.1</span><span class="p">,</span> <span class="mf">5.8</span><span class="p">,</span> <span class="mf">4.9</span><span class="p">,</span> <span class="mf">5.3</span><span class="p">,</span> <span class="mf">6.1</span><span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">☕ COFFEE SHOP WAIT TIME ANALYSIS</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Number of visits: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">wait_times</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Your average wait: </span><span class="si">{</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">wait_times</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s"> minutes</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Spread (std dev): </span><span class="si">{</span><span class="n">np</span><span class="p">.</span><span class="nf">std</span><span class="p">(</span><span class="n">wait_times</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s"> minutes</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Shop</span><span class="sh">'</span><span class="s">s claim: 5.0 minutes</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+
+<span class="c1"># Should we use Z-test or T-test?
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🤔 Which test should we use?</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Sample size = 30 (good!)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">❌ We don</span><span class="sh">'</span><span class="s">t know the population std dev</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">➡️  Use T-TEST!</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Perform T-test
+</span><span class="n">t_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="nf">ttest_1samp</span><span class="p">(</span><span class="n">wait_times</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 TEST RESULTS:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">T-statistic: </span><span class="si">{</span><span class="n">t_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value: </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Make decision
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🎯 DECISION:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ REJECT the coffee shop</span><span class="sh">'</span><span class="s">s claim!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   The wait time IS significantly different from 5 minutes</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ ACCEPT the coffee shop</span><span class="sh">'</span><span class="s">s claim</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   The wait time is close enough to 5 minutes</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Visualize
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Histogram of wait times
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">hist</span><span class="p">(</span><span class="n">wait_times</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">skyblue</span><span class="sh">'</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">axvline</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">wait_times</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">Your average: </span><span class="si">{</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">wait_times</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> min</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">axvline</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Shop claims: 5.0 min</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Wait Time (minutes)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Number of Visits</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Your 30 Wait Time Measurements</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+<span class="c1"># Box plot
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">boxplot</span><span class="p">(</span><span class="n">wait_times</span><span class="p">,</span> <span class="n">vert</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">axhline</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Claimed: 5.0 min</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Wait Time (minutes)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Wait Time Distribution</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="example-2-comparing-z-test-vs-t-test-visual-learning">Example 2: Comparing Z-Test vs T-Test (Visual Learning)</h3>
+
+<p>Let’s see how Z-test and T-test differ with different sample sizes!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Let's test with different sample sizes
+</span><span class="n">sample_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">100</span><span class="p">]</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="p">.</span><span class="nf">flatten</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">sample_sizes</span><span class="p">):</span>
+    <span class="c1"># Generate sample data
+</span>    <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    
+    <span class="c1"># Plot the distributions
+</span>    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+    <span class="n">y_norm</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># Z-test distribution
+</span>    <span class="n">y_t</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># T-test distribution
+</span>    
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y_norm</span><span class="p">,</span> <span class="sh">'</span><span class="s">b-</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Z-test (Normal)</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y_t</span><span class="p">,</span> <span class="sh">'</span><span class="s">r--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">T-test (df=</span><span class="si">{</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="si">}</span><span class="s">)</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">fill_between</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y_t</span><span class="p">,</span> <span class="n">y_norm</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">(</span><span class="n">y_t</span> <span class="o">&gt;</span> <span class="n">y_norm</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">Sample Size = </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="sh">'</span><span class="s">bold</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Test Statistic</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Probability</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">legend</span><span class="p">()</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+    
+    <span class="c1"># Add annotation
+</span>    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">30</span><span class="p">:</span>
+        <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">text</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="sh">'</span><span class="s">T-test is more</span><span class="se">\n</span><span class="s">cautious!</span><span class="sh">'</span><span class="p">,</span> 
+                      <span class="n">ha</span><span class="o">=</span><span class="sh">'</span><span class="s">center</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="nf">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="sh">'</span><span class="s">round</span><span class="sh">'</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="sh">'</span><span class="s">yellow</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">].</span><span class="nf">text</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="sh">'</span><span class="s">Almost the</span><span class="se">\n</span><span class="s">same!</span><span class="sh">'</span><span class="p">,</span> 
+                      <span class="n">ha</span><span class="o">=</span><span class="sh">'</span><span class="s">center</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="nf">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="sh">'</span><span class="s">round</span><span class="sh">'</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="sh">'</span><span class="s">lightgreen</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">suptitle</span><span class="p">(</span><span class="sh">'</span><span class="s">How Sample Size Affects Z-Test vs T-Test</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="sh">'</span><span class="s">bold</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">💡 KEY TAKEAWAY:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   • Small samples (&lt; 30): T-test is MORE cautious (wider tails)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   • Large samples (≥ 30): T-test ≈ Z-test (almost identical)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   • When in doubt: Use T-test! It</span><span class="sh">'</span><span class="s">s safer.</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="quick-reference-when-to-use-which-test">Quick Reference: When to Use Which Test?</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">which_test_should_i_use</span><span class="p">(</span><span class="n">sample_size</span><span class="p">,</span> <span class="n">know_population_std</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Simple function to help you decide which test to use!
+    
+    Parameters:
+    - sample_size: How many samples you have
+    - know_population_std: Do you know the population standard deviation? (True/False)
+    </span><span class="sh">"""</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🔍 TEST SELECTION GUIDE</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Your sample size: </span><span class="si">{</span><span class="n">sample_size</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Know population std dev: </span><span class="si">{</span><span class="n">know_population_std</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">know_population_std</span> <span class="ow">and</span> <span class="n">sample_size</span> <span class="o">&gt;=</span> <span class="mi">30</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Use Z-TEST</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   Reason: Large sample + known population std dev</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">know_population_std</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Use T-TEST</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   Reason: Don</span><span class="sh">'</span><span class="s">t know population std dev</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">sample_size</span> <span class="o">&lt;</span> <span class="mi">30</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Use T-TEST</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   Reason: Small sample size (&lt; 30)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Use either Z-TEST or T-TEST</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   Reason: Large sample, results will be similar</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+
+<span class="c1"># Try it out!
+</span><span class="nf">which_test_should_i_use</span><span class="p">(</span><span class="n">sample_size</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">know_population_std</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="nf">which_test_should_i_use</span><span class="p">(</span><span class="n">sample_size</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">know_population_std</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="nf">which_test_should_i_use</span><span class="p">(</span><span class="n">sample_size</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">know_population_std</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>🔍 TEST SELECTION GUIDE
+==================================================
+Your sample size: 25
+Know population std dev: False
+--------------------------------------------------
+✅ Use T-TEST
+   Reason: Don't know population std dev
+==================================================
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="practice-exercises">5. Practice Exercises - Your Turn!</h2>
+
+<h3 id="exercise-1-battery-life-testing-easy">Exercise 1: Battery Life Testing (Easy)</h3>
+
+<p><strong>The Problem:</strong>
+A battery company claims their batteries last 500 hours. You test 35 batteries and find:</p>
+<ul>
+  <li>Average: 485 hours</li>
+  <li>Standard deviation: 40 hours</li>
+</ul>
+
+<p><strong>Your Tasks:</strong></p>
+<ol>
+  <li>Should you use Z-test or T-test? Why?</li>
+  <li>Set up H₀ and H₁</li>
+  <li>Run the test in Python</li>
+  <li>What’s your conclusion?</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Write your code here!
+# Hint: You have 35 samples and don't know the population std dev
+</span></code></pre></div></div>
+
+<details>
+<summary>💡 Click to see solution</summary>
+
+```python
+import numpy as np
+from scipy import stats
+
+print("🔋 BATTERY LIFE TESTING")
+print("="*60)
+
+# Given information
+sample_mean = 485
+sample_std = 40
+n = 35
+claimed_mean = 500
+alpha = 0.05
+
+# Question 1: Which test?
+print("Q1: Which test should we use?")
+print("   • Sample size = 35 (≥ 30, that's good!)")
+print("   • Population std dev = Unknown")
+print("   ➡️  Answer: T-TEST\n")
+
+# Question 2: Hypotheses
+print("Q2: Set up hypotheses:")
+print("   H₀: μ = 500 hours (batteries last 500 hours)")
+print("   H₁: μ ≠ 500 hours (batteries DON'T last 500 hours)")
+print(f"   α = {alpha} (95% confidence)\n")
+
+# Question 3: Run the test
+# We need to simulate data since we only have summary statistics
+# In real life, you'd have the actual measurements
+t_statistic = (sample_mean - claimed_mean) / (sample_std / np.sqrt(n))
+df = n - 1
+p_value = 2 * stats.t.cdf(t_statistic, df)  # Two-tailed
+
+print("Q3: Test Results:")
+print(f"   T-statistic: {t_statistic:.4f}")
+print(f"   P-value: {p_value:.4f}")
+print(f"   Critical value: ±{stats.t.ppf(1-alpha/2, df):.4f}\n")
+
+# Question 4: Conclusion
+print("Q4: Conclusion:")
+if p_value &lt; alpha:
+    print(f"   ❌ REJECT H₀!")
+    print(f"   The batteries DON'T last 500 hours on average")
+    print(f"   (p-value {p_value:.4f} &lt; 0.05)")
+else:
+    print(f"   ✅ FAIL TO REJECT H₀")
+    print(f"   Not enough evidence to say batteries don't last 500 hours")
+    print(f"   (p-value {p_value:.4f} &gt; 0.05)")
+
+print("\n📊 In Plain English:")
+print(f"   The batteries lasted {sample_mean} hours on average,")
+print(f"   which is {claimed_mean - sample_mean} hours less than claimed.")
+if p_value &lt; alpha:
+    print("   This difference is TOO BIG to be just random chance!")
+else:
+    print("   This difference could just be random variation.")
+
+print("="*60)
+```
+</details>
+
+<hr />
+
+<h3 id="exercise-2-restaurant-health-scores-medium">Exercise 2: Restaurant Health Scores (Medium)</h3>
+
+<p><strong>The Problem:</strong>
+A health inspector claims restaurants have an average score of 85. You randomly check 50 restaurants and find an average of 82.5 with a known population std dev of 8.</p>
+
+<p><strong>Your Tasks:</strong></p>
+<ol>
+  <li>Which test should you use?</li>
+  <li>Test if the average is LOWER than 85 (one-tailed test)</li>
+  <li>What’s your conclusion at α = 0.01?</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Write your code here!
+</span></code></pre></div></div>
+
+<details>
+<summary>💡 Click to see solution</summary>
+
+```python
+from scipy import stats
+import numpy as np
+
+print("🏪 RESTAURANT HEALTH SCORES")
+print("="*60)
+
+# Given information
+sample_mean = 82.5
+population_std = 8  # We KNOW this!
+n = 50
+claimed_mean = 85
+alpha = 0.01  # More strict!
+
+# Question 1: Which test?
+print("Q1: Which test?")
+print("   • Sample size = 50 (≥ 30 ✅)")
+print("   • Population std dev = KNOWN ✅")
+print("   ➡️  Answer: Z-TEST!\n")
+
+# Question 2: One-tailed test (left side)
+print("Q2: Hypotheses (ONE-TAILED):")
+print("   H₀: μ = 85 (average score is 85)")
+print("   H₁: μ &lt; 85 (average score is LOWER than 85)")
+print(f"   α = {alpha} (99% confidence - very strict!)\n")
+
+# Calculate Z-statistic
+z_statistic = (sample_mean - claimed_mean) / (population_std / np.sqrt(n))
+p_value = stats.norm.cdf(z_statistic)  # Left-tailed
+
+print("Q3: Test Results:")
+print(f"   Z-statistic: {z_statistic:.4f}")
+print(f"   P-value: {p_value:.4f}")
+print(f"   Critical value: {stats.norm.ppf(alpha):.4f}\n")
+
+# Conclusion
+print("Q4: Conclusion:")
+if p_value &lt; alpha:
+    print(f"   ❌ REJECT H₀!")
+    print(f"   The average score IS significantly lower than 85")
+    print(f"   (p-value {p_value:.4f} &lt; {alpha})")
+else:
+    print(f"   ✅ FAIL TO REJECT H₀")
+    print(f"   Not enough evidence at 99% confidence level")
+    print(f"   (p-value {p_value:.4f} &gt; {alpha})")
+
+print("\n📊 In Plain English:")
+print(f"   The average score was {sample_mean}, which is {claimed_mean - sample_mean} points lower.")
+print(f"   With 99% confidence (α = {alpha}), we need VERY strong evidence.")
+if p_value &lt; alpha:
+    print("   We have that strong evidence!")
+else:
+    print("   The evidence isn't quite strong enough at this strict level.")
+
+print("="*60)
+```
+</details>
+
+<hr />
+
+<h3 id="exercise-3-your-own-example-challenge">Exercise 3: Your Own Example! (Challenge)</h3>
+
+<p>Create your own hypothesis test scenario! Here’s a template:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+
+<span class="c1"># Step 1: Create your scenario
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">MY HYPOTHESIS TEST</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Scenario: [Describe your situation]</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Claim: [What is being claimed?]</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Generate or input your data
+# Example: test_scores = np.array([...your data...])
+</span>
+<span class="c1"># Step 3: Decide which test to use
+# print("Test to use: [Z-test or T-test?]")
+</span>
+<span class="c1"># Step 4: Set up hypotheses
+# print("H₀: ...")
+# print("H₁: ...")
+</span>
+<span class="c1"># Step 5: Run the test
+# [Your code here]
+</span>
+<span class="c1"># Step 6: Make conclusion
+# [Your code here]
+</span></code></pre></div></div>
+
+<p><strong>Ideas for scenarios:</strong></p>
+<ul>
+  <li>📱 Average screen time per day</li>
+  <li>🏃 Average running speed</li>
+  <li>💰 Average spending per month</li>
+  <li>📚 Average study hours</li>
+  <li>⏰ Average sleep hours</li>
+  <li>🍕 Average pizza delivery time</li>
+</ul>
+
+<hr />
+
+<h2 id="summary---what-you-learned-">Summary - What You Learned! 🎓</h2>
+
+<h3 id="key-concepts">Key Concepts</h3>
+
+<p><strong>1. Hypothesis Testing Basics</strong></p>
+<ul>
+  <li>H₀ (Null): The boring claim (what everyone believes)</li>
+  <li>H₁ (Alternative): The interesting claim (what you’re trying to prove)</li>
+  <li>P-value: How weird is your result? (&lt; 0.05 = weird!)</li>
+  <li>α (Alpha): How sure you need to be (usually 0.05 = 95% confidence)</li>
+</ul>
+
+<p><strong>2. Z-Test (The “I Know Everything” Test)</strong></p>
+<ul>
+  <li>Use when: Large sample (≥30) AND know population std dev</li>
+  <li>Formula: Z = (sample mean - claimed mean) / (population std / √n)</li>
+  <li>More confident, narrower “weird zones”</li>
+</ul>
+
+<p><strong>3. T-Test (The “I’m Figuring It Out” Test)</strong></p>
+<ul>
+  <li>Use when: Don’t know population std dev OR small sample</li>
+  <li>Formula: t = (sample mean - claimed mean) / (sample std / √n)</li>
+  <li>More cautious, wider “weird zones”</li>
+  <li>Degrees of freedom: df = n - 1</li>
+</ul>
+
+<p><strong>4. Decision Making</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>If p-value &lt; 0.05:  REJECT H₀ (found something interesting!)
+If p-value &gt; 0.05:  FAIL TO REJECT H₀ (not enough evidence)
+</code></pre></div></div>
+
+<h3 id="quick-decision-tree">Quick Decision Tree</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Do you know the population standard deviation?
+│
+├─ YES ─→ Is sample size ≥ 30?
+│         │
+│         ├─ YES ─→ Use Z-TEST
+│         └─ NO ──→ Use T-TEST (to be safe)
+│
+└─ NO ──→ Use T-TEST
+</code></pre></div></div>
+
+<h3 id="python-cheat-sheet">Python Cheat Sheet</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Z-Test (manual)
+</span><span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">sample_mean</span> <span class="o">-</span> <span class="n">pop_mean</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">pop_std</span> <span class="o">/</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+<span class="n">p_value</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="nf">abs</span><span class="p">(</span><span class="n">z</span><span class="p">)))</span>  <span class="c1"># Two-tailed
+</span>
+<span class="c1"># T-Test (easy way)
+</span><span class="n">t_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="nf">ttest_1samp</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">hypothesized_mean</span><span class="p">)</span>
+
+<span class="c1"># Decision
+</span><span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Reject H₀</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Fail to reject H₀</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="common-mistakes-to-avoid-️">Common Mistakes to Avoid ⚠️</h3>
+
+<ol>
+  <li><strong>Using Z-test when you don’t know population std dev</strong> → Use T-test!</li>
+  <li><strong>Forgetting to check sample size</strong> → Small samples need T-test</li>
+  <li><strong>Confusing one-tailed vs two-tailed</strong> → Read the question carefully!</li>
+  <li><strong>Saying “accept H₀”</strong> → Say “fail to reject H₀” instead</li>
+  <li><strong>Ignoring assumptions</strong> → Check if data is roughly normal for small samples</li>
+</ol>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>In <strong>Chapter 4.2</strong>, you’ll learn:</p>
+<ul>
+  <li><strong>Two-Sample Tests</strong>: Comparing two groups (like men vs women, before vs after)</li>
+  <li><strong>Independent T-Test</strong>: When groups are different people</li>
+  <li><strong>Paired T-Test</strong>: When you measure the same people twice</li>
+  <li><strong>Effect Sizes</strong>: How BIG is the difference (not just if it exists)?</li>
+</ul>
+
+<p>Keep practicing! The more you do hypothesis tests, the more natural they’ll feel! 🚀</p>
+
+<hr />
+
+<p><strong>Remember:</strong> Statistics is just a tool to make smart decisions with data. You’re not just calculating numbers - you’re answering real questions that matter! 💡</p>

@@ -1,0 +1,1417 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chapter 4.3: Proportion Tests</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data-science">Data Science</a> &mdash;
+    </nav>
+    <h2>Chapter 4.3: Proportion Tests</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data-science">Data Science</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="chapter-43-proportion-tests">Chapter 4.3: Proportion Tests</h1>
+
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+  <li><a href="#introduction">Introduction - Testing Percentages</a></li>
+  <li><a href="#one-sample">One-Sample Proportion Test</a></li>
+  <li><a href="#two-sample">Two-Sample Proportion Test</a></li>
+  <li><a href="#python-implementation">Python Implementation - Let’s Code It!</a></li>
+  <li><a href="#practice-exercises">Practice Exercises - Your Turn!</a></li>
+</ol>
+
+<hr />
+
+<h2 id="introduction">1. Introduction - Testing Percentages</h2>
+
+<h3 id="the-big-picture-explained-simply">The Big Picture (Explained Simply)</h3>
+
+<p>So far, we’ve been testing <strong>averages</strong> (means):</p>
+<ul>
+  <li>Chapter 4.1: Is the average chocolate bar weight 100g?</li>
+  <li>Chapter 4.2: Do men and women have different average salaries?</li>
+</ul>
+
+<p>Now we’re going to test <strong>percentages</strong> (proportions):</p>
+<ul>
+  <li>Is the success rate really 50%?</li>
+  <li>Do more women than men prefer product A?</li>
+  <li>Has customer satisfaction improved from 60% to 75%?</li>
+</ul>
+
+<h3 id="whats-a-proportion">What’s a Proportion?</h3>
+
+<p>A <strong>proportion</strong> is just a fancy word for a percentage expressed as a decimal:</p>
+<ul>
+  <li>50% = 0.50</li>
+  <li>75% = 0.75</li>
+  <li>23% = 0.23</li>
+</ul>
+
+<p><strong>Examples of proportions:</strong></p>
+<ul>
+  <li>🎯 60% of customers are satisfied (proportion = 0.60)</li>
+  <li>🗳️ 45% of voters support Candidate A (proportion = 0.45)</li>
+  <li>🎓 80% of students passed the exam (proportion = 0.80)</li>
+  <li>🏥 15% of patients experienced side effects (proportion = 0.15)</li>
+</ul>
+
+<h3 id="two-types-of-proportion-tests">Two Types of Proportion Tests</h3>
+
+<h4 id="type-1-one-sample-proportion-test"><strong>Type 1: One-Sample Proportion Test</strong></h4>
+<p>Compare ONE sample proportion to a claimed value.</p>
+
+<p><strong>Example:</strong> A coin should land on heads 50% of the time. You flip it 100 times and get 60 heads. Is the coin fair?</p>
+<ul>
+  <li>Claimed proportion: 50% (0.50)</li>
+  <li>Your sample: 60% (0.60)</li>
+  <li>Question: Is this difference just random luck, or is the coin biased?</li>
+</ul>
+
+<h4 id="type-2-two-sample-proportion-test"><strong>Type 2: Two-Sample Proportion Test</strong></h4>
+<p>Compare TWO sample proportions to each other.</p>
+
+<p><strong>Example:</strong> Do men and women click on ads at different rates?</p>
+<ul>
+  <li>Men: 100 out of 500 clicked (20%)</li>
+  <li>Women: 150 out of 500 clicked (30%)</li>
+  <li>Question: Is this difference real, or just random variation?</li>
+</ul>
+
+<h3 id="real-life-examples">Real-Life Examples</h3>
+
+<p><strong>One-Sample:</strong></p>
+<ul>
+  <li>🎲 Is this die fair? (Should be 1/6 = 16.67% for each number)</li>
+  <li>📊 Is our conversion rate really 10%?</li>
+  <li>🏥 Is the cure rate at least 80%?</li>
+</ul>
+
+<p><strong>Two-Sample:</strong></p>
+<ul>
+  <li>👨👩 Do men and women have different click-through rates?</li>
+  <li>💊 Is Drug A more effective than Drug B?</li>
+  <li>🎯 Did our marketing campaign improve conversion rates?</li>
+</ul>
+
+<hr />
+
+<h2 id="one-sample">2. One-Sample Proportion Test</h2>
+
+<h3 id="what-is-a-one-sample-proportion-test-simple-explanation">What is a One-Sample Proportion Test? (Simple Explanation)</h3>
+
+<p>Imagine you’re a quality control manager at a factory. The company claims that only 5% of products are defective. You inspect 200 random products and find 15 defective ones (7.5%).</p>
+
+<p><strong>The Question:</strong> Is the defect rate really 5%, or is it higher?</p>
+
+<p>This is a <strong>one-sample proportion test</strong> because you’re comparing your sample proportion (7.5%) to a claimed proportion (5%).</p>
+
+<h3 id="when-to-use-one-sample-proportion-test">When to Use One-Sample Proportion Test</h3>
+
+<p><strong>Use it when:</strong></p>
+<ul>
+  <li>✅ You have ONE sample</li>
+  <li>✅ You’re counting successes/failures (yes/no, pass/fail, click/no-click)</li>
+  <li>✅ You want to compare your sample proportion to a claimed value</li>
+  <li>✅ Sample size is large enough (np ≥ 10 and n(1-p) ≥ 10)</li>
+</ul>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li>🎯 Testing if a coin is fair (claimed: 50% heads)</li>
+  <li>📊 Testing if conversion rate meets target (claimed: 10%)</li>
+  <li>🗳️ Testing if candidate has majority support (claimed: 50%)</li>
+  <li>🏥 Testing if cure rate meets standard (claimed: 80%)</li>
+</ul>
+
+<h3 id="the-formula-dont-panic">The Formula (Don’t Panic!)</h3>
+
+<p>The test statistic for proportions is called a <strong>Z-score</strong>:</p>
+
+\[Z = \frac{\hat{p} - p_0}{\sqrt{\frac{p_0(1-p_0)}{n}}}\]
+
+<p><strong>What each symbol means:</strong></p>
+<ul>
+  <li>$\hat{p}$ (p-hat) = Your sample proportion (like 0.075 or 7.5%)</li>
+  <li>$p_0$ (p-zero) = The claimed proportion (like 0.05 or 5%)</li>
+  <li>$n$ = Sample size (like 200 products)</li>
+</ul>
+
+<p><strong>In plain English:</strong> “How far is my sample proportion from the claimed proportion, considering sample size?”</p>
+
+<h3 id="example-defective-products">Example: Defective Products</h3>
+
+<p><strong>The Story:</strong>
+A factory claims only 5% of products are defective. You inspect 200 products and find 15 defective.</p>
+
+<p><strong>The Data:</strong></p>
+<ul>
+  <li>Sample size: n = 200</li>
+  <li>Defective found: 15</li>
+  <li>Sample proportion: $\hat{p}$ = 15/200 = 0.075 (7.5%)</li>
+  <li>Claimed proportion: $p_0$ = 0.05 (5%)</li>
+</ul>
+
+<p><strong>The Question:</strong> Is the defect rate higher than claimed?</p>
+
+<hr />
+
+<p><strong>Step 1: Set Up Your Claims</strong></p>
+
+<p>🔵 <strong>Boring Claim (H₀)</strong>: “The defect rate is 5%”</p>
+<ul>
+  <li>In math: p = 0.05</li>
+</ul>
+
+<p>🔴 <strong>Interesting Claim (H₁)</strong>: “The defect rate is HIGHER than 5%”</p>
+<ul>
+  <li>In math: p &gt; 0.05</li>
+  <li>Note: One-tailed test (we only care if it’s higher)</li>
+</ul>
+
+<p>🎯 <strong>How sure do we need to be?</strong> α = 0.05 (95% confidence)</p>
+
+<hr />
+
+<p><strong>Step 2: Check if We Can Use This Test</strong></p>
+
+<p>We need to check if our sample is large enough:</p>
+<ul>
+  <li>np₀ = 200 × 0.05 = 10 ✅ (≥ 10)</li>
+  <li>n(1-p₀) = 200 × 0.95 = 190 ✅ (≥ 10)</li>
+</ul>
+
+<p>Both conditions met! We can proceed.</p>
+
+<hr />
+
+<p><strong>Step 3: Calculate the Z-Score</strong></p>
+
+\[Z = \frac{0.075 - 0.05}{\sqrt{\frac{0.05 \times 0.95}{200}}} = \frac{0.025}{\sqrt{0.0002375}} = \frac{0.025}{0.0154} = 1.62\]
+
+<p><strong>Breaking it down:</strong></p>
+<ul>
+  <li>Top part: 0.075 - 0.05 = 0.025 (2.5% higher than claimed)</li>
+  <li>Bottom part: √(0.05 × 0.95 / 200) = 0.0154 (standard error)</li>
+  <li>Final Z-score: 0.025 / 0.0154 = <strong>1.62</strong></li>
+</ul>
+
+<hr />
+
+<p><strong>Step 4: Find the P-Value</strong></p>
+
+<p>For Z = 1.62 (one-tailed, right side):</p>
+<ul>
+  <li>P-value ≈ 0.053</li>
+</ul>
+
+<hr />
+
+<p><strong>Step 5: Make Your Decision</strong></p>
+
+<ul>
+  <li>P-value = 0.053</li>
+  <li>Alpha = 0.05</li>
+  <li>Since 0.053 &gt; 0.05, we’re just barely outside the “weird zone”</li>
+</ul>
+
+<p><strong>Conclusion (in plain English):</strong>
+“We found 7.5% defective products instead of the claimed 5%. This is higher, but not quite high enough to be statistically significant at the 95% confidence level. It’s borderline - we might want to keep monitoring!”</p>
+
+<p><strong>Technical way to say it:</strong>
+“We fail to reject H₀. There is insufficient evidence at α = 0.05 that the defect rate exceeds 5% (p = 0.053).”</p>
+
+<hr />
+
+<h3 id="python-implementation---one-sample-proportion-test">Python Implementation - One-Sample Proportion Test</h3>
+
+<p>Let’s code this step by step!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Step 1: Import the tools we need
+</span><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Step 2: Enter your data
+</span><span class="n">n</span> <span class="o">=</span> <span class="mi">200</span>                    <span class="c1"># Sample size (products inspected)
+</span><span class="n">x</span> <span class="o">=</span> <span class="mi">15</span>                     <span class="c1"># Number of successes (defective products)
+</span><span class="n">p_hat</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="n">n</span>              <span class="c1"># Sample proportion
+</span><span class="n">p_0</span> <span class="o">=</span> <span class="mf">0.05</span>                 <span class="c1"># Claimed proportion
+</span><span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.05</span>               <span class="c1"># Significance level
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🏭 DEFECTIVE PRODUCTS TEST</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sample size: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s"> products</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Defective found: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s"> products</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sample proportion: </span><span class="si">{</span><span class="n">p_hat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Claimed proportion: </span><span class="si">{</span><span class="n">p_0</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_0</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Check assumptions
+</span><span class="n">np_0</span> <span class="o">=</span> <span class="n">n</span> <span class="o">*</span> <span class="n">p_0</span>
+<span class="n">n_1_p_0</span> <span class="o">=</span> <span class="n">n</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p_0</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">🔍 CHECKING ASSUMPTIONS:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">np₀ = </span><span class="si">{</span><span class="n">np_0</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> (need ≥ 10) </span><span class="si">{</span><span class="sh">'</span><span class="s">✅</span><span class="sh">'</span> <span class="k">if</span> <span class="n">np_0</span> <span class="o">&gt;=</span> <span class="mi">10</span> <span class="k">else</span> <span class="sh">'</span><span class="s">❌</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">n(1-p₀) = </span><span class="si">{</span><span class="n">n_1_p_0</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> (need ≥ 10) </span><span class="si">{</span><span class="sh">'</span><span class="s">✅</span><span class="sh">'</span> <span class="k">if</span> <span class="n">n_1_p_0</span> <span class="o">&gt;=</span> <span class="mi">10</span> <span class="k">else</span> <span class="sh">'</span><span class="s">❌</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">np_0</span> <span class="o">&gt;=</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">n_1_p_0</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">✅ Sample size is large enough! We can proceed.</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">❌ Sample size too small! Results may not be reliable.</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Calculate Z-score
+</span><span class="n">se</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">p_0</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p_0</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span><span class="p">)</span>  <span class="c1"># Standard error
+</span><span class="n">z_score</span> <span class="o">=</span> <span class="p">(</span><span class="n">p_hat</span> <span class="o">-</span> <span class="n">p_0</span><span class="p">)</span> <span class="o">/</span> <span class="n">se</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 TEST RESULTS:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Standard error: </span><span class="si">{</span><span class="n">se</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Z-score: </span><span class="si">{</span><span class="n">z_score</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Calculate p-value (one-tailed, right side)
+</span><span class="n">p_value</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="n">z_score</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value (one-tailed): </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 6: Find critical value
+</span><span class="n">z_critical</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Critical value: </span><span class="si">{</span><span class="n">z_critical</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 7: Make a decision
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🎯 DECISION:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="n">alpha</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ REJECT H₀: Defect rate IS higher than </span><span class="si">{</span><span class="n">p_0</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   We found </span><span class="si">{</span><span class="n">p_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% defective, significantly higher than claimed</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ FAIL TO REJECT H₀: Not enough evidence</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   The </span><span class="si">{</span><span class="n">p_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% defect rate could be due to random variation</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 8: Visualize
+</span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Plot 1: Bar chart comparing proportions
+</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">bar</span><span class="p">([</span><span class="sh">'</span><span class="s">Claimed</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Observed</span><span class="sh">'</span><span class="p">],</span> <span class="p">[</span><span class="n">p_0</span><span class="p">,</span> <span class="n">p_hat</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">axhline</span><span class="p">(</span><span class="n">p_0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Claimed rate</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Proportion Defective</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Defect Rate Comparison</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Add percentage labels on bars
+</span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">([(</span><span class="sh">'</span><span class="s">Claimed</span><span class="sh">'</span><span class="p">,</span> <span class="n">p_0</span><span class="p">),</span> <span class="p">(</span><span class="sh">'</span><span class="s">Observed</span><span class="sh">'</span><span class="p">,</span> <span class="n">p_hat</span><span class="p">)]):</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">text</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">value</span> <span class="o">+</span> <span class="mf">0.005</span><span class="p">,</span> <span class="sa">f</span><span class="sh">'</span><span class="si">{</span><span class="n">value</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">'</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="sh">'</span><span class="s">center</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="sh">'</span><span class="s">bold</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Plot 2: Z-score distribution
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="sh">'</span><span class="s">b-</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Standard Normal</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">axvline</span><span class="p">(</span><span class="n">z_score</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">Our Z-score = </span><span class="si">{</span><span class="n">z_score</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">axvline</span><span class="p">(</span><span class="n">z_critical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">g</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> 
+                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">'</span><span class="s">Critical value = </span><span class="si">{</span><span class="n">z_critical</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Shade rejection region
+</span><span class="n">x_reject</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="n">z_critical</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">fill_between</span><span class="p">(</span><span class="n">x_reject</span><span class="p">,</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">pdf</span><span class="p">(</span><span class="n">x_reject</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span>
+                     <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Rejection Region</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Z-score</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Probability Density</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">One-Sample Proportion Test (One-Tailed)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 The graph shows our Z-score is just below the critical value!</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="using-statsmodels-for-proportion-test">Using statsmodels for Proportion Test</h3>
+
+<p>Python has a built-in function that makes this even easier!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+
+<span class="c1"># Your data
+</span><span class="n">count</span> <span class="o">=</span> <span class="mi">15</span>        <span class="c1"># Number of defective products
+</span><span class="n">nobs</span> <span class="o">=</span> <span class="mi">200</span>        <span class="c1"># Total products inspected
+</span><span class="n">value</span> <span class="o">=</span> <span class="mf">0.05</span>      <span class="c1"># Claimed proportion
+</span>
+<span class="c1"># Perform one-sample proportion test
+</span><span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nobs</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="sh">'</span><span class="s">larger</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🏭 QUICK PROPORTION TEST</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Defective: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s"> out of </span><span class="si">{</span><span class="n">nobs</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">count</span><span class="o">/</span><span class="n">nobs</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Claimed: </span><span class="si">{</span><span class="n">value</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Z-statistic: </span><span class="si">{</span><span class="n">z_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value: </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">✅ Significant! Defect rate is higher than claimed.</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">❌ Not significant. Could be random variation.</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="two-sample">3. Two-Sample Proportion Test</h2>
+
+<h3 id="what-is-a-two-sample-proportion-test-simple-explanation">What is a Two-Sample Proportion Test? (Simple Explanation)</h3>
+
+<p>Imagine you’re running an A/B test for a website:</p>
+<ul>
+  <li><strong>Version A (Control):</strong> 50 out of 500 visitors clicked the button (10%)</li>
+  <li><strong>Version B (New design):</strong> 80 out of 500 visitors clicked the button (16%)</li>
+</ul>
+
+<p><strong>The Question:</strong> Is Version B really better, or could this difference be just random luck?</p>
+
+<p>This is a <strong>two-sample proportion test</strong> because you’re comparing two proportions to each other.</p>
+
+<h3 id="when-to-use-two-sample-proportion-test">When to Use Two-Sample Proportion Test</h3>
+
+<p><strong>Use it when:</strong></p>
+<ul>
+  <li>✅ You have TWO independent groups</li>
+  <li>✅ Each group has successes/failures (yes/no, click/no-click)</li>
+  <li>✅ You want to compare the two proportions</li>
+  <li>✅ Sample sizes are large enough</li>
+</ul>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li>🎯 A/B testing: Version A vs Version B click rates</li>
+  <li>👨👩 Gender differences: Male vs Female success rates</li>
+  <li>💊 Drug comparison: Drug A vs Drug B cure rates</li>
+  <li>🗳️ Political polls: Support for Candidate A in State 1 vs State 2</li>
+</ul>
+
+<h3 id="the-formula-dont-panic-1">The Formula (Don’t Panic!)</h3>
+
+\[Z = \frac{\hat{p}_1 - \hat{p}_2}{\sqrt{\hat{p}(1-\hat{p})(\frac{1}{n_1} + \frac{1}{n_2})}}\]
+
+<p>Where $\hat{p}$ is the <strong>pooled proportion</strong>:</p>
+
+\[\hat{p} = \frac{x_1 + x_2}{n_1 + n_2}\]
+
+<p><strong>What each symbol means:</strong></p>
+<ul>
+  <li>$\hat{p}_1$ = Proportion in Group 1 (like 10% click rate)</li>
+  <li>$\hat{p}_2$ = Proportion in Group 2 (like 16% click rate)</li>
+  <li>$\hat{p}$ = Combined proportion from both groups</li>
+  <li>$n_1$, $n_2$ = Sample sizes of each group</li>
+</ul>
+
+<p><strong>In plain English:</strong> “How different are the two proportions, considering both sample sizes?”</p>
+
+<h3 id="example-ab-testing-website-design">Example: A/B Testing Website Design</h3>
+
+<p><strong>The Story:</strong>
+You’re testing two website designs to see which gets more clicks:</p>
+<ul>
+  <li><strong>Version A:</strong> 50 clicks out of 500 visitors (10%)</li>
+  <li><strong>Version B:</strong> 80 clicks out of 500 visitors (16%)</li>
+</ul>
+
+<p><strong>The Question:</strong> Is Version B significantly better?</p>
+
+<hr />
+
+<p><strong>Step 1: Set Up Your Claims</strong></p>
+
+<p>🔵 <strong>Boring Claim (H₀)</strong>: “Both versions have the same click rate”</p>
+<ul>
+  <li>In math: p₁ = p₂ (or p₁ - p₂ = 0)</li>
+</ul>
+
+<p>🔴 <strong>Interesting Claim (H₁)</strong>: “The versions have different click rates”</p>
+<ul>
+  <li>In math: p₁ ≠ p₂</li>
+  <li>Note: Two-tailed test (we’re open to either being better)</li>
+</ul>
+
+<p>🎯 <strong>How sure do we need to be?</strong> α = 0.05 (95% confidence)</p>
+
+<hr />
+
+<p><strong>Step 2: Calculate the Proportions</strong></p>
+
+<ul>
+  <li>Version A: $\hat{p}_1$ = 50/500 = 0.10 (10%)</li>
+  <li>Version B: $\hat{p}_2$ = 80/500 = 0.16 (16%)</li>
+  <li>Pooled: $\hat{p}$ = (50+80)/(500+500) = 130/1000 = 0.13 (13%)</li>
+</ul>
+
+<hr />
+
+<p><strong>Step 3: Calculate the Z-Score</strong></p>
+
+\[Z = \frac{0.10 - 0.16}{\sqrt{0.13 \times 0.87 \times (\frac{1}{500} + \frac{1}{500})}} = \frac{-0.06}{\sqrt{0.1131 \times 0.004}} = \frac{-0.06}{0.0213} = -2.82\]
+
+<hr />
+
+<p><strong>Step 4: Find the P-Value</strong></p>
+
+<p>For Z = -2.82 (two-tailed):</p>
+<ul>
+  <li>P-value ≈ 0.005</li>
+</ul>
+
+<hr />
+
+<p><strong>Step 5: Make Your Decision</strong></p>
+
+<ul>
+  <li>P-value = 0.005</li>
+  <li>Alpha = 0.05</li>
+  <li>Since 0.005 &lt; 0.05, we’re in the “weird zone”!</li>
+</ul>
+
+<p><strong>Conclusion (in plain English):</strong>
+“Version B got 16% clicks compared to Version A’s 10%. That’s a 6 percentage point difference, and it’s too big to be just random luck. Version B is genuinely better!”</p>
+
+<p><strong>Technical way to say it:</strong>
+“We reject H₀. There is significant evidence that the two versions have different click rates (p = 0.005).”</p>
+
+<hr />
+
+<h3 id="python-implementation---two-sample-proportion-test">Python Implementation - Two-Sample Proportion Test</h3>
+
+<p>Let’s code this!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Step 1: Import tools
+</span><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Step 2: Enter your data
+# Version A
+</span><span class="n">n1</span> <span class="o">=</span> <span class="mi">500</span>          <span class="c1"># Visitors to Version A
+</span><span class="n">x1</span> <span class="o">=</span> <span class="mi">50</span>           <span class="c1"># Clicks on Version A
+</span><span class="n">p1_hat</span> <span class="o">=</span> <span class="n">x1</span> <span class="o">/</span> <span class="n">n1</span>  <span class="c1"># Click rate for Version A
+</span>
+<span class="c1"># Version B
+</span><span class="n">n2</span> <span class="o">=</span> <span class="mi">500</span>          <span class="c1"># Visitors to Version B
+</span><span class="n">x2</span> <span class="o">=</span> <span class="mi">80</span>           <span class="c1"># Clicks on Version B
+</span><span class="n">p2_hat</span> <span class="o">=</span> <span class="n">x2</span> <span class="o">/</span> <span class="n">n2</span>  <span class="c1"># Click rate for Version B
+</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.05</span>      <span class="c1"># Significance level
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🖱️ A/B TESTING: WEBSITE CLICK RATES</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Version A:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Visitors: </span><span class="si">{</span><span class="n">n1</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Clicks: </span><span class="si">{</span><span class="n">x1</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Click rate: </span><span class="si">{</span><span class="n">p1_hat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p1_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Version B:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Visitors: </span><span class="si">{</span><span class="n">n2</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Clicks: </span><span class="si">{</span><span class="n">x2</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Click rate: </span><span class="si">{</span><span class="n">p2_hat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p2_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Difference: </span><span class="si">{</span><span class="p">(</span><span class="n">p2_hat</span> <span class="o">-</span> <span class="n">p1_hat</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> percentage points</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Calculate pooled proportion
+</span><span class="n">p_pooled</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">+</span> <span class="n">x2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 Pooled proportion: </span><span class="si">{</span><span class="n">p_pooled</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_pooled</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Calculate standard error
+</span><span class="n">se</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">p_pooled</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p_pooled</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">n1</span> <span class="o">+</span> <span class="mi">1</span><span class="o">/</span><span class="n">n2</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Standard error: </span><span class="si">{</span><span class="n">se</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Calculate Z-score
+</span><span class="n">z_score</span> <span class="o">=</span> <span class="p">(</span><span class="n">p1_hat</span> <span class="o">-</span> <span class="n">p2_hat</span><span class="p">)</span> <span class="o">/</span> <span class="n">se</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Z-score: </span><span class="si">{</span><span class="n">z_score</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 6: Calculate p-value (two-tailed)
+</span><span class="n">p_value</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="n">z_score</span><span class="p">)</span>  <span class="c1"># Two-tailed (z_score is negative)
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value (two-tailed): </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 7: Make a decision
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🎯 DECISION:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="n">alpha</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ REJECT H₀: The versions ARE different!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">p2_hat</span> <span class="o">&gt;</span> <span class="n">p1_hat</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   Version B is BETTER! (</span><span class="si">{</span><span class="n">p2_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% vs </span><span class="si">{</span><span class="n">p1_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+        <span class="n">improvement</span> <span class="o">=</span> <span class="p">((</span><span class="n">p2_hat</span> <span class="o">-</span> <span class="n">p1_hat</span><span class="p">)</span> <span class="o">/</span> <span class="n">p1_hat</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   That</span><span class="sh">'</span><span class="s">s a </span><span class="si">{</span><span class="n">improvement</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% relative improvement!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   Version A is BETTER! (</span><span class="si">{</span><span class="n">p1_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% vs </span><span class="si">{</span><span class="n">p2_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ FAIL TO REJECT H₀: No significant difference</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   The difference could be random variation</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 8: Visualize
+</span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Plot 1: Bar chart comparing proportions
+</span><span class="n">versions</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">Version A</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Version B</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">click_rates</span> <span class="o">=</span> <span class="p">[</span><span class="n">p1_hat</span><span class="p">,</span> <span class="n">p2_hat</span><span class="p">]</span>
+<span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">]</span>
+
+<span class="n">bars</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">bar</span><span class="p">(</span><span class="n">versions</span><span class="p">,</span> <span class="n">click_rates</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Click Rate</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Click Rate Comparison</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Add percentage labels on bars
+</span><span class="k">for</span> <span class="n">bar</span><span class="p">,</span> <span class="n">rate</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">bars</span><span class="p">,</span> <span class="n">click_rates</span><span class="p">):</span>
+    <span class="n">height</span> <span class="o">=</span> <span class="n">bar</span><span class="p">.</span><span class="nf">get_height</span><span class="p">()</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">text</span><span class="p">(</span><span class="n">bar</span><span class="p">.</span><span class="nf">get_x</span><span class="p">()</span> <span class="o">+</span> <span class="n">bar</span><span class="p">.</span><span class="nf">get_width</span><span class="p">()</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">height</span> <span class="o">+</span> <span class="mf">0.005</span><span class="p">,</span>
+                <span class="sa">f</span><span class="sh">'</span><span class="si">{</span><span class="n">rate</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">'</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="sh">'</span><span class="s">center</span><span class="sh">'</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="sh">'</span><span class="s">bottom</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="sh">'</span><span class="s">bold</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Plot 2: Sample sizes and success rates
+</span><span class="n">x_pos</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">successes</span> <span class="o">=</span> <span class="p">[</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">]</span>
+<span class="n">failures</span> <span class="o">=</span> <span class="p">[</span><span class="n">n1</span><span class="o">-</span><span class="n">x1</span><span class="p">,</span> <span class="n">n2</span><span class="o">-</span><span class="n">x2</span><span class="p">]</span>
+
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">bar</span><span class="p">(</span><span class="n">x_pos</span><span class="p">,</span> <span class="n">successes</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Clicks</span><span class="sh">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">bar</span><span class="p">(</span><span class="n">x_pos</span><span class="p">,</span> <span class="n">failures</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="n">successes</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">No Clicks</span><span class="sh">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">gray</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_xticks</span><span class="p">(</span><span class="n">x_pos</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_xticklabels</span><span class="p">(</span><span class="n">versions</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Number of Visitors</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Clicks vs No Clicks</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 The graphs show Version B has a higher click rate!</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="using-statsmodels-for-two-sample-proportion-test">Using statsmodels for Two-Sample Proportion Test</h3>
+
+<p>The easy way:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+
+<span class="c1"># Your data
+</span><span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">50</span><span class="p">,</span> <span class="mi">80</span><span class="p">])</span>      <span class="c1"># Clicks for each version
+</span><span class="n">nobs</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">500</span><span class="p">,</span> <span class="mi">500</span><span class="p">])</span>     <span class="c1"># Visitors for each version
+</span>
+<span class="c1"># Perform two-sample proportion test
+</span><span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nobs</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🖱️ QUICK A/B TEST</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Version A: </span><span class="si">{</span><span class="n">count</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s"> clicks out of </span><span class="si">{</span><span class="n">nobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">count</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">nobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Version B: </span><span class="si">{</span><span class="n">count</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s"> clicks out of </span><span class="si">{</span><span class="n">nobs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">count</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">nobs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Z-statistic: </span><span class="si">{</span><span class="n">z_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value: </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">✅ Significant difference! The versions perform differently.</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">count</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">nobs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">count</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">nobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   Version B is the winner! 🎉</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">   Version A is the winner! 🎉</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">❌ No significant difference. Keep testing or stick with current version.</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="python-implementation">4. Putting It All Together - Real Examples!</h2>
+
+<h3 id="example-1-coin-fairness-test-one-sample">Example 1: Coin Fairness Test (One-Sample)</h3>
+
+<p><strong>The Situation:</strong>
+You suspect a coin might be biased. You flip it 100 times and get 60 heads.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Data
+</span><span class="n">n</span> <span class="o">=</span> <span class="mi">100</span>           <span class="c1"># Number of flips
+</span><span class="n">heads</span> <span class="o">=</span> <span class="mi">60</span>        <span class="c1"># Number of heads
+</span><span class="n">p_hat</span> <span class="o">=</span> <span class="n">heads</span> <span class="o">/</span> <span class="n">n</span> <span class="c1"># Sample proportion
+</span><span class="n">p_0</span> <span class="o">=</span> <span class="mf">0.5</span>         <span class="c1"># Fair coin proportion
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">🪙 COIN FAIRNESS TEST</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Flips: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Heads: </span><span class="si">{</span><span class="n">heads</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Expected (fair coin): </span><span class="si">{</span><span class="n">p_0</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Perform test
+</span><span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">heads</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">p_0</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 TEST RESULTS:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Z-statistic: </span><span class="si">{</span><span class="n">z_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value (two-tailed): </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🎯 DECISION:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ REJECT H₀: The coin IS biased!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">p_hat</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   It favors HEADS (</span><span class="si">{</span><span class="n">p_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   It favors TAILS (</span><span class="si">{</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">p_hat</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ FAIL TO REJECT H₀: The coin appears fair</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   The </span><span class="si">{</span><span class="n">p_hat</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">% heads could be random variation</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Visualize
+</span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Plot 1: Pie chart of results
+</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">pie</span><span class="p">([</span><span class="n">heads</span><span class="p">,</span> <span class="n">n</span><span class="o">-</span><span class="n">heads</span><span class="p">],</span> <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">Heads</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Tails</span><span class="sh">'</span><span class="p">],</span> <span class="n">autopct</span><span class="o">=</span><span class="sh">'</span><span class="s">%1.0f%%</span><span class="sh">'</span><span class="p">,</span>
+            <span class="n">colors</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">gold</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">silver</span><span class="sh">'</span><span class="p">],</span> <span class="n">startangle</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">Coin Flip Results (n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s">)</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Plot 2: Bar chart comparing to fair coin
+</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">bar</span><span class="p">([</span><span class="sh">'</span><span class="s">Expected</span><span class="se">\n</span><span class="s">(Fair Coin)</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Observed</span><span class="sh">'</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">p_hat</span><span class="p">],</span> 
+            <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">axhline</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Fair coin (50%)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Proportion of Heads</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Expected vs Observed</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="example-2-gender-differences-in-product-preference-two-sample">Example 2: Gender Differences in Product Preference (Two-Sample)</h3>
+
+<p><strong>The Situation:</strong>
+A company wants to know if men and women prefer their product at different rates.</p>
+<ul>
+  <li>Men: 120 out of 400 prefer it (30%)</li>
+  <li>Women: 160 out of 400 prefer it (40%)</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Data
+</span><span class="n">n_men</span> <span class="o">=</span> <span class="mi">400</span>
+<span class="n">prefer_men</span> <span class="o">=</span> <span class="mi">120</span>
+<span class="n">p_men</span> <span class="o">=</span> <span class="n">prefer_men</span> <span class="o">/</span> <span class="n">n_men</span>
+
+<span class="n">n_women</span> <span class="o">=</span> <span class="mi">400</span>
+<span class="n">prefer_women</span> <span class="o">=</span> <span class="mi">160</span>
+<span class="n">p_women</span> <span class="o">=</span> <span class="n">prefer_women</span> <span class="o">/</span> <span class="n">n_women</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">👨👩 GENDER PREFERENCE ANALYSIS</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Men:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Sample size: </span><span class="si">{</span><span class="n">n_men</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Prefer product: </span><span class="si">{</span><span class="n">prefer_men</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_men</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Women:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Sample size: </span><span class="si">{</span><span class="n">n_women</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Prefer product: </span><span class="si">{</span><span class="n">prefer_women</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_women</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Difference: </span><span class="si">{</span><span class="p">(</span><span class="n">p_women</span> <span class="o">-</span> <span class="n">p_men</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> percentage points</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Perform test
+</span><span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="n">prefer_men</span><span class="p">,</span> <span class="n">prefer_women</span><span class="p">])</span>
+<span class="n">nobs</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="n">n_men</span><span class="p">,</span> <span class="n">n_women</span><span class="p">])</span>
+<span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nobs</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 TEST RESULTS:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Z-statistic: </span><span class="si">{</span><span class="n">z_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value (two-tailed): </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🎯 DECISION:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ REJECT H₀: There IS a gender difference!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">p_women</span> <span class="o">&gt;</span> <span class="n">p_men</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   Women prefer it MORE (</span><span class="si">{</span><span class="n">p_women</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% vs </span><span class="si">{</span><span class="n">p_men</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   Men prefer it MORE (</span><span class="si">{</span><span class="n">p_men</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% vs </span><span class="si">{</span><span class="n">p_women</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ FAIL TO REJECT H₀: No significant gender difference</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Visualize
+</span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Plot 1: Grouped bar chart
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">width</span> <span class="o">=</span> <span class="mf">0.35</span>
+
+<span class="n">prefer</span> <span class="o">=</span> <span class="p">[</span><span class="n">prefer_men</span><span class="p">,</span> <span class="n">prefer_women</span><span class="p">]</span>
+<span class="n">not_prefer</span> <span class="o">=</span> <span class="p">[</span><span class="n">n_men</span> <span class="o">-</span> <span class="n">prefer_men</span><span class="p">,</span> <span class="n">n_women</span> <span class="o">-</span> <span class="n">prefer_women</span><span class="p">]</span>
+
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">bar</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">width</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefer</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Prefer</span><span class="sh">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">bar</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">width</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">not_prefer</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Don</span><span class="se">\'</span><span class="s">t Prefer</span><span class="sh">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_xticks</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_xticklabels</span><span class="p">([</span><span class="sh">'</span><span class="s">Men</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Women</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Number of People</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Product Preference by Gender</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Plot 2: Proportion comparison
+</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">bar</span><span class="p">([</span><span class="sh">'</span><span class="s">Men</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Women</span><span class="sh">'</span><span class="p">],</span> <span class="p">[</span><span class="n">p_men</span><span class="p">,</span> <span class="n">p_women</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">pink</span><span class="sh">'</span><span class="p">],</span> 
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Proportion Who Prefer Product</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Preference Rate Comparison</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Add percentage labels
+</span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">([(</span><span class="sh">'</span><span class="s">Men</span><span class="sh">'</span><span class="p">,</span> <span class="n">p_men</span><span class="p">),</span> <span class="p">(</span><span class="sh">'</span><span class="s">Women</span><span class="sh">'</span><span class="p">,</span> <span class="n">p_women</span><span class="p">)]):</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">text</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">value</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">,</span> <span class="sa">f</span><span class="sh">'</span><span class="si">{</span><span class="n">value</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">'</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="sh">'</span><span class="s">center</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="sh">'</span><span class="s">bold</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="example-3-beforeafter-marketing-campaign-two-sample">Example 3: Before/After Marketing Campaign (Two-Sample)</h3>
+
+<p><strong>The Situation:</strong>
+A company runs a marketing campaign and wants to see if conversion rates improved.</p>
+<ul>
+  <li>Before campaign: 80 out of 1000 visitors converted (8%)</li>
+  <li>After campaign: 120 out of 1000 visitors converted (12%)</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Data
+</span><span class="n">n_before</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">convert_before</span> <span class="o">=</span> <span class="mi">80</span>
+<span class="n">p_before</span> <span class="o">=</span> <span class="n">convert_before</span> <span class="o">/</span> <span class="n">n_before</span>
+
+<span class="n">n_after</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">convert_after</span> <span class="o">=</span> <span class="mi">120</span>
+<span class="n">p_after</span> <span class="o">=</span> <span class="n">convert_after</span> <span class="o">/</span> <span class="n">n_after</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">📈 MARKETING CAMPAIGN EFFECTIVENESS</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Before Campaign:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Visitors: </span><span class="si">{</span><span class="n">n_before</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Conversions: </span><span class="si">{</span><span class="n">convert_before</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_before</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">After Campaign:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Visitors: </span><span class="si">{</span><span class="n">n_after</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Conversions: </span><span class="si">{</span><span class="n">convert_after</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p_after</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Improvement: </span><span class="si">{</span><span class="p">(</span><span class="n">p_after</span> <span class="o">-</span> <span class="n">p_before</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> percentage points</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Calculate relative improvement
+</span><span class="n">relative_improvement</span> <span class="o">=</span> <span class="p">((</span><span class="n">p_after</span> <span class="o">-</span> <span class="n">p_before</span><span class="p">)</span> <span class="o">/</span> <span class="n">p_before</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Relative improvement: </span><span class="si">{</span><span class="n">relative_improvement</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Perform test (one-tailed: we only care if it improved)
+</span><span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="n">convert_before</span><span class="p">,</span> <span class="n">convert_after</span><span class="p">])</span>
+<span class="n">nobs</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="n">n_before</span><span class="p">,</span> <span class="n">n_after</span><span class="p">])</span>
+<span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value_two</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nobs</span><span class="p">)</span>
+<span class="n">p_value_one</span> <span class="o">=</span> <span class="n">p_value_two</span> <span class="o">/</span> <span class="mi">2</span>  <span class="c1"># One-tailed
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 TEST RESULTS:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Z-statistic: </span><span class="si">{</span><span class="n">z_stat</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P-value (one-tailed): </span><span class="si">{</span><span class="n">p_value_one</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">🎯 DECISION:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p_value_one</span> <span class="o">&lt;</span> <span class="mf">0.05</span> <span class="ow">and</span> <span class="n">z_stat</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># z_stat negative means after &gt; before
+</span>    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">✅ REJECT H₀: Campaign WORKED!</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value_one</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &lt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   Conversion rate improved from </span><span class="si">{</span><span class="n">p_before</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% to </span><span class="si">{</span><span class="n">p_after</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   That</span><span class="sh">'</span><span class="s">s a </span><span class="si">{</span><span class="n">relative_improvement</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% relative improvement! 🎉</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">❌ FAIL TO REJECT H₀: No significant improvement</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   (p-value </span><span class="si">{</span><span class="n">p_value_one</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> &gt; 0.05)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Visualize
+</span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Plot 1: Conversion rates
+</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">bar</span><span class="p">([</span><span class="sh">'</span><span class="s">Before</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">After</span><span class="sh">'</span><span class="p">],</span> <span class="p">[</span><span class="n">p_before</span><span class="p">,</span> <span class="n">p_after</span><span class="p">],</span> 
+            <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Conversion Rate</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Conversion Rate: Before vs After Campaign</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Add percentage labels and arrow
+</span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">([(</span><span class="sh">'</span><span class="s">Before</span><span class="sh">'</span><span class="p">,</span> <span class="n">p_before</span><span class="p">),</span> <span class="p">(</span><span class="sh">'</span><span class="s">After</span><span class="sh">'</span><span class="p">,</span> <span class="n">p_after</span><span class="p">)]):</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">text</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">value</span> <span class="o">+</span> <span class="mf">0.005</span><span class="p">,</span> <span class="sa">f</span><span class="sh">'</span><span class="si">{</span><span class="n">value</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">'</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="sh">'</span><span class="s">center</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="sh">'</span><span class="s">bold</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Add improvement arrow
+</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">annotate</span><span class="p">(</span><span class="sh">''</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">p_after</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">p_before</span><span class="p">),</span>
+                <span class="n">arrowprops</span><span class="o">=</span><span class="nf">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="sh">'</span><span class="s">-&gt;</span><span class="sh">'</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">))</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="p">(</span><span class="n">p_before</span> <span class="o">+</span> <span class="n">p_after</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="sa">f</span><span class="sh">'</span><span class="s">+</span><span class="si">{</span><span class="p">(</span><span class="n">p_after</span><span class="o">-</span><span class="n">p_before</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">pp</span><span class="sh">'</span><span class="p">,</span>
+            <span class="n">ha</span><span class="o">=</span><span class="sh">'</span><span class="s">center</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="sh">'</span><span class="s">bold</span><span class="sh">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+<span class="c1"># Plot 2: Stacked bar showing conversions
+</span><span class="n">periods</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">Before</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">After</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">conversions</span> <span class="o">=</span> <span class="p">[</span><span class="n">convert_before</span><span class="p">,</span> <span class="n">convert_after</span><span class="p">]</span>
+<span class="n">non_conversions</span> <span class="o">=</span> <span class="p">[</span><span class="n">n_before</span> <span class="o">-</span> <span class="n">convert_before</span><span class="p">,</span> <span class="n">n_after</span> <span class="o">-</span> <span class="n">convert_after</span><span class="p">]</span>
+
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">bar</span><span class="p">(</span><span class="n">periods</span><span class="p">,</span> <span class="n">conversions</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Converted</span><span class="sh">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">bar</span><span class="p">(</span><span class="n">periods</span><span class="p">,</span> <span class="n">non_conversions</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="n">conversions</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Did Not Convert</span><span class="sh">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">gray</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Number of Visitors</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Conversions: Before vs After</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="practice-exercises">5. Practice Exercises - Your Turn!</h2>
+
+<h3 id="exercise-1-dice-fairness-one-sample---easy">Exercise 1: Dice Fairness (One-Sample - Easy)</h3>
+
+<p><strong>The Problem:</strong>
+You roll a die 120 times and get the number 6 exactly 25 times. A fair die should show 6 about 1/6 of the time (16.67%). Is this die fair?</p>
+
+<p><strong>Your Tasks:</strong></p>
+<ol>
+  <li>What’s the claimed proportion?</li>
+  <li>What’s your sample proportion?</li>
+  <li>Set up H₀ and H₁</li>
+  <li>Run the test in Python</li>
+  <li>What’s your conclusion?</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Write your code here!
+# Hint: Claimed proportion = 1/6 ≈ 0.1667
+</span></code></pre></div></div>
+
+<details>
+<summary>💡 Click to see solution</summary>
+
+```python
+import numpy as np
+from statsmodels.stats.proportion import proportions_ztest
+
+print("🎲 DICE FAIRNESS TEST")
+print("="*60)
+
+# Given information
+n = 120                    # Number of rolls
+sixes = 25                 # Number of times we got 6
+p_hat = sixes / n          # Sample proportion
+p_0 = 1/6                  # Fair die proportion (16.67%)
+
+# Question 1 &amp; 2
+print("Q1 &amp; Q2: Proportions")
+print(f"   Claimed proportion (fair die): {p_0:.4f} ({p_0*100:.2f}%)")
+print(f"   Sample proportion: {p_hat:.4f} ({p_hat*100:.2f}%)\n")
+
+# Question 3: Hypotheses
+print("Q3: Set up hypotheses:")
+print("   H₀: p = 1/6 (die is fair)")
+print("   H₁: p ≠ 1/6 (die is NOT fair)")
+print("   α = 0.05 (95% confidence)\n")
+
+# Question 4: Run the test
+z_stat, p_value = proportions_ztest(sixes, n, p_0)
+
+print("Q4: Test Results:")
+print(f"   Z-statistic: {z_stat:.4f}")
+print(f"   P-value (two-tailed): {p_value:.4f}\n")
+
+# Question 5: Conclusion
+print("Q5: Conclusion:")
+if p_value &lt; 0.05:
+    print(f"   ✅ REJECT H₀!")
+    print(f"   The die IS biased!")
+    print(f"   (p-value {p_value:.4f} &lt; 0.05)")
+    if p_hat &gt; p_0:
+        print(f"   It shows 6 TOO OFTEN ({p_hat*100:.1f}% vs expected {p_0*100:.1f}%)")
+    else:
+        print(f"   It shows 6 TOO RARELY ({p_hat*100:.1f}% vs expected {p_0*100:.1f}%)")
+else:
+    print(f"   ❌ FAIL TO REJECT H₀")
+    print(f"   The die appears fair")
+    print(f"   (p-value {p_value:.4f} &gt; 0.05)")
+    print(f"   Getting {sixes} sixes in {n} rolls is within normal variation")
+
+print("\n📊 In Plain English:")
+print(f"   We got 6 on {sixes} out of {n} rolls ({p_hat*100:.1f}%).")
+print(f"   A fair die should show 6 about {p_0*100:.1f}% of the time.")
+if p_value &lt; 0.05:
+    print("   This difference is too big to be just luck!")
+    print("   The die is probably loaded! 🎲")
+else:
+    print("   This difference could easily happen by chance.")
+    print("   The die seems fair! ✅")
+
+print("="*60)
+```
+</details>
+
+<hr />
+
+<h3 id="exercise-2-drug-effectiveness-comparison-two-sample---medium">Exercise 2: Drug Effectiveness Comparison (Two-Sample - Medium)</h3>
+
+<p><strong>The Problem:</strong>
+Two drugs are being tested for effectiveness:</p>
+<ul>
+  <li><strong>Drug A:</strong> 180 out of 250 patients recovered (72%)</li>
+  <li><strong>Drug B:</strong> 200 out of 250 patients recovered (80%)</li>
+</ul>
+
+<p><strong>Your Tasks:</strong></p>
+<ol>
+  <li>Which test should you use?</li>
+  <li>Set up H₀ and H₁</li>
+  <li>Run the test in Python</li>
+  <li>Calculate the difference in recovery rates</li>
+  <li>What’s your conclusion? Which drug is better?</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Write your code here!
+</span></code></pre></div></div>
+
+<details>
+<summary>💡 Click to see solution</summary>
+
+```python
+import numpy as np
+from statsmodels.stats.proportion import proportions_ztest
+import matplotlib.pyplot as plt
+
+print("💊 DRUG EFFECTIVENESS COMPARISON")
+print("="*60)
+
+# Given information
+n_a = 250
+recovered_a = 180
+p_a = recovered_a / n_a
+
+n_b = 250
+recovered_b = 200
+p_b = recovered_b / n_b
+
+# Question 1: Which test?
+print("Q1: Which test should we use?")
+print("   • Two different groups (Drug A patients vs Drug B patients)")
+print("   ➡️  Answer: TWO-SAMPLE PROPORTION TEST\n")
+
+# Question 2: Hypotheses
+print("Q2: Set up hypotheses:")
+print("   H₀: p_A = p_B (both drugs equally effective)")
+print("   H₁: p_A ≠ p_B (drugs have different effectiveness)")
+print("   α = 0.05 (95% confidence)\n")
+
+# Question 3: Run the test
+count = np.array([recovered_a, recovered_b])
+nobs = np.array([n_a, n_b])
+z_stat, p_value = proportions_ztest(count, nobs)
+
+print("Q3: Test Results:")
+print(f"   Drug A: {recovered_a}/{n_a} recovered ({p_a*100:.1f}%)")
+print(f"   Drug B: {recovered_b}/{n_b} recovered ({p_b*100:.1f}%)")
+print(f"   Z-statistic: {z_stat:.4f}")
+print(f"   P-value (two-tailed): {p_value:.4f}\n")
+
+# Question 4: Difference
+difference = (p_b - p_a) * 100
+print("Q4: Difference in recovery rates:")
+print(f"   Drug B - Drug A = {difference:.1f} percentage points")
+print(f"   Relative improvement: {(difference/p_a/100)*100:.1f}%\n")
+
+# Question 5: Conclusion
+print("Q5: Conclusion:")
+if p_value &lt; 0.05:
+    print(f"   ✅ REJECT H₀!")
+    print(f"   The drugs ARE significantly different!")
+    print(f"   (p-value {p_value:.4f} &lt; 0.05)")
+    if p_b &gt; p_a:
+        print(f"   Drug B is BETTER! ({p_b*100:.1f}% vs {p_a*100:.1f}%)")
+        print(f"   Drug B has {difference:.1f} percentage points higher recovery rate")
+    else:
+        print(f"   Drug A is BETTER! ({p_a*100:.1f}% vs {p_b*100:.1f}%)")
+else:
+    print(f"   ❌ FAIL TO REJECT H₀")
+    print(f"   No significant difference found")
+    print(f"   (p-value {p_value:.4f} &gt; 0.05)")
+    print(f"   Both drugs appear equally effective")
+
+print("\n📊 In Plain English:")
+print(f"   Drug A helped {p_a*100:.0f}% of patients recover.")
+print(f"   Drug B helped {p_b*100:.0f}% of patients recover.")
+if p_value &lt; 0.05:
+    print(f"   This {difference:.0f} percentage point difference is real!")
+    print(f"   Drug B is the clear winner! 💊✨")
+else:
+    print(f"   The {difference:.0f} percentage point difference could be random.")
+    print(f"   Both drugs work about the same.")
+
+print("="*60)
+
+# Visualize
+plt.figure(figsize=(12, 5))
+
+# Plot 1: Recovery rates
+plt.subplot(1, 2, 1)
+plt.bar(['Drug A', 'Drug B'], [p_a, p_b], color=['blue', 'green'], 
+        alpha=0.7, edgecolor='black')
+plt.ylabel('Recovery Rate')
+plt.title('Drug Effectiveness Comparison')
+plt.grid(True, alpha=0.3, axis='y')
+
+# Add percentage labels
+for i, (drug, rate) in enumerate([('Drug A', p_a), ('Drug B', p_b)]):
+    plt.text(i, rate + 0.02, f'{rate*100:.1f}%', ha='center', fontweight='bold')
+
+# Plot 2: Stacked bars
+plt.subplot(1, 2, 2)
+drugs = ['Drug A', 'Drug B']
+recovered = [recovered_a, recovered_b]
+not_recovered = [n_a - recovered_a, n_b - recovered_b]
+
+plt.bar(drugs, recovered, label='Recovered', color='green', alpha=0.7)
+plt.bar(drugs, not_recovered, bottom=recovered, label='Not Recovered', 
+        color='red', alpha=0.7)
+plt.ylabel('Number of Patients')
+plt.title('Recovery Outcomes')
+plt.legend()
+plt.grid(True, alpha=0.3, axis='y')
+
+plt.tight_layout()
+plt.show()
+```
+</details>
+
+<hr />
+
+<h3 id="exercise-3-your-own-example-challenge">Exercise 3: Your Own Example! (Challenge)</h3>
+
+<p>Create your own proportion test scenario!</p>
+
+<p><strong>Option A: One-Sample Proportion Test</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+
+<span class="c1"># Example: Test if success rate meets target
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">MY ONE-SAMPLE PROPORTION TEST</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Scenario: [Describe your situation]</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Claimed proportion: [e.g., 50%]</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Your data
+# n = ...           # Sample size
+# successes = ...   # Number of successes
+# p_0 = ...         # Claimed proportion
+</span>
+<span class="c1"># Run test
+# z_stat, p_value = proportions_ztest(successes, n, p_0)
+</span>
+<span class="c1"># Make conclusion
+</span></code></pre></div></div>
+
+<p><strong>Option B: Two-Sample Proportion Test</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+
+<span class="c1"># Example: Compare two groups
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">MY TWO-SAMPLE PROPORTION TEST</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Scenario: [Describe your comparison]</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Your data
+# count = np.array([successes_group1, successes_group2])
+# nobs = np.array([n_group1, n_group2])
+</span>
+<span class="c1"># Run test
+# z_stat, p_value = proportions_ztest(count, nobs)
+</span>
+<span class="c1"># Make conclusion
+</span></code></pre></div></div>
+
+<p><strong>Ideas for scenarios:</strong></p>
+<ul>
+  <li>🎯 Click-through rates: Email A vs Email B</li>
+  <li>🎮 Win rates: Player 1 vs Player 2</li>
+  <li>🏥 Side effect rates: Old drug vs New drug</li>
+  <li>🗳️ Poll results: Support in State A vs State B</li>
+  <li>📱 App crash rates: iOS vs Android</li>
+  <li>🎓 Pass rates: Online course vs In-person course</li>
+</ul>
+
+<hr />
+
+<h2 id="summary---what-you-learned-">Summary - What You Learned! 🎓</h2>
+
+<h3 id="key-concepts">Key Concepts</h3>
+
+<p><strong>1. What Are Proportions?</strong></p>
+<ul>
+  <li>Proportions are percentages expressed as decimals (0 to 1)</li>
+  <li>Used for yes/no, success/failure, click/no-click data</li>
+  <li>Examples: 60% = 0.60, 25% = 0.25</li>
+</ul>
+
+<p><strong>2. One-Sample Proportion Test</strong></p>
+<ul>
+  <li>Compare ONE sample proportion to a claimed value</li>
+  <li>Example: Is the coin fair? (claimed: 50%)</li>
+  <li>Formula: $Z = \frac{\hat{p} - p_0}{\sqrt{\frac{p_0(1-p_0)}{n}}}$</li>
+  <li>Python: <code class="language-plaintext highlighter-rouge">proportions_ztest(count, nobs, value)</code></li>
+</ul>
+
+<p><strong>3. Two-Sample Proportion Test</strong></p>
+<ul>
+  <li>Compare TWO sample proportions to each other</li>
+  <li>Example: Do men and women have different click rates?</li>
+  <li>Uses pooled proportion for standard error</li>
+  <li>Python: <code class="language-plaintext highlighter-rouge">proportions_ztest(count_array, nobs_array)</code></li>
+</ul>
+
+<p><strong>4. Sample Size Requirements</strong></p>
+<ul>
+  <li>Need: np ≥ 10 AND n(1-p) ≥ 10</li>
+  <li>This ensures the normal approximation works</li>
+  <li>If not met, results may be unreliable</li>
+</ul>
+
+<h3 id="quick-decision-tree">Quick Decision Tree</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>What are you comparing?
+│
+├─ One proportion to a claimed value?
+│  └─ Use ONE-SAMPLE PROPORTION TEST
+│     proportions_ztest(count, nobs, value)
+│
+└─ Two proportions to each other?
+   └─ Use TWO-SAMPLE PROPORTION TEST
+      proportions_ztest(count_array, nobs_array)
+</code></pre></div></div>
+
+<h3 id="python-cheat-sheet">Python Cheat Sheet</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.stats.proportion</span> <span class="kn">import</span> <span class="n">proportions_ztest</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># One-Sample Proportion Test
+</span><span class="n">count</span> <span class="o">=</span> <span class="mi">60</span>        <span class="c1"># Number of successes
+</span><span class="n">nobs</span> <span class="o">=</span> <span class="mi">100</span>        <span class="c1"># Sample size
+</span><span class="n">value</span> <span class="o">=</span> <span class="mf">0.5</span>       <span class="c1"># Claimed proportion
+</span><span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nobs</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+<span class="c1"># Two-Sample Proportion Test
+</span><span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">50</span><span class="p">,</span> <span class="mi">80</span><span class="p">])</span>      <span class="c1"># Successes in each group
+</span><span class="n">nobs</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">500</span><span class="p">,</span> <span class="mi">500</span><span class="p">])</span>     <span class="c1"># Sample sizes
+</span><span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nobs</span><span class="p">)</span>
+
+<span class="c1"># One-tailed test (add alternative parameter)
+</span><span class="n">z_stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="nf">proportions_ztest</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nobs</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> 
+                                    <span class="n">alternative</span><span class="o">=</span><span class="sh">'</span><span class="s">larger</span><span class="sh">'</span><span class="p">)</span>  <span class="c1"># or 'smaller'
+</span>
+<span class="c1"># Decision
+</span><span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Significant difference found!</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">No significant difference</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="common-mistakes-to-avoid-️">Common Mistakes to Avoid ⚠️</h3>
+
+<ol>
+  <li><strong>Using proportion tests for averages</strong> → Use t-tests instead!</li>
+  <li><strong>Forgetting to check sample size requirements</strong> → Need np ≥ 10 and n(1-p) ≥ 10</li>
+  <li><strong>Confusing proportions with counts</strong> → Use proportions (0-1), not percentages (0-100)</li>
+  <li><strong>Using two-sample test for before/after</strong> → If same subjects, consider paired t-test</li>
+  <li><strong>Ignoring practical significance</strong> → Small p-value doesn’t always mean important difference</li>
+</ol>
+
+<h3 id="proportion-vs-mean-tests">Proportion vs Mean Tests</h3>
+
+<p><strong>Use Proportion Tests when:</strong></p>
+<ul>
+  <li>✅ Data is yes/no, success/failure, click/no-click</li>
+  <li>✅ You’re comparing percentages</li>
+  <li>✅ Example: “60% of customers are satisfied”</li>
+</ul>
+
+<p><strong>Use Mean Tests (t-tests) when:</strong></p>
+<ul>
+  <li>✅ Data is continuous numbers</li>
+  <li>✅ You’re comparing averages</li>
+  <li>✅ Example: “Average customer satisfaction score is 7.5/10”</li>
+</ul>
+
+<h3 id="real-world-applications">Real-World Applications</h3>
+
+<p><strong>Marketing &amp; Business:</strong></p>
+<ul>
+  <li>A/B testing website designs</li>
+  <li>Comparing conversion rates</li>
+  <li>Customer satisfaction surveys</li>
+  <li>Click-through rate analysis</li>
+</ul>
+
+<p><strong>Healthcare:</strong></p>
+<ul>
+  <li>Drug effectiveness (cure rates)</li>
+  <li>Side effect rates</li>
+  <li>Patient recovery rates</li>
+  <li>Treatment success rates</li>
+</ul>
+
+<p><strong>Quality Control:</strong></p>
+<ul>
+  <li>Defect rates</li>
+  <li>Product failure rates</li>
+  <li>Compliance rates</li>
+  <li>Error rates</li>
+</ul>
+
+<p><strong>Politics &amp; Social Science:</strong></p>
+<ul>
+  <li>Poll results and voter preferences</li>
+  <li>Survey response rates</li>
+  <li>Demographic comparisons</li>
+  <li>Public opinion changes</li>
+</ul>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>Congratulations! You’ve completed the Hypothesis Testing Methods series! 🎉</p>
+
+<p><strong>You now know:</strong></p>
+<ul>
+  <li>✅ <strong>Chapter 4.1</strong>: Single Sample Tests (Z-test, T-test)</li>
+  <li>✅ <strong>Chapter 4.2</strong>: Two Sample Tests (Independent, Paired)</li>
+  <li>✅ <strong>Chapter 4.3</strong>: Proportion Tests (One-sample, Two-sample)</li>
+</ul>
+
+<p><strong>Next topics to explore:</strong></p>
+<ul>
+  <li><strong>Chi-Square Tests</strong>: Testing relationships between categorical variables</li>
+  <li><strong>ANOVA</strong>: Comparing more than two groups</li>
+  <li><strong>Regression Analysis</strong>: Predicting outcomes and finding relationships</li>
+  <li><strong>Non-Parametric Tests</strong>: When your data doesn’t meet assumptions</li>
+</ul>
+
+<p>Keep practicing! The more you use these tests, the more intuitive they become! 🚀</p>
+
+<hr />
+
+<p><strong>Remember:</strong> Statistics is about making informed decisions with data. Always ask yourself:</p>
+<ol>
+  <li>What question am I trying to answer?</li>
+  <li>What type of data do I have?</li>
+  <li>Which test is appropriate?</li>
+  <li>What do my results mean in the real world?</li>
+</ol>
+
+<p>You’re not just calculating p-values - you’re solving real problems! 💡</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">statistics</span>, <span class="tag">hypothesis-testing</span>, <span class="tag">proportion-test</span>, <span class="tag">z-test</span>, <span class="tag">percentages</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
