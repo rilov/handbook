@@ -21,7 +21,7 @@ Imagine you want to know the average height of all students in your country, but
 - 🎮 You play a few levels of a game to decide if you'll like the WHOLE game
 - 📊 You survey 100 students to understand what ALL students think
 
-```mermaid
+<div class="mermaid">
 flowchart TD
     A[🌍 Population<br/>Everyone/Everything] --> B[📦 Take a Sample<br/>Small group]
     B --> C[📊 Analyze Sample<br/>Calculate statistics]
@@ -33,13 +33,13 @@ flowchart TD
     style C fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
     style D fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style E fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
-```
+</div>
 
 ---
 
 ## 🎯 The Learning Journey
 
-```mermaid
+<div class="mermaid">
 mindmap
   root((Inferential<br/>Statistics))
     Central Limit Theorem
@@ -54,7 +54,7 @@ mindmap
       p-value Method
       Type I Error
       Type II Error
-```
+</div>
 
 ---
 
@@ -80,7 +80,7 @@ sns.set_palette("husl")
 
 ### 🌍 Key Terms (Simple Explanations)
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Statistical Terms] --> B[Population]
     A --> C[Sample]
@@ -102,7 +102,7 @@ graph TD
     style G fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style H fill:#27AE60,stroke:#186A3B,stroke-width:3px,color:#fff
     style I fill:#C0392B,stroke:#7B241C,stroke-width:3px,color:#fff
-```
+</div>
 
 **Simple Definitions:**
 
@@ -183,7 +183,7 @@ plt.show()
 
 > "If you take many samples and calculate their averages, those averages will form a bell curve (normal distribution), even if your original data isn't bell-shaped!"
 
-```mermaid
+<div class="mermaid">
 flowchart LR
     A[🎲 Any Population<br/>Any shape!] --> B[📦 Take many<br/>samples]
     B --> C[📊 Calculate each<br/>sample mean]
@@ -193,7 +193,7 @@ flowchart LR
     style B fill:#3498DB,stroke:#1F618D,stroke-width:3px,color:#fff
     style C fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
     style D fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 📐 CLT Formulas
 
@@ -360,7 +360,7 @@ plt.show()
 
 **Hypothesis Testing** is like being a detective! You have a claim, and you need to find evidence to prove or disprove it.
 
-```mermaid
+<div class="mermaid">
 flowchart TD
     A[🤔 Start with a Claim] --> B[📝 Write Hypotheses<br/>H₀ and H₁]
     B --> C[📊 Collect Sample Data]
@@ -376,11 +376,11 @@ flowchart TD
     style E fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
     style F fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
     style G fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 📋 The Two Hypotheses
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Hypotheses] --> B[Null Hypothesis H₀<br/>Status Quo]
     A --> C[Alternative Hypothesis H₁<br/>What we want to prove]
@@ -393,7 +393,7 @@ graph TD
     style C fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
     style D fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style E fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
-```
+</div>
 
 **Simple Explanation:**
 
@@ -405,7 +405,7 @@ graph TD
 
 ### 🎯 Types of Tests
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Type of Test] --> B[Two-Tailed<br/>H₁: μ ≠ value]
     A --> C[Right-Tailed<br/>H₁: μ > value]
@@ -422,7 +422,7 @@ graph TD
     style E fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
     style F fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
     style G fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 📐 Critical Value Method - Step by Step
 
@@ -543,7 +543,7 @@ plt.show()
 - **Low p-value** (< 0.05): Very surprising! Reject H₀
 - **High p-value** (≥ 0.05): Not surprising. Don't reject H₀
 
-```mermaid
+<div class="mermaid">
 flowchart LR
     A[Calculate<br/>p-value] --> B{p-value < α?}
     B -->|Yes| C[❌ Reject H₀<br/>Result is significant]
@@ -553,7 +553,7 @@ flowchart LR
     style B fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style C fill:#E74C3C,stroke:#A93226,stroke-width:3px,color:#fff
     style D fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 📐 p-value Method Steps
 
@@ -645,7 +645,7 @@ plt.show()
 
 ### 🎯 Understanding Type I and Type II Errors
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Reality vs Decision] --> B[Type I Error α<br/>False Positive]
     A --> C[Type II Error β<br/>False Negative]
@@ -663,7 +663,7 @@ graph TD
     style E fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
     style F fill:#C0392B,stroke:#7B241C,stroke-width:3px,color:#fff
     style G fill:#2980B9,stroke:#1A5276,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 📊 Error Types Table
 
@@ -889,7 +889,7 @@ else:
 
 ## 🌟 Key Takeaways
 
-```mermaid
+<div class="mermaid">
 mindmap
   root((Inferential<br/>Statistics))
     Sampling
@@ -912,7 +912,7 @@ mindmap
       Type I: False alarm
       Type II: Missed detection
       Trade-off exists
-```
+</div>
 
 ### 🎊 Remember
 

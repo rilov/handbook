@@ -22,7 +22,7 @@ Imagine you just got a huge box of LEGO blocks! Before building anything cool, y
 
 **That's exactly what EDA is!** But instead of LEGO blocks, we're exploring data (information/numbers).
 
-```mermaid
+<div class="mermaid">
 flowchart TD
     A[📦 Get Data] --> B[🔍 Look at Data]
     B --> C[📊 Understand Patterns]
@@ -34,13 +34,13 @@ flowchart TD
     style C fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
     style D fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
     style E fill:#E74C3C,stroke:#A93226,stroke-width:3px,color:#fff
-```
+</div>
 
 ---
 
 ## 🎯 The EDA Journey
 
-```mermaid
+<div class="mermaid">
 mindmap
   root((EDA Journey))
     Univariate Analysis
@@ -56,7 +56,7 @@ mindmap
     Derived Metrics
       Create New Variables
       Discover Patterns
-```
+</div>
 
 ---
 
@@ -96,7 +96,7 @@ Think of variables like different types of toys in your toy box!
 
 ### 🏷️ Types of Variables
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Variables<br/>Types of Information] --> B[Categorical<br/>Categories/Groups]
     A --> C[Quantitative<br/>Numbers]
@@ -117,7 +117,7 @@ graph TD
     style F fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
     style G fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style H fill:#27AE60,stroke:#186A3B,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎪 Real-Life Examples
 
@@ -142,7 +142,7 @@ graph TD
 
 **Univariate** = "Uni" (one) + "variate" (variable) = Looking at ONE variable
 
-```mermaid
+<div class="mermaid">
 flowchart LR
     A[📋 Start with<br/>One Variable] --> B{What Type?}
     
@@ -163,7 +163,7 @@ flowchart LR
     style F fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style G fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
     style H fill:#16A085,stroke:#0E6655,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎨 Example: Analyzing Favorite Fruits in Class
 
@@ -225,7 +225,7 @@ Total students: 30
 
 ### 📏 Summary Metrics for Numbers
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Summary Metrics<br/>Quick Facts About Numbers] --> B[Central Tendency<br/>Where's the middle?]
     A --> C[Spread<br/>How spread out?]
@@ -245,7 +245,7 @@ graph TD
     style B fill:#3498DB,stroke:#1F618D,stroke-width:3px,color:#fff
     style C fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
     style D fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎯 Easy Example: Test Scores
 
@@ -407,7 +407,7 @@ Median score: 50.50
 
 Now we're comparing the same thing across different groups!
 
-```mermaid
+<div class="mermaid">
 flowchart TD
     A[🎯 Segmented Analysis<br/>Compare Groups] --> B[Step 1:<br/>Take Your Data]
     B --> C[Step 2:<br/>Divide into Groups]
@@ -421,11 +421,11 @@ flowchart TD
     style D fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
     style E fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
     style F fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎮 Example: Video Game Scores by Age Group
 
-```mermaid
+<div class="mermaid">
 graph LR
     A[All Players] --> B[Kids 8-10 yrs]
     A --> C[Teens 11-13 yrs]
@@ -442,7 +442,7 @@ graph LR
     style E fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style F fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
     style G fill:#27AE60,stroke:#186A3B,stroke-width:3px,color:#fff
-```
+</div>
 
 **Discovery**: Older kids score higher on average! 🎯
 
@@ -515,7 +515,7 @@ Age_Group
 
 **Bivariate** = "Bi" (two) + "variate" (variable) = Looking at TWO variables together
 
-```mermaid
+<div class="mermaid">
 flowchart TD
     A[🔗 Bivariate Analysis<br/>Two Variables] --> B{What Types?}
     
@@ -532,11 +532,11 @@ flowchart TD
     style C fill:#3498DB,stroke:#1F618D,stroke-width:3px,color:#fff
     style D fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
     style E fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🌡️ Understanding Correlation (Relationship Between Numbers)
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Correlation<br/>How two things relate] --> B[Positive Correlation ↗️<br/>+1 to 0]
     A --> C[Negative Correlation ↘️<br/>-1 to 0]
@@ -553,7 +553,7 @@ graph TD
     style E fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
     style F fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style G fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎯 Real Examples Kids Can Understand
 
@@ -702,7 +702,7 @@ Comparing two categories together!
 
 ### 🎮 Example: Gaming Habits by Gender
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Gaming Frequency] --> B[Boys]
     A --> C[Girls]
@@ -720,7 +720,7 @@ graph TD
     style A fill:#E74C3C,stroke:#A93226,stroke-width:3px,color:#fff
     style B fill:#3498DB,stroke:#1F618D,stroke-width:3px,color:#fff
     style C fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
-```
+</div>
 
 **Discoveries**:
 - More boys play every day than girls
@@ -809,7 +809,7 @@ Girls          25.00  21.88         15.62        37.50
 
 Sometimes we can combine information to discover new things!
 
-```mermaid
+<div class="mermaid">
 flowchart TD
     A[🎨 Derived Metrics<br/>Create New Variables] --> B[Type-Driven<br/>Change the type]
     A --> C[Business-Driven<br/>Domain knowledge]
@@ -826,11 +826,11 @@ flowchart TD
     style E fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
     style F fill:#F39C12,stroke:#B9770E,stroke-width:3px,color:#fff
     style G fill:#27AE60,stroke:#186A3B,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎯 Steven's Typology (Fancy Way to Classify Variables)
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[Steven's Typology<br/>4 Types of Variables] --> B[1. Nominal<br/>Just Names]
     A --> C[2. Ordinal<br/>Has Order]
@@ -847,7 +847,7 @@ graph TD
     style C fill:#3498DB,stroke:#1F618D,stroke-width:3px,color:#fff
     style D fill:#2ECC71,stroke:#1E8449,stroke-width:3px,color:#fff
     style E fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎈 Fun Examples of Derived Metrics
 
@@ -996,7 +996,7 @@ Needs Improvement      0
 
 ## 🎯 The Complete EDA Process
 
-```mermaid
+<div class="mermaid">
 flowchart TD
     A[📦 Start: Get Your Data] --> B[📖 Step 1: Understand<br/>What data do I have?]
     B --> C[🧹 Step 2: Clean<br/>Fix errors & missing data]
@@ -1016,7 +1016,7 @@ flowchart TD
     style G fill:#1ABC9C,stroke:#117A65,stroke-width:3px,color:#fff
     style H fill:#27AE60,stroke:#186A3B,stroke-width:3px,color:#fff
     style I fill:#C0392B,stroke:#7B241C,stroke-width:3px,color:#fff
-```
+</div>
 
 ---
 
@@ -1024,7 +1024,7 @@ flowchart TD
 
 ### 📋 EDA Checklist
 
-```mermaid
+<div class="mermaid">
 graph TD
     A[✅ EDA Checklist] --> B[✓ Know your variables]
     A --> C[✓ Check for missing data]
@@ -1036,7 +1036,7 @@ graph TD
     A --> I[✓ Tell the story]
     
     style A fill:#E74C3C,stroke:#A93226,stroke-width:3px,color:#fff
-```
+</div>
 
 ### 🎯 When to Use What
 
@@ -1053,7 +1053,7 @@ graph TD
 
 ## 🌟 Key Takeaways
 
-```mermaid
+<div class="mermaid">
 mindmap
   root((EDA is Like<br/>Being a Detective))
     🔍 Observe
@@ -1071,7 +1071,7 @@ mindmap
     🎯 Conclude
       Make decisions
       Solve problems
-```
+</div>
 
 ### 🎊 Remember
 
@@ -1336,7 +1336,7 @@ Answer these using Python:
 
 ## 🎨 Visual Summary
 
-```mermaid
+<div class="mermaid">
 graph TB
     A[🎯 EDA: Your Data Adventure] --> B[Chapter 1:<br/>📚 Types of Variables]
     A --> C[Chapter 2:<br/>📊 Univariate Analysis]
@@ -1358,7 +1358,7 @@ graph TB
     
     style A fill:#E74C3C,stroke:#A93226,stroke-width:3px,color:#fff
     style L fill:#C0392B,stroke:#7B241C,stroke-width:3px,color:#fff
-```
+</div>
 
 ---
 
