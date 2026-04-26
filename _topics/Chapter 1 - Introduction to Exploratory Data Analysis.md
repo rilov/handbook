@@ -223,14 +223,14 @@ flowchart LR
 ### 🎨 Example: Analyzing Favorite Fruits in Class
 
 **Step 1: Collect Data**
-- 🍎 Apple: 10 kids
-- 🍌 Banana: 7 kids
-- 🍊 Orange: 5 kids
-- 🍇 Grapes: 8 kids
+- 🍎 Apple: 10 students
+- 🍌 Banana: 7 students
+- 🍊 Orange: 5 students
+- 🍇 Grapes: 8 students
 
 **Step 2: Summary Metrics** (Quick Facts)
 - **Mode** (Most popular): Apple! 🍎
-- **Total students**: 30 kids
+- **Total students**: 30 students
 - **Variety**: 4 different fruits
 
 ### 🐍 Python Example: Categorical Data Analysis
@@ -482,9 +482,9 @@ flowchart TD
 
 <div class="mermaid">
 graph LR
-    A[All Players] --> B[Kids 8-10 yrs]
-    A --> C[Teens 11-13 yrs]
-    A --> D[Teens 14-16 yrs]
+    A[All Players] --> B[Age 8-10 yrs]
+    A --> C[Age 11-13 yrs]
+    A --> D[Age 14-16 yrs]
     
     B --> E[Average: 75 points]
     C --> F[Average: 85 points]
@@ -499,7 +499,7 @@ graph LR
     style G fill:#27AE60,stroke:#186A3B,stroke-width:3px,color:#fff
 </div>
 
-**Discovery**: Older kids score higher on average! 🎯
+**Discovery**: Older players score higher on average! 🎯
 
 ### 🐍 Python Example: Segmented Analysis
 
@@ -652,7 +652,7 @@ graph TD
     style G fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
 </div>
 
-### 🎯 Real Examples Kids Can Understand
+### 🎯 Real-World Examples
 
 **Positive Correlation** (Both go up together):
 - 📚 More study hours → 📈 Better grades
@@ -949,7 +949,7 @@ graph TD
 ### 🎈 Fun Examples of Derived Metrics
 
 **Type-Driven**: Changing how we look at data
-- Age (10, 11, 12, 13...) → Age Groups (Kids, Teens, Adults)
+- Age (10, 11, 12, 13...) → Age Groups (Children, Teens, Adults)
 - Exact time (2:34 PM) → Time of day (Morning, Afternoon, Evening)
 
 **Business-Driven**: Using real-world knowledge
@@ -995,7 +995,7 @@ df = pd.DataFrame(data)
 
 # 1. Type-Driven: Create Age Groups
 df['Age_Group'] = pd.cut(df['Age'], bins=[0, 10, 13, 18], 
-                         labels=['Kids (≤10)', 'Tweens (11-13)', 'Teens (14+)'])
+                         labels=['Children (≤10)', 'Tweens (11-13)', 'Teens (14+)'])
 
 # 2. Data-Driven: Calculate BMI
 df['Height_m'] = df['Height_cm'] / 100  # Convert cm to meters
@@ -1065,19 +1065,19 @@ print(df['Performance'].value_counts())
 ```
 📊 Original Data with Derived Metrics:
       Name  Age     Age_Group        BMI BMI_Category  Average_Score      Performance
-0    Alice   10  Kids (≤10)      17.86   Underweight          87.67         Very Good
+0    Alice   10  Children (≤10)  17.86   Underweight          87.67         Very Good
 1      Bob   12  Tweens (11-13)  18.73        Normal          80.00              Good
 2  Charlie   15  Teens (14+)     20.76        Normal          92.33         Excellent
 3    Diana   13  Tweens (11-13)  19.53        Normal          87.67         Very Good
 4      Eve   11  Tweens (11-13)  18.08   Underweight          77.67              Good
 5    Frank   14  Teens (14+)     20.20        Normal          90.00         Excellent
 6    Grace   16  Teens (14+)     21.22        Normal          95.00         Excellent
-7    Henry    9  Kids (≤10)      16.46   Underweight          72.33              Good
+7    Henry    9  Children (≤10)  16.46   Underweight          72.33              Good
 
 📈 Summary by Age Group:
                     BMI  Average_Score
 Age_Group                             
-Kids (≤10)        17.16          80.00
+Children (≤10)    17.16          80.00
 Tweens (11-13)    18.78          81.78
 Teens (14+)       20.73          92.44
 
@@ -1425,7 +1425,7 @@ Answer these using Python:
 
 3. **Q:** Calculate correlation between study hours `[2, 4, 6, 8, 10]` and scores `[60, 70, 80, 90, 95]`
 
-4. **Q:** Create age groups from ages `[8, 12, 15, 9, 13, 16, 10, 14, 11, 17]`: Kids(≤10), Tweens(11-13), Teens(14+)
+4. **Q:** Create age groups from ages `[8, 12, 15, 9, 13, 16, 10, 14, 11, 17]`: Children(≤10), Tweens(11-13), Teens(14+)
 
 5. **Q:** Calculate BMI for: Height=165cm, Weight=60kg. Categorize the result.
 
