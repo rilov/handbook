@@ -15,7 +15,40 @@ summary: "Comprehensive guide to statistical hypothesis testing methods - single
 
 ## Welcome! 👋
 
-This chapter teaches you how to test claims and make decisions with data. You'll learn when to use different statistical tests and how to interpret the results - all explained in simple, beginner-friendly language!
+**Hypothesis testing methods** are the practical tools that turn statistical theory into real-world decisions. While Chapter 3 taught you the *why* and *how* of hypothesis testing, this chapter teaches you *which specific test to use* for different situations.
+
+**The Challenge:**
+
+You understand hypothesis testing conceptually, but when faced with real data, you need to know:
+- Which statistical test should I use?
+- What are the assumptions and requirements?
+- How do I interpret the results?
+- What does this mean in practical terms?
+
+**What You'll Master:**
+
+This chapter provides a comprehensive guide to the most common hypothesis tests used in practice:
+
+1. **Single Sample Tests** - Compare one group to a known value
+2. **Two Sample Tests** - Compare two groups to each other  
+3. **Proportion Tests** - Test percentages and success rates
+
+Each section includes:
+- ✅ Clear explanations of when to use each test
+- ✅ Step-by-step procedures with formulas
+- ✅ Real-world examples with Python code
+- ✅ Interpretation guidelines
+- ✅ Common pitfalls to avoid
+
+**Why This Matters:**
+
+These tests are used everywhere:
+- **Business:** A/B testing, quality control, customer satisfaction
+- **Medicine:** Drug trials, treatment effectiveness, disease rates
+- **Education:** Teaching methods, test score comparisons, program evaluation
+- **Science:** Experimental results, hypothesis validation, research findings
+
+By the end of this chapter, you'll be able to confidently choose and apply the right statistical test for your data!
 
 ---
 
