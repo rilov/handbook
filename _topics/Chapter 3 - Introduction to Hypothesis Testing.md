@@ -14,7 +14,27 @@ summary: "Master the fundamentals of hypothesis testing - learn the 5-step proce
 
 ## Welcome to Hypothesis Testing! 🎯
 
-Imagine you're a detective trying to solve a mystery. You have a hunch (a hypothesis), and you need to collect evidence (data) to see if your hunch is right or wrong. That's exactly what hypothesis testing is!
+**Hypothesis testing** is one of the most powerful tools in statistics. It provides a rigorous, mathematical framework for making decisions when we're uncertain about the truth.
+
+**The Core Challenge:**
+
+Every day, people make claims:
+- "Our new app increases user engagement by 20%"
+- "This teaching method improves test scores"
+- "Men and women have different preferences for this product"
+- "The average delivery time is under 30 minutes"
+
+But how do we know if these claims are true or just random chance? That's where hypothesis testing comes in.
+
+**The Detective Analogy:**
+
+Imagine you're a detective investigating a case:
+- **The Suspect:** A claim about the world (hypothesis)
+- **Your Job:** Collect evidence (data) to determine if the claim is likely true or false
+- **The Standard:** "Beyond reasonable doubt" (statistical significance)
+- **The Verdict:** Reject the claim or fail to reject it based on evidence
+
+Just like a detective doesn't "prove" guilt but shows evidence beyond reasonable doubt, we don't "prove" hypotheses - we determine if there's enough statistical evidence to support or reject them.
 
 ---
 
@@ -84,16 +104,43 @@ Every hypothesis test has TWO competing claims:
 
 ### 📊 P-Value - "How Weird Is Your Evidence?"
 
-The **p-value** is a number between 0 and 1 that tells you:
-> "If the null hypothesis were true, what's the probability of getting evidence as extreme as (or more extreme than) what we observed?"
+The **p-value** is perhaps the most misunderstood concept in statistics. Let's break it down clearly.
 
-**Think of it like this:**
-- **Small p-value (< 0.05)**: "Wow, this is really unusual! Something's going on!"
-- **Large p-value (> 0.05)**: "Meh, this could easily happen by random chance"
+**Formal Definition:**
+> The p-value is the probability of observing data as extreme as (or more extreme than) what we actually observed, **assuming the null hypothesis is true**.
 
-**The Magic Number: 0.05**
-- If p-value < 0.05 → Evidence is strong → Reject H₀
-- If p-value > 0.05 → Evidence is weak → Don't reject H₀
+**What does this really mean?**
+
+Imagine you flip a coin 100 times and get 65 heads. You wonder: "Is this coin fair?"
+- If the coin IS fair (H₀ is true), what's the chance of getting 65+ heads just by luck?
+- That probability is the p-value
+- If it's very small (say, 0.01 or 1%), then either:
+  - You witnessed a very rare event, OR
+  - The coin isn't actually fair (more likely!)
+
+**Interpreting P-Values:**
+
+- **p < 0.01 (Very small):** "This is extremely unlikely to happen by chance. Strong evidence against H₀"
+- **p < 0.05 (Small):** "This is unlikely to happen by chance. Moderate evidence against H₀"
+- **p > 0.05 (Large):** "This could easily happen by chance. Weak evidence against H₀"
+- **p > 0.10 (Very large):** "This is quite likely to happen by chance. No evidence against H₀"
+
+**The Magic Number: 0.05 (5%)**
+
+By convention, we use α = 0.05 as our threshold:
+- **If p-value < 0.05:** Evidence is strong enough → **Reject H₀** (statistically significant)
+- **If p-value ≥ 0.05:** Evidence is not strong enough → **Fail to reject H₀** (not significant)
+
+**Important Misconceptions:**
+
+❌ **WRONG:** "p-value is the probability that H₀ is true"
+✅ **CORRECT:** "p-value is the probability of seeing this data if H₀ were true"
+
+❌ **WRONG:** "p = 0.05 means there's a 5% chance we're wrong"
+✅ **CORRECT:** "p = 0.05 means if H₀ is true, we'd see data this extreme 5% of the time"
+
+❌ **WRONG:** "p < 0.05 proves H₁ is true"
+✅ **CORRECT:** "p < 0.05 suggests H₀ is unlikely, so we reject it in favor of H₁"
 
 ### 🎚️ Significance Level (α) - "How Sure Do We Need to Be?"
 
