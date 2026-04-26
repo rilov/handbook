@@ -13,6 +13,57 @@ summary: "Master two sample hypothesis tests - independent and paired t-tests fo
 
 # Chapter 4.2: Two Sample Hypothesis Tests
 
+## Overview
+
+**Two sample tests** are used when you want to compare the means of two different groups or the same group measured at two different times. This is one of the most widely used statistical tests in research and business.
+
+**The Core Question:**
+
+"Is there a statistically significant difference between these two groups?"
+
+**Real-World Applications:**
+
+- **Medical Research:** Does Treatment A work better than Treatment B?
+- **Business:** Do customers in Region A spend more than Region B?
+- **Education:** Did students who used Method A score higher than those who used Method B?
+- **Product Testing:** Is Product Version 2 better than Version 1?
+- **A/B Testing:** Does Website Design A get more clicks than Design B?
+
+**Two Fundamental Scenarios:**
+
+### **1. Independent Samples (Different Groups)**
+You're comparing two completely separate groups:
+- Men vs Women
+- Treatment group vs Control group
+- Product A users vs Product B users
+- Store A customers vs Store B customers
+
+**Key characteristic:** The groups are unrelated - different people, different items, different entities.
+
+### **2. Paired Samples (Same Group, Two Measurements)**
+You're comparing the same group measured twice:
+- Before vs After treatment
+- Pre-test vs Post-test scores
+- Morning vs Evening measurements
+- First attempt vs Second attempt
+
+**Key characteristic:** The measurements are related - same people, same items, measured at different times or conditions.
+
+**Why This Distinction Matters:**
+
+- **Independent samples** have more variability (different people are naturally different)
+- **Paired samples** control for individual differences (same person, so less noise)
+- **Paired tests** are more powerful (easier to detect real changes)
+- Using the wrong test can lead to incorrect conclusions!
+
+**What You'll Learn:**
+
+1. **Independent t-test:** Compare two unrelated groups
+2. **Paired t-test:** Compare related measurements
+3. **Effect size:** Measure the practical significance (not just statistical)
+4. **Assumptions:** When these tests are valid
+5. **Interpretation:** What the results mean in practice
+
 ## Table of Contents
 1. [Introduction - Comparing Two Groups](#introduction)
 2. [Independent T-Test - Different Groups](#independent-test)
