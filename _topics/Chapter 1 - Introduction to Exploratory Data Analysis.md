@@ -45,16 +45,40 @@ mindmap
   root((EDA Journey))
     Univariate Analysis
       One Variable at a Time
-      Distribution Plots
+      📊 Categorical Plots
+        Bar Chart
+        Pie Chart
+        Count Plot
+      📈 Numerical Plots
+        Histogram
+        Box Plot
+        Density Plot
       Summary Metrics
+        Mean, Median, Mode
+        Std, Min, Max
     Segmented Analysis
       Group & Compare
+      📊 Grouped Bar Chart
+      📦 Side-by-Side Box Plots
+      📈 Overlapping Histograms
       Find Differences
     Bivariate Analysis
       Two Variables Together
-      Find Relationships
+      🔗 Number vs Number
+        Scatter Plot
+        Line Plot
+        Correlation Heatmap
+      🔗 Category vs Number
+        Box Plot by Group
+        Violin Plot
+      🔗 Category vs Category
+        Stacked Bar Chart
+        Grouped Bar Chart
+        Heatmap
     Derived Metrics
       Create New Variables
+      Combine Features
+      Transform Data
       Discover Patterns
 </div>
 
