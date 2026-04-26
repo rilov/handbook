@@ -13,6 +13,37 @@ summary: "Learn single sample hypothesis tests - z-tests and t-tests for compari
 
 # Chapter 4.1: Single Sample Hypothesis Tests
 
+## Overview
+
+**Single sample tests** are used when you want to compare a sample mean to a known or claimed population value. This is one of the most fundamental and commonly used hypothesis tests in statistics.
+
+**The Core Question:**
+
+"Is the average of my sample significantly different from a claimed value?"
+
+**Real-World Applications:**
+
+- **Quality Control:** Are products meeting specifications? (e.g., "Are these bottles filled to 500ml?")
+- **Medical Research:** Is a patient's measurement normal? (e.g., "Is this blood pressure reading typical?")
+- **Business:** Are we meeting targets? (e.g., "Is average customer spend really $50?")
+- **Education:** Are students performing at expected levels? (e.g., "Is the class average 75%?")
+
+**What Makes This Different:**
+
+Unlike comparing two groups (Chapter 4.2), here we're comparing our sample to a **single fixed value**:
+- We have ONE sample (e.g., 30 chocolate bars)
+- We have ONE claimed value (e.g., "should weigh 100g")
+- We ask: "Does our sample support or contradict this claim?"
+
+**The Two Tools:**
+
+1. **Z-Test:** Use when you know the population standard deviation (rare in practice)
+2. **T-Test:** Use when you don't know the population standard deviation (most common)
+
+**Why Two Tests?**
+
+The t-test is more conservative (harder to reject H₀) when sample sizes are small, which protects against false conclusions. As sample size increases, t-test and z-test give similar results.
+
 ## Table of Contents
 1. [Introduction - What Are We Trying to Do?](#introduction)
 2. [The Z-Test - When You Know A Lot](#z-test)
