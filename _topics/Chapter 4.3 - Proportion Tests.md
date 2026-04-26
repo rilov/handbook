@@ -13,6 +13,68 @@ summary: "Learn proportion tests for testing percentages and proportions - one-s
 
 # Chapter 4.3: Proportion Tests
 
+## Overview
+
+**Proportion tests** are used when your data consists of categories or yes/no outcomes, and you want to test claims about percentages or success rates. Unlike t-tests which compare means, proportion tests compare percentages.
+
+**The Core Question:**
+
+"Is this percentage/success rate significantly different from what we expected or from another group?"
+
+**Real-World Applications:**
+
+- **Marketing & A/B Testing:** Did the new ad campaign increase conversion rates?
+- **Quality Control:** Is the defect rate below 5%?
+- **Medical Research:** Is the cure rate for Treatment A higher than Treatment B?
+- **Politics:** Do different demographics support a candidate at different rates?
+- **Product Testing:** Do users prefer Feature A over Feature B?
+
+**When to Use Proportion Tests:**
+
+Use proportion tests when your data is:
+- **Binary/Categorical:** Yes/No, Success/Failure, Click/No Click, Pass/Fail
+- **Count-based:** Number of successes out of total trials
+- **Percentage-based:** Conversion rates, success rates, approval ratings
+
+**Examples:**
+- ✅ "60 out of 100 customers were satisfied" → Proportion = 0.60
+- ✅ "15% of products were defective" → Proportion = 0.15
+- ✅ "450 out of 1000 clicked the ad" → Proportion = 0.45
+
+**NOT for proportion tests:**
+- ❌ Average customer spending ($45.50) → Use t-test
+- ❌ Mean test score (78.5) → Use t-test
+- ❌ Average delivery time (23.4 minutes) → Use t-test
+
+**Two Types of Proportion Tests:**
+
+### **1. One-Sample Proportion Test**
+Compare your sample proportion to a claimed or expected value.
+
+**Example:** "A company claims 90% customer satisfaction. You survey 200 customers and find 85% are satisfied. Is the company's claim accurate?"
+
+### **2. Two-Sample Proportion Test**
+Compare proportions between two independent groups.
+
+**Example:** "Do men (20% click rate) and women (30% click rate) click on ads at different rates?"
+
+**Key Differences from T-Tests:**
+
+| Aspect | T-Test | Proportion Test |
+|--------|--------|-----------------|
+| **Data Type** | Continuous (means) | Categorical (percentages) |
+| **Example** | Average height: 170 cm | 60% are tall |
+| **Test Statistic** | t-statistic | z-statistic |
+| **Distribution** | t-distribution | Normal distribution |
+| **Sample Size** | Works with small samples | Needs larger samples (np ≥ 10) |
+
+**What You'll Learn:**
+
+1. **One-sample proportion test:** Test if a percentage matches a claimed value
+2. **Two-sample proportion test:** Compare percentages between two groups
+3. **Sample size requirements:** When proportion tests are valid
+4. **Practical interpretation:** What the results mean for decision-making
+
 ## Table of Contents
 1. [Introduction - Testing Percentages](#introduction)
 2. [One-Sample Proportion Test](#one-sample)
