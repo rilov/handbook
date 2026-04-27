@@ -142,42 +142,243 @@ By convention, we use α = 0.05 as our threshold:
 ❌ **WRONG:** "p < 0.05 proves H₁ is true"
 ✅ **CORRECT:** "p < 0.05 suggests H₀ is unlikely, so we reject it in favor of H₁"
 
+### 🧮 Understanding the Formulas - Built From Scratch
+
+Before we dive into calculations, let's **truly understand** what these formulas mean by building them up step by step!
+
+---
+
+#### **🎯 The Core Idea: Measuring "Weirdness"**
+
+All hypothesis testing formulas answer one question:
+
+> **"How weird is my result if H₀ is true?"**
+
+Think of it like this:
+- You claim to be 6 feet tall
+- I measure you and get 6 feet 1 inch
+- **Question:** Is that difference (1 inch) a big deal or just measurement error?
+
+**The answer depends on:**
+1. **How big the difference is** (1 inch)
+2. **How much variation is normal** (measuring tape accuracy)
+
+This is exactly what our formulas do!
+
+---
+
+#### **📏 Building Block 1: The Difference**
+
+**Simple version:**
+```
+Difference = What you got - What was claimed
+```
+
+**Examples:**
+- Coin: Got 65% heads, claimed 50% → Difference = 15%
+- Height: Got 171 cm, claimed 170 cm → Difference = 1 cm
+- Wait time: Got 5.8 min, claimed 5.0 min → Difference = 0.8 min
+
+**In formulas:**
+- For proportions: `p̂ - p₀` (your proportion - claimed proportion)
+- For means: `x̄ - μ₀` (your average - claimed average)
+
+---
+
+#### **📏 Building Block 2: Standard Error (The "Normal Variation")**
+
+**What is Standard Error?**
+
+Standard Error (SE) tells you: "How much would my sample result typically vary just by random chance?"
+
+**Analogy:**
+Imagine you're measuring your height:
+- If your measuring tape is accurate to ±0.1 cm → Small SE (precise!)
+- If your measuring tape is accurate to ±5 cm → Large SE (imprecise!)
+
+**The Formula:**
+```
+SE = "How spread out the data is" / √(Sample size)
+     ↓                              ↓
+   Variation                    More data = more precise
+```
+
+**Why divide by √n?**
+- Bigger sample → More reliable → Smaller SE
+- √n grows slower than n, which matches reality
+- With 4× more data, you get 2× more precision (√4 = 2)
+
+**For proportions:**
+```
+SE = √[p₀(1-p₀) / n]
+
+Breaking it down:
+- p₀(1-p₀) = Maximum variation for proportions
+  - If p₀ = 0.5 (50%): p₀(1-p₀) = 0.5 × 0.5 = 0.25 (most variable)
+  - If p₀ = 0.9 (90%): p₀(1-p₀) = 0.9 × 0.1 = 0.09 (less variable)
+- Divide by n = Account for sample size
+- √ = Take square root (statistical reasons)
+```
+
+**For means:**
+```
+SE = s / √n
+
+Breaking it down:
+- s = Sample standard deviation (how spread out your data is)
+- √n = Square root of sample size
+- Bigger s → Bigger SE (more variation)
+- Bigger n → Smaller SE (more data = more precise)
+```
+
+**Intuitive Example:**
+
+Imagine measuring wait times at a coffee shop:
+- If wait times vary wildly (2 min to 20 min) → Large s → Large SE
+- If wait times are consistent (4.5 min to 5.5 min) → Small s → Small SE
+- If you only visit 4 times → Large SE (not enough data)
+- If you visit 100 times → Small SE (lots of data!)
+
+---
+
+#### **📏 Building Block 3: The Test Statistic (Putting It Together)**
+
+**The Magic Formula:**
+```
+Test Statistic = Difference / Standard Error
+                 ↓           ↓
+            How far off?   Normal variation?
+```
+
+**What this means in plain English:**
+
+> "My result is [test statistic] times more extreme than normal random variation"
+
+**Examples:**
+
+**Example 1: Small test statistic (t = 0.5)**
+```
+Difference = 0.8 minutes
+SE = 1.6 minutes
+t = 0.8 / 1.6 = 0.5
+
+Interpretation: "My result is only 0.5 standard errors away from the claim.
+That's well within normal random variation. Nothing unusual here!"
+```
+
+**Example 2: Large test statistic (t = 3.0)**
+```
+Difference = 0.8 minutes
+SE = 0.27 minutes
+t = 0.8 / 0.27 = 3.0
+
+Interpretation: "My result is 3 standard errors away from the claim.
+That's pretty far! This is unusual and probably not just random chance."
+```
+
+**Visual Understanding:**
+
+```
+Normal Random Variation (Standard Errors)
+
+        -3    -2    -1     0     1     2     3
+        |-----|-----|-----|-----|-----|-----|
+        ↑                 ↑                 ↑
+    Very unusual      Expected      Very unusual
+    
+If your test statistic falls here → Probably not random!
+If your test statistic falls in middle → Could be random
+```
+
+**Rule of Thumb:**
+- |test statistic| < 2: Probably just random variation
+- |test statistic| ≈ 2: Borderline, might be real
+- |test statistic| > 2: Probably a real difference!
+
+---
+
+#### **🎓 Complete Formula Breakdown**
+
+Now let's see the full formulas with everything labeled:
+
+**For Proportions (Z-test):**
+```
+         What you got - What was claimed
+z = ─────────────────────────────────────────
+    √[Claimed × (1-Claimed) / Sample size]
+    
+         p̂ - p₀
+  = ──────────────────
+    √[p₀(1-p₀) / n]
+
+Step by step:
+1. Calculate difference: p̂ - p₀
+2. Calculate SE: √[p₀(1-p₀) / n]
+3. Divide: z = difference / SE
+```
+
+**For Means (T-test):**
+```
+         Your average - Claimed average
+t = ─────────────────────────────────────
+    Your std dev / √(Sample size)
+    
+         x̄ - μ₀
+  = ──────────────
+       s / √n
+
+Step by step:
+1. Calculate difference: x̄ - μ₀
+2. Calculate SE: s / √n
+3. Divide: t = difference / SE
+```
+
+---
+
+#### **🔢 Worked Example: Building Up the Calculation**
+
+**Scenario:** Coin flipped 100 times, got 65 heads. Is it fair?
+
+**Step-by-step with explanations:**
+
+```
+Given:
+- Flips (n) = 100
+- Heads observed = 65
+- Claimed probability (p₀) = 0.50 (fair coin)
+
+Step 1: Calculate what you got
+p̂ = 65/100 = 0.65 (you got 65% heads)
+
+Step 2: Calculate the difference
+Difference = p̂ - p₀ = 0.65 - 0.50 = 0.15
+→ "You got 15 percentage points more heads than expected"
+
+Step 3: Calculate the standard error (normal variation)
+SE = √[p₀(1-p₀) / n]
+SE = √[0.50 × 0.50 / 100]
+SE = √[0.25 / 100]
+SE = √0.0025
+SE = 0.05
+→ "With 100 flips of a fair coin, results typically vary by about 5%"
+
+Step 4: Calculate the test statistic
+z = Difference / SE
+z = 0.15 / 0.05
+z = 3.0
+→ "Your result is 3 standard errors away from expected"
+→ "This is 3× more extreme than normal random variation!"
+
+Step 5: Interpret
+z = 3.0 is pretty far from 0!
+This is unusual enough to suspect the coin isn't fair.
+```
+
+---
+
 ### 🧮 How to Calculate P-Values - Step by Step
 
-Now let's learn **how** p-values are actually calculated!
-
-#### **Step 1: Calculate the Test Statistic**
-
-The test statistic measures how far your sample result is from what H₀ claims, in units of standard error.
-
-**General Formula:**
-```
-Test Statistic = (Observed Value - Expected Value) / Standard Error
-```
-
-**For different tests:**
-
-**Z-test (proportions or means with known σ):**
-```
-z = (p̂ - p₀) / √[p₀(1-p₀)/n]        [For proportions]
-z = (x̄ - μ₀) / (σ/√n)                [For means]
-
-Where:
-- p̂ = Sample proportion
-- p₀ = Claimed proportion
-- x̄ = Sample mean
-- μ₀ = Claimed mean
-- σ = Population standard deviation
-- n = Sample size
-```
-
-**T-test (means with unknown σ):**
-```
-t = (x̄ - μ₀) / (s/√n)
-
-Where:
-- s = Sample standard deviation
-```
+Now that you understand **what** the formulas mean, let's see **how** to use them!
 
 **Example Calculation:**
 ```
