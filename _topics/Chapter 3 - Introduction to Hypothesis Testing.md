@@ -142,6 +142,124 @@ By convention, we use α = 0.05 as our threshold:
 ❌ **WRONG:** "p < 0.05 proves H₁ is true"
 ✅ **CORRECT:** "p < 0.05 suggests H₀ is unlikely, so we reject it in favor of H₁"
 
+### 🧮 How to Calculate P-Values - Step by Step
+
+Now let's learn **how** p-values are actually calculated!
+
+#### **Step 1: Calculate the Test Statistic**
+
+The test statistic measures how far your sample result is from what H₀ claims, in units of standard error.
+
+**General Formula:**
+```
+Test Statistic = (Observed Value - Expected Value) / Standard Error
+```
+
+**For different tests:**
+
+**Z-test (proportions or means with known σ):**
+```
+z = (p̂ - p₀) / √[p₀(1-p₀)/n]        [For proportions]
+z = (x̄ - μ₀) / (σ/√n)                [For means]
+
+Where:
+- p̂ = Sample proportion
+- p₀ = Claimed proportion
+- x̄ = Sample mean
+- μ₀ = Claimed mean
+- σ = Population standard deviation
+- n = Sample size
+```
+
+**T-test (means with unknown σ):**
+```
+t = (x̄ - μ₀) / (s/√n)
+
+Where:
+- s = Sample standard deviation
+```
+
+**Example Calculation:**
+```
+Coin flip example:
+- Flipped 100 times, got 65 heads
+- H₀: p = 0.50 (fair coin)
+- p̂ = 65/100 = 0.65
+
+Calculate z:
+z = (0.65 - 0.50) / √[0.50(1-0.50)/100]
+z = 0.15 / √[0.25/100]
+z = 0.15 / √0.0025
+z = 0.15 / 0.05
+z = 3.0
+```
+
+#### **Step 2: Convert Test Statistic to P-Value**
+
+The p-value is the probability of getting a test statistic as extreme (or more extreme) than what you observed, if H₀ is true.
+
+**Method 1: Using Z-Table or T-Table**
+
+For **two-tailed test:**
+1. Find the area in the tail beyond your test statistic
+2. Multiply by 2 (because we check both tails)
+
+**Example with z = 3.0:**
+```
+1. Look up z = 3.0 in standard normal table
+2. Area beyond z = 3.0 is 0.0013
+3. Two-tailed p-value = 2 × 0.0013 = 0.0026
+```
+
+For **one-tailed test:**
+- Just use the area in one tail (don't multiply by 2)
+
+**Method 2: Using Python/Calculator**
+
+```python
+from scipy import stats
+
+# For z-test (two-tailed)
+z_statistic = 3.0
+p_value = 2 * (1 - stats.norm.cdf(abs(z_statistic)))
+print(f"p-value = {p_value:.4f}")  # Output: 0.0027
+
+# For t-test (two-tailed)
+t_statistic = 2.5
+df = 29  # degrees of freedom (n-1)
+p_value = 2 * (1 - stats.t.cdf(abs(t_statistic), df))
+print(f"p-value = {p_value:.4f}")
+```
+
+#### **Step 3: Interpret the P-Value**
+
+**What the p-value tells you:**
+
+If p-value = 0.0027 (like our coin example):
+- "If the coin were truly fair (H₀ true), there's only a 0.27% chance of getting results as extreme as 65 heads out of 100 flips"
+- This is very unlikely!
+- Since 0.0027 < 0.05, we reject H₀
+
+**Visual Understanding:**
+
+```
+Standard Normal Distribution (z-distribution)
+
+                    |
+                   /|\
+                  / | \
+                 /  |  \
+                /   |   \
+               /    |    \
+              /     |     \
+    ---------|-----|-----|----------
+           -3.0    0    3.0
+            ↑            ↑
+         0.13%        0.13%
+         
+Total in both tails = 0.13% + 0.13% = 0.26% ≈ p-value
+```
+
 ### 🎚️ Significance Level (α) - "How Sure Do We Need to Be?"
 
 The **significance level** (alpha, α) is like setting the bar for how much evidence you need:
@@ -152,6 +270,100 @@ The **significance level** (alpha, α) is like setting the bar for how much evid
 **What it means:**
 - α = 0.05 means: "I'm willing to be wrong 5% of the time"
 - It's the threshold for deciding if evidence is strong enough
+
+#### **How α is Chosen**
+
+The significance level is chosen **before** you collect data based on:
+
+1. **Field Standards:**
+   - Science/Medicine: α = 0.05 or 0.01 (strict)
+   - Social Sciences: α = 0.05 (standard)
+   - Exploratory Research: α = 0.10 (lenient)
+
+2. **Consequences of Error:**
+   - High cost of Type I error → Use smaller α (0.01)
+   - Example: Approving a dangerous drug
+   
+   - Lower cost of Type I error → Use larger α (0.10)
+   - Example: Preliminary screening test
+
+3. **Trade-off:**
+   - Smaller α (0.01) → Harder to reject H₀ → Fewer Type I errors, more Type II errors
+   - Larger α (0.10) → Easier to reject H₀ → More Type I errors, fewer Type II errors
+
+#### **Critical Values - The Decision Boundary**
+
+Instead of calculating p-values, you can use **critical values** to make decisions.
+
+**What is a critical value?**
+- The test statistic value that marks the boundary of the rejection region
+- If your test statistic is more extreme than the critical value → Reject H₀
+
+**How to find critical values:**
+
+**For Z-test:**
+```
+Two-tailed test (α = 0.05):
+Critical values: z = ±1.96
+
+One-tailed test (α = 0.05):
+Right-tailed: z = +1.645
+Left-tailed: z = -1.645
+```
+
+**Common Z critical values:**
+| Confidence Level | α (two-tailed) | Critical Value |
+|------------------|----------------|----------------|
+| 90% | 0.10 | ±1.645 |
+| 95% | 0.05 | ±1.96 |
+| 99% | 0.01 | ±2.576 |
+
+**For T-test:**
+- Critical values depend on degrees of freedom (df = n - 1)
+- Look up in t-table or use Python
+
+```python
+from scipy import stats
+
+# Find critical t-value
+alpha = 0.05
+df = 29  # n - 1
+critical_t = stats.t.ppf(1 - alpha/2, df)  # Two-tailed
+print(f"Critical t-value: ±{critical_t:.3f}")
+# Output: ±2.045
+```
+
+**Decision Rules:**
+
+**Method 1: P-value approach**
+```
+If p-value < α → Reject H₀
+If p-value ≥ α → Fail to reject H₀
+```
+
+**Method 2: Critical value approach**
+```
+Two-tailed:
+If |test statistic| > critical value → Reject H₀
+If |test statistic| ≤ critical value → Fail to reject H₀
+
+One-tailed (right):
+If test statistic > critical value → Reject H₀
+
+One-tailed (left):
+If test statistic < critical value → Reject H₀
+```
+
+**Example:**
+```
+Coin flip test: z = 3.0
+Critical value (α = 0.05, two-tailed): ±1.96
+
+Decision:
+|3.0| > 1.96 → Reject H₀
+
+This matches our p-value decision (p = 0.0027 < 0.05)
+```
 
 ### 📏 Test Statistic - "The Evidence Score"
 
@@ -345,7 +557,181 @@ H₁: Average height < 170 cm
 
 ---
 
-## 6. Complete Python Example {#python-example}
+## 6. Complete Manual Calculation Walkthrough {#manual-calculation}
+
+Let's work through a complete example **by hand** to see exactly how everything is calculated!
+
+### 📝 Problem Setup
+
+**Scenario:** A coffee shop claims their average wait time is 5 minutes. You visit 36 times and record wait times. Your sample has:
+- Sample mean (x̄) = 5.8 minutes
+- Sample standard deviation (s) = 2.4 minutes
+- Sample size (n) = 36
+
+**Question:** Is the coffee shop's claim accurate? Use α = 0.05.
+
+---
+
+### **Step 1: State Hypotheses**
+
+```
+H₀: μ = 5 minutes (The claim is true)
+H₁: μ ≠ 5 minutes (The claim is false)
+α = 0.05
+Test type: Two-tailed (we care if it's different in either direction)
+```
+
+---
+
+### **Step 2: Choose the Test**
+
+**Decision:** Use one-sample t-test because:
+- ✅ We're comparing sample mean to a claimed value
+- ✅ Population standard deviation (σ) is unknown
+- ✅ We only have sample standard deviation (s)
+
+---
+
+### **Step 3: Calculate Test Statistic**
+
+**Formula:**
+```
+t = (x̄ - μ₀) / (s / √n)
+```
+
+**Calculation:**
+
+```
+Step 3a: Calculate standard error (SE)
+SE = s / √n
+SE = 2.4 / √36
+SE = 2.4 / 6
+SE = 0.4 minutes
+
+Step 3b: Calculate t-statistic
+t = (x̄ - μ₀) / SE
+t = (5.8 - 5.0) / 0.4
+t = 0.8 / 0.4
+t = 2.0
+```
+
+**Interpretation:** Our sample mean is 2.0 standard errors above the claimed mean.
+
+---
+
+### **Step 4: Find Degrees of Freedom**
+
+```
+df = n - 1
+df = 36 - 1
+df = 35
+```
+
+---
+
+### **Step 5: Find P-Value**
+
+**Method A: Using T-Table**
+
+1. Look up t = 2.0 with df = 35 in t-table
+2. Find the area in one tail
+3. For t = 2.0, df = 35: one-tail area ≈ 0.027
+4. Two-tailed p-value = 2 × 0.027 = 0.054
+
+**Method B: Using Python (more accurate)**
+
+```python
+from scipy import stats
+t_stat = 2.0
+df = 35
+p_value = 2 * (1 - stats.t.cdf(abs(t_stat), df))
+print(f"p-value = {p_value:.4f}")
+# Output: p-value = 0.0530
+```
+
+---
+
+### **Step 6: Find Critical Value (Alternative Method)**
+
+Instead of p-value, we can use critical values:
+
+```
+For α = 0.05, two-tailed, df = 35:
+Critical t-value = ±2.030 (from t-table)
+
+Decision rule:
+If |t| > 2.030 → Reject H₀
+If |t| ≤ 2.030 → Fail to reject H₀
+
+Our test statistic: |2.0| = 2.0
+Comparison: 2.0 < 2.030
+Decision: Fail to reject H₀
+```
+
+---
+
+### **Step 7: Make Decision**
+
+**Using p-value approach:**
+```
+p-value = 0.0530
+α = 0.05
+
+Since 0.0530 > 0.05:
+→ Fail to reject H₀
+```
+
+**Using critical value approach:**
+```
+|t| = 2.0
+Critical value = 2.030
+
+Since 2.0 < 2.030:
+→ Fail to reject H₀
+```
+
+**Both methods agree!**
+
+---
+
+### **Step 8: State Conclusion**
+
+**Statistical conclusion:**
+"At the 0.05 significance level, we do not have sufficient evidence to reject the claim that the average wait time is 5 minutes."
+
+**Practical conclusion:**
+"While our sample average (5.8 minutes) is higher than the claimed 5 minutes, this difference could reasonably occur by chance. The coffee shop's claim cannot be rejected based on this data."
+
+**Note:** The p-value (0.053) is very close to α (0.05)! This is a borderline case. With a slightly larger sample or slightly higher sample mean, we might reject H₀.
+
+---
+
+### 📊 Visual Summary of Calculations
+
+```
+Given Data:
+├─ x̄ = 5.8 minutes
+├─ μ₀ = 5.0 minutes
+├─ s = 2.4 minutes
+├─ n = 36
+└─ α = 0.05
+
+Calculations:
+├─ SE = s/√n = 2.4/6 = 0.4
+├─ t = (x̄-μ₀)/SE = 0.8/0.4 = 2.0
+├─ df = n-1 = 35
+├─ p-value = 0.053
+└─ Critical value = ±2.030
+
+Decision:
+├─ p-value (0.053) > α (0.05) ✓
+├─ |t| (2.0) < critical (2.030) ✓
+└─ Conclusion: Fail to reject H₀
+```
+
+---
+
+## 7. Complete Python Example {#python-example}
 
 Let's put it all together with a real example!
 
