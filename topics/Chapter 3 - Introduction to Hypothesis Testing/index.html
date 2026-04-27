@@ -210,6 +210,123 @@
 <p>❌ <strong>WRONG:</strong> “p &lt; 0.05 proves H₁ is true”
 ✅ <strong>CORRECT:</strong> “p &lt; 0.05 suggests H₀ is unlikely, so we reject it in favor of H₁”</p>
 
+<h3 id="-how-to-calculate-p-values---step-by-step">🧮 How to Calculate P-Values - Step by Step</h3>
+
+<p>Now let’s learn <strong>how</strong> p-values are actually calculated!</p>
+
+<h4 id="step-1-calculate-the-test-statistic"><strong>Step 1: Calculate the Test Statistic</strong></h4>
+
+<p>The test statistic measures how far your sample result is from what H₀ claims, in units of standard error.</p>
+
+<p><strong>General Formula:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Test Statistic = (Observed Value - Expected Value) / Standard Error
+</code></pre></div></div>
+
+<p><strong>For different tests:</strong></p>
+
+<p><strong>Z-test (proportions or means with known σ):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = (p̂ - p₀) / √[p₀(1-p₀)/n]        [For proportions]
+z = (x̄ - μ₀) / (σ/√n)                [For means]
+
+Where:
+- p̂ = Sample proportion
+- p₀ = Claimed proportion
+- x̄ = Sample mean
+- μ₀ = Claimed mean
+- σ = Population standard deviation
+- n = Sample size
+</code></pre></div></div>
+
+<p><strong>T-test (means with unknown σ):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>t = (x̄ - μ₀) / (s/√n)
+
+Where:
+- s = Sample standard deviation
+</code></pre></div></div>
+
+<p><strong>Example Calculation:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Coin flip example:
+- Flipped 100 times, got 65 heads
+- H₀: p = 0.50 (fair coin)
+- p̂ = 65/100 = 0.65
+
+Calculate z:
+z = (0.65 - 0.50) / √[0.50(1-0.50)/100]
+z = 0.15 / √[0.25/100]
+z = 0.15 / √0.0025
+z = 0.15 / 0.05
+z = 3.0
+</code></pre></div></div>
+
+<h4 id="step-2-convert-test-statistic-to-p-value"><strong>Step 2: Convert Test Statistic to P-Value</strong></h4>
+
+<p>The p-value is the probability of getting a test statistic as extreme (or more extreme) than what you observed, if H₀ is true.</p>
+
+<p><strong>Method 1: Using Z-Table or T-Table</strong></p>
+
+<p>For <strong>two-tailed test:</strong></p>
+<ol>
+  <li>Find the area in the tail beyond your test statistic</li>
+  <li>Multiply by 2 (because we check both tails)</li>
+</ol>
+
+<p><strong>Example with z = 3.0:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Look up z = 3.0 in standard normal table
+2. Area beyond z = 3.0 is 0.0013
+3. Two-tailed p-value = 2 × 0.0013 = 0.0026
+</code></pre></div></div>
+
+<p>For <strong>one-tailed test:</strong></p>
+<ul>
+  <li>Just use the area in one tail (don’t multiply by 2)</li>
+</ul>
+
+<p><strong>Method 2: Using Python/Calculator</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+
+<span class="c1"># For z-test (two-tailed)
+</span><span class="n">z_statistic</span> <span class="o">=</span> <span class="mf">3.0</span>
+<span class="n">p_value</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="p">.</span><span class="n">norm</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="nf">abs</span><span class="p">(</span><span class="n">z_statistic</span><span class="p">)))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">p-value = </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># Output: 0.0027
+</span>
+<span class="c1"># For t-test (two-tailed)
+</span><span class="n">t_statistic</span> <span class="o">=</span> <span class="mf">2.5</span>
+<span class="n">df</span> <span class="o">=</span> <span class="mi">29</span>  <span class="c1"># degrees of freedom (n-1)
+</span><span class="n">p_value</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="nf">abs</span><span class="p">(</span><span class="n">t_statistic</span><span class="p">),</span> <span class="n">df</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">p-value = </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="step-3-interpret-the-p-value"><strong>Step 3: Interpret the P-Value</strong></h4>
+
+<p><strong>What the p-value tells you:</strong></p>
+
+<p>If p-value = 0.0027 (like our coin example):</p>
+<ul>
+  <li>“If the coin were truly fair (H₀ true), there’s only a 0.27% chance of getting results as extreme as 65 heads out of 100 flips”</li>
+  <li>This is very unlikely!</li>
+  <li>Since 0.0027 &lt; 0.05, we reject H₀</li>
+</ul>
+
+<p><strong>Visual Understanding:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Standard Normal Distribution (z-distribution)
+
+                    |
+                   /|\
+                  / | \
+                 /  |  \
+                /   |   \
+               /    |    \
+              /     |     \
+    ---------|-----|-----|----------
+           -3.0    0    3.0
+            ↑            ↑
+         0.13%        0.13%
+         
+Total in both tails = 0.13% + 0.13% = 0.26% ≈ p-value
+</code></pre></div></div>
+
 <h3 id="️-significance-level-α---how-sure-do-we-need-to-be">🎚️ Significance Level (α) - “How Sure Do We Need to Be?”</h3>
 
 <p>The <strong>significance level</strong> (alpha, α) is like setting the bar for how much evidence you need:</p>
@@ -224,6 +341,109 @@
   <li>α = 0.05 means: “I’m willing to be wrong 5% of the time”</li>
   <li>It’s the threshold for deciding if evidence is strong enough</li>
 </ul>
+
+<h4 id="how-α-is-chosen"><strong>How α is Chosen</strong></h4>
+
+<p>The significance level is chosen <strong>before</strong> you collect data based on:</p>
+
+<ol>
+  <li><strong>Field Standards:</strong>
+    <ul>
+      <li>Science/Medicine: α = 0.05 or 0.01 (strict)</li>
+      <li>Social Sciences: α = 0.05 (standard)</li>
+      <li>Exploratory Research: α = 0.10 (lenient)</li>
+    </ul>
+  </li>
+  <li><strong>Consequences of Error:</strong>
+    <ul>
+      <li>High cost of Type I error → Use smaller α (0.01)</li>
+      <li>
+        <p>Example: Approving a dangerous drug</p>
+      </li>
+      <li>Lower cost of Type I error → Use larger α (0.10)</li>
+      <li>Example: Preliminary screening test</li>
+    </ul>
+  </li>
+  <li><strong>Trade-off:</strong>
+    <ul>
+      <li>Smaller α (0.01) → Harder to reject H₀ → Fewer Type I errors, more Type II errors</li>
+      <li>Larger α (0.10) → Easier to reject H₀ → More Type I errors, fewer Type II errors</li>
+    </ul>
+  </li>
+</ol>
+
+<h4 id="critical-values---the-decision-boundary"><strong>Critical Values - The Decision Boundary</strong></h4>
+
+<p>Instead of calculating p-values, you can use <strong>critical values</strong> to make decisions.</p>
+
+<p><strong>What is a critical value?</strong></p>
+<ul>
+  <li>The test statistic value that marks the boundary of the rejection region</li>
+  <li>If your test statistic is more extreme than the critical value → Reject H₀</li>
+</ul>
+
+<p><strong>How to find critical values:</strong></p>
+
+<p><strong>For Z-test:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Two-tailed test (α = 0.05):
+Critical values: z = ±1.96
+
+One-tailed test (α = 0.05):
+Right-tailed: z = +1.645
+Left-tailed: z = -1.645
+</code></pre></div></div>
+
+<p><strong>Common Z critical values:</strong>
+| Confidence Level | α (two-tailed) | Critical Value |
+|——————|—————-|—————-|
+| 90% | 0.10 | ±1.645 |
+| 95% | 0.05 | ±1.96 |
+| 99% | 0.01 | ±2.576 |</p>
+
+<p><strong>For T-test:</strong></p>
+<ul>
+  <li>Critical values depend on degrees of freedom (df = n - 1)</li>
+  <li>Look up in t-table or use Python</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+
+<span class="c1"># Find critical t-value
+</span><span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.05</span>
+<span class="n">df</span> <span class="o">=</span> <span class="mi">29</span>  <span class="c1"># n - 1
+</span><span class="n">critical_t</span> <span class="o">=</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>  <span class="c1"># Two-tailed
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Critical t-value: ±</span><span class="si">{</span><span class="n">critical_t</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Output: ±2.045
+</span></code></pre></div></div>
+
+<p><strong>Decision Rules:</strong></p>
+
+<p><strong>Method 1: P-value approach</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>If p-value &lt; α → Reject H₀
+If p-value ≥ α → Fail to reject H₀
+</code></pre></div></div>
+
+<p><strong>Method 2: Critical value approach</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Two-tailed:
+If |test statistic| &gt; critical value → Reject H₀
+If |test statistic| ≤ critical value → Fail to reject H₀
+
+One-tailed (right):
+If test statistic &gt; critical value → Reject H₀
+
+One-tailed (left):
+If test statistic &lt; critical value → Reject H₀
+</code></pre></div></div>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Coin flip test: z = 3.0
+Critical value (α = 0.05, two-tailed): ±1.96
+
+Decision:
+|3.0| &gt; 1.96 → Reject H₀
+
+This matches our p-value decision (p = 0.0027 &lt; 0.05)
+</code></pre></div></div>
 
 <h3 id="-test-statistic---the-evidence-score">📏 Test Statistic - “The Evidence Score”</h3>
 
@@ -438,7 +658,178 @@ H₁: Average height &lt; 170 cm
 
 <hr />
 
-<h2 id="python-example">6. Complete Python Example</h2>
+<h2 id="manual-calculation">6. Complete Manual Calculation Walkthrough</h2>
+
+<p>Let’s work through a complete example <strong>by hand</strong> to see exactly how everything is calculated!</p>
+
+<h3 id="-problem-setup">📝 Problem Setup</h3>
+
+<p><strong>Scenario:</strong> A coffee shop claims their average wait time is 5 minutes. You visit 36 times and record wait times. Your sample has:</p>
+<ul>
+  <li>Sample mean (x̄) = 5.8 minutes</li>
+  <li>Sample standard deviation (s) = 2.4 minutes</li>
+  <li>Sample size (n) = 36</li>
+</ul>
+
+<p><strong>Question:</strong> Is the coffee shop’s claim accurate? Use α = 0.05.</p>
+
+<hr />
+
+<h3 id="step-1-state-hypotheses"><strong>Step 1: State Hypotheses</strong></h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>H₀: μ = 5 minutes (The claim is true)
+H₁: μ ≠ 5 minutes (The claim is false)
+α = 0.05
+Test type: Two-tailed (we care if it's different in either direction)
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="step-2-choose-the-test"><strong>Step 2: Choose the Test</strong></h3>
+
+<p><strong>Decision:</strong> Use one-sample t-test because:</p>
+<ul>
+  <li>✅ We’re comparing sample mean to a claimed value</li>
+  <li>✅ Population standard deviation (σ) is unknown</li>
+  <li>✅ We only have sample standard deviation (s)</li>
+</ul>
+
+<hr />
+
+<h3 id="step-3-calculate-test-statistic"><strong>Step 3: Calculate Test Statistic</strong></h3>
+
+<p><strong>Formula:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>t = (x̄ - μ₀) / (s / √n)
+</code></pre></div></div>
+
+<p><strong>Calculation:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 3a: Calculate standard error (SE)
+SE = s / √n
+SE = 2.4 / √36
+SE = 2.4 / 6
+SE = 0.4 minutes
+
+Step 3b: Calculate t-statistic
+t = (x̄ - μ₀) / SE
+t = (5.8 - 5.0) / 0.4
+t = 0.8 / 0.4
+t = 2.0
+</code></pre></div></div>
+
+<p><strong>Interpretation:</strong> Our sample mean is 2.0 standard errors above the claimed mean.</p>
+
+<hr />
+
+<h3 id="step-4-find-degrees-of-freedom"><strong>Step 4: Find Degrees of Freedom</strong></h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>df = n - 1
+df = 36 - 1
+df = 35
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="step-5-find-p-value"><strong>Step 5: Find P-Value</strong></h3>
+
+<p><strong>Method A: Using T-Table</strong></p>
+
+<ol>
+  <li>Look up t = 2.0 with df = 35 in t-table</li>
+  <li>Find the area in one tail</li>
+  <li>For t = 2.0, df = 35: one-tail area ≈ 0.027</li>
+  <li>Two-tailed p-value = 2 × 0.027 = 0.054</li>
+</ol>
+
+<p><strong>Method B: Using Python (more accurate)</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="n">t_stat</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">df</span> <span class="o">=</span> <span class="mi">35</span>
+<span class="n">p_value</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="p">.</span><span class="n">t</span><span class="p">.</span><span class="nf">cdf</span><span class="p">(</span><span class="nf">abs</span><span class="p">(</span><span class="n">t_stat</span><span class="p">),</span> <span class="n">df</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">p-value = </span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Output: p-value = 0.0530
+</span></code></pre></div></div>
+
+<hr />
+
+<h3 id="step-6-find-critical-value-alternative-method"><strong>Step 6: Find Critical Value (Alternative Method)</strong></h3>
+
+<p>Instead of p-value, we can use critical values:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>For α = 0.05, two-tailed, df = 35:
+Critical t-value = ±2.030 (from t-table)
+
+Decision rule:
+If |t| &gt; 2.030 → Reject H₀
+If |t| ≤ 2.030 → Fail to reject H₀
+
+Our test statistic: |2.0| = 2.0
+Comparison: 2.0 &lt; 2.030
+Decision: Fail to reject H₀
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="step-7-make-decision"><strong>Step 7: Make Decision</strong></h3>
+
+<p><strong>Using p-value approach:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>p-value = 0.0530
+α = 0.05
+
+Since 0.0530 &gt; 0.05:
+→ Fail to reject H₀
+</code></pre></div></div>
+
+<p><strong>Using critical value approach:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>|t| = 2.0
+Critical value = 2.030
+
+Since 2.0 &lt; 2.030:
+→ Fail to reject H₀
+</code></pre></div></div>
+
+<p><strong>Both methods agree!</strong></p>
+
+<hr />
+
+<h3 id="step-8-state-conclusion"><strong>Step 8: State Conclusion</strong></h3>
+
+<p><strong>Statistical conclusion:</strong>
+“At the 0.05 significance level, we do not have sufficient evidence to reject the claim that the average wait time is 5 minutes.”</p>
+
+<p><strong>Practical conclusion:</strong>
+“While our sample average (5.8 minutes) is higher than the claimed 5 minutes, this difference could reasonably occur by chance. The coffee shop’s claim cannot be rejected based on this data.”</p>
+
+<p><strong>Note:</strong> The p-value (0.053) is very close to α (0.05)! This is a borderline case. With a slightly larger sample or slightly higher sample mean, we might reject H₀.</p>
+
+<hr />
+
+<h3 id="-visual-summary-of-calculations">📊 Visual Summary of Calculations</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Given Data:
+├─ x̄ = 5.8 minutes
+├─ μ₀ = 5.0 minutes
+├─ s = 2.4 minutes
+├─ n = 36
+└─ α = 0.05
+
+Calculations:
+├─ SE = s/√n = 2.4/6 = 0.4
+├─ t = (x̄-μ₀)/SE = 0.8/0.4 = 2.0
+├─ df = n-1 = 35
+├─ p-value = 0.053
+└─ Critical value = ±2.030
+
+Decision:
+├─ p-value (0.053) &gt; α (0.05) ✓
+├─ |t| (2.0) &lt; critical (2.030) ✓
+└─ Conclusion: Fail to reject H₀
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="python-example">7. Complete Python Example</h2>
 
 <p>Let’s put it all together with a real example!</p>
 
