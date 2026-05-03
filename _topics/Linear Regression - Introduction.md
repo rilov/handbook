@@ -1,6 +1,6 @@
 ---
 title: "Linear Regression - Introduction"
-category: machine-learning
+category: Machine Learning
 order: 2
 tags:
   - machine-learning

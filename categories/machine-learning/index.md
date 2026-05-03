@@ -1,7 +1,7 @@
 ---
 layout: category
 title: Machine Learning
-category: machine-learning
+category: Machine Learning
 ---
 
 Learn machine learning fundamentals and practical algorithms from scratch.
