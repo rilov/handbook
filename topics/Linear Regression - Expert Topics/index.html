@@ -1,0 +1,1747 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Linear Regression - Expert Topics</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>Linear Regression - Expert Topics</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="linear-regression---expert-topics-">Linear Regression - Expert Topics 🎓</h1>
+
+<h2 id="welcome-to-expert-level-">Welcome to Expert Level! 🚀</h2>
+
+<p>You’ve learned the basics and intermediate topics. Now let’s tackle the <strong>expert-level concepts</strong> that separate good data scientists from great ones!</p>
+
+<p>This tutorial assumes <strong>zero prior knowledge</strong> and builds you up to expert level. We’ll cover everything you need to handle <strong>real-world</strong> linear regression problems.</p>
+
+<hr />
+
+<h2 id="table-of-contents">Table of Contents</h2>
+
+<ol>
+  <li><a href="#categorical-encoding">Categorical Variable Encoding</a></li>
+  <li><a href="#multicollinearity">Multicollinearity Deep Dive</a></li>
+  <li><a href="#influential-points">Influential Points and Outliers</a></li>
+  <li><a href="#polynomial">Polynomial Regression</a></li>
+  <li><a href="#log-transform">Log Transformations</a></li>
+  <li><a href="#cross-validation">Cross-Validation</a></li>
+  <li><a href="#feature-selection">Feature Selection Methods</a></li>
+  <li><a href="#metrics">Advanced Evaluation Metrics</a></li>
+  <li><a href="#confidence">Confidence Intervals &amp; Predictions</a></li>
+  <li><a href="#workflow">Real-World Workflow</a></li>
+</ol>
+
+<hr />
+
+<h2 id="categorical-encoding">1. Categorical Variable Encoding</h2>
+
+<h3 id="-the-problem">🎯 The Problem</h3>
+
+<p>Linear Regression needs <strong>numbers</strong>, but real data often has <strong>categories</strong> (text)!</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>House Data:
+| Size | Bedrooms | Location  | Price |
+|------|----------|-----------|-------|
+| 2000 | 3        | Urban     | $400k |
+| 1500 | 2        | Suburban  | $300k |
+| 1800 | 3        | Rural     | $250k |
+</code></pre></div></div>
+
+<p><strong>Question:</strong> How does the model use “Urban”, “Suburban”, “Rural”?</p>
+
+<p><strong>Answer:</strong> We need to convert them to numbers! This is called <strong>encoding</strong>.</p>
+
+<hr />
+
+<h3 id="-method-1-one-hot-encoding-most-common">📊 Method 1: One-Hot Encoding (Most Common!)</h3>
+
+<p><strong>What it does:</strong> Creates a separate column for each category (0 or 1).</p>
+
+<p><strong>Simple Example:</strong></p>
+
+<p><strong>Before encoding:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>| Location  |
+|-----------|
+| Urban     |
+| Suburban  |
+| Rural     |
+| Urban     |
+</code></pre></div></div>
+
+<p><strong>After one-hot encoding:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>| Is_Urban | Is_Suburban | Is_Rural |
+|----------|-------------|----------|
+| 1        | 0           | 0        |
+| 0        | 1           | 0        |
+| 0        | 0           | 1        |
+| 1        | 0           | 0        |
+</code></pre></div></div>
+
+<p><strong>How to read it:</strong></p>
+<ul>
+  <li>“Urban” → [1, 0, 0]</li>
+  <li>“Suburban” → [0, 1, 0]</li>
+  <li>“Rural” → [0, 0, 1]</li>
+</ul>
+
+<p><strong>When to use:</strong></p>
+<ul>
+  <li>✅ Categories have NO order (Red, Blue, Green)</li>
+  <li>✅ Few categories (less than 10-15)</li>
+  <li>✅ Each category is independent</li>
+</ul>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+
+<span class="c1"># Sample data
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
+    <span class="sh">'</span><span class="s">size</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="mi">2000</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">1800</span><span class="p">,</span> <span class="mi">2200</span><span class="p">],</span>
+    <span class="sh">'</span><span class="s">location</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="sh">'</span><span class="s">Urban</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Suburban</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Rural</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Urban</span><span class="sh">'</span><span class="p">],</span>
+    <span class="sh">'</span><span class="s">price</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="mi">400</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">450</span><span class="p">]</span>
+<span class="p">})</span>
+
+<span class="c1"># Method 1: pandas get_dummies (easiest!)
+</span><span class="n">df_encoded</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">get_dummies</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">location</span><span class="sh">'</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df_encoded</span><span class="p">)</span>
+
+<span class="c1"># Output:
+#    size  price  location_Rural  location_Suburban  location_Urban
+# 0  2000    400               0                  0               1
+# 1  1500    300               0                  1               0
+# 2  1800    250               1                  0               0
+# 3  2200    450               0                  0               1
+</span></code></pre></div></div>
+
+<p><strong>Method 2: scikit-learn</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">OneHotEncoder</span>
+
+<span class="n">encoder</span> <span class="o">=</span> <span class="nc">OneHotEncoder</span><span class="p">(</span><span class="n">sparse_output</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">location_encoded</span> <span class="o">=</span> <span class="n">encoder</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">location</span><span class="sh">'</span><span class="p">]])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Categories:</span><span class="sh">"</span><span class="p">,</span> <span class="n">encoder</span><span class="p">.</span><span class="n">categories_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Encoded:</span><span class="sh">"</span><span class="p">,</span> <span class="n">location_encoded</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-the-dummy-variable-trap">⚠️ The Dummy Variable Trap</h3>
+
+<p><strong>The Problem:</strong></p>
+
+<p>If you have 3 categories, you only need <strong>2 columns</strong> (not 3)!</p>
+
+<p><strong>Why?</strong> Because the third can be inferred from the others.</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>If Is_Urban = 0 AND Is_Suburban = 0
+Then it MUST be Rural!
+
+So Is_Rural is redundant!
+</code></pre></div></div>
+
+<p><strong>This causes multicollinearity</strong> (we’ll learn more soon).</p>
+
+<p><strong>The Fix:</strong> Drop one category (called “reference category”)</p>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Drop first category to avoid trap
+</span><span class="n">df_encoded</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">get_dummies</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">location</span><span class="sh">'</span><span class="p">],</span> <span class="n">drop_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df_encoded</span><span class="p">)</span>
+
+<span class="c1"># Output:
+#    size  price  location_Suburban  location_Urban
+# 0  2000    400                  0               1
+# 1  1500    300                  1               0
+# 2  1800    250                  0               0   ← This is Rural!
+# 3  2200    450                  0               1
+</span></code></pre></div></div>
+
+<p><strong>Interpretation after dropping:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Model: Price = β₀ + β₁×Size + β₂×Is_Suburban + β₃×Is_Urban
+
+β₀ = Price for Rural houses (reference category)
+β₂ = Extra price for Suburban vs Rural
+β₃ = Extra price for Urban vs Rural
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-2-label-encoding">📊 Method 2: Label Encoding</h3>
+
+<p><strong>What it does:</strong> Assigns each category a number (0, 1, 2, …)</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before:
+| Color  |
+|--------|
+| Red    |
+| Blue   |
+| Green  |
+| Red    |
+
+After:
+| Color |
+|-------|
+| 0     |  ← Red
+| 1     |  ← Blue
+| 2     |  ← Green
+| 0     |  ← Red
+</code></pre></div></div>
+
+<p><strong>When to use:</strong></p>
+<ul>
+  <li>✅ Categories have ORDER (Small, Medium, Large)</li>
+  <li>✅ Tree-based models (Random Forest, XGBoost)</li>
+</ul>
+
+<p><strong>❌ DON’T use for Linear Regression with unordered categories!</strong></p>
+
+<p><strong>Why?</strong> The model thinks Green (2) is “twice” Blue (1), which is meaningless!</p>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">LabelEncoder</span>
+
+<span class="n">encoder</span> <span class="o">=</span> <span class="nc">LabelEncoder</span><span class="p">()</span>
+<span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">color_encoded</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoder</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">color</span><span class="sh">'</span><span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Original:</span><span class="sh">"</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">color</span><span class="sh">'</span><span class="p">].</span><span class="nf">unique</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Encoded:</span><span class="sh">"</span><span class="p">,</span> <span class="n">encoder</span><span class="p">.</span><span class="n">classes_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-3-ordinal-encoding">📊 Method 3: Ordinal Encoding</h3>
+
+<p><strong>What it does:</strong> Like Label Encoding, but you control the order!</p>
+
+<p><strong>Example: T-shirt sizes</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Categories: Small, Medium, Large, X-Large
+
+Ordinal Encoding:
+Small   → 1
+Medium  → 2
+Large   → 3
+X-Large → 4
+
+Now the order makes sense!
+Large (3) &gt; Medium (2) &gt; Small (1) ✅
+</code></pre></div></div>
+
+<p><strong>When to use:</strong></p>
+<ul>
+  <li>✅ Categories have CLEAR order</li>
+  <li>✅ Distance between categories matters</li>
+  <li>✅ Examples: education levels, ratings, sizes</li>
+</ul>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">OrdinalEncoder</span>
+
+<span class="c1"># Define the order
+</span><span class="n">categories</span> <span class="o">=</span> <span class="p">[[</span><span class="sh">'</span><span class="s">Small</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Medium</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Large</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">X-Large</span><span class="sh">'</span><span class="p">]]</span>
+
+<span class="n">encoder</span> <span class="o">=</span> <span class="nc">OrdinalEncoder</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">categories</span><span class="p">)</span>
+<span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">size_encoded</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoder</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">size</span><span class="sh">'</span><span class="p">]])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-4-target-encoding-mean-encoding">📊 Method 4: Target Encoding (Mean Encoding)</h3>
+
+<p><strong>What it does:</strong> Replaces category with the <strong>average target value</strong> for that category.</p>
+
+<p><strong>Example: Predicting house prices by neighborhood</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before encoding:
+| Neighborhood | Price |
+|--------------|-------|
+| A            | $300k |
+| B            | $500k |
+| A            | $320k |
+| C            | $200k |
+| B            | $480k |
+
+Calculate mean price per neighborhood:
+A: ($300k + $320k) / 2 = $310k
+B: ($500k + $480k) / 2 = $490k
+C: $200k
+
+After target encoding:
+| Neighborhood | Price |
+|--------------|-------|
+| 310          | $300k |
+| 490          | $500k |
+| 310          | $320k |
+| 200          | $200k |
+| 490          | $480k |
+</code></pre></div></div>
+
+<p><strong>When to use:</strong></p>
+<ul>
+  <li>✅ Many categories (high cardinality)</li>
+  <li>✅ Strong relationship between category and target</li>
+  <li>✅ Examples: zip codes, neighborhoods, products</li>
+</ul>
+
+<p><strong>⚠️ Warning:</strong> Can cause <strong>data leakage</strong>! Always use cross-validation.</p>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Calculate target encoding
+</span><span class="n">target_means</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="nf">groupby</span><span class="p">(</span><span class="sh">'</span><span class="s">neighborhood</span><span class="sh">'</span><span class="p">)[</span><span class="sh">'</span><span class="s">price</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">()</span>
+<span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">neighborhood_encoded</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">neighborhood</span><span class="sh">'</span><span class="p">].</span><span class="nf">map</span><span class="p">(</span><span class="n">target_means</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-5-frequency-encoding">📊 Method 5: Frequency Encoding</h3>
+
+<p><strong>What it does:</strong> Replaces category with how often it appears.</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before:
+| City      |
+|-----------|
+| New York  |
+| Boston    |
+| New York  |
+| Chicago   |
+| New York  |
+| Boston    |
+
+Frequencies:
+New York: 3 times
+Boston:   2 times
+Chicago:  1 time
+
+After frequency encoding:
+| City |
+|------|
+| 3    |
+| 2    |
+| 3    |
+| 1    |
+| 3    |
+| 2    |
+</code></pre></div></div>
+
+<p><strong>When to use:</strong></p>
+<ul>
+  <li>✅ Many categories</li>
+  <li>✅ Frequency itself is informative</li>
+  <li>✅ Examples: product categories, customer segments</li>
+</ul>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">freq_map</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">city</span><span class="sh">'</span><span class="p">].</span><span class="nf">value_counts</span><span class="p">().</span><span class="nf">to_dict</span><span class="p">()</span>
+<span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">city_encoded</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">city</span><span class="sh">'</span><span class="p">].</span><span class="nf">map</span><span class="p">(</span><span class="n">freq_map</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-6-binary-encoding">📊 Method 6: Binary Encoding</h3>
+
+<p><strong>What it does:</strong> Converts categories to binary numbers, then splits into columns.</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Categories: Red, Blue, Green, Yellow, Purple (5 categories)
+
+Step 1: Assign numbers
+Red    → 1 → Binary: 001
+Blue   → 2 → Binary: 010
+Green  → 3 → Binary: 011
+Yellow → 4 → Binary: 100
+Purple → 5 → Binary: 101
+
+Step 2: Split into columns
+| Color  | Bit_1 | Bit_2 | Bit_3 |
+|--------|-------|-------|-------|
+| Red    | 0     | 0     | 1     |
+| Blue   | 0     | 1     | 0     |
+| Green  | 0     | 1     | 1     |
+| Yellow | 1     | 0     | 0     |
+| Purple | 1     | 0     | 1     |
+</code></pre></div></div>
+
+<p><strong>When to use:</strong></p>
+<ul>
+  <li>✅ Many categories (50+)</li>
+  <li>✅ Want fewer columns than one-hot</li>
+  <li>✅ Memory-efficient</li>
+</ul>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Install: pip install category_encoders
+</span><span class="kn">import</span> <span class="n">category_encoders</span> <span class="k">as</span> <span class="n">ce</span>
+
+<span class="n">encoder</span> <span class="o">=</span> <span class="n">ce</span><span class="p">.</span><span class="nc">BinaryEncoder</span><span class="p">()</span>
+<span class="n">df_encoded</span> <span class="o">=</span> <span class="n">encoder</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">color</span><span class="sh">'</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df_encoded</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-encoding-decision-tree">🎯 Encoding Decision Tree</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Is the category ordered? (Small &lt; Medium &lt; Large)
+├── YES → Use Ordinal Encoding
+└── NO
+    ├── Few categories (&lt;15)?
+    │   ├── YES → Use One-Hot Encoding (drop_first=True)
+    │   └── NO
+    │       ├── Strong target relationship?
+    │       │   ├── YES → Use Target Encoding
+    │       │   └── NO → Use Frequency or Binary Encoding
+</code></pre></div></div>
+
+<h3 id="-comparison-table">📊 Comparison Table</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th>Use Case</th>
+      <th>Pros</th>
+      <th>Cons</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>One-Hot</strong></td>
+      <td>Unordered, few categories</td>
+      <td>Simple, no false order</td>
+      <td>Many columns</td>
+    </tr>
+    <tr>
+      <td><strong>Label</strong></td>
+      <td>Ordered (tree models only)</td>
+      <td>One column</td>
+      <td>Implies false order for linear models</td>
+    </tr>
+    <tr>
+      <td><strong>Ordinal</strong></td>
+      <td>Ordered categories</td>
+      <td>Preserves order</td>
+      <td>Need to define order</td>
+    </tr>
+    <tr>
+      <td><strong>Target</strong></td>
+      <td>Many categories, strong target relation</td>
+      <td>Few columns, captures relationships</td>
+      <td>Data leakage risk</td>
+    </tr>
+    <tr>
+      <td><strong>Frequency</strong></td>
+      <td>Many categories</td>
+      <td>Simple, captures frequency</td>
+      <td>Loses category info</td>
+    </tr>
+    <tr>
+      <td><strong>Binary</strong></td>
+      <td>Very many categories (50+)</td>
+      <td>Memory efficient</td>
+      <td>Less interpretable</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="multicollinearity">2. Multicollinearity Deep Dive</h2>
+
+<h3 id="-what-is-multicollinearity">🎯 What is Multicollinearity?</h3>
+
+<p><strong>Simple definition:</strong> When two or more features are <strong>highly correlated</strong> (basically measure the same thing).</p>
+
+<p><strong>Real-world analogy:</strong></p>
+
+<p>Imagine asking three witnesses about a crime:</p>
+<ul>
+  <li><strong>Witness 1:</strong> Says it happened at 3 PM</li>
+  <li><strong>Witness 2:</strong> Says it happened at 1500 hours</li>
+  <li><strong>Witness 3:</strong> Says it happened in the afternoon</li>
+</ul>
+
+<p>All three witnesses are saying the same thing! Adding all three doesn’t give you more information.</p>
+
+<p>This is <strong>multicollinearity</strong> in regression!</p>
+
+<hr />
+
+<h3 id="-two-types-of-multicollinearity">📊 Two Types of Multicollinearity</h3>
+
+<h4 id="type-1-structural-multicollinearity"><strong>Type 1: Structural Multicollinearity</strong></h4>
+
+<p><strong>What:</strong> You CREATED it through feature engineering.</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original feature: x
+Created features: x, x², x³
+
+These are mathematically related! 
+x² is just x × x
+</code></pre></div></div>
+
+<p><strong>Common causes:</strong></p>
+<ul>
+  <li>Polynomial features (x, x², x³)</li>
+  <li>Interaction terms (x × y when x, y already in model)</li>
+  <li>Same data in different units (height in inches AND height in cm)</li>
+  <li>Dummy variable trap</li>
+</ul>
+
+<h4 id="type-2-data-based-multicollinearity"><strong>Type 2: Data-Based Multicollinearity</strong></h4>
+
+<p><strong>What:</strong> Naturally exists in the data.</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Predicting salary:
+- Years of experience
+- Age
+- Years since graduation
+
+These are naturally correlated!
+Older people usually have more experience.
+</code></pre></div></div>
+
+<p><strong>Common causes:</strong></p>
+<ul>
+  <li>Naturally related features (age, experience)</li>
+  <li>Highly similar measurements</li>
+  <li>Features derived from same source</li>
+</ul>
+
+<hr />
+
+<h3 id="-why-is-multicollinearity-a-problem">🚨 Why is Multicollinearity a Problem?</h3>
+
+<h4 id="problem-1-unstable-coefficients"><strong>Problem 1: Unstable Coefficients</strong></h4>
+
+<p>Small changes in data → BIG changes in coefficients!</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Dataset 1:
+Price = 100 + 0.5×Size + 0.3×Bedrooms
+
+Add 1 more house, retrain:
+
+Dataset 2:
+Price = 100 + 1.2×Size - 0.4×Bedrooms
+
+Coefficients changed dramatically! ❌
+</code></pre></div></div>
+
+<h4 id="problem-2-unreliable-standard-errors"><strong>Problem 2: Unreliable Standard Errors</strong></h4>
+
+<p>Standard errors get inflated, making coefficients seem less significant.</p>
+
+<p><strong>What this means:</strong></p>
+<ul>
+  <li>Real important features may seem unimportant</li>
+  <li>p-values become unreliable</li>
+  <li>Confidence intervals become huge</li>
+</ul>
+
+<h4 id="problem-3-hard-to-interpret"><strong>Problem 3: Hard to Interpret</strong></h4>
+
+<p>You can’t tell which feature is actually important!</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Both Age and Years_of_Experience predict salary.
+With multicollinearity:
+- Age coefficient: $5k/year
+- Experience coefficient: $3k/year
+
+But this might mean:
+- Age really matters → $8k/year alone
+- Experience really matters → $7k/year alone
+- Or any combination!
+
+You can't tell! ❌
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-when-multicollinearity-is-not-a-problem">✅ When Multicollinearity is NOT a Problem</h3>
+
+<p><strong>Surprise!</strong> Sometimes you can ignore multicollinearity:</p>
+
+<h4 id="case-1-you-only-care-about-predictions"><strong>Case 1: You only care about predictions</strong></h4>
+
+<p>If your goal is just <strong>predicting</strong> (not understanding), multicollinearity doesn’t hurt prediction accuracy much!</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Goal: Predict house prices
+Don't care: Why prices are what they are
+
+→ Multicollinearity might be okay!
+</code></pre></div></div>
+
+<h4 id="case-2-multicollinearity-is-in-control-variables"><strong>Case 2: Multicollinearity is in control variables</strong></h4>
+
+<p>If correlated features are just controls (not what you’re studying), it’s fine.</p>
+
+<h4 id="case-3-sample-size-is-huge"><strong>Case 3: Sample size is huge</strong></h4>
+
+<p>With millions of data points, even highly correlated features can be estimated reliably.</p>
+
+<hr />
+
+<h3 id="-how-to-detect-multicollinearity">🔍 How to Detect Multicollinearity</h3>
+
+<h4 id="method-1-correlation-matrix"><strong>Method 1: Correlation Matrix</strong></h4>
+
+<p><strong>Simple visual check.</strong></p>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">seaborn</span> <span class="k">as</span> <span class="n">sns</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Calculate correlations
+</span><span class="n">corr_matrix</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="nf">corr</span><span class="p">()</span>
+
+<span class="c1"># Visualize
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+<span class="n">sns</span><span class="p">.</span><span class="nf">heatmap</span><span class="p">(</span><span class="n">corr_matrix</span><span class="p">,</span> <span class="n">annot</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">'</span><span class="s">coolwarm</span><span class="sh">'</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">square</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="sh">'</span><span class="s">.2f</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Feature Correlation Matrix</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p><strong>What to look for:</strong></p>
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>correlation</td>
+          <td>&gt; 0.8: Strong correlation ❌</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>correlation</td>
+          <td>&gt; 0.6: Moderate ⚠️</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>correlation</td>
+          <td>&lt; 0.4: Weak ✅</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+</ul>
+
+<p><strong>Limitation:</strong> Only catches PAIRWISE correlations. Misses complex relationships!</p>
+
+<hr />
+
+<h4 id="method-2-variance-inflation-factor-vif---the-gold-standard"><strong>Method 2: Variance Inflation Factor (VIF) - The Gold Standard!</strong></h4>
+
+<p><strong>What it measures:</strong> How much the variance of a coefficient is “inflated” due to correlation with other features.</p>
+
+<p><strong>Formula:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>VIF = 1 / (1 - R²)
+
+Where R² is from regressing one feature against all others.
+</code></pre></div></div>
+
+<p><strong>Interpretation:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>VIF</th>
+      <th>Meaning</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>No correlation</td>
+      <td>✅ Perfect</td>
+    </tr>
+    <tr>
+      <td>1-5</td>
+      <td>Moderate correlation</td>
+      <td>✅ Acceptable</td>
+    </tr>
+    <tr>
+      <td>5-10</td>
+      <td>High correlation</td>
+      <td>⚠️ Investigate</td>
+    </tr>
+    <tr>
+      <td>&gt; 10</td>
+      <td>Severe correlation</td>
+      <td>❌ Fix it!</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.stats.outliers_influence</span> <span class="kn">import</span> <span class="n">variance_inflation_factor</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+
+<span class="c1"># Calculate VIF for each feature
+</span><span class="k">def</span> <span class="nf">calculate_vif</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
+    <span class="n">vif</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">()</span>
+    <span class="n">vif</span><span class="p">[</span><span class="sh">"</span><span class="s">Feature</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="n">columns</span>
+    <span class="n">vif</span><span class="p">[</span><span class="sh">"</span><span class="s">VIF</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nf">variance_inflation_factor</span><span class="p">(</span><span class="n">X</span><span class="p">.</span><span class="n">values</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> 
+                  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+    <span class="k">return</span> <span class="n">vif</span><span class="p">.</span><span class="nf">sort_values</span><span class="p">(</span><span class="sh">'</span><span class="s">VIF</span><span class="sh">'</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="n">vif_results</span> <span class="o">=</span> <span class="nf">calculate_vif</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">vif_results</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Real Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Feature              VIF
+age                 12.5    ❌ Drop or combine!
+experience          10.2    ❌ Drop or combine!
+years_since_grad     8.7    ⚠️ Investigate
+education            2.1    ✅ Fine
+salary_history       1.5    ✅ Fine
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="method-3-condition-number"><strong>Method 3: Condition Number</strong></h4>
+
+<p><strong>What it measures:</strong> Overall multicollinearity in the dataset.</p>
+
+<p><strong>Interpretation:</strong></p>
+<ul>
+  <li>&lt; 30: No problem ✅</li>
+  <li>30-100: Moderate ⚠️</li>
+  <li>
+    <blockquote>
+      <p>100: Severe ❌</p>
+    </blockquote>
+  </li>
+</ul>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Calculate condition number
+</span><span class="n">cond_number</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nf">cond</span><span class="p">(</span><span class="n">X</span><span class="p">.</span><span class="n">values</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Condition Number: </span><span class="si">{</span><span class="n">cond_number</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-how-to-fix-multicollinearity">🛠️ How to Fix Multicollinearity</h3>
+
+<h4 id="solution-1-drop-one-of-the-correlated-features"><strong>Solution 1: Drop One of the Correlated Features</strong></h4>
+
+<p><strong>Easiest fix!</strong></p>
+
+<p><strong>Example:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Find highly correlated features
+</span><span class="n">corr_matrix</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="nf">corr</span><span class="p">().</span><span class="nf">abs</span><span class="p">()</span>
+
+<span class="c1"># Get upper triangle
+</span><span class="n">upper</span> <span class="o">=</span> <span class="n">corr_matrix</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span>
+    <span class="n">np</span><span class="p">.</span><span class="nf">triu</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">ones</span><span class="p">(</span><span class="n">corr_matrix</span><span class="p">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Find features with correlation &gt; 0.8
+</span><span class="n">to_drop</span> <span class="o">=</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">upper</span><span class="p">.</span><span class="n">columns</span> 
+           <span class="k">if</span> <span class="nf">any</span><span class="p">(</span><span class="n">upper</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">)]</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Drop these: </span><span class="si">{</span><span class="n">to_drop</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">X_clean</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="nf">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">to_drop</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Decision rule:</strong> Keep the feature that’s:</p>
+<ul>
+  <li>More interpretable</li>
+  <li>Easier to measure</li>
+  <li>More relevant to your problem</li>
+</ul>
+
+<hr />
+
+<h4 id="solution-2-combine-correlated-features"><strong>Solution 2: Combine Correlated Features</strong></h4>
+
+<p>Create a new feature that combines them.</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Instead of using both height_inches and height_cm
+# Just keep one!
+</span>
+<span class="c1"># Or combine related features:
+</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">total_size</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">living_room_size</span><span class="sh">'</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">kitchen_size</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">df</span><span class="p">.</span><span class="nf">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">living_room_size</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">kitchen_size</span><span class="sh">'</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="solution-3-principal-component-analysis-pca"><strong>Solution 3: Principal Component Analysis (PCA)</strong></h4>
+
+<p>Transforms correlated features into uncorrelated ones.</p>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">PCA</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+
+<span class="c1"># Scale first!
+</span><span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Apply PCA
+</span><span class="n">pca</span> <span class="o">=</span> <span class="nc">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mf">0.95</span><span class="p">)</span>  <span class="c1"># Keep 95% of variance
+</span><span class="n">X_pca</span> <span class="o">=</span> <span class="n">pca</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Original features: </span><span class="si">{</span><span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">PCA components: </span><span class="si">{</span><span class="n">X_pca</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Variance explained: </span><span class="si">{</span><span class="n">pca</span><span class="p">.</span><span class="n">explained_variance_ratio_</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Trade-off:</strong> Lose interpretability, but fix multicollinearity.</p>
+
+<hr />
+
+<h4 id="solution-4-use-regularization"><strong>Solution 4: Use Regularization</strong></h4>
+
+<p><strong>Ridge Regression</strong> handles multicollinearity excellently!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">Ridge</span>
+
+<span class="c1"># Ridge handles correlated features well
+</span><span class="n">ridge</span> <span class="o">=</span> <span class="nc">Ridge</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="n">ridge</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="solution-5-center-variables-for-polynomial-features"><strong>Solution 5: Center Variables (for Polynomial Features)</strong></h4>
+
+<p>For structural multicollinearity from polynomial features:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Bad: x and x² are highly correlated
+</span><span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">x_squared</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">x</span><span class="sh">'</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+
+<span class="c1"># Better: Center first
+</span><span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">x_centered</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">x</span><span class="sh">'</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">x</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">()</span>
+<span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">x_centered_squared</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">x_centered</span><span class="sh">'</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+
+<span class="c1"># Now they're less correlated!
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="influential-points">3. Influential Points and Outliers</h2>
+
+<h3 id="-the-three-types-of-problematic-points">🎯 The Three Types of Problematic Points</h3>
+
+<h4 id="type-1-outliers"><strong>Type 1: Outliers</strong></h4>
+
+<p><strong>What:</strong> Points with <strong>unusual y-values</strong></p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>House sizes: 1000-3000 sq ft (normal)
+House prices: $200k-$600k (normal)
+But one 2000 sq ft house: $2M ← Outlier!
+</code></pre></div></div>
+
+<h4 id="type-2-high-leverage-points"><strong>Type 2: High Leverage Points</strong></h4>
+
+<p><strong>What:</strong> Points with <strong>unusual x-values</strong></p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>House sizes: mostly 1000-3000 sq ft
+But one house: 10,000 sq ft ← High leverage!
+</code></pre></div></div>
+
+<h4 id="type-3-influential-points"><strong>Type 3: Influential Points</strong></h4>
+
+<p><strong>What:</strong> Points that <strong>significantly change</strong> the regression line.</p>
+
+<p><strong>Combination:</strong> Often outlier + high leverage = influential!</p>
+
+<hr />
+
+<h3 id="-visual-comparison">📊 Visual Comparison</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal Outlier:           High Leverage:           Influential Point:
+                          
+y │     ●                  y │ ●                    y │   
+  │   ●                      │                        │   ●
+  │ ●                        │ ●                      │
+  │   ●←Outlier!            │ ●                      │ ●
+  │                          │                        │ ●
+  │ ●                        │ ●         ←HL         │ ●        ←Influential!
+  └──────→ x                └──────→ x              └──────→ x
+  
+Pulls line slightly      Doesn't pull much        REALLY changes line!
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-how-to-detect">🔍 How to Detect</h3>
+
+<h4 id="method-1-cooks-distance"><strong>Method 1: Cook’s Distance</strong></h4>
+
+<p><strong>What it measures:</strong> How much the model would change without this point.</p>
+
+<p><strong>Rule of thumb:</strong> Cook’s Distance &gt; 1 = Influential</p>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">statsmodels.api</span> <span class="k">as</span> <span class="n">sm</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Fit model
+</span><span class="n">X_with_const</span> <span class="o">=</span> <span class="n">sm</span><span class="p">.</span><span class="nf">add_constant</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">sm</span><span class="p">.</span><span class="nc">OLS</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">X_with_const</span><span class="p">).</span><span class="nf">fit</span><span class="p">()</span>
+
+<span class="c1"># Calculate influence
+</span><span class="n">influence</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">get_influence</span><span class="p">()</span>
+<span class="n">cooks_d</span> <span class="o">=</span> <span class="n">influence</span><span class="p">.</span><span class="n">cooks_distance</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Plot
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">cooks_d</span><span class="p">)),</span> <span class="n">cooks_d</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">axhline</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="mi">4</span><span class="o">/</span><span class="nf">len</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">'</span><span class="s">--</span><span class="sh">'</span><span class="p">,</span> 
+            <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Threshold (4/n)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Observation Index</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Cook</span><span class="sh">'</span><span class="s">s Distance</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Cook</span><span class="sh">'</span><span class="s">s Distance Plot</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="c1"># Find influential points
+</span><span class="n">influential</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="n">cooks_d</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="o">/</span><span class="nf">len</span><span class="p">(</span><span class="n">y</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Influential points at indices: </span><span class="si">{</span><span class="n">influential</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="method-2-leverage"><strong>Method 2: Leverage</strong></h4>
+
+<p><strong>What it measures:</strong> How unusual the X values are.</p>
+
+<p><strong>Rule of thumb:</strong> Leverage &gt; 2(p+1)/n = High leverage (where p = features, n = samples)</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">leverage</span> <span class="o">=</span> <span class="n">influence</span><span class="p">.</span><span class="n">hat_matrix_diag</span>
+
+<span class="c1"># Find high leverage points
+</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="n">shape</span>
+<span class="n">threshold</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span>
+<span class="n">high_leverage</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="n">leverage</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">High leverage points: </span><span class="si">{</span><span class="n">high_leverage</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="method-3-standardized-residuals"><strong>Method 3: Standardized Residuals</strong></h4>
+
+<p><strong>What:</strong> Residuals scaled to standard deviations.</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td><strong>Rule of thumb:</strong></td>
+      <td>standardized residual</td>
+      <td>&gt; 3 = Outlier</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">residuals</span> <span class="o">=</span> <span class="n">influence</span><span class="p">.</span><span class="n">resid_studentized_internal</span>
+<span class="n">outliers</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">abs</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Outliers at indices: </span><span class="si">{</span><span class="n">outliers</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-what-to-do-with-these-points">🛠️ What to Do With These Points</h3>
+
+<p><strong>Decision tree:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Is the point an error?
+├── YES (data entry error, measurement error)
+│   └── REMOVE it
+└── NO (it's a real, unusual observation)
+    ├── Is it influential?
+    │   ├── YES → Investigate why
+    │   │   ├── Special case? → Consider keeping but report
+    │   │   └── Mistake? → Remove
+    │   └── NO → Keep it
+    └── Document your decision!
+</code></pre></div></div>
+
+<p><strong>Important:</strong> ALWAYS investigate before removing!</p>
+
+<hr />
+
+<h2 id="polynomial">4. Polynomial Regression</h2>
+
+<h3 id="-when-linear-isnt-enough">🎯 When Linear Isn’t Enough</h3>
+
+<p>Sometimes data isn’t linear:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Linear data:                 Curved data:
+y │                          y │       ●
+  │       ●                    │     ●
+  │     ●                      │    ●
+  │   ●                        │   ●
+  │ ●                          │ ●
+  └──────→ x                   └──────→ x
+  
+Linear regression works ✅    Linear regression FAILS ❌
+</code></pre></div></div>
+
+<p><strong>Solution:</strong> Add polynomial features!</p>
+
+<hr />
+
+<h3 id="-the-idea">📊 The Idea</h3>
+
+<p>Instead of just <code class="language-plaintext highlighter-rouge">x</code>, use <code class="language-plaintext highlighter-rouge">x</code>, <code class="language-plaintext highlighter-rouge">x²</code>, <code class="language-plaintext highlighter-rouge">x³</code>, etc.</p>
+
+<p><strong>Before (Linear):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y = β₀ + β₁×x
+</code></pre></div></div>
+
+<p><strong>After (Polynomial degree 2):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y = β₀ + β₁×x + β₂×x²
+</code></pre></div></div>
+
+<p><strong>After (Polynomial degree 3):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y = β₀ + β₁×x + β₂×x² + β₃×x³
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-real-example-temperature-vs-ice-cream-sales">🌡️ Real Example: Temperature vs Ice Cream Sales</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Temperature  Sales
+10°C         50
+15°C         80
+20°C         150
+25°C         300
+30°C         500
+35°C         750
+
+Linear model: BAD fit!
+Polynomial (degree 2): GREAT fit!
+</code></pre></div></div>
+
+<p><strong>Python Code:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">PolynomialFeatures</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LinearRegression</span>
+<span class="kn">from</span> <span class="n">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+
+<span class="c1"># Create polynomial features
+</span><span class="n">poly_features</span> <span class="o">=</span> <span class="nc">PolynomialFeatures</span><span class="p">(</span><span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">include_bias</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">X_poly</span> <span class="o">=</span> <span class="n">poly_features</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Original features: </span><span class="si">{</span><span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Polynomial features: </span><span class="si">{</span><span class="n">X_poly</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Train model
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">LinearRegression</span><span class="p">()</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_poly</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="c1"># Better: Use a pipeline
+</span><span class="n">pipeline</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">poly</span><span class="sh">'</span><span class="p">,</span> <span class="nc">PolynomialFeatures</span><span class="p">(</span><span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)),</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="nc">LinearRegression</span><span class="p">())</span>
+<span class="p">])</span>
+<span class="n">pipeline</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-choosing-the-right-degree">⚠️ Choosing the Right Degree</h3>
+
+<p><strong>Too low:</strong> Underfitting (misses patterns)
+<strong>Too high:</strong> Overfitting (memorizes noise)</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Degree 1 (Linear):     Degree 3 (Good):       Degree 15 (Overfit!):
+y │   ●                y │   ●                y │  ╱╲   ●
+  │ ●                    │ ●                    │ ╱  ╲ ●
+  │   ●  ●               │   ●●                 │ ●   ╲╱●
+  │ ●  ●                 │ ●●                   │ ●  ╱╲●
+  └──────→ x             └──────→ x             └──────→ x
+  
+Underfit ❌              Just right ✅          Overfit ❌
+</code></pre></div></div>
+
+<p><strong>Best practice:</strong> Use cross-validation to choose degree!</p>
+
+<hr />
+
+<h2 id="log-transform">5. Log Transformations</h2>
+
+<h3 id="-when-to-use-log">🎯 When to Use Log</h3>
+
+<p>Use log when data is <strong>skewed</strong> or has <strong>exponential growth</strong>.</p>
+
+<p><strong>Common scenarios:</strong></p>
+<ul>
+  <li>Income (right-skewed)</li>
+  <li>House prices</li>
+  <li>Population growth</li>
+  <li>Stock prices</li>
+</ul>
+
+<hr />
+
+<h3 id="-what-log-does">📊 What Log Does</h3>
+
+<p><strong>Before log:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Income:  $30k, $40k, $50k, $1M, $5M
+       (mostly small, few HUGE)
+       
+Distribution: Heavily right-skewed ❌
+</code></pre></div></div>
+
+<p><strong>After log:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Log(Income): 10.3, 10.6, 10.8, 13.8, 15.4
+           (more even distribution)
+           
+Distribution: Approximately normal ✅
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-three-types-of-log-transformations">🛠️ Three Types of Log Transformations</h3>
+
+<h4 id="type-1-log-on-y-target"><strong>Type 1: Log on Y (target)</strong></h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">y_log</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y_log</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Interpretation:</strong> Coefficient × 100 = % change in y per unit change in x</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>log(Price) = 5 + 0.05×Bedrooms
+
+Each bedroom adds 5% to price (approximately)!
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="type-2-log-on-x-feature"><strong>Type 2: Log on X (feature)</strong></h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">log_income</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">income</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Interpretation:</strong> Coefficient × 0.01 = change in y per 1% change in x</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Price = 100 + 50×log(Income)
+
+A 1% increase in income adds $0.50 to price.
+A 100% increase in income adds $50 to price.
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="type-3-log-log-both"><strong>Type 3: Log-Log (both)</strong></h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">log_income</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">income</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">y_log</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">[[</span><span class="sh">'</span><span class="s">log_income</span><span class="sh">'</span><span class="p">]],</span> <span class="n">y_log</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Interpretation:</strong> Coefficient = Elasticity (% change in y per % change in x)</p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>log(Price) = 2 + 0.8×log(Income)
+
+A 1% increase in income leads to 0.8% increase in price.
+This is called "elasticity"!
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-important-notes">⚠️ Important Notes</h3>
+
+<p><strong>Can’t log zero or negative values!</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Bad: 
+</span><span class="n">y_log</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>  <span class="c1"># Fails if y has 0 or negative
+</span>
+<span class="c1"># Good: Use log(1+y) or shift data
+</span><span class="n">y_log</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">log1p</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>  <span class="c1"># log(1+y), handles 0
+</span><span class="n">y_log</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Manual shift
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="cross-validation">6. Cross-Validation</h2>
+
+<h3 id="-the-problem-with-single-traintest-split">🎯 The Problem with Single Train/Test Split</h3>
+
+<p><strong>One split can be misleading!</strong></p>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Random split 1: Train R² = 0.85, Test R² = 0.80 ✅
+Random split 2: Train R² = 0.85, Test R² = 0.65 ❌
+
+Same model, different conclusions!
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-k-fold-cross-validation">🔄 K-Fold Cross-Validation</h3>
+
+<p><strong>The Idea:</strong> Split data into K parts. Use each part as test once.</p>
+
+<p><strong>Visual (5-fold):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Iteration 1: [Test ][Train][Train][Train][Train]
+Iteration 2: [Train][Test ][Train][Train][Train]
+Iteration 3: [Train][Train][Test ][Train][Train]
+Iteration 4: [Train][Train][Train][Test ][Train]
+Iteration 5: [Train][Train][Train][Train][Test ]
+
+Average performance across all 5!
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="️-implementation">🛠️ Implementation</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">cross_val_score</span><span class="p">,</span> <span class="n">KFold</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LinearRegression</span>
+
+<span class="c1"># Create model
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">LinearRegression</span><span class="p">()</span>
+
+<span class="c1"># Set up 5-fold CV
+</span><span class="n">kfold</span> <span class="o">=</span> <span class="nc">KFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="c1"># Run cross-validation
+</span><span class="n">scores</span> <span class="o">=</span> <span class="nf">cross_val_score</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">kfold</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">'</span><span class="s">r2</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">R² scores: </span><span class="si">{</span><span class="n">scores</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Mean R²: </span><span class="si">{</span><span class="n">scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Std R²: </span><span class="si">{</span><span class="n">scores</span><span class="p">.</span><span class="nf">std</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">95% CI: [</span><span class="si">{</span><span class="n">scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span><span class="o">*</span><span class="n">scores</span><span class="p">.</span><span class="nf">std</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
+      <span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">scores</span><span class="p">.</span><span class="nf">std</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">]</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-choosing-k">🎯 Choosing K</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>K</th>
+      <th>Pros</th>
+      <th>Cons</th>
+      <th>Use When</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>5</td>
+      <td>Fast</td>
+      <td>Less reliable</td>
+      <td>Quick exploration</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Good balance</td>
+      <td>Standard</td>
+      <td>Most cases</td>
+    </tr>
+    <tr>
+      <td>n (LOOCV)</td>
+      <td>Most thorough</td>
+      <td>Very slow</td>
+      <td>Small datasets</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="feature-selection">7. Feature Selection Methods</h2>
+
+<h3 id="-why-select-features">🎯 Why Select Features?</h3>
+
+<p><strong>More features ≠ Better model!</strong></p>
+
+<p>Reasons to select:</p>
+<ul>
+  <li>✅ Reduce overfitting</li>
+  <li>✅ Faster training</li>
+  <li>✅ Better interpretation</li>
+  <li>✅ Less data needed</li>
+</ul>
+
+<hr />
+
+<h3 id="-method-1-univariate-selection">📊 Method 1: Univariate Selection</h3>
+
+<p><strong>Idea:</strong> Select features with strongest individual relationship to target.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_selection</span> <span class="kn">import</span> <span class="n">SelectKBest</span><span class="p">,</span> <span class="n">f_regression</span>
+
+<span class="c1"># Select top 5 features
+</span><span class="n">selector</span> <span class="o">=</span> <span class="nc">SelectKBest</span><span class="p">(</span><span class="n">score_func</span><span class="o">=</span><span class="n">f_regression</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">X_selected</span> <span class="o">=</span> <span class="n">selector</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="c1"># See which were selected
+</span><span class="n">selected_features</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="n">columns</span><span class="p">[</span><span class="n">selector</span><span class="p">.</span><span class="nf">get_support</span><span class="p">()]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Selected: </span><span class="si">{</span><span class="n">selected_features</span><span class="p">.</span><span class="nf">tolist</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-2-recursive-feature-elimination-rfe">📊 Method 2: Recursive Feature Elimination (RFE)</h3>
+
+<p><strong>Idea:</strong> Start with all features, remove worst one at a time.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_selection</span> <span class="kn">import</span> <span class="n">RFE</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LinearRegression</span>
+
+<span class="c1"># Use RFE to select 5 features
+</span><span class="n">rfe</span> <span class="o">=</span> <span class="nc">RFE</span><span class="p">(</span><span class="n">estimator</span><span class="o">=</span><span class="nc">LinearRegression</span><span class="p">(),</span> <span class="n">n_features_to_select</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">rfe</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="c1"># See ranking
+</span><span class="n">ranking</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
+    <span class="sh">'</span><span class="s">Feature</span><span class="sh">'</span><span class="p">:</span> <span class="n">X</span><span class="p">.</span><span class="n">columns</span><span class="p">,</span>
+    <span class="sh">'</span><span class="s">Selected</span><span class="sh">'</span><span class="p">:</span> <span class="n">rfe</span><span class="p">.</span><span class="n">support_</span><span class="p">,</span>
+    <span class="sh">'</span><span class="s">Rank</span><span class="sh">'</span><span class="p">:</span> <span class="n">rfe</span><span class="p">.</span><span class="n">ranking_</span>
+<span class="p">}).</span><span class="nf">sort_values</span><span class="p">(</span><span class="sh">'</span><span class="s">Rank</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">ranking</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-3-lasso-regularization">📊 Method 3: Lasso Regularization</h3>
+
+<p><strong>Lasso automatically selects features!</strong> (Sets unimportant ones to 0)</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">Lasso</span>
+
+<span class="n">lasso</span> <span class="o">=</span> <span class="nc">Lasso</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="n">lasso</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="c1"># Selected features
+</span><span class="n">selected</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="n">columns</span><span class="p">[</span><span class="n">lasso</span><span class="p">.</span><span class="n">coef_</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Selected: </span><span class="si">{</span><span class="n">selected</span><span class="p">.</span><span class="nf">tolist</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-method-4-forwardbackward-selection">📊 Method 4: Forward/Backward Selection</h3>
+
+<p><strong>Forward:</strong> Start with 0 features, add one at a time.
+<strong>Backward:</strong> Start with all features, remove one at a time.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">mlxtend.feature_selection</span> <span class="kn">import</span> <span class="n">SequentialFeatureSelector</span>
+
+<span class="c1"># Forward selection
+</span><span class="n">sfs</span> <span class="o">=</span> <span class="nc">SequentialFeatureSelector</span><span class="p">(</span>
+    <span class="nc">LinearRegression</span><span class="p">(),</span>
+    <span class="n">k_features</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">forward</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+    <span class="n">scoring</span><span class="o">=</span><span class="sh">'</span><span class="s">r2</span><span class="sh">'</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+<span class="n">sfs</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Selected: </span><span class="si">{</span><span class="n">sfs</span><span class="p">.</span><span class="n">k_feature_names_</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="metrics">8. Advanced Evaluation Metrics</h2>
+
+<h3 id="-beyond-r">📊 Beyond R²</h3>
+
+<h4 id="adjusted-r"><strong>Adjusted R²</strong></h4>
+
+<p><strong>Why:</strong> R² always increases with more features (even useless ones!)</p>
+
+<p><strong>Formula:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Adjusted R² = 1 - (1 - R²) × (n - 1) / (n - p - 1)
+
+Where:
+n = number of samples
+p = number of features
+</code></pre></div></div>
+
+<p><strong>Interpretation:</strong> Penalizes for adding features that don’t help.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">adjusted_r2</span><span class="p">(</span><span class="n">r2</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">r2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">p</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">r2</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">score</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">adj_r2</span> <span class="o">=</span> <span class="nf">adjusted_r2</span><span class="p">(</span><span class="n">r2</span><span class="p">,</span> <span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">R²: </span><span class="si">{</span><span class="n">r2</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Adjusted R²: </span><span class="si">{</span><span class="n">adj_r2</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="aic-akaike-information-criterion"><strong>AIC (Akaike Information Criterion)</strong></h4>
+
+<p><strong>What:</strong> Balances model fit and complexity.</p>
+
+<p><strong>Lower is better!</strong></p>
+
+<p><strong>Use:</strong> Compare different models on same data.</p>
+
+<hr />
+
+<h4 id="bic-bayesian-information-criterion"><strong>BIC (Bayesian Information Criterion)</strong></h4>
+
+<p><strong>Similar to AIC</strong> but penalizes complexity more.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">statsmodels.api</span> <span class="k">as</span> <span class="n">sm</span>
+
+<span class="n">X_with_const</span> <span class="o">=</span> <span class="n">sm</span><span class="p">.</span><span class="nf">add_constant</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">sm</span><span class="p">.</span><span class="nc">OLS</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">X_with_const</span><span class="p">).</span><span class="nf">fit</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">AIC: </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="n">aic</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">BIC: </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="n">bic</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h4 id="mape-mean-absolute-percentage-error"><strong>MAPE (Mean Absolute Percentage Error)</strong></h4>
+
+<p><strong>What:</strong> Average percentage error.</p>
+
+<p><strong>Why useful:</strong> Easy to understand, scale-independent.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">mape</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">abs</span><span class="p">((</span><span class="n">y_true</span> <span class="o">-</span> <span class="n">y_pred</span><span class="p">)</span> <span class="o">/</span> <span class="n">y_true</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span>
+
+<span class="n">mape_score</span> <span class="o">=</span> <span class="nf">mape</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">MAPE: </span><span class="si">{</span><span class="n">mape_score</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Interpretation: "Predictions are off by X% on average"
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="confidence">9. Confidence Intervals &amp; Predictions</h2>
+
+<h3 id="-two-types-of-intervals">📊 Two Types of Intervals</h3>
+
+<h4 id="confidence-interval-for-mean-prediction"><strong>Confidence Interval for Mean Prediction</strong></h4>
+
+<p><strong>What:</strong> Range for the AVERAGE outcome.</p>
+
+<p><strong>Example:</strong> “For 2000 sq ft houses, average price is $400k ± $20k”</p>
+
+<hr />
+
+<h4 id="prediction-interval-for-individual"><strong>Prediction Interval for Individual</strong></h4>
+
+<p><strong>What:</strong> Range for a SINGLE outcome.</p>
+
+<p><strong>Example:</strong> “This specific 2000 sq ft house will cost $400k ± $50k”</p>
+
+<p><strong>Always wider!</strong> Individual predictions are more uncertain.</p>
+
+<hr />
+
+<h3 id="️-implementation-1">🛠️ Implementation</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">statsmodels.api</span> <span class="k">as</span> <span class="n">sm</span>
+
+<span class="c1"># Fit model
+</span><span class="n">X_const</span> <span class="o">=</span> <span class="n">sm</span><span class="p">.</span><span class="nf">add_constant</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">sm</span><span class="p">.</span><span class="nc">OLS</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">X_const</span><span class="p">).</span><span class="nf">fit</span><span class="p">()</span>
+
+<span class="c1"># Make predictions with intervals
+</span><span class="n">X_test_const</span> <span class="o">=</span> <span class="n">sm</span><span class="p">.</span><span class="nf">add_constant</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">get_prediction</span><span class="p">(</span><span class="n">X_test_const</span><span class="p">)</span>
+
+<span class="c1"># Get summary
+</span><span class="n">results</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">.</span><span class="nf">summary_frame</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">results</span><span class="p">.</span><span class="nf">head</span><span class="p">())</span>
+
+<span class="c1"># Columns:
+# mean - Prediction
+# mean_ci_lower, mean_ci_upper - Confidence interval (mean)
+# obs_ci_lower, obs_ci_upper - Prediction interval (individual)
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="workflow">10. Real-World Workflow</h2>
+
+<h3 id="-complete-step-by-step-process">🎯 Complete Step-by-Step Process</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. UNDERSTAND THE PROBLEM
+   └─ What are you predicting? Why?
+
+2. EXPLORE THE DATA
+   ├─ Summary statistics
+   ├─ Distribution plots
+   ├─ Correlation analysis
+   └─ Missing values check
+
+3. PREPROCESS DATA
+   ├─ Handle missing values
+   ├─ Handle outliers
+   ├─ Encode categorical variables
+   ├─ Feature engineering
+   └─ Split train/test
+
+4. CHECK ASSUMPTIONS
+   ├─ Linearity
+   ├─ Independence
+   ├─ Homoscedasticity
+   ├─ Normality
+   └─ Multicollinearity (VIF)
+
+5. BUILD MODEL
+   ├─ Try simple linear first
+   ├─ Add complexity if needed
+   ├─ Use regularization
+   └─ Cross-validate
+
+6. EVALUATE
+   ├─ Multiple metrics (R², MAE, RMSE)
+   ├─ Adjusted R²
+   ├─ Residual analysis
+   └─ Cook's distance
+
+7. INTERPRET
+   ├─ Coefficient meaning
+   ├─ Confidence intervals
+   ├─ Feature importance
+   └─ Limitations
+
+8. DEPLOY &amp; MONITOR
+   ├─ Save model
+   ├─ Track performance
+   └─ Update as needed
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="-pro-tips-for-real-projects">💎 Pro Tips for Real Projects</h3>
+
+<h4 id="tip-1-always-start-simple"><strong>Tip 1: Always Start Simple</strong></h4>
+<p>Begin with basic linear regression before complex methods.</p>
+
+<h4 id="tip-2-document-everything"><strong>Tip 2: Document Everything</strong></h4>
+<ul>
+  <li>Why you chose features</li>
+  <li>Why you removed outliers</li>
+  <li>Decision rationale</li>
+</ul>
+
+<h4 id="tip-3-visualize-often"><strong>Tip 3: Visualize Often</strong></h4>
+<ul>
+  <li>Distributions</li>
+  <li>Relationships</li>
+  <li>Residuals</li>
+  <li>Predictions vs actual</li>
+</ul>
+
+<h4 id="tip-4-cross-validate-always"><strong>Tip 4: Cross-Validate Always</strong></h4>
+<p>Single train/test splits can mislead.</p>
+
+<h4 id="tip-5-check-assumptions"><strong>Tip 5: Check Assumptions</strong></h4>
+<p>A bad model with high R² is still bad!</p>
+
+<h4 id="tip-6-domain-knowledge-wins"><strong>Tip 6: Domain Knowledge Wins</strong></h4>
+<p>The best feature engineering comes from understanding the problem.</p>
+
+<hr />
+
+<h2 id="-summary---your-expert-toolkit">🎓 Summary - Your Expert Toolkit</h2>
+
+<h3 id="encoding-categorical-variables"><strong>Encoding Categorical Variables:</strong></h3>
+<ul>
+  <li>One-Hot for unordered, few categories</li>
+  <li>Ordinal for ordered categories</li>
+  <li>Target encoding for many categories</li>
+</ul>
+
+<h3 id="multicollinearity"><strong>Multicollinearity:</strong></h3>
+<ul>
+  <li>VIF &gt; 10 = problem</li>
+  <li>Solutions: Drop, combine, PCA, regularization</li>
+</ul>
+
+<h3 id="outliersinfluential-points"><strong>Outliers/Influential Points:</strong></h3>
+<ul>
+  <li>Cook’s Distance for influence</li>
+  <li>Leverage for unusual X values</li>
+  <li>Standardized residuals for unusual y values</li>
+</ul>
+
+<h3 id="non-linear-patterns"><strong>Non-Linear Patterns:</strong></h3>
+<ul>
+  <li>Polynomial regression for curves</li>
+  <li>Log transformation for skewed data</li>
+</ul>
+
+<h3 id="validation"><strong>Validation:</strong></h3>
+<ul>
+  <li>Use cross-validation always</li>
+  <li>Multiple metrics, not just R²</li>
+  <li>Adjusted R² for fair comparison</li>
+</ul>
+
+<h3 id="feature-selection"><strong>Feature Selection:</strong></h3>
+<ul>
+  <li>RFE for systematic selection</li>
+  <li>Lasso for automatic selection</li>
+  <li>Always validate choices</li>
+</ul>
+
+<hr />
+
+<h2 id="-youre-now-an-expert">🏆 You’re Now an Expert!</h2>
+
+<p><strong>Congratulations!</strong> You now know:</p>
+<ul>
+  <li>✅ How to handle real-world messy data</li>
+  <li>✅ How to detect and fix all assumption violations</li>
+  <li>✅ How to handle categorical variables properly</li>
+  <li>✅ How to deal with multicollinearity</li>
+  <li>✅ How to handle outliers and influential points</li>
+  <li>✅ How to apply transformations</li>
+  <li>✅ How to validate models properly</li>
+  <li>✅ How to select features</li>
+  <li>✅ How to interpret results properly</li>
+</ul>
+
+<p><strong>Next Steps:</strong></p>
+<ol>
+  <li>Practice with real datasets (Kaggle)</li>
+  <li>Learn about other ML algorithms</li>
+  <li>Build end-to-end projects</li>
+  <li>Read research papers</li>
+  <li>Teach others!</li>
+</ol>
+
+<p><strong>Remember:</strong> The best way to become an expert is <strong>practice</strong>! 🚀</p>
+
+<hr />
+
+<p><strong>Happy Modeling! 🎓✨</strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">linear-regression</span>, <span class="tag">categorical-encoding</span>, <span class="tag">multicollinearity</span>, <span class="tag">feature-selection</span>, <span class="tag">cross-validation</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
