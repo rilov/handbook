@@ -81,7 +81,7 @@ pip install numpy pandas matplotlib seaborn scikit-learn scipy statsmodels
    ```bash
    jupyter notebook
    ```
-2. Navigate to the `machinelearning/` folder
+2. Navigate to the `notebooks/machinelearning/` folder
 3. Open any notebook (`.ipynb` file)
 4. Run cells sequentially (Shift + Enter)
 
@@ -117,8 +117,8 @@ pip install numpy pandas matplotlib seaborn scikit-learn scipy statsmodels
 ## 📖 Additional Resources
 
 ### Tutorials
-- [Linear Regression - Introduction](../topics/linear-regression-introduction)
-- [Linear Regression - Advanced Topics](../topics/linear-regression-advanced-topics)
+- [Linear Regression - Introduction](../../topics/linear-regression-introduction)
+- [Linear Regression - Advanced Topics](../../topics/linear-regression-advanced-topics)
 
 ### Documentation
 - [Scikit-learn Linear Models](https://scikit-learn.org/stable/modules/linear_model.html)
