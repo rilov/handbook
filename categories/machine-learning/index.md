@@ -12,6 +12,7 @@ Start with the introduction and progress through hands-on tutorials:
 
 1. **[Machine Learning - Introduction]({{ site.baseurl }}/topics/machine-learning-introduction)** - What is machine learning, types of ML, and how to get started
 2. **[Linear Regression - Introduction]({{ site.baseurl }}/topics/linear-regression-introduction)** - Predict continuous values with the simplest ML algorithm
+3. **[Linear Regression - Advanced Topics]({{ site.baseurl }}/topics/linear-regression-advanced-topics)** - Assumptions, challenges, scaling, and regularization techniques
 
 **What You'll Learn:**
 
@@ -19,4 +20,7 @@ Start with the introduction and progress through hands-on tutorials:
 - When to use machine learning vs traditional programming
 - The complete ML workflow from data to deployment
 - Linear regression for predicting continuous values
+- How to check and fix assumption violations
+- Scaling and feature engineering techniques
+- Regularization (Ridge, Lasso, Elastic Net)
 - How to evaluate and improve ML models
