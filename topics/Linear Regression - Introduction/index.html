@@ -194,28 +194,465 @@ Predicted:     |
 
 <h3 id="how-it-finds-the-best-line">How It Finds the Best Line</h3>
 
-<p><strong>Method 1: Ordinary Least Squares (OLS)</strong></p>
+<p>Now we know the model wants to <strong>minimize the cost</strong> (errors). But HOW does it actually find the best line? There are two main methods. Let’s understand each one with simple examples!</p>
+
+<hr />
+
+<h2 id="method-1-ordinary-least-squares-ols-">Method 1: Ordinary Least Squares (OLS) 📐</h2>
+
+<h3 id="-the-simple-idea">🎯 The Simple Idea</h3>
+
+<p><strong>OLS is like solving a math puzzle with a calculator.</strong></p>
+
+<p>Instead of trying lots of different lines and picking the best one, OLS uses a <strong>mathematical formula</strong> to instantly calculate the perfect line in ONE step!</p>
+
+<h3 id="-pizza-analogy">🍕 Pizza Analogy</h3>
+
+<p>Imagine you want to cut a pizza into exactly equal slices:</p>
+
+<p><strong>Bad way (trial and error):</strong></p>
 <ul>
-  <li>Calculates the exact mathematical solution</li>
-  <li>Uses calculus to find minimum</li>
-  <li>Fast and accurate for small datasets</li>
+  <li>Cut a slice… too big!</li>
+  <li>Cut another… too small!</li>
+  <li>Try again… still wrong!</li>
+  <li>Keep trying for hours</li>
 </ul>
 
-<p><strong>Method 2: Gradient Descent</strong></p>
+<p><strong>OLS way (formula):</strong></p>
 <ul>
-  <li>Iteratively adjusts the line</li>
-  <li>Takes small steps toward the minimum</li>
-  <li>Used for large datasets or complex models</li>
+  <li>You know there are 8 people</li>
+  <li>360° ÷ 8 = 45° per slice</li>
+  <li>Cut perfectly the FIRST time!</li>
 </ul>
 
-<p><strong>Gradient Descent Analogy:</strong>
-Imagine you’re on a mountain in fog:</p>
+<p>That’s OLS! It uses a formula to find the answer <strong>directly</strong>.</p>
+
+<h3 id="-what-it-actually-does">📊 What It Actually Does</h3>
+
+<p>OLS finds the line that minimizes the <strong>sum of squared errors</strong>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>For each data point:
+1. Find the error (actual - predicted)
+2. Square the error (so negatives don't cancel positives)
+3. Add up all squared errors
+4. Find the line where this sum is SMALLEST
+</code></pre></div></div>
+
+<p><strong>Why “squared”?</strong></p>
+
+<p>Imagine these errors: +5, -5, +3, -3</p>
 <ul>
-  <li>You want to get to the bottom (minimum error)</li>
-  <li>You can’t see the bottom</li>
-  <li>You take small steps downhill</li>
-  <li>Eventually you reach the bottom</li>
+  <li>Sum: 0 (looks perfect, but it’s not!)</li>
+  <li>Squared sum: 25+25+9+9 = 68 (shows real error)</li>
 </ul>
+
+<p>Squaring makes all errors positive AND penalizes big errors more!</p>
+
+<h3 id="-the-math-simple-version">🧮 The Math (Simple Version)</h3>
+
+<p>For a simple line <code class="language-plaintext highlighter-rouge">y = β₀ + β₁x</code>, OLS calculates:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>β₁ (slope) = Σ((x - x̄)(y - ȳ)) / Σ((x - x̄)²)
+
+β₀ (intercept) = ȳ - β₁ × x̄
+
+Where:
+x̄ = average of x values
+ȳ = average of y values
+Σ = sum of all values
+</code></pre></div></div>
+
+<p><strong>Don’t worry about memorizing this!</strong> Python does it for you:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LinearRegression</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">LinearRegression</span><span class="p">()</span>  <span class="c1"># Uses OLS by default!
+</span><span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="-when-to-use-ols">✅ When to Use OLS</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use OLS When</th>
+      <th>Don’t Use OLS When</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>✅ Small/medium dataset (&lt; 100k rows)</td>
+      <td>❌ Huge dataset (millions of rows)</td>
+    </tr>
+    <tr>
+      <td>✅ Few features (&lt; 1000)</td>
+      <td>❌ Massive features (&gt;10,000)</td>
+    </tr>
+    <tr>
+      <td>✅ Want exact answer</td>
+      <td>❌ Need to update model online</td>
+    </tr>
+    <tr>
+      <td>✅ Memory is enough</td>
+      <td>❌ Memory is limited</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="-ols-pros-and-cons">🎯 OLS Pros and Cons</h3>
+
+<p><strong>Pros:</strong></p>
+<ul>
+  <li>✅ <strong>Exact solution</strong> - finds THE best answer</li>
+  <li>✅ <strong>One-shot</strong> - no iterations needed</li>
+  <li>✅ <strong>Fast</strong> for small data</li>
+  <li>✅ <strong>No tuning</strong> required</li>
+</ul>
+
+<p><strong>Cons:</strong></p>
+<ul>
+  <li>❌ <strong>Slow for big data</strong> (matrix calculations)</li>
+  <li>❌ <strong>Requires lots of memory</strong> (stores entire matrix)</li>
+  <li>❌ <strong>Doesn’t work</strong> for very complex models</li>
+</ul>
+
+<hr />
+
+<h2 id="method-2-gradient-descent-️">Method 2: Gradient Descent 🏔️</h2>
+
+<h3 id="-the-simple-idea-1">🎯 The Simple Idea</h3>
+
+<p><strong>Gradient Descent is like rolling a ball down a hill.</strong></p>
+
+<p>Instead of solving with a formula, it <strong>gradually adjusts</strong> the line, making it better and better with each step until it reaches the bottom (minimum error).</p>
+
+<h3 id="️-the-mountain-climber-analogy">🏔️ The Mountain Climber Analogy</h3>
+
+<p>Imagine you’re a hiker stuck on a mountain in <strong>dense fog</strong>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        You are here →  🧗
+                        /\
+                       /  \
+                      /    \
+                     /      \
+                    /  Fog!  \
+                   /          \
+                  /            \
+                 /     ⛰️       \
+                /                \
+        ──────  (Bottom = Goal)  ──────
+</code></pre></div></div>
+
+<p><strong>Your situation:</strong></p>
+<ul>
+  <li>🎯 <strong>Goal:</strong> Get to the bottom (minimum error)</li>
+  <li>🌫️ <strong>Problem:</strong> You can’t see the bottom (fog!)</li>
+  <li>🦯 <strong>Tool:</strong> You can feel the slope under your feet</li>
+</ul>
+
+<p><strong>Your strategy:</strong></p>
+<ol>
+  <li><strong>Feel the ground</strong> - which way is downhill?</li>
+  <li><strong>Take a small step</strong> in that direction</li>
+  <li><strong>Stop and check</strong> - which way is downhill now?</li>
+  <li><strong>Take another small step</strong> downhill</li>
+  <li><strong>Repeat</strong> until the ground is flat (you’re at the bottom!)</li>
+</ol>
+
+<p>That’s exactly how Gradient Descent works! 🎉</p>
+
+<h3 id="-visual-step-by-step">📊 Visual Step-by-Step</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 0: Start somewhere (random)
+        🧗
+       ●
+      /
+     /
+    /        ⛰️
+   /
+  /__________
+
+Step 1: Check slope, take small step downhill
+        
+       \  
+        ●→🧗
+         \
+          \      ⛰️
+           \
+  __________
+
+Step 2: Continue downhill
+        
+        \
+         \
+          ●→🧗   ⛰️
+            \
+  __________
+
+Step 3: Almost there!
+        
+        \
+         \
+          \
+           ●→🧗⛰️
+  __________
+
+Step 4: Reached the bottom! 🎉
+        
+        \
+         \
+          \
+           \
+  ______●__🎯_____   You're at the minimum!
+</code></pre></div></div>
+
+<h3 id="-the-algorithm-simple-version">🧮 The Algorithm (Simple Version)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Gradient Descent in simple steps:
+</span>
+<span class="mf">1.</span> <span class="n">Start</span> <span class="k">with</span> <span class="n">random</span> <span class="n">values</span> <span class="k">for</span> <span class="n">slope</span> <span class="ow">and</span> <span class="n">intercept</span>
+   <span class="n">slope</span> <span class="o">=</span> <span class="n">random</span> <span class="n">number</span>
+   <span class="n">intercept</span> <span class="o">=</span> <span class="n">random</span> <span class="n">number</span>
+
+<span class="mf">2.</span> <span class="n">Calculate</span> <span class="n">current</span> <span class="nf">error </span><span class="p">(</span><span class="n">cost</span><span class="p">)</span>
+   <span class="n">cost</span> <span class="o">=</span> <span class="nb">sum</span> <span class="n">of</span> <span class="n">squared</span> <span class="n">errors</span>
+
+<span class="mf">3.</span> <span class="n">Calculate</span> <span class="n">the</span> <span class="n">slope</span> <span class="n">of</span> <span class="n">the</span> <span class="nf">cost </span><span class="p">(</span><span class="n">gradient</span><span class="p">)</span>
+   <span class="sh">"</span><span class="s">Which direction reduces error?</span><span class="sh">"</span>
+
+<span class="mf">4.</span> <span class="n">Take</span> <span class="n">a</span> <span class="n">small</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">that</span> <span class="n">direction</span>
+   <span class="n">slope</span> <span class="o">=</span> <span class="n">slope</span> <span class="o">-</span> <span class="p">(</span><span class="n">learning_rate</span> <span class="err">×</span> <span class="n">gradient_slope</span><span class="p">)</span>
+   <span class="n">intercept</span> <span class="o">=</span> <span class="n">intercept</span> <span class="o">-</span> <span class="p">(</span><span class="n">learning_rate</span> <span class="err">×</span> <span class="n">gradient_intercept</span><span class="p">)</span>
+
+<span class="mf">5.</span> <span class="n">Repeat</span> <span class="n">steps</span> <span class="mi">2</span><span class="o">-</span><span class="mi">4</span> <span class="n">until</span> <span class="n">cost</span> <span class="n">stops</span> <span class="n">decreasing</span>
+</code></pre></div></div>
+
+<h3 id="️-the-learning-rate-step-size">🎚️ The Learning Rate (Step Size)</h3>
+
+<p>The <strong>learning rate</strong> is how big your steps are. This is <strong>CRITICAL</strong>!</p>
+
+<p><strong>Too Small (tiny baby steps):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>🧗→●→●→●→●→●→●→●→●→●→●→●...🎯
+
+Result: Takes forever to reach the bottom! 🐌
+</code></pre></div></div>
+
+<p><strong>Too Large (giant leaps):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>🧗──────●
+        \
+         \
+          ●─────────🚀  Overshoot!
+                   /
+                  /
+                 ●     Miss the target!
+                /
+              ●─────🚀
+
+Result: Bounces around, never settles! 💥
+</code></pre></div></div>
+
+<p><strong>Just Right (Goldilocks):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>🧗
+  ●
+   ●
+    ●
+     ●
+      ●
+       🎯  Perfect! Reaches the bottom efficiently! ✅
+</code></pre></div></div>
+
+<p><strong>Common learning rates:</strong> 0.001, 0.01, 0.1</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example with sklearn
+</span><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">SGDRegressor</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">SGDRegressor</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="sh">'</span><span class="s">constant</span><span class="sh">'</span><span class="p">,</span> <span class="n">eta0</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="c1"># eta0 = 0.01 means step size of 0.01
+</span></code></pre></div></div>
+
+<h3 id="-three-types-of-gradient-descent">🎯 Three Types of Gradient Descent</h3>
+
+<h4 id="1-batch-gradient-descent"><strong>1. Batch Gradient Descent</strong></h4>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Use ALL data to calculate each step.
+
+✅ Most accurate
+❌ Slow for big data
+❌ Uses lots of memory
+</code></pre></div></div>
+
+<h4 id="2-stochastic-gradient-descent-sgd"><strong>2. Stochastic Gradient Descent (SGD)</strong></h4>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Use ONE random data point per step.
+
+✅ Very fast
+✅ Works with huge data
+❌ Noisy (zigzag path to bottom)
+</code></pre></div></div>
+
+<h4 id="3-mini-batch-gradient-descent-most-common"><strong>3. Mini-Batch Gradient Descent (Most Common!)</strong></h4>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Use a small batch (e.g., 32 points) per step.
+
+✅ Best of both worlds
+✅ Fast AND stable
+✅ Used in deep learning!
+</code></pre></div></div>
+
+<h3 id="-visual-comparison">📊 Visual Comparison</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batch GD:        Stochastic GD:      Mini-Batch GD:
+                 
+🧗               🧗                   🧗
+ ●                ●                    ●
+  ●               ↘●                    ●
+   ●                ●                    ●
+    ●              ↗                      ●
+     🎯            ●                       🎯
+                  ↘●
+Smooth path        🎯                Slightly noisy
+                                     but smooth
+                  Zigzag path
+</code></pre></div></div>
+
+<h3 id="-when-to-use-gradient-descent">✅ When to Use Gradient Descent</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use Gradient Descent When</th>
+      <th>Don’t Use When</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>✅ Huge dataset (millions of rows)</td>
+      <td>❌ Small dataset</td>
+    </tr>
+    <tr>
+      <td>✅ Many features (&gt;10,000)</td>
+      <td>❌ Want exact answer</td>
+    </tr>
+    <tr>
+      <td>✅ Online/streaming data</td>
+      <td>❌ Have time for OLS</td>
+    </tr>
+    <tr>
+      <td>✅ Complex models (neural nets)</td>
+      <td>❌ Simple problem</td>
+    </tr>
+    <tr>
+      <td>✅ Limited memory</td>
+      <td>❌ Plenty of memory</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="-gradient-descent-pros-and-cons">🎯 Gradient Descent Pros and Cons</h3>
+
+<p><strong>Pros:</strong></p>
+<ul>
+  <li>✅ <strong>Works with huge data</strong> (millions of rows)</li>
+  <li>✅ <strong>Less memory</strong> required</li>
+  <li>✅ <strong>Foundation</strong> of deep learning</li>
+  <li>✅ <strong>Online learning</strong> possible</li>
+</ul>
+
+<p><strong>Cons:</strong></p>
+<ul>
+  <li>❌ <strong>Approximate</strong> solution (very close, but not exact)</li>
+  <li>❌ <strong>Need to tune</strong> learning rate</li>
+  <li>❌ <strong>May not converge</strong> if learning rate is wrong</li>
+  <li>❌ <strong>Slower per problem</strong> (needs many iterations)</li>
+</ul>
+
+<hr />
+
+<h2 id="-ols-vs-gradient-descent---side-by-side">🥊 OLS vs Gradient Descent - Side by Side</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>OLS</th>
+      <th>Gradient Descent</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>How it works</strong></td>
+      <td>Math formula</td>
+      <td>Iterative steps</td>
+    </tr>
+    <tr>
+      <td><strong>Speed (small data)</strong></td>
+      <td>⚡ Super fast</td>
+      <td>🐢 Slower</td>
+    </tr>
+    <tr>
+      <td><strong>Speed (big data)</strong></td>
+      <td>🐢 Very slow</td>
+      <td>⚡ Fast</td>
+    </tr>
+    <tr>
+      <td><strong>Memory</strong></td>
+      <td>High</td>
+      <td>Low</td>
+    </tr>
+    <tr>
+      <td><strong>Accuracy</strong></td>
+      <td>Exact</td>
+      <td>Approximate</td>
+    </tr>
+    <tr>
+      <td><strong>Tuning needed</strong></td>
+      <td>None</td>
+      <td>Learning rate</td>
+    </tr>
+    <tr>
+      <td><strong>Real-world use</strong></td>
+      <td>Sklearn <code class="language-plaintext highlighter-rouge">LinearRegression</code></td>
+      <td>Deep learning, big data</td>
+    </tr>
+    <tr>
+      <td><strong>Analogy</strong></td>
+      <td>Calculator</td>
+      <td>Hiking down mountain</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="-real-world-decision">💡 Real-World Decision</h3>
+
+<p><strong>For most beginners:</strong></p>
+<ul>
+  <li>Use sklearn’s <code class="language-plaintext highlighter-rouge">LinearRegression</code> → It uses OLS automatically!</li>
+  <li>Works perfectly for typical datasets</li>
+</ul>
+
+<p><strong>For big data/complex models:</strong></p>
+<ul>
+  <li>Use sklearn’s <code class="language-plaintext highlighter-rouge">SGDRegressor</code> → Uses Gradient Descent</li>
+  <li>Or move to deep learning frameworks</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Beginner choice (OLS)
+</span><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LinearRegression</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">LinearRegression</span><span class="p">()</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>  <span class="c1"># Done! ✅
+</span>
+<span class="c1"># Big data choice (Gradient Descent)
+</span><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">SGDRegressor</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">SGDRegressor</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">eta0</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>  <span class="c1"># Iterates many times
+</span></code></pre></div></div>
+
+<h3 id="-key-takeaway">🎓 Key Takeaway</h3>
+
+<p><strong>Both methods find the SAME answer!</strong></p>
+<ul>
+  <li><strong>OLS</strong>: Direct calculation (like using GPS)</li>
+  <li><strong>Gradient Descent</strong>: Step-by-step search (like asking for directions)</li>
+</ul>
+
+<p>For learning, OLS is simpler. For real-world big data, Gradient Descent rules!</p>
 
 <hr />
 
