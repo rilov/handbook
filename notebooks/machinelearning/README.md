@@ -54,6 +54,42 @@ Welcome to the Machine Learning tutorial notebooks! 🚀
 
 ---
 
+### 4. Logistic Regression (`04_logistic_regression.ipynb`)
+**Difficulty:** Beginner-Intermediate  
+**Topics Covered:**
+- The sigmoid function visualization
+- Binary classification (Pass/Fail prediction)
+- Decision boundaries
+- Confusion matrix
+- ROC curve and AUC
+- Custom thresholds
+
+**What You'll Learn:**
+- How to do classification with logistic regression
+- How to interpret probabilities
+- All evaluation metrics for classification
+- How to tune the decision threshold
+
+---
+
+### 5. Regularization Deep Dive (`05_regularization.ipynb`)
+**Difficulty:** Intermediate-Advanced  
+**Topics Covered:**
+- Why we need regularization (overfitting demo)
+- Ridge (L2) regression
+- Lasso (L1) regression - feature selection
+- Elastic Net - combining both
+- Hyperparameter tuning with cross-validation
+- Comparing all methods
+
+**What You'll Learn:**
+- How regularization prevents overfitting
+- The difference between L1 and L2
+- How Lasso automatically selects features
+- How to auto-tune hyperparameters
+
+---
+
 ## 📊 Data Files
 
 ### `data/house_prices.csv`
