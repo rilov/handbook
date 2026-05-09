@@ -1,6 +1,6 @@
 ---
 title: "Machine Learning - Introduction"
-category: machine-learning
+category: Machine Learning
 order: 1
 tags:
   - machine-learning
