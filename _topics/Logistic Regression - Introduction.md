@@ -275,33 +275,33 @@ P(y=1) = σ(z) = 1 / (1 + e^(-z))
   Class 1 (Yes!) ✅
 ```
 
-### 🎓 Concrete Example: Pass or Fail?
+### 🎓 Concrete Example: Spam Filter 📧
 
-**Predict if a student will pass based on hours studied.**
+**Predict if an email is spam based on number of suspicious words it contains.**
 
-Let's say we trained the model and got:
+Let's say we trained the model on thousands of emails and got:
 ```
 β₀ = -4 (intercept)
-β₁ = 0.8 (coefficient for hours)
+β₁ = 0.8 (coefficient for suspicious_words)
 ```
 
 So the equation is:
 ```
-z = -4 + 0.8 × hours_studied
-P(pass) = σ(z) = 1 / (1 + e^(-z))
+z = -4 + 0.8 × suspicious_words
+P(spam) = σ(z) = 1 / (1 + e^(-z))
 ```
 
-**Predictions:**
+**Predictions for different emails:**
 
-| Hours | z = -4 + 0.8h | σ(z) | Probability | Prediction |
-|-------|---------------|------|-------------|------------|
-| 1 | -3.2 | 0.039 | 4% | ❌ Fail |
-| 3 | -1.6 | 0.168 | 17% | ❌ Fail |
-| 5 | 0 | **0.500** | **50%** | 🤔 Border |
-| 7 | 1.6 | 0.832 | 83% | ✅ Pass |
-| 10 | 4.0 | 0.982 | 98% | ✅ Pass |
+| Suspicious Words | z = -4 + 0.8w | σ(z) | P(spam) | Prediction |
+|------------------|---------------|------|---------|------------|
+| 1  ("Hi mom") | -3.2 | 0.039 | 4%  | 📬 Inbox |
+| 3  ("Meeting today?") | -1.6 | 0.168 | 17% | 📬 Inbox |
+| 5  ("Free trial offer") | 0 | **0.500** | **50%** | 🤔 Border |
+| 7  ("WIN money NOW click!") | 1.6 | 0.832 | 83% | 🚫 Spam |
+| 10 ("FREE!!! URGENT!!! CLICK!!!") | 4.0 | 0.982 | 98% | 🚫 Spam |
 
-**Notice:** At 5 hours, probability is exactly 50%! This is the **decision boundary**.
+**Notice:** At 5 suspicious words, probability is exactly 50%! This is the **decision boundary**.
 
 ---
 
@@ -317,9 +317,9 @@ This happens when **z = 0** (since σ(0) = 0.5)
 
 ### 📊 Visualizing the Boundary
 
-For 1 feature:
+For 1 feature (suspicious words):
 ```
-              FAIL ZONE        PASS ZONE
+              INBOX ZONE       SPAM ZONE
                  ↓                ↓
               ────●────────●─────●─────
               0    3       5     7    10
@@ -328,11 +328,11 @@ For 1 feature:
                   (z = 0, P = 0.5)
 ```
 
-For 2 features (Hours studied + Practice problems):
+For 2 features (Suspicious words + ALL CAPS ratio):
 ```
-Practice Problems
+ALL CAPS %
        │
-   100 ┤   ●●●●  ← All passed
+   100 ┤   ●●●●  ← All SPAM
        │  ● ●●●     (above the line)
     80 ┤  ●●●
        │ ╲          
@@ -340,10 +340,10 @@ Practice Problems
        │   ╲ Boundary
     40 ┤    ╲      ○○
        │     ╲    ○○○
-    20 ┤      ╲  ○○○○  ← All failed
+    20 ┤      ╲  ○○○○  ← All INBOX
        │       ╲○○○      (below the line)
      0 ┤────────╲──────
-       └──────────────────→ Hours Studied
+       └──────────────────→ Suspicious Words
         0    5    10   15
 ```
 
@@ -406,7 +406,7 @@ p = predicted probability
 
 **Two cases:**
 
-**Case 1: Actual = 1 (true class is "Pass")**
+**Case 1: Actual = 1 (true class is "Spam")**
 ```
 Cost = -log(p)
 
@@ -415,7 +415,7 @@ If p = 0.5 (uncertain):                Cost = 0.69 (medium)
 If p = 0.1 (wrong, high confidence):   Cost = 2.30 ❌ (large!)
 ```
 
-**Case 2: Actual = 0 (true class is "Fail")**
+**Case 2: Actual = 0 (true class is "Not Spam")**
 ```
 Cost = -log(1-p)
 
@@ -622,7 +622,7 @@ probabilities = model_ovr.predict_proba(X_test)
 
 ## 9. Python Examples {#python-examples}
 
-### 🎓 Complete Example: Pass/Fail Prediction
+### 🎓 Complete Example: Spam Filter 📧
 
 ```python
 import numpy as np
@@ -635,30 +635,35 @@ from sklearn.metrics import (
     f1_score, confusion_matrix, classification_report
 )
 
-# Step 1: Create sample data
+# Step 1: Create sample email data
 np.random.seed(42)
-hours = np.random.uniform(0, 12, 100)
-practice = np.random.uniform(0, 100, 100)
+n_emails = 200
 
-# True relationship (with some noise)
-score = -5 + 0.5*hours + 0.05*practice + np.random.normal(0, 1, 100)
-passed = (score > 0).astype(int)
+# Features for each email:
+#   - suspicious_words: count of words like 'free', 'win', 'click', 'urgent'
+#   - caps_ratio: percentage of ALL CAPS characters
+suspicious_words = np.random.uniform(0, 15, n_emails)
+caps_ratio = np.random.uniform(0, 100, n_emails)
+
+# True relationship (with noise) - more spam-like words = more likely spam
+score = -5 + 0.6*suspicious_words + 0.05*caps_ratio + np.random.normal(0, 1, n_emails)
+is_spam = (score > 0).astype(int)
 
 df = pd.DataFrame({
-    'hours': hours,
-    'practice': practice,
-    'passed': passed
+    'suspicious_words': suspicious_words.round(1),
+    'caps_ratio': caps_ratio.round(1),
+    'is_spam': is_spam
 })
 
-print("📊 Dataset:")
+print("� Email Dataset:")
 print(df.head())
-print(f"\nTotal: {len(df)} students")
-print(f"Passed: {df['passed'].sum()}")
-print(f"Failed: {len(df) - df['passed'].sum()}")
+print(f"\nTotal emails: {len(df)}")
+print(f"Spam:     {df['is_spam'].sum()}")
+print(f"Not spam: {len(df) - df['is_spam'].sum()}")
 
 # Step 2: Split data
-X = df[['hours', 'practice']]
-y = df['passed']
+X = df[['suspicious_words', 'caps_ratio']]
+y = df['is_spam']
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
@@ -681,17 +686,18 @@ print("\n🔮 Sample Predictions:")
 for i in range(5):
     actual = y_test.iloc[i]
     pred = predictions[i]
-    prob_pass = probabilities[i][1]
-    print(f"  Hours: {X_test.iloc[i]['hours']:.1f}, "
-          f"Practice: {X_test.iloc[i]['practice']:.0f}, "
-          f"P(pass): {prob_pass:.2%}, "
-          f"Predicted: {pred}, Actual: {actual}")
+    prob_spam = probabilities[i][1]
+    label = "🚫 SPAM" if pred == 1 else "📬 INBOX"
+    print(f"  Suspicious words: {X_test.iloc[i]['suspicious_words']:.1f}, "
+          f"Caps: {X_test.iloc[i]['caps_ratio']:.0f}%, "
+          f"P(spam): {prob_spam:.2%}, "
+          f"Predicted: {label}, Actual: {actual}")
 
 # Step 5: Evaluate
 print("\n📊 Evaluation Metrics:")
 print(f"  Accuracy:  {accuracy_score(y_test, predictions):.2%}")
-print(f"  Precision: {precision_score(y_test, predictions):.2%}")
-print(f"  Recall:    {recall_score(y_test, predictions):.2%}")
+print(f"  Precision: {precision_score(y_test, predictions):.2%}  ← Of flagged spam, how many were actually spam?")
+print(f"  Recall:    {recall_score(y_test, predictions):.2%}  ← Of actual spam, how many did we catch?")
 print(f"  F1 Score:  {f1_score(y_test, predictions):.2%}")
 
 # Step 6: Confusion Matrix
@@ -700,8 +706,17 @@ cm = confusion_matrix(y_test, predictions)
 print(cm)
 
 print("\n📋 Classification Report:")
-print(classification_report(y_test, predictions))
+print(classification_report(y_test, predictions, target_names=['Not Spam', 'Spam']))
 ```
+
+### 💡 Why Precision Matters for Spam Filters
+
+For a **spam filter**, **PRECISION is critical**:
+- A false positive = a legitimate email goes to spam folder ❌
+- Users get angry if their boss's email is marked as spam!
+- It's better to let some spam through than block real emails
+
+**Recommendation:** Use a higher threshold (e.g., 0.8) to make sure you're confident before marking as spam.
 
 ### 📊 Visualizing the Decision Boundary
 
@@ -710,8 +725,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Create mesh grid
-x_min, x_max = X['hours'].min() - 1, X['hours'].max() + 1
-y_min, y_max = X['practice'].min() - 5, X['practice'].max() + 5
+x_min, x_max = X['suspicious_words'].min() - 1, X['suspicious_words'].max() + 1
+y_min, y_max = X['caps_ratio'].min() - 5, X['caps_ratio'].max() + 5
 
 xx, yy = np.meshgrid(
     np.linspace(x_min, x_max, 100),
@@ -725,22 +740,22 @@ Z = Z.reshape(xx.shape)
 # Plot
 fig, ax = plt.subplots(figsize=(12, 6))
 
-# Filled contour for probabilities
-contour = ax.contourf(xx, yy, Z, levels=20, cmap='RdYlGn', alpha=0.6)
-plt.colorbar(contour, label='P(Pass)')
+# Filled contour for probabilities (red = spam zone, green = inbox zone)
+contour = ax.contourf(xx, yy, Z, levels=20, cmap='RdYlGn_r', alpha=0.6)
+plt.colorbar(contour, label='P(Spam)')
 
 # Decision boundary at 0.5
 ax.contour(xx, yy, Z, levels=[0.5], colors='black', linewidths=2)
 
 # Plot data points
-ax.scatter(X[y==0]['hours'], X[y==0]['practice'], 
-           c='red', label='Failed', s=80, edgecolors='black')
-ax.scatter(X[y==1]['hours'], X[y==1]['practice'], 
-           c='green', label='Passed', s=80, edgecolors='black')
+ax.scatter(X[y==0]['suspicious_words'], X[y==0]['caps_ratio'], 
+           c='green', label='Not Spam (Inbox)', s=80, edgecolors='black')
+ax.scatter(X[y==1]['suspicious_words'], X[y==1]['caps_ratio'], 
+           c='red', label='Spam', s=80, edgecolors='black', marker='X')
 
-ax.set_xlabel('Hours Studied', fontsize=12)
-ax.set_ylabel('Practice Problems', fontsize=12)
-ax.set_title('Logistic Regression Decision Boundary', fontsize=14)
+ax.set_xlabel('Suspicious Words Count', fontsize=12)
+ax.set_ylabel('ALL CAPS %', fontsize=12)
+ax.set_title('Spam Filter Decision Boundary', fontsize=14)
 ax.legend()
 plt.tight_layout()
 plt.show()
