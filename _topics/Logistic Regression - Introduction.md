@@ -275,33 +275,39 @@ P(y=1) = σ(z) = 1 / (1 + e^(-z))
   Class 1 (Yes!) ✅
 ```
 
-### 🎓 Concrete Example: Spam Filter 📧
+### 🎓 Concrete Example: Customer Churn Prediction �
 
-**Predict if an email is spam based on number of suspicious words it contains.**
+**Predict if a telecom/SaaS customer will cancel their subscription ("churn") based on how many months they've been a customer.**
 
-Let's say we trained the model on thousands of emails and got:
+Why does this matter? It costs **5× more** to acquire a new customer than to retain an existing one. Companies want to identify at-risk customers BEFORE they leave.
+
+Let's say we trained the model on past customer data and got:
 ```
-β₀ = -4 (intercept)
-β₁ = 0.8 (coefficient for suspicious_words)
+β₀ = 4 (intercept)
+β₁ = -0.5 (coefficient for tenure_months)
 ```
 
 So the equation is:
 ```
-z = -4 + 0.8 × suspicious_words
-P(spam) = σ(z) = 1 / (1 + e^(-z))
+z = 4 - 0.5 × tenure_months
+P(churn) = σ(z) = 1 / (1 + e^(-z))
 ```
 
-**Predictions for different emails:**
+**Note:** Coefficient is **negative** → longer tenure = LOWER churn probability (loyal customers stay!)
 
-| Suspicious Words | z = -4 + 0.8w | σ(z) | P(spam) | Prediction |
-|------------------|---------------|------|---------|------------|
-| 1  ("Hi mom") | -3.2 | 0.039 | 4%  | 📬 Inbox |
-| 3  ("Meeting today?") | -1.6 | 0.168 | 17% | 📬 Inbox |
-| 5  ("Free trial offer") | 0 | **0.500** | **50%** | 🤔 Border |
-| 7  ("WIN money NOW click!") | 1.6 | 0.832 | 83% | 🚫 Spam |
-| 10 ("FREE!!! URGENT!!! CLICK!!!") | 4.0 | 0.982 | 98% | 🚫 Spam |
+**Predictions for different customers:**
 
-**Notice:** At 5 suspicious words, probability is exactly 50%! This is the **decision boundary**.
+| Tenure (months) | z = 4 - 0.5t | σ(z) | P(churn) | Prediction |
+|-----------------|--------------|------|----------|------------|
+| 1   (brand new)         | 3.5  | 0.971 | 97% | � Will churn |
+| 4   (still new)         | 2.0  | 0.881 | 88% | � Will churn |
+| 8   (settling in)       | 0    | **0.500** | **50%** | 🤔 At risk |
+| 12  (loyal)             | -2.0 | 0.119 | 12% | ✅ Will stay |
+| 24  (very loyal)        | -8.0 | 0.0003| 0.03% | ✅ Will stay |
+
+**Notice:** At 8 months, probability is exactly 50%! This is the **decision boundary**.
+
+**Business action:** Target customers with P(churn) > 70% with retention offers (discounts, calls, upgrades).
 
 ---
 
@@ -317,34 +323,34 @@ This happens when **z = 0** (since σ(0) = 0.5)
 
 ### 📊 Visualizing the Boundary
 
-For 1 feature (suspicious words):
+For 1 feature (tenure in months):
 ```
-              INBOX ZONE       SPAM ZONE
+              CHURN ZONE       LOYAL ZONE
                  ↓                ↓
               ────●────────●─────●─────
-              0    3       5     7    10
+              1    4       8    12    24
                           ↑
                   Decision Boundary
                   (z = 0, P = 0.5)
 ```
 
-For 2 features (Suspicious words + ALL CAPS ratio):
+For 2 features (Tenure + Monthly Charges):
 ```
-ALL CAPS %
+Monthly Charges ($)
        │
-   100 ┤   ●●●●  ← All SPAM
-       │  ● ●●●     (above the line)
+   100 ┤   ●●●●  ← All churned
+       │  ● ●●●     (high charges, short tenure)
     80 ┤  ●●●
-       │ ╲          
-    60 ┤  ╲ Decision
-       │   ╲ Boundary
-    40 ┤    ╲      ○○
-       │     ╲    ○○○
-    20 ┤      ╲  ○○○○  ← All INBOX
-       │       ╲○○○      (below the line)
-     0 ┤────────╲──────
-       └──────────────────→ Suspicious Words
-        0    5    10   15
+       │   ╲          
+    60 ┤    ╲ Decision
+       │     ╲ Boundary
+    40 ┤      ╲      ○○
+       │       ╲    ○○○
+    20 ┤        ╲  ○○○○  ← All loyal
+       │         ╲○○○     (low charges, long tenure)
+     0 ┤──────────╲──────
+       └─────────────────→ Tenure (months)
+        0    10    20   30
 ```
 
 The **line is the boundary** where the model is uncertain (50/50).
@@ -406,7 +412,7 @@ p = predicted probability
 
 **Two cases:**
 
-**Case 1: Actual = 1 (true class is "Spam")**
+**Case 1: Actual = 1 (true class is "Will Churn")**
 ```
 Cost = -log(p)
 
@@ -415,7 +421,7 @@ If p = 0.5 (uncertain):                Cost = 0.69 (medium)
 If p = 0.1 (wrong, high confidence):   Cost = 2.30 ❌ (large!)
 ```
 
-**Case 2: Actual = 0 (true class is "Not Spam")**
+**Case 2: Actual = 0 (true class is "Will Stay")**
 ```
 Cost = -log(1-p)
 
@@ -622,7 +628,7 @@ probabilities = model_ovr.predict_proba(X_test)
 
 ## 9. Python Examples {#python-examples}
 
-### 🎓 Complete Example: Spam Filter 📧
+### 🎓 Complete Example: Customer Churn Prediction �
 
 ```python
 import numpy as np
@@ -631,39 +637,40 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, 
+    accuracy_score, precision_score, recall_score,
     f1_score, confusion_matrix, classification_report
 )
 
-# Step 1: Create sample email data
+# Step 1: Create customer dataset
 np.random.seed(42)
-n_emails = 200
+n_customers = 300
 
-# Features for each email:
-#   - suspicious_words: count of words like 'free', 'win', 'click', 'urgent'
-#   - caps_ratio: percentage of ALL CAPS characters
-suspicious_words = np.random.uniform(0, 15, n_emails)
-caps_ratio = np.random.uniform(0, 100, n_emails)
+# Features for each customer:
+#   - tenure_months: how long they've been a customer
+#   - monthly_charges: how much they pay per month
+tenure_months = np.random.uniform(1, 36, n_customers)
+monthly_charges = np.random.uniform(20, 120, n_customers)
 
-# True relationship (with noise) - more spam-like words = more likely spam
-score = -5 + 0.6*suspicious_words + 0.05*caps_ratio + np.random.normal(0, 1, n_emails)
-is_spam = (score > 0).astype(int)
+# True relationship (with noise):
+#   - Short tenure + high charges → more likely to churn
+score = 4 - 0.2*tenure_months + 0.04*monthly_charges + np.random.normal(0, 1, n_customers)
+churned = (score > 0).astype(int)
 
 df = pd.DataFrame({
-    'suspicious_words': suspicious_words.round(1),
-    'caps_ratio': caps_ratio.round(1),
-    'is_spam': is_spam
+    'tenure_months': tenure_months.round(1),
+    'monthly_charges': monthly_charges.round(2),
+    'churned': churned
 })
 
-print("� Email Dataset:")
+print("📊 Customer Dataset:")
 print(df.head())
-print(f"\nTotal emails: {len(df)}")
-print(f"Spam:     {df['is_spam'].sum()}")
-print(f"Not spam: {len(df) - df['is_spam'].sum()}")
+print(f"\nTotal customers: {len(df)}")
+print(f"Churned:  {df['churned'].sum()}  ({df['churned'].mean()*100:.1f}%)")
+print(f"Retained: {len(df) - df['churned'].sum()}  ({(1-df['churned'].mean())*100:.1f}%)")
 
 # Step 2: Split data
-X = df[['suspicious_words', 'caps_ratio']]
-y = df['is_spam']
+X = df[['tenure_months', 'monthly_charges']]
+y = df['churned']
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
@@ -678,6 +685,10 @@ print(f"Intercept (β₀): {model.intercept_[0]:.3f}")
 for feature, coef in zip(X.columns, model.coef_[0]):
     print(f"  {feature}: {coef:.3f}")
 
+print("\n💡 Interpretation:")
+print("  - tenure_months coef NEGATIVE → longer tenure = less churn (loyal!) ✅")
+print("  - monthly_charges coef POSITIVE → higher charges = more churn ⚠️")
+
 # Step 4: Make predictions
 predictions = model.predict(X_test)
 probabilities = model.predict_proba(X_test)
@@ -686,18 +697,18 @@ print("\n🔮 Sample Predictions:")
 for i in range(5):
     actual = y_test.iloc[i]
     pred = predictions[i]
-    prob_spam = probabilities[i][1]
-    label = "🚫 SPAM" if pred == 1 else "📬 INBOX"
-    print(f"  Suspicious words: {X_test.iloc[i]['suspicious_words']:.1f}, "
-          f"Caps: {X_test.iloc[i]['caps_ratio']:.0f}%, "
-          f"P(spam): {prob_spam:.2%}, "
+    prob_churn = probabilities[i][1]
+    label = "� WILL CHURN" if pred == 1 else "✅ WILL STAY"
+    print(f"  Tenure: {X_test.iloc[i]['tenure_months']:.0f}mo, "
+          f"Charges: ${X_test.iloc[i]['monthly_charges']:.0f}, "
+          f"P(churn): {prob_churn:.1%}, "
           f"Predicted: {label}, Actual: {actual}")
 
 # Step 5: Evaluate
 print("\n📊 Evaluation Metrics:")
 print(f"  Accuracy:  {accuracy_score(y_test, predictions):.2%}")
-print(f"  Precision: {precision_score(y_test, predictions):.2%}  ← Of flagged spam, how many were actually spam?")
-print(f"  Recall:    {recall_score(y_test, predictions):.2%}  ← Of actual spam, how many did we catch?")
+print(f"  Precision: {precision_score(y_test, predictions):.2%}  ← Of flagged churners, how many really churn?")
+print(f"  Recall:    {recall_score(y_test, predictions):.2%}  ← Of actual churners, how many did we catch?")
 print(f"  F1 Score:  {f1_score(y_test, predictions):.2%}")
 
 # Step 6: Confusion Matrix
@@ -706,17 +717,17 @@ cm = confusion_matrix(y_test, predictions)
 print(cm)
 
 print("\n📋 Classification Report:")
-print(classification_report(y_test, predictions, target_names=['Not Spam', 'Spam']))
+print(classification_report(y_test, predictions, target_names=['Stayed', 'Churned']))
 ```
 
-### 💡 Why Precision Matters for Spam Filters
+### 💡 Why RECALL Matters for Churn Prediction
 
-For a **spam filter**, **PRECISION is critical**:
-- A false positive = a legitimate email goes to spam folder ❌
-- Users get angry if their boss's email is marked as spam!
-- It's better to let some spam through than block real emails
+For **customer churn**, **RECALL is critical**:
+- Missing a churner = lost revenue forever 💸
+- A false alarm just means an unnecessary retention offer (cheap!)
+- Better to flag too many at-risk customers than miss real ones
 
-**Recommendation:** Use a higher threshold (e.g., 0.8) to make sure you're confident before marking as spam.
+**Recommendation:** Use a LOWER threshold (e.g., 0.3) to catch more potential churners and intervene early.
 
 ### 📊 Visualizing the Decision Boundary
 
@@ -725,8 +736,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Create mesh grid
-x_min, x_max = X['suspicious_words'].min() - 1, X['suspicious_words'].max() + 1
-y_min, y_max = X['caps_ratio'].min() - 5, X['caps_ratio'].max() + 5
+x_min, x_max = X['tenure_months'].min() - 1, X['tenure_months'].max() + 1
+y_min, y_max = X['monthly_charges'].min() - 5, X['monthly_charges'].max() + 5
 
 xx, yy = np.meshgrid(
     np.linspace(x_min, x_max, 100),
@@ -740,22 +751,22 @@ Z = Z.reshape(xx.shape)
 # Plot
 fig, ax = plt.subplots(figsize=(12, 6))
 
-# Filled contour for probabilities (red = spam zone, green = inbox zone)
+# Filled contour for probabilities (red = churn zone, green = loyal zone)
 contour = ax.contourf(xx, yy, Z, levels=20, cmap='RdYlGn_r', alpha=0.6)
-plt.colorbar(contour, label='P(Spam)')
+plt.colorbar(contour, label='P(Churn)')
 
 # Decision boundary at 0.5
 ax.contour(xx, yy, Z, levels=[0.5], colors='black', linewidths=2)
 
 # Plot data points
-ax.scatter(X[y==0]['suspicious_words'], X[y==0]['caps_ratio'], 
-           c='green', label='Not Spam (Inbox)', s=80, edgecolors='black')
-ax.scatter(X[y==1]['suspicious_words'], X[y==1]['caps_ratio'], 
-           c='red', label='Spam', s=80, edgecolors='black', marker='X')
+ax.scatter(X[y==0]['tenure_months'], X[y==0]['monthly_charges'],
+           c='green', label='✅ Stayed (Loyal)', s=80, edgecolors='black')
+ax.scatter(X[y==1]['tenure_months'], X[y==1]['monthly_charges'],
+           c='red', label='🚨 Churned', s=80, edgecolors='black', marker='X')
 
-ax.set_xlabel('Suspicious Words Count', fontsize=12)
-ax.set_ylabel('ALL CAPS %', fontsize=12)
-ax.set_title('Spam Filter Decision Boundary', fontsize=14)
+ax.set_xlabel('Tenure (months)', fontsize=12)
+ax.set_ylabel('Monthly Charges ($)', fontsize=12)
+ax.set_title('Customer Churn Decision Boundary', fontsize=14)
 ax.legend()
 plt.tight_layout()
 plt.show()
