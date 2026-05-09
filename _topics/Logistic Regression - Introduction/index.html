@@ -307,72 +307,78 @@ Probability:    0%          50%       100%
   Class 1 (Yes!) ✅
 </code></pre></div></div>
 
-<h3 id="-concrete-example-spam-filter-">🎓 Concrete Example: Spam Filter 📧</h3>
+<h3 id="-concrete-example-customer-churn-prediction-">🎓 Concrete Example: Customer Churn Prediction �</h3>
 
-<p><strong>Predict if an email is spam based on number of suspicious words it contains.</strong></p>
+<p><strong>Predict if a telecom/SaaS customer will cancel their subscription (“churn”) based on how many months they’ve been a customer.</strong></p>
 
-<p>Let’s say we trained the model on thousands of emails and got:</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>β₀ = -4 (intercept)
-β₁ = 0.8 (coefficient for suspicious_words)
+<p>Why does this matter? It costs <strong>5× more</strong> to acquire a new customer than to retain an existing one. Companies want to identify at-risk customers BEFORE they leave.</p>
+
+<p>Let’s say we trained the model on past customer data and got:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>β₀ = 4 (intercept)
+β₁ = -0.5 (coefficient for tenure_months)
 </code></pre></div></div>
 
 <p>So the equation is:</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = -4 + 0.8 × suspicious_words
-P(spam) = σ(z) = 1 / (1 + e^(-z))
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = 4 - 0.5 × tenure_months
+P(churn) = σ(z) = 1 / (1 + e^(-z))
 </code></pre></div></div>
 
-<p><strong>Predictions for different emails:</strong></p>
+<p><strong>Note:</strong> Coefficient is <strong>negative</strong> → longer tenure = LOWER churn probability (loyal customers stay!)</p>
+
+<p><strong>Predictions for different customers:</strong></p>
 
 <table>
   <thead>
     <tr>
-      <th>Suspicious Words</th>
-      <th>z = -4 + 0.8w</th>
+      <th>Tenure (months)</th>
+      <th>z = 4 - 0.5t</th>
       <th>σ(z)</th>
-      <th>P(spam)</th>
+      <th>P(churn)</th>
       <th>Prediction</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>1  (“Hi mom”)</td>
-      <td>-3.2</td>
-      <td>0.039</td>
-      <td>4%</td>
-      <td>📬 Inbox</td>
+      <td>1   (brand new)</td>
+      <td>3.5</td>
+      <td>0.971</td>
+      <td>97%</td>
+      <td>� Will churn</td>
     </tr>
     <tr>
-      <td>3  (“Meeting today?”)</td>
-      <td>-1.6</td>
-      <td>0.168</td>
-      <td>17%</td>
-      <td>📬 Inbox</td>
+      <td>4   (still new)</td>
+      <td>2.0</td>
+      <td>0.881</td>
+      <td>88%</td>
+      <td>� Will churn</td>
     </tr>
     <tr>
-      <td>5  (“Free trial offer”)</td>
+      <td>8   (settling in)</td>
       <td>0</td>
       <td><strong>0.500</strong></td>
       <td><strong>50%</strong></td>
-      <td>🤔 Border</td>
+      <td>🤔 At risk</td>
     </tr>
     <tr>
-      <td>7  (“WIN money NOW click!”)</td>
-      <td>1.6</td>
-      <td>0.832</td>
-      <td>83%</td>
-      <td>🚫 Spam</td>
+      <td>12  (loyal)</td>
+      <td>-2.0</td>
+      <td>0.119</td>
+      <td>12%</td>
+      <td>✅ Will stay</td>
     </tr>
     <tr>
-      <td>10 (“FREE!!! URGENT!!! CLICK!!!”)</td>
-      <td>4.0</td>
-      <td>0.982</td>
-      <td>98%</td>
-      <td>🚫 Spam</td>
+      <td>24  (very loyal)</td>
+      <td>-8.0</td>
+      <td>0.0003</td>
+      <td>0.03%</td>
+      <td>✅ Will stay</td>
     </tr>
   </tbody>
 </table>
 
-<p><strong>Notice:</strong> At 5 suspicious words, probability is exactly 50%! This is the <strong>decision boundary</strong>.</p>
+<p><strong>Notice:</strong> At 8 months, probability is exactly 50%! This is the <strong>decision boundary</strong>.</p>
+
+<p><strong>Business action:</strong> Target customers with P(churn) &gt; 70% with retention offers (discounts, calls, upgrades).</p>
 
 <hr />
 
@@ -388,32 +394,32 @@ P(spam) = σ(z) = 1 / (1 + e^(-z))
 
 <h3 id="-visualizing-the-boundary">📊 Visualizing the Boundary</h3>
 
-<p>For 1 feature (suspicious words):</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>              INBOX ZONE       SPAM ZONE
+<p>For 1 feature (tenure in months):</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>              CHURN ZONE       LOYAL ZONE
                  ↓                ↓
               ────●────────●─────●─────
-              0    3       5     7    10
+              1    4       8    12    24
                           ↑
                   Decision Boundary
                   (z = 0, P = 0.5)
 </code></pre></div></div>
 
-<p>For 2 features (Suspicious words + ALL CAPS ratio):</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ALL CAPS %
+<p>For 2 features (Tenure + Monthly Charges):</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Monthly Charges ($)
        │
-   100 ┤   ●●●●  ← All SPAM
-       │  ● ●●●     (above the line)
+   100 ┤   ●●●●  ← All churned
+       │  ● ●●●     (high charges, short tenure)
     80 ┤  ●●●
-       │ ╲          
-    60 ┤  ╲ Decision
-       │   ╲ Boundary
-    40 ┤    ╲      ○○
-       │     ╲    ○○○
-    20 ┤      ╲  ○○○○  ← All INBOX
-       │       ╲○○○      (below the line)
-     0 ┤────────╲──────
-       └──────────────────→ Suspicious Words
-        0    5    10   15
+       │   ╲          
+    60 ┤    ╲ Decision
+       │     ╲ Boundary
+    40 ┤      ╲      ○○
+       │       ╲    ○○○
+    20 ┤        ╲  ○○○○  ← All loyal
+       │         ╲○○○     (low charges, long tenure)
+     0 ┤──────────╲──────
+       └─────────────────→ Tenure (months)
+        0    10    20   30
 </code></pre></div></div>
 
 <p>The <strong>line is the boundary</strong> where the model is uncertain (50/50).</p>
@@ -477,7 +483,7 @@ p = predicted probability
 
 <p><strong>Two cases:</strong></p>
 
-<p><strong>Case 1: Actual = 1 (true class is “Spam”)</strong></p>
+<p><strong>Case 1: Actual = 1 (true class is “Will Churn”)</strong></p>
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cost = -log(p)
 
 If p = 0.9 (correct, high confidence): Cost = 0.10 ✅ (small)
@@ -485,7 +491,7 @@ If p = 0.5 (uncertain):                Cost = 0.69 (medium)
 If p = 0.1 (wrong, high confidence):   Cost = 2.30 ❌ (large!)
 </code></pre></div></div>
 
-<p><strong>Case 2: Actual = 0 (true class is “Not Spam”)</strong></p>
+<p><strong>Case 2: Actual = 0 (true class is “Will Stay”)</strong></p>
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cost = -log(1-p)
 
 If p = 0.1 (correct, low chance):      Cost = 0.10 ✅ (small)
@@ -701,7 +707,7 @@ Pick class with highest probability
 
 <h2 id="python-examples">9. Python Examples</h2>
 
-<h3 id="-complete-example-spam-filter-">🎓 Complete Example: Spam Filter 📧</h3>
+<h3 id="-complete-example-customer-churn-prediction-">🎓 Complete Example: Customer Churn Prediction �</h3>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
 <span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
@@ -709,39 +715,40 @@ Pick class with highest probability
 <span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
 <span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
 <span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">precision_score</span><span class="p">,</span> <span class="n">recall_score</span><span class="p">,</span> 
+    <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">precision_score</span><span class="p">,</span> <span class="n">recall_score</span><span class="p">,</span>
     <span class="n">f1_score</span><span class="p">,</span> <span class="n">confusion_matrix</span><span class="p">,</span> <span class="n">classification_report</span>
 <span class="p">)</span>
 
-<span class="c1"># Step 1: Create sample email data
+<span class="c1"># Step 1: Create customer dataset
 </span><span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
-<span class="n">n_emails</span> <span class="o">=</span> <span class="mi">200</span>
+<span class="n">n_customers</span> <span class="o">=</span> <span class="mi">300</span>
 
-<span class="c1"># Features for each email:
-#   - suspicious_words: count of words like 'free', 'win', 'click', 'urgent'
-#   - caps_ratio: percentage of ALL CAPS characters
-</span><span class="n">suspicious_words</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">n_emails</span><span class="p">)</span>
-<span class="n">caps_ratio</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">n_emails</span><span class="p">)</span>
+<span class="c1"># Features for each customer:
+#   - tenure_months: how long they've been a customer
+#   - monthly_charges: how much they pay per month
+</span><span class="n">tenure_months</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">36</span><span class="p">,</span> <span class="n">n_customers</span><span class="p">)</span>
+<span class="n">monthly_charges</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="n">n_customers</span><span class="p">)</span>
 
-<span class="c1"># True relationship (with noise) - more spam-like words = more likely spam
-</span><span class="n">score</span> <span class="o">=</span> <span class="o">-</span><span class="mi">5</span> <span class="o">+</span> <span class="mf">0.6</span><span class="o">*</span><span class="n">suspicious_words</span> <span class="o">+</span> <span class="mf">0.05</span><span class="o">*</span><span class="n">caps_ratio</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_emails</span><span class="p">)</span>
-<span class="n">is_spam</span> <span class="o">=</span> <span class="p">(</span><span class="n">score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="c1"># True relationship (with noise):
+#   - Short tenure + high charges → more likely to churn
+</span><span class="n">score</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">-</span> <span class="mf">0.2</span><span class="o">*</span><span class="n">tenure_months</span> <span class="o">+</span> <span class="mf">0.04</span><span class="o">*</span><span class="n">monthly_charges</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_customers</span><span class="p">)</span>
+<span class="n">churned</span> <span class="o">=</span> <span class="p">(</span><span class="n">score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
 
 <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
-    <span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">:</span> <span class="n">suspicious_words</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
-    <span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">:</span> <span class="n">caps_ratio</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
-    <span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">:</span> <span class="n">is_spam</span>
+    <span class="sh">'</span><span class="s">tenure_months</span><span class="sh">'</span><span class="p">:</span> <span class="n">tenure_months</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">monthly_charges</span><span class="sh">'</span><span class="p">:</span> <span class="n">monthly_charges</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">churned</span><span class="sh">'</span><span class="p">:</span> <span class="n">churned</span>
 <span class="p">})</span>
 
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">� Email Dataset:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">📊 Customer Dataset:</span><span class="sh">"</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="nf">head</span><span class="p">())</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Total emails: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Spam:     </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Not spam: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Total customers: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Churned:  </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">churned</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="s">  (</span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">churned</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">()</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Retained: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">churned</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="s">  (</span><span class="si">{</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">churned</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">())</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%)</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="c1"># Step 2: Split data
-</span><span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">]]</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">]</span>
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">tenure_months</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">monthly_charges</span><span class="sh">'</span><span class="p">]]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">churned</span><span class="sh">'</span><span class="p">]</span>
 
 <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
     <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
@@ -756,6 +763,10 @@ Pick class with highest probability
 <span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
     <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">coef</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">💡 Interpretation:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">  - tenure_months coef NEGATIVE → longer tenure = less churn (loyal!) ✅</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">  - monthly_charges coef POSITIVE → higher charges = more churn ⚠️</span><span class="sh">"</span><span class="p">)</span>
+
 <span class="c1"># Step 4: Make predictions
 </span><span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
 <span class="n">probabilities</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
@@ -764,18 +775,18 @@ Pick class with highest probability
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
     <span class="n">actual</span> <span class="o">=</span> <span class="n">y_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
     <span class="n">pred</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-    <span class="n">prob_spam</span> <span class="o">=</span> <span class="n">probabilities</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">🚫 SPAM</span><span class="sh">"</span> <span class="k">if</span> <span class="n">pred</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sh">"</span><span class="s">📬 INBOX</span><span class="sh">"</span>
-    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Suspicious words: </span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
-          <span class="sa">f</span><span class="sh">"</span><span class="s">Caps: </span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%, </span><span class="sh">"</span>
-          <span class="sa">f</span><span class="sh">"</span><span class="s">P(spam): </span><span class="si">{</span><span class="n">prob_spam</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
+    <span class="n">prob_churn</span> <span class="o">=</span> <span class="n">probabilities</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">� WILL CHURN</span><span class="sh">"</span> <span class="k">if</span> <span class="n">pred</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sh">"</span><span class="s">✅ WILL STAY</span><span class="sh">"</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Tenure: </span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">tenure_months</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">mo, </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">Charges: $</span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">monthly_charges</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">P(churn): </span><span class="si">{</span><span class="n">prob_churn</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="o">%</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
           <span class="sa">f</span><span class="sh">"</span><span class="s">Predicted: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s">, Actual: </span><span class="si">{</span><span class="n">actual</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="c1"># Step 5: Evaluate
 </span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 Evaluation Metrics:</span><span class="sh">"</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Accuracy:  </span><span class="si">{</span><span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Precision: </span><span class="si">{</span><span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">  ← Of flagged spam, how many were actually spam?</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Recall:    </span><span class="si">{</span><span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">  ← Of actual spam, how many did we catch?</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Precision: </span><span class="si">{</span><span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">  ← Of flagged churners, how many really churn?</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Recall:    </span><span class="si">{</span><span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">  ← Of actual churners, how many did we catch?</span><span class="sh">"</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  F1 Score:  </span><span class="si">{</span><span class="nf">f1_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="c1"># Step 6: Confusion Matrix
@@ -784,19 +795,19 @@ Pick class with highest probability
 <span class="nf">print</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
 
 <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📋 Classification Report:</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">Not Spam</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Spam</span><span class="sh">'</span><span class="p">]))</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">Stayed</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Churned</span><span class="sh">'</span><span class="p">]))</span>
 </code></pre></div></div>
 
-<h3 id="-why-precision-matters-for-spam-filters">💡 Why Precision Matters for Spam Filters</h3>
+<h3 id="-why-recall-matters-for-churn-prediction">💡 Why RECALL Matters for Churn Prediction</h3>
 
-<p>For a <strong>spam filter</strong>, <strong>PRECISION is critical</strong>:</p>
+<p>For <strong>customer churn</strong>, <strong>RECALL is critical</strong>:</p>
 <ul>
-  <li>A false positive = a legitimate email goes to spam folder ❌</li>
-  <li>Users get angry if their boss’s email is marked as spam!</li>
-  <li>It’s better to let some spam through than block real emails</li>
+  <li>Missing a churner = lost revenue forever 💸</li>
+  <li>A false alarm just means an unnecessary retention offer (cheap!)</li>
+  <li>Better to flag too many at-risk customers than miss real ones</li>
 </ul>
 
-<p><strong>Recommendation:</strong> Use a higher threshold (e.g., 0.8) to make sure you’re confident before marking as spam.</p>
+<p><strong>Recommendation:</strong> Use a LOWER threshold (e.g., 0.3) to catch more potential churners and intervene early.</p>
 
 <h3 id="-visualizing-the-decision-boundary">📊 Visualizing the Decision Boundary</h3>
 
@@ -804,8 +815,8 @@ Pick class with highest probability
 <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
 
 <span class="c1"># Create mesh grid
-</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
-<span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">5</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span>
+</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">tenure_months</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">tenure_months</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">monthly_charges</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">5</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">monthly_charges</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span>
 
 <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">meshgrid</span><span class="p">(</span>
     <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
@@ -819,22 +830,22 @@ Pick class with highest probability
 <span class="c1"># Plot
 </span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
 
-<span class="c1"># Filled contour for probabilities (red = spam zone, green = inbox zone)
+<span class="c1"># Filled contour for probabilities (red = churn zone, green = loyal zone)
 </span><span class="n">contour</span> <span class="o">=</span> <span class="n">ax</span><span class="p">.</span><span class="nf">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">'</span><span class="s">RdYlGn_r</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
-<span class="n">plt</span><span class="p">.</span><span class="nf">colorbar</span><span class="p">(</span><span class="n">contour</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">P(Spam)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">colorbar</span><span class="p">(</span><span class="n">contour</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">P(Churn)</span><span class="sh">'</span><span class="p">)</span>
 
 <span class="c1"># Decision boundary at 0.5
 </span><span class="n">ax</span><span class="p">.</span><span class="nf">contour</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">],</span> <span class="n">colors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
 <span class="c1"># Plot data points
-</span><span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">],</span> 
-           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Not Spam (Inbox)</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
-<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">],</span> 
-           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Spam</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">'</span><span class="s">X</span><span class="sh">'</span><span class="p">)</span>
+</span><span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">tenure_months</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">monthly_charges</span><span class="sh">'</span><span class="p">],</span>
+           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">✅ Stayed (Loyal)</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">tenure_months</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">monthly_charges</span><span class="sh">'</span><span class="p">],</span>
+           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">🚨 Churned</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">'</span><span class="s">X</span><span class="sh">'</span><span class="p">)</span>
 
-<span class="n">ax</span><span class="p">.</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Suspicious Words Count</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ax</span><span class="p">.</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">ALL CAPS %</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ax</span><span class="p">.</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Spam Filter Decision Boundary</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Tenure (months)</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Monthly Charges ($)</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Customer Churn Decision Boundary</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
 <span class="n">ax</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
 <span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>

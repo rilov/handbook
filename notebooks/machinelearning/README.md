@@ -54,23 +54,23 @@ Welcome to the Machine Learning tutorial notebooks! 🚀
 
 ---
 
-### 4. Logistic Regression - Spam Filter (`04_logistic_regression.ipynb`)
+### 4. Logistic Regression - Customer Churn (`04_logistic_regression.ipynb`)
 **Difficulty:** Beginner-Intermediate  
 **Topics Covered:**
 - The sigmoid function visualization
-- Build a spam email filter from scratch
+- Build a customer churn predictor from scratch
 - Decision boundaries
 - Confusion matrix
 - ROC curve and AUC
-- Custom thresholds (why precision matters for spam!)
-- Working spam classifier function
+- Custom thresholds (why recall matters for churn!)
+- Working churn risk predictor with business actions
 
 **What You'll Learn:**
 - How to do classification with logistic regression
-- How to interpret probabilities
+- How to interpret probabilities and coefficients
 - All evaluation metrics for classification
-- How to tune the decision threshold
-- Why precision is critical for spam filters
+- How to tune the decision threshold for business impact
+- Why recall is critical for churn prediction
 
 ---
 
