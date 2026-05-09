@@ -307,72 +307,72 @@ Probability:    0%          50%       100%
   Class 1 (Yes!) ✅
 </code></pre></div></div>
 
-<h3 id="-concrete-example-pass-or-fail">🎓 Concrete Example: Pass or Fail?</h3>
+<h3 id="-concrete-example-spam-filter-">🎓 Concrete Example: Spam Filter 📧</h3>
 
-<p><strong>Predict if a student will pass based on hours studied.</strong></p>
+<p><strong>Predict if an email is spam based on number of suspicious words it contains.</strong></p>
 
-<p>Let’s say we trained the model and got:</p>
+<p>Let’s say we trained the model on thousands of emails and got:</p>
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>β₀ = -4 (intercept)
-β₁ = 0.8 (coefficient for hours)
+β₁ = 0.8 (coefficient for suspicious_words)
 </code></pre></div></div>
 
 <p>So the equation is:</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = -4 + 0.8 × hours_studied
-P(pass) = σ(z) = 1 / (1 + e^(-z))
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = -4 + 0.8 × suspicious_words
+P(spam) = σ(z) = 1 / (1 + e^(-z))
 </code></pre></div></div>
 
-<p><strong>Predictions:</strong></p>
+<p><strong>Predictions for different emails:</strong></p>
 
 <table>
   <thead>
     <tr>
-      <th>Hours</th>
-      <th>z = -4 + 0.8h</th>
+      <th>Suspicious Words</th>
+      <th>z = -4 + 0.8w</th>
       <th>σ(z)</th>
-      <th>Probability</th>
+      <th>P(spam)</th>
       <th>Prediction</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>1</td>
+      <td>1  (“Hi mom”)</td>
       <td>-3.2</td>
       <td>0.039</td>
       <td>4%</td>
-      <td>❌ Fail</td>
+      <td>📬 Inbox</td>
     </tr>
     <tr>
-      <td>3</td>
+      <td>3  (“Meeting today?”)</td>
       <td>-1.6</td>
       <td>0.168</td>
       <td>17%</td>
-      <td>❌ Fail</td>
+      <td>📬 Inbox</td>
     </tr>
     <tr>
-      <td>5</td>
+      <td>5  (“Free trial offer”)</td>
       <td>0</td>
       <td><strong>0.500</strong></td>
       <td><strong>50%</strong></td>
       <td>🤔 Border</td>
     </tr>
     <tr>
-      <td>7</td>
+      <td>7  (“WIN money NOW click!”)</td>
       <td>1.6</td>
       <td>0.832</td>
       <td>83%</td>
-      <td>✅ Pass</td>
+      <td>🚫 Spam</td>
     </tr>
     <tr>
-      <td>10</td>
+      <td>10 (“FREE!!! URGENT!!! CLICK!!!”)</td>
       <td>4.0</td>
       <td>0.982</td>
       <td>98%</td>
-      <td>✅ Pass</td>
+      <td>🚫 Spam</td>
     </tr>
   </tbody>
 </table>
 
-<p><strong>Notice:</strong> At 5 hours, probability is exactly 50%! This is the <strong>decision boundary</strong>.</p>
+<p><strong>Notice:</strong> At 5 suspicious words, probability is exactly 50%! This is the <strong>decision boundary</strong>.</p>
 
 <hr />
 
@@ -388,8 +388,8 @@ P(pass) = σ(z) = 1 / (1 + e^(-z))
 
 <h3 id="-visualizing-the-boundary">📊 Visualizing the Boundary</h3>
 
-<p>For 1 feature:</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>              FAIL ZONE        PASS ZONE
+<p>For 1 feature (suspicious words):</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>              INBOX ZONE       SPAM ZONE
                  ↓                ↓
               ────●────────●─────●─────
               0    3       5     7    10
@@ -398,10 +398,10 @@ P(pass) = σ(z) = 1 / (1 + e^(-z))
                   (z = 0, P = 0.5)
 </code></pre></div></div>
 
-<p>For 2 features (Hours studied + Practice problems):</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Practice Problems
+<p>For 2 features (Suspicious words + ALL CAPS ratio):</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ALL CAPS %
        │
-   100 ┤   ●●●●  ← All passed
+   100 ┤   ●●●●  ← All SPAM
        │  ● ●●●     (above the line)
     80 ┤  ●●●
        │ ╲          
@@ -409,10 +409,10 @@ P(pass) = σ(z) = 1 / (1 + e^(-z))
        │   ╲ Boundary
     40 ┤    ╲      ○○
        │     ╲    ○○○
-    20 ┤      ╲  ○○○○  ← All failed
+    20 ┤      ╲  ○○○○  ← All INBOX
        │       ╲○○○      (below the line)
      0 ┤────────╲──────
-       └──────────────────→ Hours Studied
+       └──────────────────→ Suspicious Words
         0    5    10   15
 </code></pre></div></div>
 
@@ -477,7 +477,7 @@ p = predicted probability
 
 <p><strong>Two cases:</strong></p>
 
-<p><strong>Case 1: Actual = 1 (true class is “Pass”)</strong></p>
+<p><strong>Case 1: Actual = 1 (true class is “Spam”)</strong></p>
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cost = -log(p)
 
 If p = 0.9 (correct, high confidence): Cost = 0.10 ✅ (small)
@@ -485,7 +485,7 @@ If p = 0.5 (uncertain):                Cost = 0.69 (medium)
 If p = 0.1 (wrong, high confidence):   Cost = 2.30 ❌ (large!)
 </code></pre></div></div>
 
-<p><strong>Case 2: Actual = 0 (true class is “Fail”)</strong></p>
+<p><strong>Case 2: Actual = 0 (true class is “Not Spam”)</strong></p>
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cost = -log(1-p)
 
 If p = 0.1 (correct, low chance):      Cost = 0.10 ✅ (small)
@@ -701,7 +701,7 @@ Pick class with highest probability
 
 <h2 id="python-examples">9. Python Examples</h2>
 
-<h3 id="-complete-example-passfail-prediction">🎓 Complete Example: Pass/Fail Prediction</h3>
+<h3 id="-complete-example-spam-filter-">🎓 Complete Example: Spam Filter 📧</h3>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
 <span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
@@ -713,30 +713,35 @@ Pick class with highest probability
     <span class="n">f1_score</span><span class="p">,</span> <span class="n">confusion_matrix</span><span class="p">,</span> <span class="n">classification_report</span>
 <span class="p">)</span>
 
-<span class="c1"># Step 1: Create sample data
+<span class="c1"># Step 1: Create sample email data
 </span><span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
-<span class="n">hours</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-<span class="n">practice</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">n_emails</span> <span class="o">=</span> <span class="mi">200</span>
 
-<span class="c1"># True relationship (with some noise)
-</span><span class="n">score</span> <span class="o">=</span> <span class="o">-</span><span class="mi">5</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">hours</span> <span class="o">+</span> <span class="mf">0.05</span><span class="o">*</span><span class="n">practice</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-<span class="n">passed</span> <span class="o">=</span> <span class="p">(</span><span class="n">score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="c1"># Features for each email:
+#   - suspicious_words: count of words like 'free', 'win', 'click', 'urgent'
+#   - caps_ratio: percentage of ALL CAPS characters
+</span><span class="n">suspicious_words</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">n_emails</span><span class="p">)</span>
+<span class="n">caps_ratio</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">n_emails</span><span class="p">)</span>
+
+<span class="c1"># True relationship (with noise) - more spam-like words = more likely spam
+</span><span class="n">score</span> <span class="o">=</span> <span class="o">-</span><span class="mi">5</span> <span class="o">+</span> <span class="mf">0.6</span><span class="o">*</span><span class="n">suspicious_words</span> <span class="o">+</span> <span class="mf">0.05</span><span class="o">*</span><span class="n">caps_ratio</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_emails</span><span class="p">)</span>
+<span class="n">is_spam</span> <span class="o">=</span> <span class="p">(</span><span class="n">score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
 
 <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span>
-    <span class="sh">'</span><span class="s">hours</span><span class="sh">'</span><span class="p">:</span> <span class="n">hours</span><span class="p">,</span>
-    <span class="sh">'</span><span class="s">practice</span><span class="sh">'</span><span class="p">:</span> <span class="n">practice</span><span class="p">,</span>
-    <span class="sh">'</span><span class="s">passed</span><span class="sh">'</span><span class="p">:</span> <span class="n">passed</span>
+    <span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">:</span> <span class="n">suspicious_words</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">:</span> <span class="n">caps_ratio</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">:</span> <span class="n">is_spam</span>
 <span class="p">})</span>
 
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">📊 Dataset:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">� Email Dataset:</span><span class="sh">"</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="nf">head</span><span class="p">())</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Total: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s"> students</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Passed: </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">passed</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Failed: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">passed</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Total emails: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Spam:     </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Not spam: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">].</span><span class="nf">sum</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="c1"># Step 2: Split data
-</span><span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">hours</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">practice</span><span class="sh">'</span><span class="p">]]</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">passed</span><span class="sh">'</span><span class="p">]</span>
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">]]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">]</span>
 
 <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
     <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
@@ -759,17 +764,18 @@ Pick class with highest probability
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
     <span class="n">actual</span> <span class="o">=</span> <span class="n">y_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
     <span class="n">pred</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-    <span class="n">prob_pass</span> <span class="o">=</span> <span class="n">probabilities</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
-    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Hours: </span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">hours</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
-          <span class="sa">f</span><span class="sh">"</span><span class="s">Practice: </span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">practice</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
-          <span class="sa">f</span><span class="sh">"</span><span class="s">P(pass): </span><span class="si">{</span><span class="n">prob_pass</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
-          <span class="sa">f</span><span class="sh">"</span><span class="s">Predicted: </span><span class="si">{</span><span class="n">pred</span><span class="si">}</span><span class="s">, Actual: </span><span class="si">{</span><span class="n">actual</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">prob_spam</span> <span class="o">=</span> <span class="n">probabilities</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">🚫 SPAM</span><span class="sh">"</span> <span class="k">if</span> <span class="n">pred</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sh">"</span><span class="s">📬 INBOX</span><span class="sh">"</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Suspicious words: </span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">Caps: </span><span class="si">{</span><span class="n">X_test</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s">%, </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">P(spam): </span><span class="si">{</span><span class="n">prob_spam</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">, </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">Predicted: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s">, Actual: </span><span class="si">{</span><span class="n">actual</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="c1"># Step 5: Evaluate
 </span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📊 Evaluation Metrics:</span><span class="sh">"</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Accuracy:  </span><span class="si">{</span><span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Precision: </span><span class="si">{</span><span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Recall:    </span><span class="si">{</span><span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Precision: </span><span class="si">{</span><span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">  ← Of flagged spam, how many were actually spam?</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Recall:    </span><span class="si">{</span><span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="s">  ← Of actual spam, how many did we catch?</span><span class="sh">"</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  F1 Score:  </span><span class="si">{</span><span class="nf">f1_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="c1"># Step 6: Confusion Matrix
@@ -778,8 +784,19 @@ Pick class with highest probability
 <span class="nf">print</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
 
 <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">📋 Classification Report:</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">Not Spam</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">Spam</span><span class="sh">'</span><span class="p">]))</span>
 </code></pre></div></div>
+
+<h3 id="-why-precision-matters-for-spam-filters">💡 Why Precision Matters for Spam Filters</h3>
+
+<p>For a <strong>spam filter</strong>, <strong>PRECISION is critical</strong>:</p>
+<ul>
+  <li>A false positive = a legitimate email goes to spam folder ❌</li>
+  <li>Users get angry if their boss’s email is marked as spam!</li>
+  <li>It’s better to let some spam through than block real emails</li>
+</ul>
+
+<p><strong>Recommendation:</strong> Use a higher threshold (e.g., 0.8) to make sure you’re confident before marking as spam.</p>
 
 <h3 id="-visualizing-the-decision-boundary">📊 Visualizing the Decision Boundary</h3>
 
@@ -787,8 +804,8 @@ Pick class with highest probability
 <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
 
 <span class="c1"># Create mesh grid
-</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">hours</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">hours</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
-<span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">practice</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">5</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">practice</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span>
+</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">5</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span>
 
 <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">meshgrid</span><span class="p">(</span>
     <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
@@ -802,22 +819,22 @@ Pick class with highest probability
 <span class="c1"># Plot
 </span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
 
-<span class="c1"># Filled contour for probabilities
-</span><span class="n">contour</span> <span class="o">=</span> <span class="n">ax</span><span class="p">.</span><span class="nf">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">'</span><span class="s">RdYlGn</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
-<span class="n">plt</span><span class="p">.</span><span class="nf">colorbar</span><span class="p">(</span><span class="n">contour</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">P(Pass)</span><span class="sh">'</span><span class="p">)</span>
+<span class="c1"># Filled contour for probabilities (red = spam zone, green = inbox zone)
+</span><span class="n">contour</span> <span class="o">=</span> <span class="n">ax</span><span class="p">.</span><span class="nf">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">'</span><span class="s">RdYlGn_r</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">colorbar</span><span class="p">(</span><span class="n">contour</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">P(Spam)</span><span class="sh">'</span><span class="p">)</span>
 
 <span class="c1"># Decision boundary at 0.5
 </span><span class="n">ax</span><span class="p">.</span><span class="nf">contour</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">],</span> <span class="n">colors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
 <span class="c1"># Plot data points
-</span><span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">hours</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">practice</span><span class="sh">'</span><span class="p">],</span> 
-           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Failed</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
-<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">hours</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">practice</span><span class="sh">'</span><span class="p">],</span> 
-           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Passed</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
+</span><span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">],</span> 
+           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">green</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Not Spam (Inbox)</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span><span class="o">==</span><span class="mi">1</span><span class="p">][</span><span class="sh">'</span><span class="s">caps_ratio</span><span class="sh">'</span><span class="p">],</span> 
+           <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Spam</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">black</span><span class="sh">'</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">'</span><span class="s">X</span><span class="sh">'</span><span class="p">)</span>
 
-<span class="n">ax</span><span class="p">.</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Hours Studied</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ax</span><span class="p">.</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Practice Problems</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ax</span><span class="p">.</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Logistic Regression Decision Boundary</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Suspicious Words Count</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">set_ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">ALL CAPS %</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Spam Filter Decision Boundary</span><span class="sh">'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
 <span class="n">ax</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
 <span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>

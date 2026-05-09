@@ -54,21 +54,23 @@ Welcome to the Machine Learning tutorial notebooks! 🚀
 
 ---
 
-### 4. Logistic Regression (`04_logistic_regression.ipynb`)
+### 4. Logistic Regression - Spam Filter (`04_logistic_regression.ipynb`)
 **Difficulty:** Beginner-Intermediate  
 **Topics Covered:**
 - The sigmoid function visualization
-- Binary classification (Pass/Fail prediction)
+- Build a spam email filter from scratch
 - Decision boundaries
 - Confusion matrix
 - ROC curve and AUC
-- Custom thresholds
+- Custom thresholds (why precision matters for spam!)
+- Working spam classifier function
 
 **What You'll Learn:**
 - How to do classification with logistic regression
 - How to interpret probabilities
 - All evaluation metrics for classification
 - How to tune the decision threshold
+- Why precision is critical for spam filters
 
 ---
 
