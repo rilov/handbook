@@ -76,13 +76,17 @@ The problem is that 2017 looked very different from 2008.
 
 ## Why this idea stopped working
 
-Hive was built in the era of Hadoop.
+Hive was originally built in the era of Hadoop.
 
-In Hadoop, data was stored on real computers with real disks. Folders were real folders. Renaming a file was instant. Listing files was fast. Everything was predictable.
+In Hadoop, data was stored on real computers with real disks. Folders were real folders. Renaming a file was instant. Listing files was fast. Everything was predictable. Hive was designed around all of that.
 
-But Netflix did not run on Hadoop.
+Now here is the important part.
 
-Netflix ran on Amazon S3. And S3 is not really a file system at all.
+Netflix did use Hive. But Netflix did not store its data on Hadoop disks. Netflix stored its data on Amazon S3.
+
+This is a small detail that turns out to be enormous.
+
+Hive was being asked to behave like it was running on a Hadoop file system, but the actual storage underneath it was S3. And S3 is not really a file system at all.
 
 S3 is what people call **object storage**. It just stores blobs of data with names. There are no real folders. There are no real renames. Nothing is instant.
 
