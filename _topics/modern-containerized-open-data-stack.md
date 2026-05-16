@@ -65,6 +65,7 @@ The philosophy was: **"Move compute to data."**
 This was necessary because networks were slower and storage was local.
 
 <div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
 graph LR
     subgraph OLD["<b>Old: Hadoop Era</b>"]
         N1["<b>Node 1</b><br/>HDFS + Spark"]
@@ -83,8 +84,12 @@ graph LR
         C3 --> S
         C4 --> S
     end
-    style OLD fill:#fee,stroke:#c00
-    style NEW fill:#efe,stroke:#0a0
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef darkgray fill:#bdbdbd,stroke:#222,stroke-width:2px,color:#000
+    class N1,N2,N3,C1,C2,C3,C4 gray
+    class S darkgray
+    style OLD fill:#f5f5f5,stroke:#666,stroke-width:1.5px,color:#111
+    style NEW fill:#f5f5f5,stroke:#666,stroke-width:1.5px,color:#111
 </div>
 
 But modern architectures work differently. Today storage is mostly object storage:
@@ -129,6 +134,7 @@ Why? Because object storage solves several difficult problems:
 This allows organizations to store data **once** and use **many** compute engines on top of it.
 
 <div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
 graph TD
     S["<b>Object Storage</b><br/>Single Source of Truth"]
     S --> A["<b>Spark</b><br/>ETL Pipelines"]
@@ -136,7 +142,9 @@ graph TD
     S --> C["<b>dbt</b><br/>Transformations"]
     S --> D["<b>DuckDB</b><br/>Local Analytics"]
     S --> E["<b>AI Pipelines</b><br/>Embeddings &amp; Inference"]
-    style S fill:#bbf,stroke:#33f,stroke-width:3px
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    class A,B,C,D,E gray
+    style S fill:#9e9e9e,stroke:#111,stroke-width:3px,color:#000
 </div>
 
 All reading the **same data**. Without copying it everywhere.
@@ -161,11 +169,14 @@ This is where open table formats like **Apache Iceberg** become critical.
 Iceberg adds a metadata layer on top of object storage.
 
 <div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
 graph TD
     Q["<b>Query Engines</b><br/>Spark / Trino / Flink / DuckDB"]
     Q --> M["<b>Iceberg Metadata Layer</b><br/>ACID • Snapshots • Schema Evolution<br/>Time Travel • Streaming"]
     M --> P["<b>Parquet Files in Object Storage</b>"]
-    style M fill:#ffd,stroke:#cc0,stroke-width:2px
+    style Q fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    style M fill:#9e9e9e,stroke:#111,stroke-width:2.5px,color:#000
+    style P fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
 </div>
 
 Now the platform gains:
@@ -191,6 +202,7 @@ Most people think the catalog is just metadata. That is no longer true.
 In modern architectures, the catalog becomes the **control plane**.
 
 <div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
 graph TD
     CAT["<b>Catalog Layer</b><br/>(The Operating System)"]
     CAT --> AUTH["<b>Authentication</b>"]
@@ -201,7 +213,9 @@ graph TD
     CAT --> DISC["<b>Discovery</b>"]
     CAT --> AUD["<b>Auditability</b>"]
     CAT --> GOV["<b>Governance</b>"]
-    style CAT fill:#fcf,stroke:#909,stroke-width:3px
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    class AUTH,RBAC,LIN,POL,OWN,DISC,AUD,GOV gray
+    style CAT fill:#757575,stroke:#000,stroke-width:3px,color:#fff
 </div>
 
 This layer becomes extremely important in **AI environments** — because AI systems need controlled access to trusted data. **Without governance, AI systems become dangerous very quickly.**
@@ -252,6 +266,7 @@ Network design directly impacts:
 Many cloud providers charge heavily for data movement between regions.
 
 <div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
 graph LR
     subgraph R1["<b>Region A</b>"]
         C["<b>Compute</b>"]
@@ -260,8 +275,10 @@ graph LR
         S["<b>Storage</b>"]
     end
     C -.->|"<b>$$$ Egress</b><br/>Every query"| S
-    style C fill:#fee
-    style S fill:#fee
+    style C fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    style S fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    style R1 fill:#f5f5f5,stroke:#666,color:#111
+    style R2 fill:#f5f5f5,stroke:#666,color:#111
 </div>
 
 **Solution:** Keep compute close to storage whenever possible.
@@ -334,6 +351,7 @@ Instead of maintaining large permanent clusters:
 - Deploy workloads closer to users
 
 <div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
 graph TD
     K["<b>Kubernetes / OpenShift</b>"]
     K --> SP["<b>Spark Job</b><br/>(spins up &amp; tears down)"]
@@ -345,7 +363,12 @@ graph TD
     ENV --> AWS["<b>AWS</b>"]
     ENV --> AZ["<b>Azure</b>"]
     ENV --> GCP["<b>GCP</b>"]
-    style K fill:#bbf,stroke:#33f,stroke-width:2px
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class SP,TR,DBT,AI gray
+    class ON,AWS,AZ,GCP gray
+    class ENV midgray
+    style K fill:#757575,stroke:#000,stroke-width:2.5px,color:#fff
 </div>
 
 This reduces infrastructure waste. It also creates **portability**.
@@ -397,6 +420,7 @@ The future is: **"Use the right compute model for the workload."**
 A modern open data stack often looks like this:
 
 <div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
 graph TD
     subgraph AI["<b>AI Layer</b>"]
         V["<b>Vector Pipelines</b>"]
@@ -431,11 +455,14 @@ graph TD
     COMP --> CAT
     CAT --> TBL
     TBL --> STO
-    style STO fill:#efe
-    style TBL fill:#ffd
-    style CAT fill:#fcf
-    style ORCH fill:#bbf
-    style AI fill:#fdd
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    class V,E,G,AG,K8S,AF,SP,TR,FL,DUCK,DBT,REST,GRAV,RBAC,ICE,OBJ gray
+    style AI fill:#fafafa,stroke:#555,stroke-width:1.5px,color:#111
+    style ORCH fill:#f0f0f0,stroke:#555,stroke-width:1.5px,color:#111
+    style COMP fill:#e0e0e0,stroke:#444,stroke-width:1.5px,color:#111
+    style CAT fill:#cccccc,stroke:#333,stroke-width:1.5px,color:#111
+    style TBL fill:#b0b0b0,stroke:#222,stroke-width:1.5px,color:#000
+    style STO fill:#909090,stroke:#000,stroke-width:2px,color:#000
 </div>
 
 All connected through **open standards** instead of vendor-specific storage engines.
