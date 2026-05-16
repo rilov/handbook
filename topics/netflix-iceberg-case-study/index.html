@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Case Study: How Netflix Solved the 100 Petabyte Problem with Apache Iceberg</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>Case Study: How Netflix Solved the 100 Petabyte Problem with Apache Iceberg</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="case-study-how-netflix-solved-the-100-petabyte-problem-with-apache-iceberg">Case Study: How Netflix Solved the 100 Petabyte Problem with Apache Iceberg</h1>
+
+<blockquote>
+  <p><strong>Context:</strong> This case study examines the engineering story behind Apache Iceberg — why Netflix built it, what specifically broke at scale, and what the design teaches us about modern data platforms. It is based on publicly available talks, blog posts, and conference materials from Ryan Blue, Daniel Weeks, and the Netflix data team.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="the-setup-a-streaming-giant-outgrowing-its-tools">The Setup: A Streaming Giant Outgrowing Its Tools</h2>
+
+<p>By 2017, Netflix was no longer “a streaming company that does some analytics.” It was a <strong>data company that happened to stream movies</strong>.</p>
+
+<p>Every play, pause, search, recommendation refresh, A/B test exposure, encoder run, content fingerprint, and CDN cache hit was logged and analyzed. The data warehouse held over <strong>100 petabytes in S3</strong> and was growing fast.</p>
+
+<p>Two engineers — <strong>Ryan Blue</strong> and <strong>Daniel Weeks</strong> — were responsible for keeping that warehouse usable.</p>
+
+<p>The standard tool of the era was <strong>Apache Hive</strong>: tables defined by directories on a filesystem, partitions stored in a metastore, files discovered by listing folders. It had powered big data for nearly a decade. It was the de facto standard.</p>
+
+<p>And at Netflix’s scale, it was actively breaking.</p>
+
+<hr />
+
+<h2 id="the-real-problem-was-not-performance--it-was-trust">The Real Problem Was Not Performance — It Was Trust</h2>
+
+<p>Most articles about Iceberg start with performance numbers. Netflix’s story is more interesting than that.</p>
+
+<p>The deeper issue was <strong>trust</strong>. Engineers stopped using certain pipelines because they were afraid of corrupting tables.</p>
+
+<p>Imagine that for a second.</p>
+
+<blockquote>
+  <p><em>“Many at Netflix avoided using these services and making changes to the data to avert unintended consequences from the Hive format.”</em> — Ryan Blue</p>
+</blockquote>
+
+<p>Think about what that means in practice:</p>
+
+<ul>
+  <li>A data scientist needs to backfill three days of data — but won’t, because the rewrite might leave the table in a half-updated state visible to downstream jobs.</li>
+  <li>An engineer wants to compact thousands of small files — but won’t, because there’s no atomic way to swap them out.</li>
+  <li>A platform team wants to fix a partitioning mistake — but won’t, because the migration could break every consumer.</li>
+</ul>
+
+<p>When your data platform makes engineers afraid to change data, you don’t have a performance problem. You have an <strong>architectural</strong> problem.</p>
+
+<hr />
+
+<h2 id="why-hive-broke-at-cloud-scale">Why Hive Broke at Cloud Scale</h2>
+
+<p>Hive was designed in the HDFS era. Its mental model assumed:</p>
+
+<ul>
+  <li>A real filesystem with directories</li>
+  <li>Cheap, atomic file renames</li>
+  <li>A small number of large files</li>
+  <li>Compute and storage living on the same machines</li>
+</ul>
+
+<p>S3 violates <strong>every single one</strong> of those assumptions.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    subgraph HIVE["<b>Hive Assumptions (HDFS Era)</b>"]
+        H1["<b>Directory =<br />Partition</b>"]
+        H2["<b>Rename is<br />atomic &amp; cheap</b>"]
+        H3["<b>Listing folders<br />is fast</b>"]
+        H4["<b>Strong<br />consistency</b>"]
+    end
+    subgraph S3["<b>S3 Reality (Cloud Era)</b>"]
+        R1["<b>No real<br />directories</b>"]
+        R2["<b>Rename =<br />copy + delete</b>"]
+        R3["<b>Listing<br />millions of keys<br />is slow</b>"]
+        R4["<b>Eventual<br />consistency</b>"]
+    end
+    H1 -.-&gt;|"breaks"| R1
+    H2 -.-&gt;|"breaks"| R2
+    H3 -.-&gt;|"breaks"| R3
+    H4 -.-&gt;|"breaks"| R4
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class H1,H2,H3,H4 gray
+    class R1,R2,R3,R4 midgray
+    style HIVE fill:#f5f5f5,stroke:#666,color:#111
+    style S3 fill:#f5f5f5,stroke:#666,color:#111
+</div>
+
+<p>Each of these mismatches caused real, painful production problems.</p>
+
+<h3 id="the-five-symptoms-netflix-kept-hitting">The five symptoms Netflix kept hitting</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Symptom</th>
+      <th>Why it happened</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><strong>Slow query planning</strong></td>
+      <td>Listing thousands of partition paths on S3 took minutes</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>Non-atomic writes</strong></td>
+      <td>Renames in S3 are copies; jobs were visible mid-write</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>Engine drift</strong></td>
+      <td>No formal spec → Hive and Spark hashed buckets differently</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>Cross-partition pain</strong></td>
+      <td>Locking worked only for Hive; nothing else honored it</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>Painful schema changes</strong></td>
+      <td>Adding a column often meant rewriting the whole table</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each problem on its own looked like a tooling annoyance. Together they meant <strong>the abstraction was wrong for the underlying storage</strong>.</p>
+
+<hr />
+
+<h2 id="the-insight-track-files-not-folders">The Insight: Track Files, Not Folders</h2>
+
+<p>The breakthrough is almost embarrassingly simple in retrospect.</p>
+
+<blockquote>
+  <p>Stop letting the filesystem describe the table.</p>
+
+  <p>Let a small set of metadata files describe the table — and let those metadata files describe the data files explicitly.</p>
+</blockquote>
+
+<p>That one decision unlocks everything.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    subgraph BEFORE["<b>Hive: Folder Is The Table</b>"]
+        T1["<b>Table Definition</b>"]
+        T1 --&gt; P1["<b>s3://bucket/events/dt=2024-01-01/</b><br />(list to discover files)"]
+        T1 --&gt; P2["<b>s3://bucket/events/dt=2024-01-02/</b><br />(list to discover files)"]
+    end
+    subgraph AFTER["<b>Iceberg: Metadata Is The Table</b>"]
+        M1["<b>Metadata File</b><br />v42.metadata.json"]
+        M1 --&gt; SN["<b>Snapshot</b><br />(point in time)"]
+        SN --&gt; ML["<b>Manifest List</b>"]
+        ML --&gt; MF1["<b>Manifest</b><br />+ stats per file"]
+        ML --&gt; MF2["<b>Manifest</b><br />+ stats per file"]
+        MF1 --&gt; F1["<b>data file 1</b>"]
+        MF1 --&gt; F2["<b>data file 2</b>"]
+        MF2 --&gt; F3["<b>data file 3</b>"]
+    end
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class T1,P1,P2,F1,F2,F3 gray
+    class M1,SN,ML,MF1,MF2 midgray
+    style BEFORE fill:#f5f5f5,stroke:#666,color:#111
+    style AFTER fill:#f5f5f5,stroke:#666,color:#111
+</div>
+
+<p>Once you describe a table by an explicit list of files (with statistics, partition values, schema versions, and snapshot IDs baked in), several things become true <em>for free</em>:</p>
+
+<ul>
+  <li><strong>Atomic commits</strong> are just swapping one metadata pointer for another</li>
+  <li><strong>Time travel</strong> is just reading an older metadata file</li>
+  <li><strong>Schema evolution</strong> is a metadata change, not a data rewrite</li>
+  <li><strong>Query planning</strong> uses the embedded statistics — no folder listings</li>
+  <li><strong>Concurrent writers</strong> can use optimistic concurrency on the metadata pointer</li>
+</ul>
+
+<p>That last one is what Netflix really wanted.</p>
+
+<hr />
+
+<h2 id="how-an-iceberg-commit-actually-works">How an Iceberg Commit Actually Works</h2>
+
+<p>Here is the move that replaced locking, renames, and partial-write panic:</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+sequenceDiagram
+    participant W as Writer
+    participant S as S3 (Data)
+    participant C as Catalog
+    W-&gt;&gt;S: 1. Write new parquet files (private, not visible)
+    W-&gt;&gt;S: 2. Write new manifests pointing to those files
+    W-&gt;&gt;S: 3. Write new metadata.json (new snapshot)
+    W-&gt;&gt;C: 4. Atomic compare-and-swap of metadata pointer
+    Note over W,C: If pointer changed (someone else committed first),<br />retry from step 2
+    C--&gt;&gt;W: 5. Commit succeeded
+</div>
+
+<p>The data files are written first, but <strong>invisible</strong> to readers because nothing points at them yet.</p>
+
+<p>The commit itself is one tiny atomic operation: change which metadata file is “current.”</p>
+
+<p>If two writers race, only one wins. The loser retries. <strong>No locks, no half-writes, no surprises.</strong></p>
+
+<hr />
+
+<h2 id="snapshots-the-quiet-superpower">Snapshots: The Quiet Superpower</h2>
+
+<p>Netflix’s team realized that once every commit produces an immutable metadata file, the table effectively becomes a <strong>versioned object</strong>.</p>
+
+<p>That gives you four capabilities most teams pay separate vendors for:</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    S1["<b>Snapshot 1</b><br />10:00 AM"] --&gt; S2["<b>Snapshot 2</b><br />10:15 AM<br />backfill"]
+    S2 --&gt; S3["<b>Snapshot 3</b><br />10:30 AM<br />compaction"]
+    S3 --&gt; S4["<b>Snapshot 4</b><br />10:45 AM<br />late data"]
+    S4 -.-&gt;|"<b>rollback</b>"| S2
+    S2 -.-&gt;|"<b>time travel</b>"| Q1["<b>Query as of<br />10:15 AM</b>"]
+    S3 -.-&gt;|"<b>audit</b>"| Q2["<b>Why did<br />row count change?</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class S1,S2,S3,S4 midgray
+    class Q1,Q2 gray
+</div>
+
+<ul>
+  <li><strong>Time travel</strong> — query the table as it existed at any past snapshot</li>
+  <li><strong>Rollback</strong> — reverse a bad write in one metadata flip</li>
+  <li><strong>Audit</strong> — explain why a number changed between two reports</li>
+  <li><strong>Safe maintenance</strong> — compact small files into big ones as a separate snapshot, then promote</li>
+</ul>
+
+<p>The last one is what made compaction safe to run continuously in the background — something Hive could never offer.</p>
+
+<hr />
+
+<h2 id="the-hidden-partitioning-win">The Hidden Partitioning Win</h2>
+
+<p>This one is subtle but huge for Netflix’s data scientists.</p>
+
+<p>In Hive, if a table is partitioned by <code class="language-plaintext highlighter-rouge">event_date</code>, every query has to filter on <code class="language-plaintext highlighter-rouge">event_date</code> to be fast. Forget that filter and you scan the world.</p>
+
+<p>Iceberg breaks the link between <strong>how a user writes the query</strong> and <strong>how the table is physically laid out</strong>.</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- User writes the natural query</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">events</span> <span class="k">WHERE</span> <span class="n">event_time</span> <span class="o">&gt;</span> <span class="s1">'2024-06-01'</span><span class="p">;</span>
+
+<span class="c1">-- Iceberg knows the table is partitioned by day(event_time)</span>
+<span class="c1">-- It transforms the predicate automatically</span>
+<span class="c1">-- Only the relevant partitions are scanned</span>
+</code></pre></div></div>
+
+<p>The user does not need to know the partition scheme. The platform team can <strong>change</strong> the partition scheme later without breaking a single query.</p>
+
+<p>For a company with thousands of analysts and millions of queries, this is enormous.</p>
+
+<hr />
+
+<h2 id="the-numbers-that-mattered-to-netflix">The Numbers That Mattered to Netflix</h2>
+
+<p>The published outcomes after Iceberg adoption:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Before (Hive)</th>
+      <th>After (Iceberg)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tables managed</td>
+      <td>tens of thousands</td>
+      <td><strong>1+ million</strong></td>
+    </tr>
+    <tr>
+      <td>Warehouse size</td>
+      <td>~tens of PB</td>
+      <td><strong>100+ PB</strong></td>
+    </tr>
+    <tr>
+      <td>Query planning on huge tables</td>
+      <td>minutes</td>
+      <td><strong>sub-second</strong></td>
+    </tr>
+    <tr>
+      <td>Atomic writes</td>
+      <td>no</td>
+      <td><strong>yes</strong></td>
+    </tr>
+    <tr>
+      <td>Concurrent writers</td>
+      <td>brittle</td>
+      <td><strong>optimistic concurrency</strong></td>
+    </tr>
+    <tr>
+      <td>Hidden partitioning</td>
+      <td>no</td>
+      <td><strong>yes</strong></td>
+    </tr>
+    <tr>
+      <td>Time travel / rollback</td>
+      <td>no</td>
+      <td><strong>yes</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>But the more important number is the one that does not appear in any chart:</p>
+
+<blockquote>
+  <p><strong>The number of engineers who stopped being afraid of their own data warehouse.</strong></p>
+</blockquote>
+
+<p>That is the metric Ryan Blue actually optimized for.</p>
+
+<hr />
+
+<h2 id="why-open-source-was-the-plan-from-day-one">Why Open Source Was the Plan from Day One</h2>
+
+<p>Netflix made an unusual call: build it as if it were already an open project.</p>
+
+<p>Three reasons stand out:</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    OS["<b>Open Source<br />From Day One</b>"]
+    OS --&gt; R1["<b>The problem<br />was not Netflix-specific</b><br />Every cloud-era<br />warehouse hits this"]
+    OS --&gt; R2["<b>Multi-engine adoption</b><br />Spark, Trino, Flink, Hive<br />need to agree on a spec"]
+    OS --&gt; R3["<b>Future hiring</b><br />Engineers want to work<br />on industry-standard tools"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    class R1,R2,R3 gray
+    style OS fill:#757575,stroke:#000,stroke-width:2.5px,color:#fff
+</div>
+
+<p>The result:</p>
+
+<ul>
+  <li><strong>2017</strong> — Project starts internally at Netflix</li>
+  <li><strong>November 2018</strong> — Donated to Apache Software Foundation</li>
+  <li><strong>May 2020</strong> — Graduates to Apache top-level project</li>
+  <li><strong>2024+</strong> — Adopted by Apple, Airbnb, LinkedIn, Adobe, Lyft, Expedia, Stripe, and effectively every major cloud data platform</li>
+</ul>
+
+<p>A formal <strong>specification</strong> (not just a reference implementation) meant Spark, Trino, Flink, Snowflake, Databricks, BigQuery, and Athena could all read the same tables and behave the same way. That alone fixed one of Hive’s biggest historical pain points.</p>
+
+<hr />
+
+<h2 id="what-engineers-should-take-away-from-this-story">What Engineers Should Take Away From This Story</h2>
+
+<p>Five lessons that generalize beyond Netflix:</p>
+
+<h3 id="1-the-abstraction-must-match-the-storage">1. The abstraction must match the storage</h3>
+
+<p>Hive was not “bad.” It was built for the right problem in 2008. By 2017 the problem had changed (HDFS → S3) and the abstraction had not. <strong>When the substrate changes, the abstraction must change too.</strong></p>
+
+<h3 id="2-metadata-is-a-first-class-product">2. Metadata is a first-class product</h3>
+
+<p>Most teams treat metadata as bookkeeping. Iceberg treats metadata as the table itself. That single shift gives you ACID, time travel, rollback, and engine independence — for free.</p>
+
+<h3 id="3-trust-is-a-performance-metric">3. Trust is a performance metric</h3>
+
+<p>Netflix’s real win was not query latency. It was that engineers were willing to write to the warehouse again. <strong>You cannot ship features on top of data nobody trusts.</strong></p>
+
+<h3 id="4-specifications-beat-implementations">4. Specifications beat implementations</h3>
+
+<p>Hive’s lack of a spec is why bucketing in Spark and Hive were incompatible. Iceberg started with a spec. Every engine implements it the same way. <strong>If you want a multi-engine future, write a spec.</strong></p>
+
+<h3 id="5-build-the-standard-you-wish-existed">5. Build the standard you wish existed</h3>
+
+<p>The boldest move was assuming the problem was bigger than Netflix and building accordingly. Most companies would have built an internal-only fix. Netflix built an industry.</p>
+
+<hr />
+
+<h2 id="closing-a-quiet-revolution">Closing: A Quiet Revolution</h2>
+
+<p>Iceberg does not look revolutionary at first glance. It is a JSON metadata file, some manifest files, and a list of parquet paths.</p>
+
+<p>But it represents one of the cleanest examples in modern data engineering of doing the boring, careful work of <strong>redrawing an abstraction line</strong> so that everything above and below it gets simpler.</p>
+
+<p>When a Netflix engineer was asked what would happen if Iceberg disappeared, the answer was:</p>
+
+<blockquote>
+  <p><em>“Iceberg is at the heart of Netflix. Without it, both the company and the streaming platform would cease to exist.”</em></p>
+</blockquote>
+
+<p>That is the kind of quiet infrastructure work that does not make headlines — and yet quietly powers most of the modern data ecosystem.</p>
+
+<p>The lesson for the rest of us is not “use Iceberg.” The lesson is:</p>
+
+<p><strong>When your platform makes engineers afraid to touch their own data, the answer is not better tooling on top. It is a better abstraction underneath.</strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">case-study</span>, <span class="tag">netflix</span>, <span class="tag">iceberg</span>, <span class="tag">data-lake</span>, <span class="tag">hive</span>, <span class="tag">s3</span>, <span class="tag">data-architecture</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
