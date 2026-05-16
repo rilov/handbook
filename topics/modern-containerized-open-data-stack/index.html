@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Building a Modern Containerized Open Data Stack</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>Building a Modern Containerized Open Data Stack</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="building-a-modern-containerized-open-data-stack">Building a Modern Containerized Open Data Stack</h1>
+
+<h2 id="a-practical-architecture-guide-for-hybrid-data-platforms-in-the-ai-era">A practical architecture guide for hybrid data platforms in the AI era</h2>
+
+<p>For many years, enterprises bought large data platforms the same way they bought ERP systems.</p>
+
+<p>One vendor.
+One platform.
+One ecosystem.</p>
+
+<p>The promise was simple:</p>
+
+<blockquote>
+  <p>“Put all your data here and we will handle everything.”</p>
+</blockquote>
+
+<p>And honestly, this worked for a long time.</p>
+
+<p>But modern data workloads changed the entire equation.</p>
+
+<p>Today organizations are dealing with:</p>
+
+<ul>
+  <li>Batch pipelines</li>
+  <li>Real-time streaming</li>
+  <li>AI workloads</li>
+  <li>GPU clusters</li>
+  <li>Data science notebooks</li>
+  <li>Developer local analytics</li>
+  <li>Multi-cloud deployments</li>
+  <li>Regulatory restrictions</li>
+  <li>Cross-region architectures</li>
+  <li>Unstructured data</li>
+  <li>Edge computing</li>
+</ul>
+
+<p>Suddenly the old idea of one centralized platform controlling everything starts breaking down.</p>
+
+<p><strong>Not because the vendors failed.</strong></p>
+
+<p><strong>But because the architecture itself changed.</strong></p>
+
+<p>This article is not about attacking SaaS platforms. This is about understanding how modern open architectures work technically, what challenges they introduce, and how organizations can solve them step by step.</p>
+
+<hr />
+
+<h2 id="the-biggest-mindset-shift-happening-right-now">The biggest mindset shift happening right now</h2>
+
+<p>In older Hadoop architectures, storage and compute were tightly connected.</p>
+
+<p>HDFS stored data inside cluster nodes. Spark and MapReduce jobs tried to run near the data.</p>
+
+<p>The philosophy was: <strong>“Move compute to data.”</strong></p>
+
+<p>This was necessary because networks were slower and storage was local.</p>
+
+<div class="mermaid">
+graph LR
+    subgraph OLD["<b>Old: Hadoop Era</b>"]
+        N1["<b>Node 1</b><br />HDFS + Spark"]
+        N2["<b>Node 2</b><br />HDFS + Spark"]
+        N3["<b>Node 3</b><br />HDFS + Spark"]
+        N1 --- N2 --- N3
+    end
+    subgraph NEW["<b>New: Open Era</b>"]
+        S["<b>Shared Object Storage</b><br />S3 / ADLS / GCS / MinIO"]
+        C1["<b>Spark</b><br />(ephemeral)"]
+        C2["<b>Trino</b><br />(ephemeral)"]
+        C3["<b>DuckDB</b><br />(local)"]
+        C4["<b>GPU / AI</b><br />(ephemeral)"]
+        C1 --&gt; S
+        C2 --&gt; S
+        C3 --&gt; S
+        C4 --&gt; S
+    end
+    style OLD fill:#fee,stroke:#c00
+    style NEW fill:#efe,stroke:#0a0
+</div>
+
+<p>But modern architectures work differently. Today storage is mostly object storage:</p>
+
+<ul>
+  <li>S3</li>
+  <li>ADLS</li>
+  <li>GCS</li>
+  <li>MinIO</li>
+  <li>Ceph</li>
+  <li>Pure Storage FlashBlade</li>
+</ul>
+
+<p>Compute is now temporary and portable.</p>
+
+<ul>
+  <li>Spark clusters can start and stop dynamically</li>
+  <li>Trino can run in Kubernetes</li>
+  <li>DuckDB can run on laptops</li>
+  <li>AI workloads may run in GPU clusters in another cloud</li>
+</ul>
+
+<p>Now the architecture becomes: <strong>“Shared storage + independent compute.”</strong></p>
+
+<p>This sounds simple. But it changes everything technically.</p>
+
+<hr />
+
+<h2 id="the-new-foundation-object-storage">The new foundation: object storage</h2>
+
+<p>Modern architectures start with <strong>object storage</strong>.</p>
+
+<p>Not compute. Not warehouses. Not databases.</p>
+
+<p><strong>Storage becomes the foundation layer.</strong></p>
+
+<p>Why? Because object storage solves several difficult problems:</p>
+
+<ul>
+  <li>Cheap scaling</li>
+  <li>High durability</li>
+  <li>Cloud independence</li>
+  <li>Container compatibility</li>
+  <li>Easy replication</li>
+  <li>Separation from compute</li>
+</ul>
+
+<p>This allows organizations to store data <strong>once</strong> and use <strong>many</strong> compute engines on top of it.</p>
+
+<div class="mermaid">
+graph TD
+    S["<b>Object Storage</b><br />Single Source of Truth"]
+    S --&gt; A["<b>Spark</b><br />ETL Pipelines"]
+    S --&gt; B["<b>Trino</b><br />SQL Analytics"]
+    S --&gt; C["<b>dbt</b><br />Transformations"]
+    S --&gt; D["<b>DuckDB</b><br />Local Analytics"]
+    S --&gt; E["<b>AI Pipelines</b><br />Embeddings &amp; Inference"]
+    style S fill:#bbf,stroke:#33f,stroke-width:3px
+</div>
+
+<p>All reading the <strong>same data</strong>. Without copying it everywhere.</p>
+
+<p>That is a huge architectural shift.</p>
+
+<hr />
+
+<h2 id="why-apache-iceberg-becomes-important">Why Apache Iceberg becomes important</h2>
+
+<p>Raw parquet files alone are not enough for enterprise systems. You eventually hit problems like:</p>
+
+<ul>
+  <li>Concurrent writes</li>
+  <li>Schema changes</li>
+  <li>Broken partitions</li>
+  <li>Streaming consistency</li>
+  <li>Rollback requirements</li>
+  <li>Time travel needs</li>
+</ul>
+
+<p>This is where open table formats like <strong>Apache Iceberg</strong> become critical.</p>
+
+<p>Iceberg adds a metadata layer on top of object storage.</p>
+
+<div class="mermaid">
+graph TD
+    Q["<b>Query Engines</b><br />Spark / Trino / Flink / DuckDB"]
+    Q --&gt; M["<b>Iceberg Metadata Layer</b><br />ACID • Snapshots • Schema Evolution<br />Time Travel • Streaming"]
+    M --&gt; P["<b>Parquet Files in Object Storage</b>"]
+    style M fill:#ffd,stroke:#cc0,stroke-width:2px
+</div>
+
+<p>Now the platform gains:</p>
+
+<ul>
+  <li><strong>ACID transactions</strong></li>
+  <li><strong>Snapshot isolation</strong></li>
+  <li><strong>Schema evolution</strong></li>
+  <li><strong>Partition evolution</strong></li>
+  <li><strong>Versioning</strong></li>
+  <li><strong>Time travel</strong></li>
+  <li><strong>Streaming support</strong></li>
+</ul>
+
+<p>The important part is this: <strong>Iceberg is not tied to one compute engine.</strong></p>
+
+<p>That changes the economics of the platform. You no longer need separate storage systems for every tool. <strong>One shared data layer becomes possible.</strong></p>
+
+<hr />
+
+<h2 id="the-catalog-layer-becomes-the-real-brain">The catalog layer becomes the real brain</h2>
+
+<p>Most people think the catalog is just metadata. That is no longer true.</p>
+
+<p>In modern architectures, the catalog becomes the <strong>control plane</strong>.</p>
+
+<div class="mermaid">
+graph TD
+    CAT["<b>Catalog Layer</b><br />(The Operating System)"]
+    CAT --&gt; AUTH["<b>Authentication</b>"]
+    CAT --&gt; RBAC["<b>RBAC</b>"]
+    CAT --&gt; LIN["<b>Lineage</b>"]
+    CAT --&gt; POL["<b>Policies</b>"]
+    CAT --&gt; OWN["<b>Ownership</b>"]
+    CAT --&gt; DISC["<b>Discovery</b>"]
+    CAT --&gt; AUD["<b>Auditability</b>"]
+    CAT --&gt; GOV["<b>Governance</b>"]
+    style CAT fill:#fcf,stroke:#909,stroke-width:3px
+</div>
+
+<p>This layer becomes extremely important in <strong>AI environments</strong> — because AI systems need controlled access to trusted data. <strong>Without governance, AI systems become dangerous very quickly.</strong></p>
+
+<p>This is why many organizations are investing heavily in:</p>
+
+<ul>
+  <li>Iceberg REST catalogs</li>
+  <li>Apache Gravitino</li>
+  <li>Polaris</li>
+  <li>Custom governance APIs</li>
+</ul>
+
+<p>The catalog is becoming the <strong>operating system of the data platform</strong>.</p>
+
+<hr />
+
+<h2 id="the-real-technical-challenge-networking">The real technical challenge: networking</h2>
+
+<p>This is the part many non-technical discussions completely ignore.</p>
+
+<p>Once compute and storage become separated, <strong>the network becomes the backbone of the architecture.</strong></p>
+
+<p>In Hadoop systems, local disks handled most operations. In modern architectures, <strong>everything moves through the network</strong>:</p>
+
+<ul>
+  <li>Object storage reads</li>
+  <li>Shuffle operations</li>
+  <li>Metadata calls</li>
+  <li>Cross-region replication</li>
+  <li>AI inference traffic</li>
+  <li>Streaming pipelines</li>
+  <li>Federated queries</li>
+</ul>
+
+<p>Network design directly impacts:</p>
+
+<ul>
+  <li>Performance</li>
+  <li>Latency</li>
+  <li>Cost</li>
+  <li>Scalability</li>
+  <li>Reliability</li>
+</ul>
+
+<p><strong>This is why modern architectures require much better network planning than older systems.</strong></p>
+
+<hr />
+
+<h2 id="common-network-challenges">Common network challenges</h2>
+
+<h3 id="1-cross-region-traffic-cost">1. Cross-region traffic cost</h3>
+
+<p>Many cloud providers charge heavily for data movement between regions.</p>
+
+<div class="mermaid">
+graph LR
+    subgraph R1["<b>Region A</b>"]
+        C["<b>Compute</b>"]
+    end
+    subgraph R2["<b>Region B</b>"]
+        S["<b>Storage</b>"]
+    end
+    C -.-&gt;|"<b>$$$ Egress</b><br />Every query"| S
+    style C fill:#fee
+    style S fill:#fee
+</div>
+
+<p><strong>Solution:</strong> Keep compute close to storage whenever possible.</p>
+
+<ul>
+  <li>Regional compute placement</li>
+  <li>Local caching layers</li>
+  <li>Data locality strategies</li>
+  <li>Workload-aware routing</li>
+</ul>
+
+<h3 id="2-object-storage-latency">2. Object storage latency</h3>
+
+<p>Object storage is <strong>not</strong> local disk. Small file reads create latency problems. Millions of tiny parquet files can destroy performance.</p>
+
+<p><strong>Solution:</strong> Good file management.</p>
+
+<ul>
+  <li>Compaction</li>
+  <li>Partition optimization</li>
+  <li>Iceberg metadata pruning</li>
+  <li>Large optimized parquet files</li>
+  <li>Z-ordering or clustering</li>
+</ul>
+
+<p>This is one reason modern data engineering spends so much effort on table optimization.</p>
+
+<h3 id="3-distributed-shuffle-bottlenecks">3. Distributed shuffle bottlenecks</h3>
+
+<p>Large Spark joins move huge amounts of data across the network. Poor network design creates bottlenecks very quickly.</p>
+
+<p><strong>Solution:</strong> Use distributed compute only where necessary.</p>
+
+<p>This is why engines like <strong>DuckDB</strong> and <strong>Polars</strong> became important. Not every workload needs a giant cluster. Sometimes local execution is faster and cheaper.</p>
+
+<p>Modern architecture is becoming <strong>workload-aware</strong> instead of blindly distributed.</p>
+
+<h3 id="4-ai-workload-pressure">4. AI workload pressure</h3>
+
+<p>AI pipelines create new challenges:</p>
+
+<ul>
+  <li>Training data movement</li>
+  <li>Embedding pipelines</li>
+  <li>Vector indexing</li>
+  <li>GPU data loading</li>
+</ul>
+
+<p>GPU clusters are <strong>extremely sensitive to network throughput</strong>. Slow storage pipelines can leave expensive GPUs sitting idle.</p>
+
+<p><strong>Solution:</strong> Modern AI architectures increasingly use:</p>
+
+<ul>
+  <li>High-bandwidth networking</li>
+  <li>RDMA</li>
+  <li>InfiniBand</li>
+  <li>NVMe over Fabric</li>
+  <li>Smart caching layers</li>
+  <li>GPU-aware storage placement</li>
+</ul>
+
+<p>The AI era is pushing infrastructure design far beyond traditional analytics systems.</p>
+
+<hr />
+
+<h2 id="why-kubernetes-changes-the-operating-model">Why Kubernetes changes the operating model</h2>
+
+<p>Container orchestration platforms like <strong>Kubernetes</strong> and <strong>OpenShift</strong> are becoming central to modern data systems.</p>
+
+<p>Why? Because <strong>compute becomes temporary</strong>.</p>
+
+<p>Instead of maintaining large permanent clusters:</p>
+
+<ul>
+  <li>Start Spark only when needed</li>
+  <li>Start Trino dynamically</li>
+  <li>Run dbt pipelines temporarily</li>
+  <li>Scale AI inference independently</li>
+  <li>Deploy workloads closer to users</li>
+</ul>
+
+<div class="mermaid">
+graph TD
+    K["<b>Kubernetes / OpenShift</b>"]
+    K --&gt; SP["<b>Spark Job</b><br />(spins up &amp; tears down)"]
+    K --&gt; TR["<b>Trino Cluster</b><br />(autoscales)"]
+    K --&gt; DBT["<b>dbt Run</b><br />(temporary pod)"]
+    K --&gt; AI["<b>AI Inference</b><br />(scales independently)"]
+    K --&gt; ENV["<b>Same Manifests</b>"]
+    ENV --&gt; ON["<b>On-Prem</b>"]
+    ENV --&gt; AWS["<b>AWS</b>"]
+    ENV --&gt; AZ["<b>Azure</b>"]
+    ENV --&gt; GCP["<b>GCP</b>"]
+    style K fill:#bbf,stroke:#33f,stroke-width:2px
+</div>
+
+<p>This reduces infrastructure waste. It also creates <strong>portability</strong>.</p>
+
+<p>The same architecture can run on-prem, AWS, Azure, or Google Cloud. That portability becomes <strong>strategically important</strong>.</p>
+
+<hr />
+
+<h2 id="the-rise-of-hybrid-architecture">The rise of hybrid architecture</h2>
+
+<p>Most enterprises are now hybrid — whether they planned for it or not.</p>
+
+<ul>
+  <li>Some systems remain on-prem because of regulation</li>
+  <li>Some workloads run in cloud because of elasticity</li>
+  <li>Some AI systems need specialized GPU providers</li>
+  <li>Some analytics workloads require local execution</li>
+</ul>
+
+<p>A containerized open architecture allows all these environments to work together.</p>
+
+<p>This is one of the biggest reasons enterprises are moving toward <strong>open table formats</strong> and <strong>portable compute</strong>.</p>
+
+<hr />
+
+<h2 id="why-single-node-computing-is-making-a-comeback">Why single-node computing is making a comeback</h2>
+
+<p>One of the most fascinating shifts today is the return of powerful <strong>single-node analytics</strong>.</p>
+
+<p>For years the industry believed everything needed distributed clusters. But modern hardware changed the equation.</p>
+
+<p>Today: <strong>DuckDB, Polars, Arrow, modern CPUs, large memory systems</strong> allow many analytics workloads to run locally with incredible performance.</p>
+
+<p>This reduces:</p>
+
+<ul>
+  <li>Network movement</li>
+  <li>Cluster overhead</li>
+  <li>Infrastructure complexity</li>
+  <li>Operational cost</li>
+</ul>
+
+<p>Sometimes one optimized node outperforms badly tuned distributed systems.</p>
+
+<p>This is why the future is probably <strong>not</strong> “everything distributed.”</p>
+
+<p>The future is: <strong>“Use the right compute model for the workload.”</strong></p>
+
+<hr />
+
+<h2 id="a-practical-modern-architecture">A practical modern architecture</h2>
+
+<p>A modern open data stack often looks like this:</p>
+
+<div class="mermaid">
+graph TD
+    subgraph AI["<b>AI Layer</b>"]
+        V["<b>Vector Pipelines</b>"]
+        E["<b>Embedding Services</b>"]
+        G["<b>GPU Clusters</b>"]
+        AG["<b>AI Agents</b>"]
+    end
+    subgraph ORCH["<b>Orchestration Layer</b>"]
+        K8S["<b>Kubernetes / OpenShift</b>"]
+        AF["<b>Airflow / Temporal</b>"]
+    end
+    subgraph COMP["<b>Compute Layer</b>"]
+        SP["<b>Spark</b>"]
+        TR["<b>Trino</b>"]
+        FL["<b>Flink</b>"]
+        DUCK["<b>DuckDB / Polars</b>"]
+        DBT["<b>dbt</b>"]
+    end
+    subgraph CAT["<b>Catalog Layer</b>"]
+        REST["<b>Iceberg REST</b>"]
+        GRAV["<b>Gravitino / Polaris</b>"]
+        RBAC["<b>RBAC &amp; Governance APIs</b>"]
+    end
+    subgraph TBL["<b>Open Table Format</b>"]
+        ICE["<b>Apache Iceberg</b>"]
+    end
+    subgraph STO["<b>Storage Layer</b>"]
+        OBJ["<b>S3 / ADLS / GCS / MinIO / Ceph</b>"]
+    end
+    AI --&gt; ORCH
+    ORCH --&gt; COMP
+    COMP --&gt; CAT
+    CAT --&gt; TBL
+    TBL --&gt; STO
+    style STO fill:#efe
+    style TBL fill:#ffd
+    style CAT fill:#fcf
+    style ORCH fill:#bbf
+    style AI fill:#fdd
+</div>
+
+<p>All connected through <strong>open standards</strong> instead of vendor-specific storage engines.</p>
+
+<hr />
+
+<h2 id="the-hardest-part-is-not-technology">The hardest part is not technology</h2>
+
+<p>Ironically, the hardest challenge is usually not technical.</p>
+
+<p>It is <strong>operational maturity</strong>.</p>
+
+<p>Open architectures require:</p>
+
+<ul>
+  <li>Strong governance</li>
+  <li>Good engineering practices</li>
+  <li>Platform thinking</li>
+  <li>Cost awareness</li>
+  <li>Network planning</li>
+  <li>Observability</li>
+  <li>Automation</li>
+</ul>
+
+<p><strong>Without discipline, open architectures can become chaos.</strong></p>
+
+<p>But when designed correctly, they create something extremely powerful:</p>
+
+<h3 id="freedom">Freedom.</h3>
+
+<ul>
+  <li>Freedom to move workloads</li>
+  <li>Freedom to adopt new technologies</li>
+  <li>Freedom to optimize cost</li>
+  <li>Freedom to avoid platform dependency</li>
+</ul>
+
+<p>And in the AI era, that flexibility may become one of the most valuable capabilities an organization can have.</p>
+
+<p>The future may not belong to the biggest closed platform.</p>
+
+<p>It may belong to organizations that understand how to build <strong>portable, governed, network-aware, containerized open data ecosystems</strong>.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">data-architecture</span>, <span class="tag">data-platform</span>, <span class="tag">iceberg</span>, <span class="tag">kubernetes</span>, <span class="tag">lakehouse</span>, <span class="tag">hybrid-cloud</span>, <span class="tag">ai</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
