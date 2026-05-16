@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Decision Trees - Part 1 - Foundations</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>Decision Trees - Part 1 - Foundations</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="decision-trees---part-1---foundations">Decision Trees - Part 1 - Foundations</h1>
+
+<h2 id="a-simple-guide-to-one-of-the-most-loved-algorithms-in-machine-learning">A simple guide to one of the most loved algorithms in machine learning</h2>
+
+<p>If you have ever played the game “20 questions”, you already understand decision trees.</p>
+
+<p>That game works like this. One person thinks of an object. The other person asks yes or no questions. Each answer narrows down what the object could be. After enough questions, the guesser can figure it out.</p>
+
+<p>A decision tree does exactly the same thing. It asks a series of simple questions about the data, and each answer leads it closer to a final prediction.</p>
+
+<p>This is the first part of a three part tutorial. We will go from “I have never heard of decision trees” to “I can explain how they work to my friend” by the end of this part.</p>
+
+<p>Here is what we will cover in Part 1.</p>
+
+<ol>
+  <li>Overview, what is a decision tree</li>
+  <li>Why anyone uses them at all</li>
+  <li>How a decision tree actually works, step by step</li>
+</ol>
+
+<p>Let us start at the beginning.</p>
+
+<hr />
+
+<h2 id="segment-1-overview">Segment 1. Overview</h2>
+
+<h3 id="what-is-a-decision-tree">What is a decision tree</h3>
+
+<p>A decision tree is a model that makes predictions by asking a sequence of yes or no questions.</p>
+
+<p>You start at the top. You ask one question. Depending on the answer, you go left or right. At that next spot, you ask another question. You keep going down the tree until you reach the bottom, where you have a final answer.</p>
+
+<p>That is really all there is to it.</p>
+
+<p>Here is the simplest possible example.</p>
+
+<p>Suppose you want to decide whether to play tennis today. You can ask a few simple questions about the weather.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    A["<b>Is it raining?</b>"]
+    A --&gt;|"yes"| B["<b>Do not play</b>"]
+    A --&gt;|"no"| C["<b>Is it very hot?</b>"]
+    C --&gt;|"yes"| D["<b>Do not play</b>"]
+    C --&gt;|"no"| E["<b>Is it windy?</b>"]
+    E --&gt;|"yes"| F["<b>Do not play</b>"]
+    E --&gt;|"no"| G["<b>Play tennis</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class B,D,F,G gray
+    class A,C,E midgray
+</div>
+
+<p>That is a decision tree.</p>
+
+<p>It is just a flowchart of questions, with a prediction at the end of every path.</p>
+
+<h3 id="some-words-you-will-hear-a-lot">Some words you will hear a lot</h3>
+
+<p>Three words come up over and over when people talk about decision trees. Let us define them right now so the rest of the tutorial is clear.</p>
+
+<p><strong>Root node.</strong> This is the very first question at the top of the tree. In our tennis example, “Is it raining” is the root node. Every prediction starts from here.</p>
+
+<p><strong>Internal node.</strong> Any question that is not at the top and not at the bottom. “Is it very hot” and “Is it windy” are internal nodes. They split the data further.</p>
+
+<p><strong>Leaf node.</strong> The boxes at the very bottom that have the final answer in them. “Play tennis” and “Do not play” are leaf nodes. They are the end of the road.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    A["<b>Root node</b><br />(the first question)"]
+    A --&gt; B["<b>Internal node</b><br />(another question)"]
+    A --&gt; C["<b>Leaf node</b><br />(final answer)"]
+    B --&gt; D["<b>Leaf node</b><br />(final answer)"]
+    B --&gt; E["<b>Leaf node</b><br />(final answer)"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class C,D,E gray
+    class A,B midgray
+</div>
+
+<p>That is the whole vocabulary. Root, internal, leaf. Most of decision tree theory is built on top of these three ideas.</p>
+
+<h3 id="what-kinds-of-problems-can-decision-trees-solve">What kinds of problems can decision trees solve</h3>
+
+<p>Decision trees can solve two types of problems.</p>
+
+<p><strong>Classification.</strong> When the answer at the leaf is a category. Like spam or not spam. Like sick or healthy. Like will buy or will not buy.</p>
+
+<p><strong>Regression.</strong> When the answer at the leaf is a number. Like the price of a house. Like the temperature tomorrow. Like the salary of an employee.</p>
+
+<p>Most of this tutorial will focus on classification because it is easier to picture. But almost everything we learn also applies to regression with small changes.</p>
+
+<hr />
+
+<h2 id="segment-2-motivation-for-decision-trees">Segment 2. Motivation for Decision Trees</h2>
+
+<p>Now that we know what a decision tree is, let us talk about why anyone uses them.</p>
+
+<p>There are five real reasons. Let us go through them one by one.</p>
+
+<h3 id="reason-1-they-look-exactly-like-how-humans-think">Reason 1. They look exactly like how humans think</h3>
+
+<p>When a doctor diagnoses a patient, they do not pull out a fancy equation. They ask questions.</p>
+
+<p>Do you have a fever? Yes.</p>
+
+<p>How high? Around 102.</p>
+
+<p>Any cough? Yes.</p>
+
+<p>How long has this been going on? Three days.</p>
+
+<p>Each answer leads to the next question, and eventually to a diagnosis. That is a decision tree, drawn out loud.</p>
+
+<p>This is one of the biggest reasons decision trees are loved. Other machine learning models work like a magic black box that spits out an answer. A decision tree shows you exactly how it got to its answer, in a way any human can follow.</p>
+
+<p>This matters a lot in fields like medicine, banking, and law, where you legally have to explain why a decision was made.</p>
+
+<h3 id="reason-2-they-handle-messy-real-world-data-without-complaining">Reason 2. They handle messy real world data without complaining</h3>
+
+<p>Most machine learning algorithms are picky.</p>
+
+<p>Linear regression wants all your data scaled to similar ranges. Neural networks want everything normalized. Many algorithms cannot deal with missing values at all and will simply crash.</p>
+
+<p>Decision trees are way more forgiving.</p>
+
+<ul>
+  <li>They do not need you to scale the features.</li>
+  <li>They do not care if one column is age in years and another is salary in dollars.</li>
+  <li>They handle both numbers and categories.</li>
+  <li>They can work even when some values are missing.</li>
+</ul>
+
+<p>You can throw fairly raw data at a decision tree and it will still produce something useful.</p>
+
+<h3 id="reason-3-they-can-find-non-linear-patterns">Reason 3. They can find non linear patterns</h3>
+
+<p>This is a technical sounding phrase but the idea is simple.</p>
+
+<p>A linear model assumes the world is like a straight line. As one thing goes up, another thing goes up or down in a steady proportion.</p>
+
+<p>But the real world is rarely like that.</p>
+
+<p>For example, a baby weighing 10 pounds is normal. A grown adult weighing 10 pounds would be very alarming. The meaning of “10 pounds” changes depending on the age of the person.</p>
+
+<p>Decision trees handle this naturally. They can ask “is the age above 18” first, and then ask “is the weight below 30 pounds” only on one side. They can build different rules for different parts of the data.</p>
+
+<p>This is called capturing non linear interactions, and decision trees do it almost for free.</p>
+
+<h3 id="reason-4-they-are-easy-to-explain-to-non-technical-people">Reason 4. They are easy to explain to non technical people</h3>
+
+<p>Imagine you build a model to decide which customers are likely to cancel their subscription.</p>
+
+<p>If your model is a deep neural network, explaining it to the marketing team is hard. You either have to skip the details or wave your hands.</p>
+
+<p>If your model is a decision tree, you can literally print it out and show it on a slide. The marketing team can read it like a flowchart. They can argue with the questions. They can suggest improvements. They are now part of the conversation.</p>
+
+<p>That alone is sometimes worth using a slightly less accurate model.</p>
+
+<h3 id="reason-5-they-are-the-building-block-for-the-most-powerful-algorithms">Reason 5. They are the building block for the most powerful algorithms</h3>
+
+<p>Here is something most beginners do not realize.</p>
+
+<p>The most popular and most powerful classical machine learning algorithms in the world today, things like Random Forest, XGBoost, LightGBM, and CatBoost, are all based on decision trees.</p>
+
+<p>They are basically many decision trees working together in clever ways.</p>
+
+<p>So learning how a single decision tree works is not just academic. It is the foundation for understanding the algorithms that win most data science competitions and power most production systems.</p>
+
+<p>If you understand this tutorial, you are already most of the way to understanding those advanced models.</p>
+
+<hr />
+
+<h2 id="segment-3-working-of-decision-trees">Segment 3. Working of Decision Trees</h2>
+
+<p>Now we get to the heart of it. How does a decision tree actually work.</p>
+
+<p>We will walk through this in two stages.</p>
+
+<p>First, how the tree makes a prediction once it is built.</p>
+
+<p>Second, how the tree gets built in the first place.</p>
+
+<h3 id="stage-1-how-the-tree-makes-a-prediction">Stage 1. How the tree makes a prediction</h3>
+
+<p>Suppose someone hands you a fully built decision tree. They also give you a new data point. You want to use the tree to predict what category this data point belongs to.</p>
+
+<p>Here is exactly what happens.</p>
+
+<p>You take the new data point. You start at the root node, which is the top question of the tree. You look at that question. You check the value in your new data point. Based on the answer, you go down the left branch or the right branch.</p>
+
+<p>You arrive at a new node. You ask that question. You go down again.</p>
+
+<p>You keep doing this until you arrive at a leaf node. The leaf has a final answer written on it. That is your prediction.</p>
+
+<p>That is the entire process. Walk from the top, follow the answers, end at a leaf.</p>
+
+<p>Let me show this with a concrete example.</p>
+
+<h4 id="example-will-a-customer-buy-our-product">Example. Will a customer buy our product</h4>
+
+<p>Suppose we have a tree that predicts whether a customer will buy our product. It looks like this.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    A["<b>Is age less than 30?</b>"]
+    A --&gt;|"yes"| B["<b>Is income above 50K?</b>"]
+    A --&gt;|"no"| C["<b>Has visited 3+ times?</b>"]
+    B --&gt;|"yes"| D["<b>Will buy</b>"]
+    B --&gt;|"no"| E["<b>Will not buy</b>"]
+    C --&gt;|"yes"| F["<b>Will buy</b>"]
+    C --&gt;|"no"| G["<b>Will not buy</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class D,E,F,G gray
+    class A,B,C midgray
+</div>
+
+<p>Now suppose a new customer arrives. They are 25 years old, earn 60,000 per year, and have visited 2 times.</p>
+
+<p>How does the tree predict?</p>
+
+<p>Step 1. Start at the root. The question is “Is age less than 30”. The customer is 25. That is yes. Go left.</p>
+
+<p>Step 2. We arrive at “Is income above 50K”. The customer earns 60,000. That is yes. Go left.</p>
+
+<p>Step 3. We reach the leaf “Will buy”. That is our prediction.</p>
+
+<p>Done.</p>
+
+<p>Notice that we did not even use the “visits” feature for this customer. The tree only asks about features that matter at each decision point. That is one of the elegant things about decision trees.</p>
+
+<h3 id="stage-2-how-the-tree-gets-built">Stage 2. How the tree gets built</h3>
+
+<p>This is the more interesting question. How does the algorithm decide what question to ask first, what to ask next, and when to stop.</p>
+
+<p>The whole game can be summarized in one sentence.</p>
+
+<blockquote>
+  <p>At every step, the algorithm looks at all the possible questions it could ask, and picks the one that does the best job of separating the data into groups that are as pure as possible.</p>
+</blockquote>
+
+<p>The word “pure” is important. Let me explain what it means.</p>
+
+<h4 id="what-does-pure-mean">What does pure mean</h4>
+
+<p>Imagine you have 100 customers. 50 of them bought your product and 50 did not. That group is mixed. It is impure.</p>
+
+<p>Now suppose you split the group based on age. You end up with two groups.</p>
+
+<p>Group A. Customers under 30. 80 of them bought, 5 did not.</p>
+
+<p>Group B. Customers over 30. 0 of them bought, 15 did.</p>
+
+<p>Group A is mostly buyers. Group B is entirely non buyers. Both groups are much more pure than the original mixed group.</p>
+
+<p>That is a good split.</p>
+
+<p>A decision tree builds itself by repeatedly finding splits that make the resulting groups as pure as possible.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    A["<b>Mixed group</b><br />50 buyers<br />50 non buyers"]
+    A --&gt;|"age &lt; 30"| B["<b>Mostly buyers</b><br />80 buyers<br />5 non buyers"]
+    A --&gt;|"age &gt;= 30"| C["<b>Mostly non buyers</b><br />0 buyers<br />15 non buyers"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class B,C gray
+    class A midgray
+</div>
+
+<p>The numbers in this example do not add up because I made them up for clarity, but the idea is what matters. Each split should make the children purer than the parent.</p>
+
+<h4 id="the-full-building-process">The full building process</h4>
+
+<p>Here is what the algorithm does, in plain English.</p>
+
+<p>Step 1. Start with all the training data at the root.</p>
+
+<p>Step 2. Look at every feature in the data. For each feature, look at every possible threshold or split point. For each possible split, calculate how much purer the resulting groups would be.</p>
+
+<p>Step 3. Pick the single best split. That becomes the question at this node.</p>
+
+<p>Step 4. Divide the data into the two child groups based on that split.</p>
+
+<p>Step 5. Repeat the whole process on each child group, finding the best split inside that smaller group.</p>
+
+<p>Step 6. Keep going recursively until you decide to stop.</p>
+
+<p>The result is a tree.</p>
+
+<p>We will get into how to measure “purer” in much more detail in Part 2. That is where we will meet Gini impurity, entropy, and information gain. For now, just hold on to the intuition. A split is good if the groups it creates are more uniform than the group it started with.</p>
+
+<h4 id="when-does-the-algorithm-stop">When does the algorithm stop</h4>
+
+<p>If we just let the algorithm split forever, it would keep going until every leaf contained exactly one training example. The tree would be enormous and would have memorized the training data.</p>
+
+<p>That is bad. A tree that has memorized everything will not work well on new data.</p>
+
+<p>So we tell the algorithm when to stop. The common stopping rules are these.</p>
+
+<ul>
+  <li>Stop when a group is already pure, meaning all examples in it belong to the same class.</li>
+  <li>Stop when a group has fewer than some minimum number of examples, like 20.</li>
+  <li>Stop when the tree has reached some maximum depth, like 10 levels.</li>
+  <li>Stop when the best possible split would not improve purity by much.</li>
+</ul>
+
+<p>These rules are called the stopping criteria. We will see them again when we look at training in Part 3.</p>
+
+<hr />
+
+<h2 id="a-quick-visual-recap">A quick visual recap</h2>
+
+<p>Let me put it all together into one picture.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    A["<b>Step 1.</b><br />Start with all training data"]
+    A --&gt; B["<b>Step 2.</b><br />Find the question that<br />splits the data into the<br />purest possible groups"]
+    B --&gt; C["<b>Step 3.</b><br />Split the data using<br />that question"]
+    C --&gt; D["<b>Step 4.</b><br />Repeat for each<br />smaller group"]
+    D --&gt; E["<b>Step 5.</b><br />Stop when groups<br />are pure enough or<br />too small to split"]
+    E --&gt; F["<b>Step 6.</b><br />The result is a tree<br />of questions ending<br />in predictions"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    class A,B,C,D,E,F gray
+</div>
+
+<hr />
+
+<h2 id="putting-it-all-together-with-a-longer-example">Putting it all together with a longer example</h2>
+
+<p>Let us go through one full example to make sure all the ideas stick.</p>
+
+<p>Suppose we want to predict whether someone will play golf today. We have collected data on 14 days. Each day we recorded the weather and whether the person played.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Day</th>
+      <th>Outlook</th>
+      <th>Temperature</th>
+      <th>Humidity</th>
+      <th>Windy</th>
+      <th>Played</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Sunny</td>
+      <td>Hot</td>
+      <td>High</td>
+      <td>False</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Sunny</td>
+      <td>Hot</td>
+      <td>High</td>
+      <td>True</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Overcast</td>
+      <td>Hot</td>
+      <td>High</td>
+      <td>False</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Rainy</td>
+      <td>Mild</td>
+      <td>High</td>
+      <td>False</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Rainy</td>
+      <td>Cool</td>
+      <td>Normal</td>
+      <td>False</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Rainy</td>
+      <td>Cool</td>
+      <td>Normal</td>
+      <td>True</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Overcast</td>
+      <td>Cool</td>
+      <td>Normal</td>
+      <td>True</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Sunny</td>
+      <td>Mild</td>
+      <td>High</td>
+      <td>False</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Sunny</td>
+      <td>Cool</td>
+      <td>Normal</td>
+      <td>False</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Rainy</td>
+      <td>Mild</td>
+      <td>Normal</td>
+      <td>False</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Sunny</td>
+      <td>Mild</td>
+      <td>Normal</td>
+      <td>True</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>Overcast</td>
+      <td>Mild</td>
+      <td>High</td>
+      <td>True</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>Overcast</td>
+      <td>Hot</td>
+      <td>Normal</td>
+      <td>False</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Rainy</td>
+      <td>Mild</td>
+      <td>High</td>
+      <td>True</td>
+      <td>No</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>We have 9 days where the person played and 5 days where they did not. The overall group is mixed.</p>
+
+<p>Now the algorithm looks at the features and asks, “which feature, if I split on it, gives me the cleanest groups?”</p>
+
+<p>Suppose it tries splitting on Outlook first. The data splits into three groups.</p>
+
+<ul>
+  <li>Sunny days. 5 days total. 2 played, 3 did not. Still mixed.</li>
+  <li>Overcast days. 4 days total. 4 played, 0 did not. Pure.</li>
+  <li>Rainy days. 5 days total. 3 played, 2 did not. Mixed.</li>
+</ul>
+
+<p>That is a useful split because one of the three branches, the overcast branch, is already completely pure. We can stop on that branch.</p>
+
+<p>For Sunny and Rainy, the algorithm needs to ask another question to clean them up further. Maybe it splits Sunny on Humidity. Maybe it splits Rainy on Windy. Each split makes the resulting groups purer.</p>
+
+<p>Eventually we end up with a tree like this.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    A["<b>Outlook?</b>"]
+    A --&gt;|"Sunny"| B["<b>Humidity?</b>"]
+    A --&gt;|"Overcast"| C["<b>Play</b>"]
+    A --&gt;|"Rainy"| D["<b>Windy?</b>"]
+    B --&gt;|"High"| E["<b>Do not play</b>"]
+    B --&gt;|"Normal"| F["<b>Play</b>"]
+    D --&gt;|"True"| G["<b>Do not play</b>"]
+    D --&gt;|"False"| H["<b>Play</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class C,E,F,G,H gray
+    class A,B,D midgray
+</div>
+
+<p>Take a moment to walk through this tree with a new example. Imagine the weather today is sunny, humid, and not windy. Start at the top. Outlook is sunny, go left. Humidity is high, go left. The leaf says do not play. That is the prediction.</p>
+
+<p>Notice how natural this tree feels. It is something a human could have written down by hand. That is the magic of decision trees.</p>
+
+<hr />
+
+<h2 id="what-we-have-learned-so-far">What we have learned so far</h2>
+
+<p>In this part we covered three big ideas.</p>
+
+<p>We learned what a decision tree is. It is a flowchart of yes or no questions ending in a prediction. The first question is the root, the questions in the middle are internal nodes, and the final predictions are the leaves.</p>
+
+<p>We learned why people use decision trees. They look like human reasoning, they handle messy data, they capture non linear patterns, they are easy to explain, and they are the foundation for the most powerful algorithms in classical machine learning.</p>
+
+<p>We learned how a decision tree works. It makes predictions by walking from the root to a leaf. It gets built by repeatedly finding the question that best separates the data into pure groups, and stopping when the groups are clean enough or small enough.</p>
+
+<p>We mentioned the word “pure” many times without saying how to measure it. That is the topic of Part 2.</p>
+
+<p>In Part 2 we will meet three very important measures.</p>
+
+<ul>
+  <li>Gini impurity, which is the most common one in practice.</li>
+  <li>Entropy, which comes from information theory and feels very natural once you understand it.</li>
+  <li>Information gain, which is how we measure if a split is actually worth making.</li>
+</ul>
+
+<p>Once we understand these measures, we will be ready to look at the full training algorithm in Part 3, and finally write some real Python code that builds a decision tree from scratch on a real dataset.</p>
+
+<p>See you in Part 2.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">decision-trees</span>, <span class="tag">classification</span>, <span class="tag">regression</span>, <span class="tag">supervised-learning</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
