@@ -4,7 +4,7 @@ title: Machine Learning
 category: Machine Learning
 ---
 
-Learn machine learning fundamentals and practical algorithms from scratch. Start with the introduction and progress through hands-on tutorials covering linear regression, logistic regression, regularization, and more.
+Learn machine learning fundamentals and practical algorithms from scratch. Start with the introduction and progress through hands-on tutorials covering linear regression, logistic regression, regularization, decision trees, and more.
 
 **What You'll Learn:**
 
@@ -12,6 +12,7 @@ Learn machine learning fundamentals and practical algorithms from scratch. Start
 - Linear regression for predicting continuous values
 - Logistic regression for classification (sigmoid, decision boundaries, ROC-AUC)
 - Regularization (Ridge, Lasso, Elastic Net) to prevent overfitting
+- Decision trees (Gini, entropy, information gain, overfitting, pruning)
 - All assumptions, challenges, and how to fix them
 - Categorical variable encoding (One-Hot, Ordinal, Target, Binary)
 - Multicollinearity detection and solutions (VIF, PCA)
