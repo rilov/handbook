@@ -1,6 +1,6 @@
 ---
 title: "Case Study: How Netflix Solved the 100 Petabyte Problem with Apache Iceberg"
-category: Data
+category: Case Studies
 tags:
   - case-study
   - netflix
