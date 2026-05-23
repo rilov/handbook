@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>15. Hierarchical Clustering</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>15. Hierarchical Clustering</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="hierarchical-clustering">Hierarchical Clustering</h1>
+
+<h2 id="a-different-way-to-find-groups-in-data">A different way to find groups in data</h2>
+
+<p>In the previous tutorial we used K-Means to group data points. K-Means asks you to pick a number of clusters K up front, and it gives you that many flat groups as output.</p>
+
+<p>Hierarchical clustering takes a completely different approach. It does not ask you for K. Instead it builds a <strong>tree of clusters</strong>, from individual points all the way up to one giant cluster containing everything. You can then cut the tree at whatever level gives you the right number of groups.</p>
+
+<p>This tutorial covers everything you need to know.</p>
+
+<ol>
+  <li>What hierarchical clustering is and how it differs from K-Means.</li>
+  <li>The different linkage methods (how we measure distance between clusters).</li>
+  <li>The agglomerative clustering algorithm step by step.</li>
+  <li>How to read and use a dendrogram.</li>
+  <li>Practical considerations.</li>
+  <li>A full Python demonstration.</li>
+</ol>
+
+<p>Let us begin.</p>
+
+<hr />
+
+<h2 id="what-is-hierarchical-clustering">What is hierarchical clustering</h2>
+
+<p>There are two flavours of hierarchical clustering.</p>
+
+<p><strong>Agglomerative (bottom up).</strong> Start with every point as its own cluster. Repeatedly merge the two closest clusters until only one cluster remains. This is by far the most common version.</p>
+
+<p><strong>Divisive (top down).</strong> Start with one big cluster containing everything. Repeatedly split it until every point is its own cluster. Less common, more expensive.</p>
+
+<p>We focus on agglomerative clustering for the rest of this tutorial because it is what you will use 99% of the time.</p>
+
+<h3 id="how-is-it-different-from-k-means">How is it different from K-Means</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>K-Means</th>
+      <th>Hierarchical</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Pick K up front</td>
+      <td>No K needed</td>
+    </tr>
+    <tr>
+      <td>Output: flat groups</td>
+      <td>Output: tree of clusters</td>
+    </tr>
+    <tr>
+      <td>Reassigns points each iteration</td>
+      <td>Once merged, points stay together</td>
+    </tr>
+    <tr>
+      <td>Fast on big data</td>
+      <td>Slow on big data (O(n^3))</td>
+    </tr>
+    <tr>
+      <td>Works on huge datasets</td>
+      <td>Best for small to medium datasets</td>
+    </tr>
+    <tr>
+      <td>Hard to visualise the structure</td>
+      <td>Beautiful dendrogram visualisation</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Hierarchical clustering shines when you want to see the <strong>structure</strong> of your data, not just labels.</p>
+
+<hr />
+
+<h2 id="the-key-question-how-do-you-measure-distance-between-clusters">The key question, how do you measure distance between clusters</h2>
+
+<p>In K-Means, distance between a point and a centroid is straightforward. But in hierarchical clustering you have to measure distance between two <strong>clusters</strong>, each containing many points.</p>
+
+<p>How do you do that? You pick a rule called a <strong>linkage method</strong>. There are four common ones.</p>
+
+<h3 id="single-linkage-minimum">Single linkage (minimum)</h3>
+
+<p>The distance between two clusters is the distance between their <strong>two closest points</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>d(A, B) = min over a in A, b in B [ d(a, b) ]
+</code></pre></div></div>
+
+<p>Tends to produce long, snake-like clusters. Can chain points together through narrow bridges. Sensitive to noise.</p>
+
+<h3 id="complete-linkage-maximum">Complete linkage (maximum)</h3>
+
+<p>The distance between two clusters is the distance between their <strong>two farthest points</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>d(A, B) = max over a in A, b in B [ d(a, b) ]
+</code></pre></div></div>
+
+<p>Tends to produce compact, round clusters. More robust to noise than single linkage.</p>
+
+<h3 id="average-linkage">Average linkage</h3>
+
+<p>The distance between two clusters is the <strong>average</strong> of all pairwise distances between points in one cluster and points in the other.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>d(A, B) = mean over a in A, b in B [ d(a, b) ]
+</code></pre></div></div>
+
+<p>A middle ground between single and complete. Often a sensible default.</p>
+
+<h3 id="ward-linkage">Ward linkage</h3>
+
+<p>This one is different. Ward linkage merges the two clusters that cause the smallest <strong>increase in total within-cluster variance</strong>. It tries to keep clusters as tight as possible.</p>
+
+<p>Ward is the default in scikit-learn and works extremely well in practice. It also has a nice property: it minimises the same objective as K-Means but in a hierarchical way.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    S["<b>Single</b><br />closest pair<br />chain-like clusters"]
+    C["<b>Complete</b><br />farthest pair<br />compact clusters"]
+    A["<b>Average</b><br />mean of all pairs<br />balanced choice"]
+    W["<b>Ward</b><br />min variance increase<br />often best in practice"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    class S,C,A,W gray
+</div>
+
+<p><strong>Which to choose?</strong> Start with Ward. If your clusters should be elongated or chain-like, try single. If you suspect outliers, try complete or average.</p>
+
+<hr />
+
+<h2 id="the-agglomerative-clustering-algorithm">The agglomerative clustering algorithm</h2>
+
+<p>Now we put it together. Here is the algorithm.</p>
+
+<p><strong>Step 1. Start with every data point as its own cluster.</strong> If you have N points, you start with N clusters of size 1.</p>
+
+<p><strong>Step 2. Compute distances between every pair of clusters.</strong> Use the linkage method you chose (single, complete, average, or Ward).</p>
+
+<p><strong>Step 3. Merge the two closest clusters into one new cluster.</strong></p>
+
+<p><strong>Step 4. Recompute distances</strong> between the new cluster and all the others.</p>
+
+<p><strong>Step 5. Repeat steps 3 and 4</strong> until only one cluster remains.</p>
+
+<p>Throughout this process, every merge is recorded. The record of all merges is the <strong>dendrogram</strong> (the tree).</p>
+
+<h3 id="a-small-worked-example">A small worked example</h3>
+
+<p>Suppose you have 5 points in 1D: 1, 2, 5, 10, 11.</p>
+
+<p>Iteration 0. Five clusters: {1}, {2}, {5}, {10}, {11}.</p>
+
+<p>Iteration 1. Two closest are {1} and {2} (distance 1). Merge them. Clusters now: {1, 2}, {5}, {10}, {11}.</p>
+
+<p>Iteration 2. Two closest are {10} and {11} (distance 1). Merge them. Clusters now: {1, 2}, {5}, {10, 11}.</p>
+
+<p>Iteration 3. The closest pair is {5} and {1, 2}, depending on linkage:</p>
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>With single linkage, distance from 5 to {1, 2} is min(</td>
+          <td>5-1</td>
+          <td>,</td>
+          <td>5-2</td>
+          <td>) = 3.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>Distance from 5 to {10, 11} is min(</td>
+          <td>5-10</td>
+          <td>,</td>
+          <td>5-11</td>
+          <td>) = 5.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>So merge {5} into {1, 2}. Clusters now: {1, 2, 5}, {10, 11}.</li>
+</ul>
+
+<p>Iteration 4. Only two clusters left. Merge them. Final: {1, 2, 5, 10, 11}.</p>
+
+<p>The dendrogram records each merge with its height equal to the distance at which it happened.</p>
+
+<hr />
+
+<h2 id="interpreting-the-dendrogram">Interpreting the dendrogram</h2>
+
+<p>The dendrogram is the killer feature of hierarchical clustering. It shows you the full structure of how points group together at every level.</p>
+
+<p>Reading a dendrogram:</p>
+
+<ul>
+  <li>The x-axis lists individual data points.</li>
+  <li>The y-axis is the distance (or dissimilarity) at which two clusters merged.</li>
+  <li>Two points connected by a low horizontal line merged early and are similar.</li>
+  <li>Two points connected by a high horizontal line merged late and are very different.</li>
+</ul>
+
+<p>To get a flat clustering, you draw a horizontal line across the dendrogram at some height. The number of vertical lines your horizontal line crosses is the number of clusters.</p>
+
+<h3 id="how-to-pick-where-to-cut">How to pick where to cut</h3>
+
+<p>A common heuristic is to cut at a height where there is a <strong>large vertical gap</strong> between merges. Big gaps mean that merging at the next level forces together clusters that are quite different.</p>
+
+<p>For example, if you see merges at heights 1, 1.2, 1.5, 3.0, 3.1, the jump from 1.5 to 3.0 is a natural place to cut. Below the cut, you get the groups that formed easily. Above the cut, the algorithm started forcing together groups that did not really want to merge.</p>
+
+<hr />
+
+<h2 id="practical-considerations-and-applications">Practical considerations and applications</h2>
+
+<p>Hierarchical clustering is great, but it has limitations.</p>
+
+<h3 id="it-is-slow">It is slow</h3>
+
+<p>The standard algorithm is O(n^3) in time and O(n^2) in memory. On 10,000 points this is fine. On 1,000,000 points it is impossible. Use K-Means or BIRCH on huge datasets.</p>
+
+<h3 id="once-merged-always-merged">Once merged, always merged</h3>
+
+<p>Unlike K-Means, hierarchical clustering never undoes a decision. If two points get merged early by mistake, they stay together forever. This makes it sensitive to early choices.</p>
+
+<h3 id="scale-your-features">Scale your features</h3>
+
+<p>Like K-Means, hierarchical clustering uses distances. Always scale your features first.</p>
+
+<h3 id="where-it-really-shines">Where it really shines</h3>
+
+<ul>
+  <li>Genetics and biology, where you actually want a tree (the tree of life is a giant hierarchical clustering).</li>
+  <li>Document and topic organization.</li>
+  <li>Customer segmentation where you want to see how groups nest inside larger groups.</li>
+  <li>Any time you want to <strong>explore</strong> the data structure, not just label points.</li>
+</ul>
+
+<hr />
+
+<h2 id="full-python-demonstration">Full Python demonstration</h2>
+
+<p>Let us run hierarchical clustering on a real example.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_blobs</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.cluster</span> <span class="kn">import</span> <span class="n">AgglomerativeClustering</span>
+<span class="kn">from</span> <span class="n">scipy.cluster.hierarchy</span> <span class="kn">import</span> <span class="n">dendrogram</span><span class="p">,</span> <span class="n">linkage</span>
+
+<span class="c1"># Step 1. Generate data with 4 natural clusters
+</span><span class="n">X</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nf">make_blobs</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">centers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">cluster_std</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="c1"># Step 2. Scale the features
+</span><span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Step 3. Compute the linkage matrix using Ward
+</span><span class="n">Z</span> <span class="o">=</span> <span class="nf">linkage</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="sh">"</span><span class="s">ward</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4. Plot the dendrogram
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="nf">dendrogram</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">color_threshold</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Hierarchical Clustering Dendrogram (Ward Linkage)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Data point index</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Distance</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">axhline</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">"</span><span class="s">gray</span><span class="sh">"</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="sh">"</span><span class="s">--</span><span class="sh">"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">"</span><span class="s">Cut here for 4 clusters</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="c1"># Step 5. Cut the tree to get 4 flat clusters
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">AgglomerativeClustering</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">linkage</span><span class="o">=</span><span class="sh">"</span><span class="s">ward</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">fit_predict</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">)</span>
+
+<span class="c1"># Step 6. Visualise the resulting flat clusters
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X_scaled</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">"</span><span class="s">viridis</span><span class="sh">"</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Hierarchical Clustering Result (4 clusters)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Feature 1 (scaled)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Feature 2 (scaled)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="c1"># Step 7. See how many points fell into each cluster
+</span><span class="nf">print</span><span class="p">(</span><span class="n">pd</span><span class="p">.</span><span class="nc">Series</span><span class="p">(</span><span class="n">labels</span><span class="p">).</span><span class="nf">value_counts</span><span class="p">().</span><span class="nf">sort_index</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p>What is happening here.</p>
+
+<ul>
+  <li>We generate 50 points in 4 true clusters and scale them.</li>
+  <li>We use scipy’s <code class="language-plaintext highlighter-rouge">linkage</code> function to compute the merge sequence using Ward linkage.</li>
+  <li>We plot the dendrogram. Look at it and find a big vertical gap. That gap tells you where to cut.</li>
+  <li>We use scikit-learn’s <code class="language-plaintext highlighter-rouge">AgglomerativeClustering</code> to actually produce flat cluster labels by cutting at the level that gives 4 clusters.</li>
+  <li>We visualise the result.</li>
+</ul>
+
+<h3 id="trying-different-linkage-methods">Trying different linkage methods</h3>
+
+<p>You can compare linkage methods easily by changing the <code class="language-plaintext highlighter-rouge">method</code> parameter in <code class="language-plaintext highlighter-rouge">linkage()</code>.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">"</span><span class="s">single</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">complete</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">average</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ward</span><span class="sh">"</span><span class="p">]:</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="nf">linkage</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+    <span class="nf">dendrogram</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Dendrogram with </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s"> linkage</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>You will notice that single linkage produces chain-like dendrograms, while Ward gives the cleanest, most balanced trees.</p>
+
+<hr />
+
+<h2 id="quick-summary">Quick summary</h2>
+
+<p>Hierarchical clustering builds a full tree of merges from individual points up to one giant cluster.</p>
+
+<p>The four big things to remember.</p>
+
+<ol>
+  <li>Agglomerative clustering merges the two closest clusters at each step, recorded as a dendrogram.</li>
+  <li>The linkage method (single, complete, average, Ward) defines how distance between clusters is measured. Ward is a great default.</li>
+  <li>The dendrogram visualises the entire structure. You cut it at a height to get flat clusters.</li>
+  <li>It is slow on huge datasets but excellent for exploring structure on small to medium ones.</li>
+</ol>
+
+<p>Use it when you want to <strong>see how your data is organised</strong>, not just put labels on it.</p>
+
+<p>In the next tutorial we look at K-Nearest Neighbours, an algorithm that uses the same distance metrics but for classification rather than clustering.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">clustering</span>, <span class="tag">hierarchical</span>, <span class="tag">agglomerative</span>, <span class="tag">dendrogram</span>, <span class="tag">linkage</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

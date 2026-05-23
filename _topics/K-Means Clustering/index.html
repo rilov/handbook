@@ -1,0 +1,357 @@
+<h1 id="k-means-clustering">K-Means Clustering</h1>
+
+<h2 id="finding-groups-in-data-without-any-labels">Finding groups in data without any labels</h2>
+
+<p>Up to now every tutorial has been about <strong>supervised learning</strong>. We had labelled data, where every training example came with the right answer attached, and the model learned to predict that answer.</p>
+
+<p>But what if you do not have labels? What if you just have a pile of data and want to know whether there are natural groups hiding inside it?</p>
+
+<p>That is <strong>unsupervised learning</strong>, and the most famous unsupervised algorithm of all is <strong>K-Means Clustering</strong>.</p>
+
+<p>This tutorial covers everything you need to know.</p>
+
+<ol>
+  <li>What unsupervised learning is and how it differs from supervised learning.</li>
+  <li>The intuition behind clustering.</li>
+  <li>How K-Means actually works, step by step.</li>
+  <li>The math (kept gentle) for the distances and centroid updates.</li>
+  <li>How to pick the right number of clusters using the elbow method.</li>
+  <li>Practical considerations and common pitfalls.</li>
+  <li>A full Python demonstration.</li>
+</ol>
+
+<p>Let us get started.</p>
+
+<hr />
+
+<h2 id="what-is-unsupervised-learning">What is unsupervised learning</h2>
+
+<p>In supervised learning, every row in your training data looks like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>features      -&gt;  label
+(age, income) -&gt;  bought_product (yes/no)
+</code></pre></div></div>
+
+<p>In unsupervised learning, there is no label column. You just have features:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>features
+(age, income)
+(age, income)
+...
+</code></pre></div></div>
+
+<p>Your job is to discover something about the structure of the data without anyone telling you what to look for.</p>
+
+<p>Clustering is the most common unsupervised task. The goal is to group similar rows together. Same group = similar data points. Different group = different data points.</p>
+
+<h3 id="real-world-examples-of-clustering">Real world examples of clustering</h3>
+
+<ul>
+  <li>A retailer groups customers by buying behaviour to design marketing campaigns.</li>
+  <li>A streaming service groups viewers by viewing habits to recommend content.</li>
+  <li>A bank groups credit card transactions to spot anomalies that look unlike normal groups.</li>
+  <li>A biologist groups gene expression patterns to discover possible cell types.</li>
+  <li>A photo app groups your photos by who appears in them, without you tagging anyone.</li>
+</ul>
+
+<p>In every case, no one tells the model what the groups should be. The model discovers them from the data itself.</p>
+
+<hr />
+
+<h2 id="the-big-idea-behind-clustering">The big idea behind clustering</h2>
+
+<p>Imagine you have a scatter plot of 200 customer profiles, each plotted by two features: age and yearly spending.</p>
+
+<p>When you look at the plot, you might see three obvious blobs. Young low spenders in the bottom left. Middle-aged big spenders in the upper right. Older medium spenders in the middle.</p>
+
+<p>A clustering algorithm is just a formal way to tell a computer to find those blobs.</p>
+
+<p>The key idea behind K-Means in particular is that each blob can be summarised by a single point at its center, called a <strong>centroid</strong>.</p>
+
+<p>If you know the centroids, you can assign every data point to whichever centroid is closest. And if you know the assignments, you can find the centroids by taking the average of all points in each group.</p>
+
+<p>This sounds like a chicken-and-egg problem. K-Means solves it by alternating between the two.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    A["<b>Start</b><br />pick K random<br />centroids"]
+    A --&gt; B["<b>Assign</b><br />each point to<br />nearest centroid"]
+    B --&gt; C["<b>Update</b><br />move each centroid to<br />the mean of its points"]
+    C --&gt; D{"<b>Did anything<br />change?</b>"}
+    D --&gt;|yes| B
+    D --&gt;|no| E["<b>Done</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class B,C gray
+    class A,D,E midgray
+</div>
+
+<p>That is the entire algorithm. Let us look at it more carefully.</p>
+
+<hr />
+
+<h2 id="metrics-and-logic-for-k-means">Metrics and logic for K-Means</h2>
+
+<p>K-Means needs two ingredients.</p>
+
+<ol>
+  <li>A way to measure how close two points are. By default, this is Euclidean distance (see the previous tutorial on Similarity and Distance Metrics).</li>
+  <li>A way to summarise a group of points. By default, this is the mean (the arithmetic average), which is where the “Means” in K-Means comes from.</li>
+</ol>
+
+<p>The K in K-Means is the number of clusters you want to find. You have to tell the algorithm what K is before it starts. We will see later how to pick a sensible K.</p>
+
+<h3 id="the-objective-k-means-is-trying-to-minimise">The objective K-Means is trying to minimise</h3>
+
+<p>K-Means tries to minimise something called the <strong>within-cluster sum of squares</strong>, or <strong>WCSS</strong> for short. It is also called inertia.</p>
+
+<p>For each cluster, you compute the sum of squared distances from every point in that cluster to the centroid of that cluster. Then you add up those sums across all clusters.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>WCSS = sum over clusters [ sum over points in cluster ( distance to centroid )^2 ]
+</code></pre></div></div>
+
+<p>A smaller WCSS means tighter, more compact clusters. K-Means tries to make WCSS as small as possible.</p>
+
+<p>The reason squared distances are used (instead of just distances) is because the math works out cleanly. When you minimise the sum of squared distances, the optimal “center” of a group of points is exactly their mean.</p>
+
+<hr />
+
+<h2 id="the-k-means-algorithm-step-by-step">The K-Means algorithm, step by step</h2>
+
+<p>Here is the full algorithm.</p>
+
+<p><strong>Step 1. Pick K.</strong> Decide how many clusters you want.</p>
+
+<p><strong>Step 2. Initialise centroids.</strong> Pick K starting positions for the centroids. The simplest method is to pick K random points from your dataset. A smarter method called <strong>K-Means++</strong> spreads the initial centroids out, which usually gives better results. Most libraries use K-Means++ by default.</p>
+
+<p><strong>Step 3. Assignment step.</strong> For every data point, compute its distance to each of the K centroids. Assign the point to whichever centroid is closest.</p>
+
+<p><strong>Step 4. Update step.</strong> For each cluster, compute the mean of all points assigned to it. Move that cluster’s centroid to the new mean.</p>
+
+<p><strong>Step 5. Repeat.</strong> Go back to Step 3 and reassign points based on the new centroids. Then update again. Then reassign. Keep going.</p>
+
+<p><strong>Step 6. Stop.</strong> When the centroids stop moving (or move by very little), the algorithm has converged. The current assignments are the final clusters.</p>
+
+<p>That is it. Five steps, simple, and very effective.</p>
+
+<h3 id="a-small-worked-example">A small worked example</h3>
+
+<p>Suppose you have just 6 points in 1D, and you want K = 2 clusters.</p>
+
+<p>Data: 1, 2, 3, 10, 11, 12.</p>
+
+<p>Step 1. K = 2.</p>
+
+<p>Step 2. Random initial centroids: pick points 1 and 12.</p>
+
+<p>Step 3. Assign each point to its nearest centroid.</p>
+<ul>
+  <li>Point 1: closer to 1. Cluster A.</li>
+  <li>Point 2: closer to 1. Cluster A.</li>
+  <li>Point 3: closer to 1 (distance 2) than 12 (distance 9). Cluster A.</li>
+  <li>Point 10: closer to 12. Cluster B.</li>
+  <li>Point 11: closer to 12. Cluster B.</li>
+  <li>Point 12: closer to 12. Cluster B.</li>
+</ul>
+
+<p>Cluster A = {1, 2, 3}, Cluster B = {10, 11, 12}.</p>
+
+<p>Step 4. Update centroids.</p>
+<ul>
+  <li>New centroid A = mean(1, 2, 3) = 2.</li>
+  <li>New centroid B = mean(10, 11, 12) = 11.</li>
+</ul>
+
+<p>Step 5. Reassign with new centroids 2 and 11.</p>
+<ul>
+  <li>Every point in A is still closer to 2 than 11.</li>
+  <li>Every point in B is still closer to 11 than 2.</li>
+</ul>
+
+<p>No assignments changed. K-Means has converged. Final clusters are {1, 2, 3} and {10, 11, 12}, with centroids at 2 and 11.</p>
+
+<p>This is a toy example, but the algorithm works the same way in any number of dimensions.</p>
+
+<hr />
+
+<h2 id="picking-the-right-number-of-clusters">Picking the right number of clusters</h2>
+
+<p>K-Means asks you to pick K up front. But how do you know what K should be?</p>
+
+<p>If you knew there were exactly 3 customer types ahead of time, you would set K = 3. But usually you do not know. So you have to discover K from the data.</p>
+
+<p>The most common method is the <strong>elbow method</strong>.</p>
+
+<h3 id="the-elbow-method">The elbow method</h3>
+
+<p>Here is the idea. Run K-Means for several values of K, like K = 1, 2, 3, …, 10. For each K, record the WCSS (inertia).</p>
+
+<p>WCSS always decreases as K grows. With K = 1 cluster, every point is far from the center, so WCSS is huge. With K = N (one cluster per point), WCSS is zero.</p>
+
+<p>But the rate at which WCSS drops changes. Adding the first few clusters helps a lot. Beyond a certain K, adding more clusters gives only tiny improvements.</p>
+
+<p>If you plot WCSS against K, you usually see a curve that looks like an arm bending. The point where the curve sharply bends is called the <strong>elbow</strong>, and that K is a good choice.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.cluster</span> <span class="kn">import</span> <span class="n">KMeans</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="n">wcss</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">):</span>
+    <span class="n">km</span> <span class="o">=</span> <span class="nc">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">km</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">wcss</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">km</span><span class="p">.</span><span class="n">inertia_</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="nf">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="n">wcss</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">o</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Number of clusters K</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">WCSS (inertia)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Elbow Method</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>If the elbow is at K = 3, then K = 3 is a good number of clusters.</p>
+
+<h3 id="silhouette-score">Silhouette score</h3>
+
+<p>A more rigorous alternative is the <strong>silhouette score</strong>. For each point, it measures how close that point is to its own cluster compared to the next nearest cluster. The score ranges from -1 to 1. Higher is better.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">silhouette_score</span>
+
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">11</span><span class="p">):</span>
+    <span class="n">km</span> <span class="o">=</span> <span class="nc">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">).</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">score</span> <span class="o">=</span> <span class="nf">silhouette_score</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">km</span><span class="p">.</span><span class="n">labels_</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">K = </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s">, silhouette = </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Pick the K with the highest silhouette score.</p>
+
+<p>In practice, looking at both the elbow plot and the silhouette score together is the safest approach.</p>
+
+<hr />
+
+<h2 id="practical-considerations">Practical considerations</h2>
+
+<p>K-Means is powerful but it has several quirks you need to know.</p>
+
+<h3 id="always-scale-your-features">Always scale your features</h3>
+
+<p>K-Means uses Euclidean distance. If one feature ranges from 0 to 1 and another from 0 to 1,000,000, the large feature will completely dominate the distance calculation. You have to scale your features first, usually with StandardScaler.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+
+<span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Then run K-Means on <code class="language-plaintext highlighter-rouge">X_scaled</code>, not on raw <code class="language-plaintext highlighter-rouge">X</code>. This is the single most common mistake people make with K-Means.</p>
+
+<h3 id="k-means-assumes-spherical-clusters-of-similar-size">K-Means assumes spherical clusters of similar size</h3>
+
+<p>K-Means works best when clusters are roughly round blobs of similar size. It struggles with elongated clusters, very different sized clusters, or clusters with complex shapes. If your data has those shapes, consider DBSCAN, GMM, or hierarchical clustering instead.</p>
+
+<h3 id="initialisation-matters">Initialisation matters</h3>
+
+<p>Different random initialisations can lead to different final clusters. To handle this, libraries run K-Means many times with different starting points and keep the best result. Always set <code class="language-plaintext highlighter-rouge">n_init</code> to at least 10.</p>
+
+<h3 id="k-means-cannot-find-outliers">K-Means cannot find outliers</h3>
+
+<p>Every point gets assigned to some cluster, even points that do not belong with any group. If you need outlier detection, use DBSCAN instead.</p>
+
+<h3 id="k-means-does-not-work-well-with-categorical-features">K-Means does not work well with categorical features</h3>
+
+<p>Means do not make sense for categorical data. For categorical features, consider K-Modes or K-Prototypes instead.</p>
+
+<hr />
+
+<h2 id="full-python-demonstration">Full Python demonstration</h2>
+
+<p>Let us put everything together with a real example. We will generate synthetic customer data and find the clusters.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="n">sklearn.cluster</span> <span class="kn">import</span> <span class="n">KMeans</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_blobs</span>
+
+<span class="c1"># Step 1. Generate synthetic data with 4 true clusters
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y_true</span> <span class="o">=</span> <span class="nf">make_blobs</span><span class="p">(</span>
+    <span class="n">n_samples</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+    <span class="n">centers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">cluster_std</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 2. Always scale your data
+</span><span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Step 3. Use the elbow method to pick K
+</span><span class="n">wcss</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">):</span>
+    <span class="n">km</span> <span class="o">=</span> <span class="nc">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">km</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">)</span>
+    <span class="n">wcss</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">km</span><span class="p">.</span><span class="n">inertia_</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="nf">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="n">wcss</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">o</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">K</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">WCSS</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Elbow Method</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="c1"># The elbow should appear around K = 4
+</span>
+<span class="c1"># Step 4. Train final K-Means with K = 4
+</span><span class="n">final_km</span> <span class="o">=</span> <span class="nc">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">final_km</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">final_km</span><span class="p">.</span><span class="n">labels_</span>
+<span class="n">centroids</span> <span class="o">=</span> <span class="n">final_km</span><span class="p">.</span><span class="n">cluster_centers_</span>
+
+<span class="c1"># Step 5. Visualise the result
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X_scaled</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">"</span><span class="s">viridis</span><span class="sh">"</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">centroids</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">centroids</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="sh">"</span><span class="s">red</span><span class="sh">"</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">X</span><span class="sh">"</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">"</span><span class="s">Centroids</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">K-Means Clustering (K = 4)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Feature 1 (scaled)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Feature 2 (scaled)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+
+<span class="c1"># Step 6. Inspect the cluster sizes
+</span><span class="nf">print</span><span class="p">(</span><span class="n">pd</span><span class="p">.</span><span class="nc">Series</span><span class="p">(</span><span class="n">labels</span><span class="p">).</span><span class="nf">value_counts</span><span class="p">().</span><span class="nf">sort_index</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p>What is happening:</p>
+
+<ul>
+  <li>We generate 400 synthetic points in 4 true clusters.</li>
+  <li>We standardise them so each feature has zero mean and unit variance.</li>
+  <li>We run the elbow method for K = 1 through 10. The elbow appears at K = 4.</li>
+  <li>We train the final model with K = 4 and look at the assignments.</li>
+  <li>We visualise the clusters and centroids.</li>
+</ul>
+
+<p>You can apply this exact workflow to any real dataset. Just replace the <code class="language-plaintext highlighter-rouge">make_blobs</code> call with <code class="language-plaintext highlighter-rouge">pd.read_csv("your_data.csv")</code> and select the numeric columns.</p>
+
+<hr />
+
+<h2 id="quick-summary">Quick summary</h2>
+
+<p>K-Means is the most popular clustering algorithm in the world for a reason. It is simple, fast, and works well on a huge variety of problems.</p>
+
+<p>The five things to remember.</p>
+
+<ol>
+  <li>K-Means alternates between assigning points to nearest centroids and moving centroids to the mean of assigned points.</li>
+  <li>It minimises the within-cluster sum of squares (WCSS).</li>
+  <li>You pick K using the elbow method or silhouette score.</li>
+  <li>Always scale your features first.</li>
+  <li>It assumes spherical, similarly sized clusters. For weird shapes, use DBSCAN or GMM.</li>
+</ol>
+
+<p>In the next tutorial we look at <strong>hierarchical clustering</strong>, a completely different approach that does not require you to pick K up front and produces a tree of clusters you can cut at any depth.</p>

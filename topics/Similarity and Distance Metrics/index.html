@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>13. Similarity and Distance Metrics</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>13. Similarity and Distance Metrics</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="similarity-and-distance-metrics">Similarity and Distance Metrics</h1>
+
+<h2 id="how-do-we-decide-if-two-things-are-similar">How do we decide if two things are similar</h2>
+
+<p>Before we can talk about clustering or nearest neighbour algorithms, we have to answer one simple question.</p>
+
+<blockquote>
+  <p>Given two data points, how do we measure how similar or different they are?</p>
+</blockquote>
+
+<p>This sounds easy but it has many answers, and the answer you pick changes everything downstream. Different metrics give very different results. Choosing the right one is one of the most important decisions in unsupervised learning.</p>
+
+<p>In this tutorial we cover the four big families of metrics that you will see again and again.</p>
+
+<ol>
+  <li><strong>Distance-based metrics.</strong> How far apart are two points?</li>
+  <li><strong>Angle-based metrics.</strong> How aligned are two vectors?</li>
+  <li><strong>Correlation-based metrics.</strong> Do two series move together?</li>
+  <li><strong>Set-based metrics.</strong> How much do two collections overlap?</li>
+</ol>
+
+<p>By the end you will know which metric to use in which situation, and how each one is calculated.</p>
+
+<hr />
+
+<h2 id="distance-based-metrics">Distance-based metrics</h2>
+
+<p>These are the most intuitive. They measure how far apart two points are in some space.</p>
+
+<h3 id="euclidean-distance">Euclidean distance</h3>
+
+<p>This is the straight line distance between two points. It is what a ruler measures.</p>
+
+<p>For two points <code class="language-plaintext highlighter-rouge">A = (a1, a2, ..., an)</code> and <code class="language-plaintext highlighter-rouge">B = (b1, b2, ..., bn)</code>, the Euclidean distance is</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>d(A, B) = sqrt( (a1 - b1)^2 + (a2 - b2)^2 + ... + (an - bn)^2 )
+</code></pre></div></div>
+
+<p>Simple example. If A = (1, 2) and B = (4, 6), then</p>
+<ul>
+  <li>difference in x is 4 - 1 = 3</li>
+  <li>difference in y is 6 - 2 = 4</li>
+  <li>squared sum is 9 + 16 = 25</li>
+  <li>square root is 5</li>
+</ul>
+
+<p>So A and B are 5 units apart.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="n">euclidean</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">sum</span><span class="p">((</span><span class="n">A</span> <span class="o">-</span> <span class="n">B</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">euclidean</span><span class="p">)</span>   <span class="c1"># 5.0
+</span></code></pre></div></div>
+
+<p><strong>When to use Euclidean.</strong> Continuous numeric features that all live on similar scales. Always scale your features (StandardScaler) before using Euclidean distance, because otherwise large-valued features dominate.</p>
+
+<h3 id="manhattan-distance-also-called-l1-or-city-block">Manhattan distance (also called L1 or city block)</h3>
+
+<p>This measures distance like a taxi driving on a grid of city streets. You add up the absolute differences along each axis instead of using a straight line.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>d(A, B) = |a1 - b1| + |a2 - b2| + ... + |an - bn|
+</code></pre></div></div>
+
+<table>
+  <tbody>
+    <tr>
+      <td>For A = (1, 2) and B = (4, 6), the Manhattan distance is</td>
+      <td>1 - 4</td>
+      <td>+</td>
+      <td>2 - 6</td>
+      <td>= 3 + 4 = 7.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">manhattan</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">abs</span><span class="p">(</span><span class="n">A</span> <span class="o">-</span> <span class="n">B</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">manhattan</span><span class="p">)</span>   <span class="c1"># 7
+</span></code></pre></div></div>
+
+<p><strong>When to use Manhattan.</strong> When your features represent things that genuinely cannot move diagonally (like grid positions). Also more robust to outliers than Euclidean.</p>
+
+<h3 id="minkowski-distance">Minkowski distance</h3>
+
+<p>A general formula that includes both Euclidean and Manhattan as special cases.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>d(A, B) = ( sum |ai - bi|^p ) ^ (1/p)
+</code></pre></div></div>
+
+<p>When p = 1, you get Manhattan. When p = 2, you get Euclidean. Larger p gives more weight to large differences.</p>
+
+<h3 id="chebyshev-distance">Chebyshev distance</h3>
+
+<p>The biggest difference along any single axis. It is what a chess king uses (one step in any direction).</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>d(A, B) = max( |a1 - b1|, |a2 - b2|, ..., |an - bn| )
+</code></pre></div></div>
+
+<p>For A = (1, 2) and B = (4, 6), Chebyshev distance is max(3, 4) = 4.</p>
+
+<hr />
+
+<h2 id="angle-based-metrics">Angle-based metrics</h2>
+
+<p>Sometimes you do not care about magnitude, only about direction. Two vectors pointing the same way are similar even if one is much longer than the other.</p>
+
+<h3 id="cosine-similarity">Cosine similarity</h3>
+
+<p>Cosine similarity measures the angle between two vectors.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cosine_similarity(A, B) = (A . B) / (|A| * |B|)
+</code></pre></div></div>
+
+<p>The numerator is the dot product. The denominator is the product of the lengths of the two vectors.</p>
+
+<p>The value ranges from -1 to 1.</p>
+<ul>
+  <li>1 means the vectors point the exact same way</li>
+  <li>0 means they are perpendicular (no relationship)</li>
+  <li>-1 means they point in opposite directions</li>
+</ul>
+
+<p>Concrete example. Suppose customer A bought 2 books and 4 movies, and customer B bought 4 books and 8 movies. They have very different totals but they bought books and movies in the same ratio. Euclidean distance would say they are far apart. Cosine similarity would say they are identical (similarity = 1) because their preferences point the same way.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">])</span>
+<span class="n">cosine</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nf">norm</span><span class="p">(</span><span class="n">A</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nf">norm</span><span class="p">(</span><span class="n">B</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">cosine</span><span class="p">)</span>   <span class="c1"># 1.0
+</span></code></pre></div></div>
+
+<p>You can also turn it into a distance by computing <code class="language-plaintext highlighter-rouge">1 - cosine_similarity</code>.</p>
+
+<p><strong>When to use cosine.</strong> Text documents (bag of words vectors), high-dimensional sparse data, recommendation systems, embeddings from neural networks. Essentially any time direction matters more than magnitude.</p>
+
+<hr />
+
+<h2 id="correlation-based-metrics">Correlation-based metrics</h2>
+
+<p>These ask: do two series move together?</p>
+
+<h3 id="pearson-correlation">Pearson correlation</h3>
+
+<p>Pearson correlation measures how strongly two variables move in a linear relationship. It ranges from -1 to +1.</p>
+
+<ul>
+  <li>+1 means they move perfectly together</li>
+  <li>0 means no linear relationship</li>
+  <li>-1 means they move perfectly in opposite directions</li>
+</ul>
+
+<p>It is essentially cosine similarity after subtracting the mean from each vector.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pearson(A, B) = cov(A, B) / (std(A) * std(B))
+</code></pre></div></div>
+
+<p>Example. Suppose stock A goes up 5% on days that stock B goes up 5%, and down 3% on days B is down 3%. Their correlation is close to +1. If they move randomly with respect to each other, correlation is close to 0.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+<span class="n">pearson</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">corrcoef</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">pearson</span><span class="p">)</span>   <span class="c1"># 1.0
+</span></code></pre></div></div>
+
+<p>To turn correlation into a distance, use <code class="language-plaintext highlighter-rouge">1 - correlation</code>.</p>
+
+<p><strong>When to use Pearson.</strong> Time series, sensor readings, financial data, gene expression data. Anywhere you care whether series rise and fall together.</p>
+
+<h3 id="spearman-correlation">Spearman correlation</h3>
+
+<p>Same idea as Pearson but works on ranks instead of raw values. So it captures any monotonic relationship, not just linear ones. Useful when the relationship is “the bigger one goes up, the other goes up” but not necessarily proportionally.</p>
+
+<hr />
+
+<h2 id="set-based-metrics">Set-based metrics</h2>
+
+<p>When your data is a collection of items (set membership), distance metrics no longer make sense. You use set-based metrics instead.</p>
+
+<h3 id="jaccard-similarity">Jaccard similarity</h3>
+
+<p>Jaccard measures the overlap between two sets. It is the size of the intersection divided by the size of the union.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jaccard(A, B) = |A intersection B| / |A union B|
+</code></pre></div></div>
+
+<p>The result ranges from 0 (no overlap) to 1 (identical sets).</p>
+
+<p>Example. Customer A bought {bread, milk, eggs}. Customer B bought {milk, eggs, butter}.</p>
+<ul>
+  <li>Intersection is {milk, eggs}, size 2.</li>
+  <li>Union is {bread, milk, eggs, butter}, size 4.</li>
+  <li>Jaccard similarity is 2 / 4 = 0.5.</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">A</span> <span class="o">=</span> <span class="nf">set</span><span class="p">([</span><span class="sh">"</span><span class="s">bread</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">milk</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">eggs</span><span class="sh">"</span><span class="p">])</span>
+<span class="n">B</span> <span class="o">=</span> <span class="nf">set</span><span class="p">([</span><span class="sh">"</span><span class="s">milk</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">eggs</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">butter</span><span class="sh">"</span><span class="p">])</span>
+<span class="n">jaccard</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">A</span> <span class="o">&amp;</span> <span class="n">B</span><span class="p">)</span> <span class="o">/</span> <span class="nf">len</span><span class="p">(</span><span class="n">A</span> <span class="o">|</span> <span class="n">B</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">jaccard</span><span class="p">)</span>   <span class="c1"># 0.5
+</span></code></pre></div></div>
+
+<p>To turn it into a distance, use <code class="language-plaintext highlighter-rouge">1 - jaccard_similarity</code>.</p>
+
+<p><strong>When to use Jaccard.</strong> Categorical data, document tag sets, market basket analysis, document similarity using shingles, image segmentation evaluation.</p>
+
+<h3 id="hamming-distance">Hamming distance</h3>
+
+<p>For two strings or binary vectors of equal length, Hamming distance counts how many positions differ.</p>
+
+<p>Example. The strings “karolin” and “kathrin” differ in 3 positions (o vs t, l vs h, n vs n… wait, actually karolin → kathrin: k=k, a=a, r=t, o=h, l=r, i=i, n=n, so 3 differences).</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">s1</span> <span class="o">=</span> <span class="sh">"</span><span class="s">karolin</span><span class="sh">"</span>
+<span class="n">s2</span> <span class="o">=</span> <span class="sh">"</span><span class="s">kathrin</span><span class="sh">"</span>
+<span class="n">hamming</span> <span class="o">=</span> <span class="nf">sum</span><span class="p">(</span><span class="n">c1</span> <span class="o">!=</span> <span class="n">c2</span> <span class="k">for</span> <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">hamming</span><span class="p">)</span>   <span class="c1"># 3
+</span></code></pre></div></div>
+
+<p><strong>When to use Hamming.</strong> Comparing binary vectors, error detection codes, comparing DNA sequences of equal length.</p>
+
+<hr />
+
+<h2 id="how-to-choose-the-right-metric">How to choose the right metric</h2>
+
+<p>Here is a simple cheat sheet.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Your data looks like</th>
+      <th>Use this</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Numeric, similar scales, magnitude matters</td>
+      <td>Euclidean</td>
+    </tr>
+    <tr>
+      <td>Numeric, you want robustness to outliers</td>
+      <td>Manhattan</td>
+    </tr>
+    <tr>
+      <td>Numeric, very high dimensional or sparse</td>
+      <td>Cosine</td>
+    </tr>
+    <tr>
+      <td>Time series, sensor data, anything moving together</td>
+      <td>Pearson correlation</td>
+    </tr>
+    <tr>
+      <td>Sets of items (purchases, tags, words)</td>
+      <td>Jaccard</td>
+    </tr>
+    <tr>
+      <td>Binary vectors or strings of equal length</td>
+      <td>Hamming</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The most common mistake is using Euclidean on raw unscaled data with mixed scales. Always scale numeric features before using Euclidean.</p>
+
+<p>The second most common mistake is using Euclidean on high-dimensional sparse data (like text). In high dimensions, all points end up roughly the same Euclidean distance apart (this is the “curse of dimensionality”). Cosine similarity works much better there.</p>
+
+<hr />
+
+<h2 id="quick-summary">Quick summary</h2>
+
+<p>We have seen four families of metrics.</p>
+
+<ul>
+  <li><strong>Distance-based</strong> (Euclidean, Manhattan, Chebyshev) measure how far apart points are. Sensitive to scale, so always scale your features first.</li>
+  <li><strong>Angle-based</strong> (Cosine) measure direction, not magnitude. Great for sparse and high-dimensional data.</li>
+  <li><strong>Correlation-based</strong> (Pearson, Spearman) measure whether two series move together. Great for time series.</li>
+  <li><strong>Set-based</strong> (Jaccard, Hamming) measure overlap. Great for categorical and binary data.</li>
+</ul>
+
+<p>You will see all of these again when we tackle clustering and nearest neighbour algorithms in the next tutorials. The metric you choose is part of the model.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">distance-metrics</span>, <span class="tag">similarity</span>, <span class="tag">euclidean</span>, <span class="tag">cosine</span>, <span class="tag">jaccard</span>, <span class="tag">correlation</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

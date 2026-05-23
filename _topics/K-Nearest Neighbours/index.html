@@ -1,0 +1,349 @@
+<h1 id="k-nearest-neighbours">K-Nearest Neighbours</h1>
+
+<h2 id="the-simplest-machine-learning-algorithm">The simplest machine learning algorithm</h2>
+
+<p>K-Nearest Neighbours, almost always written <strong>KNN</strong>, is sometimes called “the simplest machine learning algorithm”. And in some sense it really is. There is no fancy training, no gradient descent, no math beyond computing distances.</p>
+
+<p>The idea is so simple a child could explain it.</p>
+
+<blockquote>
+  <p>To predict something about a new data point, look at the K points in your training data that are most similar to it, and use their answers to vote.</p>
+</blockquote>
+
+<p>That is the entire algorithm. But this simple idea is surprisingly powerful, and KNN is still used in real production systems today.</p>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>The intuition behind KNN.</li>
+  <li>How KNN works step by step.</li>
+  <li>Weighted aggregation (giving closer neighbours more say).</li>
+  <li>Key considerations, especially picking K.</li>
+  <li>A full Python demonstration for both classification and regression.</li>
+</ol>
+
+<p>Let us get started.</p>
+
+<hr />
+
+<h2 id="the-intuition">The intuition</h2>
+
+<p>Imagine you are at a party where everyone is wearing a different colored shirt depending on what music they like. Suddenly someone new walks in, and you want to guess what music they like.</p>
+
+<p>A reasonable approach is to look at the 5 people standing nearest to them and ask what music those 5 prefer. If 4 of them like jazz and 1 likes pop, your best guess is that the new person also likes jazz.</p>
+
+<p>That is KNN.</p>
+
+<p>The “K” is the number of neighbours you look at. The “nearest” means closest in some measure of similarity. The output is a vote among those K neighbours (for classification) or an average of their values (for regression).</p>
+
+<h3 id="knn-is-a-lazy-learner">KNN is a lazy learner</h3>
+
+<p>Most ML algorithms train a model first, then use it to predict. KNN is the opposite. There is no real training. The “model” is just the training data itself. All the work happens at prediction time.</p>
+
+<p>This is sometimes called <strong>lazy learning</strong> or <strong>instance-based learning</strong>.</p>
+
+<p>That sounds silly, but it has real consequences.</p>
+
+<ul>
+  <li><strong>Training is instant.</strong> You just store the data.</li>
+  <li><strong>Predicting is slow.</strong> Every prediction requires comparing the new point against every training point.</li>
+  <li><strong>The model uses lots of memory.</strong> You have to keep the whole training set around.</li>
+</ul>
+
+<p>For small datasets this is no problem. For huge datasets it can be a deal-breaker, though there are clever data structures (KD trees, ball trees) that speed it up.</p>
+
+<hr />
+
+<h2 id="the-knn-algorithm-step-by-step">The KNN algorithm step by step</h2>
+
+<p>KNN works for both classification and regression. The only difference is how you aggregate the neighbours’ answers at the end.</p>
+
+<h3 id="knn-for-classification">KNN for classification</h3>
+
+<p><strong>Step 1.</strong> Pick a value of K. Common choices are 3, 5, 7, 9.</p>
+
+<p><strong>Step 2.</strong> When a new data point arrives, compute its distance to every point in the training set.</p>
+
+<p><strong>Step 3.</strong> Sort the distances and pick the K smallest. These are the K nearest neighbours.</p>
+
+<p><strong>Step 4.</strong> Look at the labels of those K neighbours and take a majority vote. That is your prediction.</p>
+
+<h3 id="knn-for-regression">KNN for regression</h3>
+
+<p>The first three steps are exactly the same. Step 4 changes.</p>
+
+<p><strong>Step 4.</strong> Look at the values of the K neighbours and take their average (or weighted average). That is your prediction.</p>
+
+<p>That is it. Simple and clear.</p>
+
+<h3 id="a-small-worked-example">A small worked example</h3>
+
+<p>Suppose you want to classify a new fruit as either apple or orange based on weight and color score. Your training set has 6 fruits.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Fruit</th>
+      <th>Weight</th>
+      <th>Color</th>
+      <th>Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>150</td>
+      <td>0.9</td>
+      <td>Apple</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>130</td>
+      <td>0.85</td>
+      <td>Apple</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>170</td>
+      <td>0.6</td>
+      <td>Orange</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>180</td>
+      <td>0.55</td>
+      <td>Orange</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>160</td>
+      <td>0.8</td>
+      <td>Apple</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>175</td>
+      <td>0.5</td>
+      <td>Orange</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A new fruit arrives with weight 165 and color 0.7.</p>
+
+<p>Compute Euclidean distance from the new fruit to each:</p>
+
+<ul>
+  <li>d(new, 1) = sqrt((165-150)^2 + (0.7-0.9)^2) = sqrt(225 + 0.04) ≈ 15.0</li>
+  <li>d(new, 2) = sqrt(35^2 + (-0.15)^2) ≈ 35.0</li>
+  <li>d(new, 3) = sqrt(5^2 + 0.1^2) ≈ 5.0</li>
+  <li>d(new, 4) = sqrt(15^2 + 0.15^2) ≈ 15.0</li>
+  <li>d(new, 5) = sqrt(5^2 + (-0.1)^2) ≈ 5.0</li>
+  <li>d(new, 6) = sqrt(10^2 + 0.2^2) ≈ 10.0</li>
+</ul>
+
+<p>With K = 3, the 3 nearest are fruits 3 (Orange), 5 (Apple), and 6 (Orange). Vote: 2 Orange, 1 Apple. <strong>Prediction: Orange.</strong></p>
+
+<p>Notice something important. Weight differences (in the tens) dwarfed color differences (in the tenths). That made color basically irrelevant in the distance calculation. This is why <strong>you must always scale your features</strong> before using KNN, just like with K-Means.</p>
+
+<hr />
+
+<h2 id="weighted-aggregation">Weighted aggregation</h2>
+
+<p>In the basic version of KNN, every one of the K neighbours gets one equal vote. But that is not always fair.</p>
+
+<p>Suppose K = 5 and your new point has neighbours at distances 0.1, 0.2, 0.3, 1.5, and 1.6. The first three are right next to your point. The last two are far away. Should the far ones really get the same say as the close ones?</p>
+
+<p>The answer is usually no. So we use <strong>weighted KNN</strong>.</p>
+
+<p>The idea is to give closer neighbours more influence. A common weighting scheme is <strong>inverse distance</strong>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>weight of neighbour i = 1 / distance to neighbour i
+</code></pre></div></div>
+
+<p>For classification, you sum the weights for each class and pick the class with the highest total weight.</p>
+
+<p>For regression, you compute a weighted average:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>prediction = (sum over neighbours of weight_i * value_i) / (sum of weights)
+</code></pre></div></div>
+
+<p>Weighted KNN is almost always better than plain KNN. In scikit-learn you just set <code class="language-plaintext highlighter-rouge">weights="distance"</code>.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="sh">"</span><span class="s">distance</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="key-considerations">Key considerations</h2>
+
+<p>KNN is simple but there are a few things you have to get right.</p>
+
+<h3 id="picking-k">Picking K</h3>
+
+<p>K is the most important hyperparameter.</p>
+
+<ul>
+  <li><strong>K = 1.</strong> Each prediction is whatever the single nearest neighbour says. Very flexible, very noisy, prone to overfitting.</li>
+  <li><strong>K too large.</strong> Your prediction becomes the majority class across a large chunk of the data, losing local detail.</li>
+</ul>
+
+<p>Common values are 3, 5, 7, 9, 11. Usually an <strong>odd number</strong> for classification (to avoid ties). The right K depends on your data. Use cross validation to find the best one.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">KNeighborsClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">cross_val_score</span>
+
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">21</span><span class="p">]:</span>
+    <span class="n">knn</span> <span class="o">=</span> <span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="sh">"</span><span class="s">distance</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">scores</span> <span class="o">=</span> <span class="nf">cross_val_score</span><span class="p">(</span><span class="n">knn</span><span class="p">,</span> <span class="n">X_train_scaled</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">accuracy</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">K = </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s">, CV accuracy = </span><span class="si">{</span><span class="n">scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="always-scale-your-features">Always scale your features</h3>
+
+<p>KNN uses distances. Without scaling, large-valued features dominate. Always use StandardScaler (or MinMaxScaler) on your features before fitting KNN.</p>
+
+<h3 id="the-curse-of-dimensionality">The curse of dimensionality</h3>
+
+<p>In high dimensions, distances become meaningless. Every pair of points ends up roughly the same distance apart. KNN works best on a modest number of well-chosen features (say, fewer than 20).</p>
+
+<p>If you have many features, do feature selection or dimensionality reduction (like PCA) first.</p>
+
+<h3 id="imbalanced-classes">Imbalanced classes</h3>
+
+<p>If 95% of your training data is class A, then KNN will lean heavily toward A no matter what. Use stratified sampling, class weights, or balance your data before training.</p>
+
+<h3 id="choice-of-distance-metric">Choice of distance metric</h3>
+
+<p>KNN does not have to use Euclidean distance. It can use any of the metrics we learned in the previous tutorial: Manhattan, cosine, etc. Try them and see which works best on your data.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="sh">"</span><span class="s">manhattan</span><span class="sh">"</span><span class="p">)</span>
+<span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="sh">"</span><span class="s">cosine</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="full-python-demonstration">Full Python demonstration</h2>
+
+<p>Let us see KNN in action on a classification problem.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">load_iris</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span><span class="p">,</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">KNeighborsClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">classification_report</span>
+
+<span class="c1"># Step 1. Load the data
+</span><span class="n">data</span> <span class="o">=</span> <span class="nf">load_iris</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">data</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">target</span>
+
+<span class="c1"># Step 2. Split into train and test
+</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 3. Scale the features (critical!)
+</span><span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_train_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">X_test_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+<span class="c1"># Step 4. Find the best K using grid search
+</span><span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">n_neighbors</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">15</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">weights</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">uniform</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">distance</span><span class="sh">"</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">metric</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">euclidean</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">manhattan</span><span class="sh">"</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span>
+    <span class="nc">KNeighborsClassifier</span><span class="p">(),</span>
+    <span class="n">param_grid</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">accuracy</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_scaled</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best parameters:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV score:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+
+<span class="c1"># Step 5. Evaluate on the test set
+</span><span class="n">best_model</span> <span class="o">=</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_estimator_</span>
+<span class="n">y_pred</span> <span class="o">=</span> <span class="n">best_model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_scaled</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Test accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Classification report:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="n">data</span><span class="p">.</span><span class="n">target_names</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>What is happening here:</p>
+
+<ul>
+  <li>We load the famous Iris dataset (3 flower species, 4 features).</li>
+  <li>We split into 70% train and 30% test, stratified by class.</li>
+  <li>We scale the features with StandardScaler.</li>
+  <li>We do a grid search over different values of K, weighting schemes, and distance metrics.</li>
+  <li>We evaluate the best model on the held-out test set.</li>
+</ul>
+
+<p>You will typically get accuracy above 95% on this dataset with the right K. KNN is surprisingly effective.</p>
+
+<h3 id="knn-for-regression-1">KNN for regression</h3>
+
+<p>The same workflow works for regression. Just swap the model:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">KNeighborsRegressor</span>
+
+<span class="n">reg</span> <span class="o">=</span> <span class="nc">KNeighborsRegressor</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="sh">"</span><span class="s">distance</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">reg</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_scaled</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">reg</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_scaled</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>For each new point, the prediction is a weighted average of the K nearest training targets.</p>
+
+<hr />
+
+<h2 id="when-should-you-use-knn">When should you use KNN</h2>
+
+<p>KNN is a great choice when:</p>
+
+<ul>
+  <li>Your dataset is small to medium (say, less than 100,000 rows).</li>
+  <li>You have a modest number of features (say, less than 20).</li>
+  <li>Your data is well-scaled or can be scaled.</li>
+  <li>You want a quick, simple baseline before trying more complex models.</li>
+  <li>Local patterns matter more than global ones.</li>
+</ul>
+
+<p>KNN is a poor choice when:</p>
+
+<ul>
+  <li>You have millions of rows (prediction becomes too slow).</li>
+  <li>You have hundreds of features (curse of dimensionality).</li>
+  <li>You need a model that handles missing values gracefully (KNN does not).</li>
+  <li>You need a model that gives you interpretable feature importances (KNN does not).</li>
+</ul>
+
+<p>For tabular classification problems, KNN with proper scaling and tuned K often performs surprisingly close to more sophisticated models like Random Forests. It is always worth trying as a baseline.</p>
+
+<hr />
+
+<h2 id="quick-summary">Quick summary</h2>
+
+<p>KNN is the algorithm that does no real training but predicts by voting among the K most similar examples.</p>
+
+<p>Five things to remember.</p>
+
+<ol>
+  <li>KNN looks up the K nearest neighbours of a new point and uses their labels to vote (classification) or their values to average (regression).</li>
+  <li>Weighted KNN gives closer neighbours more say. Use <code class="language-plaintext highlighter-rouge">weights="distance"</code>.</li>
+  <li>Always scale your features.</li>
+  <li>Pick K with cross validation. Odd numbers are safer for classification.</li>
+  <li>KNN struggles with very large datasets and very high dimensional data.</li>
+</ol>
+
+<p>KNN is the perfect bookend to this section on unsupervised and distance-based methods. The same distance metrics we learned about earlier power both clustering and KNN. The difference is that clustering uses distances to <strong>find groups</strong> in unlabelled data, while KNN uses distances to <strong>make predictions</strong> on labelled data.</p>
+
+<p>Together with everything from the earlier tutorials, you now have a solid foundation in classical machine learning. Linear models, regularisation, decision trees, ensembles, clustering, and nearest neighbours. That is most of the toolkit you need for any tabular dataset.</p>
+
+<p>Good luck applying these ideas to real problems.</p>
