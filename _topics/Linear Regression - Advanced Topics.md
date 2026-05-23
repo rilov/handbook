@@ -1,7 +1,7 @@
 ---
-title: "03. Linear Regression - Advanced Topics"
+title: "04. Linear Regression - Advanced Topics"
 category: Machine Learning
-order: 3
+order: 4
 tags:
   - machine-learning
   - linear-regression

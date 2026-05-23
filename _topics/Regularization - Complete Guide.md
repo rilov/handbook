@@ -1,7 +1,7 @@
 ---
-title: "06. Regularization - Complete Guide"
+title: "07. Regularization - Complete Guide"
 category: Machine Learning
-order: 6
+order: 7
 tags:
   - machine-learning
   - regularization

@@ -1,7 +1,7 @@
 ---
-title: "16. K-Nearest Neighbours"
+title: "17. K-Nearest Neighbours"
 category: Machine Learning
-order: 16
+order: 17
 tags:
   - machine-learning
   - knn

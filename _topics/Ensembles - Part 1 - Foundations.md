@@ -1,7 +1,7 @@
 ---
-title: "10. Ensembles - Part 1 - Foundations of Ensemble Learning"
+title: "11. Ensembles - Part 1 - Foundations of Ensemble Learning"
 category: Machine Learning
-order: 10
+order: 11
 tags:
   - machine-learning
   - ensembles

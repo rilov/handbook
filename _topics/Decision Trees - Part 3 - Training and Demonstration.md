@@ -1,7 +1,7 @@
 ---
-title: "09. Decision Trees - Part 3 - Training and Demonstration"
+title: "10. Decision Trees - Part 3 - Training and Demonstration"
 category: Machine Learning
-order: 9
+order: 10
 tags:
   - machine-learning
   - decision-trees

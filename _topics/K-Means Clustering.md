@@ -1,7 +1,7 @@
 ---
-title: "14. K-Means Clustering"
+title: "15. K-Means Clustering"
 category: Machine Learning
-order: 14
+order: 15
 tags:
   - machine-learning
   - clustering

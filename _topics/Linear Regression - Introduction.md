@@ -1,7 +1,7 @@
 ---
-title: "02. Linear Regression - Introduction"
+title: "03. Linear Regression - Introduction"
 category: Machine Learning
-order: 2
+order: 3
 tags:
   - machine-learning
   - linear-regression

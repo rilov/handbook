@@ -1,7 +1,7 @@
 ---
-title: "05. Logistic Regression - Introduction"
+title: "06. Logistic Regression - Introduction"
 category: Machine Learning
-order: 5
+order: 6
 tags:
   - machine-learning
   - logistic-regression

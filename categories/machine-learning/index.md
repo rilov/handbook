@@ -9,15 +9,18 @@ Learn machine learning fundamentals and practical algorithms from scratch. The t
 **Recommended Learning Path:**
 
 1. Machine Learning Introduction
-2. Linear Regression (Introduction → Advanced → Expert)
-3. Logistic Regression
-4. Regularization (Ridge, Lasso, Elastic Net)
-5. Decision Trees (3 parts)
-6. Ensembles: Bagging, Random Forests, Boosting (3 parts)
-7. Similarity and Distance Metrics
-8. K-Means Clustering
-9. Hierarchical Clustering
-10. K-Nearest Neighbours
+2. ML in Plain English — A Friendly Tour (story-style overview of every technique)
+3. Linear Regression (Introduction → Advanced → Expert)
+4. Logistic Regression
+5. Regularization (Ridge, Lasso, Elastic Net)
+6. Decision Trees (3 parts)
+7. Ensembles: Bagging, Random Forests, Boosting (3 parts)
+8. Similarity and Distance Metrics
+9. K-Means Clustering
+10. Hierarchical Clustering
+11. K-Nearest Neighbours
+
+**New to ML? Start with #02** for a non-technical, story-style tour of every technique before diving into the details.
 
 **What You'll Learn:**
 

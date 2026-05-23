@@ -1,7 +1,7 @@
 ---
-title: "11. Ensembles - Part 2 - Bagging and Random Forests"
+title: "12. Ensembles - Part 2 - Bagging and Random Forests"
 category: Machine Learning
-order: 11
+order: 12
 tags:
   - machine-learning
   - random-forest

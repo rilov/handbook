@@ -1,7 +1,7 @@
 ---
-title: "15. Hierarchical Clustering"
+title: "16. Hierarchical Clustering"
 category: Machine Learning
-order: 15
+order: 16
 tags:
   - machine-learning
   - clustering

@@ -1,7 +1,7 @@
 ---
-title: "12. Ensembles - Part 3 - Boosting and Modern Methods"
+title: "13. Ensembles - Part 3 - Boosting and Modern Methods"
 category: Machine Learning
-order: 12
+order: 13
 tags:
   - machine-learning
   - boosting
