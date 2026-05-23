@@ -14,6 +14,10 @@ Learn machine learning fundamentals and practical algorithms from scratch. The t
 4. Regularization (Ridge, Lasso, Elastic Net)
 5. Decision Trees (3 parts)
 6. Ensembles: Bagging, Random Forests, Boosting (3 parts)
+7. Similarity and Distance Metrics
+8. K-Means Clustering
+9. Hierarchical Clustering
+10. K-Nearest Neighbours
 
 **What You'll Learn:**
 
@@ -23,6 +27,10 @@ Learn machine learning fundamentals and practical algorithms from scratch. The t
 - Regularization (Ridge, Lasso, Elastic Net) to prevent overfitting
 - Decision trees (Gini, entropy, information gain, overfitting, pruning)
 - Ensembles (bagging, Random Forest, AdaBoost, Gradient Boosting, XGBoost)
+- Distance and similarity metrics (Euclidean, cosine, Pearson, Jaccard)
+- K-Means clustering (elbow method, WCSS, centroids)
+- Hierarchical clustering (linkage methods, dendrograms)
+- K-Nearest Neighbours (KNN) for classification and regression
 - Hyperparameter tuning with grid search and cross validation
 - All assumptions, challenges, and how to fix them
 - Categorical variable encoding (One-Hot, Ordinal, Target, Binary)
