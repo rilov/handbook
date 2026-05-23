@@ -4,7 +4,16 @@ title: Machine Learning
 category: Machine Learning
 ---
 
-Learn machine learning fundamentals and practical algorithms from scratch. Start with the introduction and progress through hands-on tutorials covering linear regression, logistic regression, regularization, decision trees, ensembles, and more.
+Learn machine learning fundamentals and practical algorithms from scratch. The tutorials below are numbered in the recommended order of learning, starting from the basics and progressing to advanced ensemble methods.
+
+**Recommended Learning Path:**
+
+1. Machine Learning Introduction
+2. Linear Regression (Introduction → Advanced → Expert)
+3. Logistic Regression
+4. Regularization (Ridge, Lasso, Elastic Net)
+5. Decision Trees (3 parts)
+6. Ensembles: Bagging, Random Forests, Boosting (3 parts)
 
 **What You'll Learn:**
 

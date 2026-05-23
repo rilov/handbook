@@ -1,5 +1,5 @@
 ---
-title: "Linear Regression - Introduction"
+title: "02. Linear Regression - Introduction"
 category: Machine Learning
 order: 2
 tags:

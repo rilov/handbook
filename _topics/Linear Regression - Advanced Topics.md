@@ -1,5 +1,5 @@
 ---
-title: "Linear Regression - Advanced Topics"
+title: "03. Linear Regression - Advanced Topics"
 category: Machine Learning
 order: 3
 tags:

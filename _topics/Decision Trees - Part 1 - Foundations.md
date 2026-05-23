@@ -1,7 +1,7 @@
 ---
-title: "Decision Trees - Part 1 - Foundations"
+title: "07. Decision Trees - Part 1 - Foundations"
 category: Machine Learning
-order: 6
+order: 7
 tags:
   - machine-learning
   - decision-trees

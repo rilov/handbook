@@ -1,5 +1,5 @@
 ---
-title: "Regularization - Complete Guide"
+title: "06. Regularization - Complete Guide"
 category: Machine Learning
 order: 6
 tags:

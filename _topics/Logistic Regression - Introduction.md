@@ -1,5 +1,5 @@
 ---
-title: "Logistic Regression - Introduction"
+title: "05. Logistic Regression - Introduction"
 category: Machine Learning
 order: 5
 tags:

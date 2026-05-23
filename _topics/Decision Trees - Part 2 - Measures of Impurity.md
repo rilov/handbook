@@ -1,7 +1,7 @@
 ---
-title: "Decision Trees - Part 2 - Measures of Impurity"
+title: "08. Decision Trees - Part 2 - Measures of Impurity"
 category: Machine Learning
-order: 7
+order: 8
 tags:
   - machine-learning
   - decision-trees
