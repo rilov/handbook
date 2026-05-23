@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ensembles - Part 3 - Boosting and Modern Methods</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>Ensembles - Part 3 - Boosting and Modern Methods</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="ensembles---part-3---boosting-and-modern-methods">Ensembles - Part 3 - Boosting and Modern Methods</h1>
+
+<h2 id="many-weak-models-taught-one-at-a-time-become-strong">Many weak models, taught one at a time, become strong</h2>
+
+<p>In Part 1 we introduced the two big families of ensembles. In Part 2 we did a deep dive on bagging and Random Forests.</p>
+
+<p>Now we look at the second family. <strong>Boosting.</strong></p>
+
+<p>Boosting is, in many real world tasks, the single most powerful classical machine learning method available today. Modern boosting algorithms like XGBoost, LightGBM, and CatBoost win most data science competitions and power countless production systems at companies of every size.</p>
+
+<p>This part will teach you how boosting actually works.</p>
+
+<p>We will cover four things.</p>
+
+<ol>
+  <li>The big idea behind boosting and why it is different from bagging.</li>
+  <li>AdaBoost, the original boosting algorithm.</li>
+  <li>Gradient Boosting, the more general and more powerful version.</li>
+  <li>Modern champions: XGBoost, LightGBM, CatBoost. When to use each.</li>
+</ol>
+
+<p>We will keep the math gentle and focus on intuition first, code second.</p>
+
+<hr />
+
+<h2 id="the-big-idea-behind-boosting">The big idea behind boosting</h2>
+
+<p>Bagging trains many models in parallel and averages them. The models do not know about each other.</p>
+
+<p>Boosting is the opposite. Models are trained <strong>one at a time, in sequence</strong>, and each new model focuses on the examples that the previous models got wrong.</p>
+
+<p>Here is the central idea in one sentence.</p>
+
+<blockquote>
+  <p>Train a weak model. Find the data points it got wrong. Train a new model that focuses on fixing those mistakes. Combine the two. Repeat.</p>
+</blockquote>
+
+<p>That is the entire game.</p>
+
+<p>Each individual model is allowed to be weak. It just needs to be slightly better than random guessing. As long as each new model fixes at least some of the previous mistakes, the combined model gets better and better.</p>
+
+<p>After many rounds, you have a sequence of weak models that, taken together, perform extremely well.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    D["<b>Training data</b>"]
+    D --&gt; M1["<b>Model 1</b><br />(weak learner)"]
+    M1 --&gt; E1["<b>Mistakes 1</b>"]
+    E1 --&gt; M2["<b>Model 2</b><br />focuses on Mistakes 1"]
+    M2 --&gt; E2["<b>Mistakes 2</b>"]
+    E2 --&gt; M3["<b>Model 3</b><br />focuses on Mistakes 2"]
+    M3 --&gt; ED["<b>... continue<br />for N rounds</b>"]
+    ED --&gt; F["<b>Combined model</b><br />weighted sum of all"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class M1,M2,M3,E1,E2,ED gray
+    class D,F midgray
+</div>
+
+<p>Three things to notice.</p>
+
+<p>The models depend on each other. Model 2 cannot be trained until Model 1 is done. So unlike Random Forest, you cannot train all the models in parallel.</p>
+
+<p>The models are usually weak. Often they are decision trees with depth 3 or 4, sometimes called <strong>decision stumps</strong> when they are even smaller.</p>
+
+<p>The combined prediction is a weighted sum of the individual predictions. Better models get bigger weights.</p>
+
+<p>Now let us see how this idea is actually implemented. There are two big approaches. AdaBoost and Gradient Boosting.</p>
+
+<hr />
+
+<h2 id="adaboost-the-original-boosting-algorithm">AdaBoost, the original boosting algorithm</h2>
+
+<p>AdaBoost stands for <strong>Adaptive Boosting</strong>. It was the first famous boosting algorithm, introduced in 1995. It is still useful today and is a good way to build intuition.</p>
+
+<h3 id="how-adaboost-works">How AdaBoost works</h3>
+
+<p>The trick in AdaBoost is to give every training example a <strong>weight</strong>. Every example starts with the same weight. After each round, examples that were misclassified get their weights increased. Examples that were classified correctly get their weights decreased.</p>
+
+<p>The next model is trained on the same data, but with the new weights. So it pays more attention to the harder examples.</p>
+
+<p>Here is the algorithm in plain words.</p>
+
+<p>Step 1. Give every training example equal weight.</p>
+
+<p>Step 2. Train a weak model on the weighted data.</p>
+
+<p>Step 3. See which examples the model got right and which it got wrong.</p>
+
+<p>Step 4. Increase the weights of the misclassified examples. Decrease the weights of the correctly classified examples.</p>
+
+<p>Step 5. Compute a score for this model based on its accuracy. Better models get higher scores.</p>
+
+<p>Step 6. Go back to step 2 and train a new model. The new training pays more attention to the harder examples.</p>
+
+<p>Step 7. After N rounds, combine all the models. Each model contributes to the final prediction in proportion to its score.</p>
+
+<p>The intuition is simple. The first model picks up the easy patterns. The second model focuses on the points where the first failed. The third focuses on the points where the first two failed. And so on. By the end, the ensemble has learned how to handle even the trickiest examples.</p>
+
+<h3 id="a-concrete-picture">A concrete picture</h3>
+
+<p>Imagine you have 10 training points, all with weight 1.</p>
+
+<p>You train a stump (a tree with one split). It correctly classifies 7 points and misclassifies 3.</p>
+
+<p>You bump up the weights of those 3 misclassified points to maybe 2 each. The 7 correct ones go down to maybe 0.5 each.</p>
+
+<p>You train a new stump on this re-weighted data. Because the 3 hard points now contribute more, the new stump will try harder to get those right, even at the cost of getting one of the easy ones wrong.</p>
+
+<p>You keep going. After 50 rounds, you have 50 stumps. The final prediction takes a weighted vote across all of them.</p>
+
+<h3 id="when-to-use-adaboost">When to use AdaBoost</h3>
+
+<p>AdaBoost is a fine starting point, but it has been mostly replaced by Gradient Boosting in modern practice. It is still useful as a teaching tool and works well on clean datasets.</p>
+
+<p>The biggest weakness of AdaBoost is that it is sensitive to noise. If your dataset has mislabeled rows, AdaBoost will keep boosting their weight and eventually overfit to them.</p>
+
+<p>That weakness is one of the reasons Gradient Boosting was invented.</p>
+
+<hr />
+
+<h2 id="gradient-boosting-the-more-general-approach">Gradient Boosting, the more general approach</h2>
+
+<p>Gradient Boosting takes the same core idea (models in sequence, each fixing the previous one’s mistakes) but uses a more flexible mathematical framework.</p>
+
+<h3 id="the-key-insight">The key insight</h3>
+
+<p>Instead of re-weighting the training examples like AdaBoost does, Gradient Boosting trains each new model to predict the <strong>residuals</strong> of the previous models.</p>
+
+<p>A residual is just the difference between the true value and the predicted value.</p>
+
+<p>Suppose you are predicting house prices.</p>
+
+<ul>
+  <li>True price of a house is 500,000.</li>
+  <li>Model 1 predicts 450,000.</li>
+  <li>Residual is 500,000 minus 450,000 equals 50,000.</li>
+</ul>
+
+<p>Model 1 was off by 50,000. Now you train Model 2 to predict that error of 50,000. If Model 2 predicts 30,000, your combined prediction becomes 450,000 plus 30,000 equals 480,000. You are now off by only 20,000.</p>
+
+<p>Train Model 3 to predict that 20,000. And so on.</p>
+
+<p>Each new model picks up where the last one left off. The errors get smaller and smaller.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    A["<b>True value: 500</b>"]
+    A --&gt; B["<b>Model 1 predicts: 450</b><br />residual = 50"]
+    B --&gt; C["<b>Model 2 predicts<br />the residual: 30</b><br />combined = 480<br />residual = 20"]
+    C --&gt; D["<b>Model 3 predicts<br />the residual: 15</b><br />combined = 495<br />residual = 5"]
+    D --&gt; E["<b>Continue until<br />residuals are small</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class A,E midgray
+    class B,C,D gray
+</div>
+
+<p>That is the whole idea. Train each new model to predict what the previous models could not explain.</p>
+
+<p>For classification problems, the math is slightly different (we use log loss residuals instead of straight differences) but the spirit is the same.</p>
+
+<h3 id="why-it-is-called-gradient">Why it is called gradient</h3>
+
+<p>The name comes from the fact that residuals are mathematically related to the gradient of the loss function. The algorithm essentially performs gradient descent in function space.</p>
+
+<p>You do not need to understand that to use it. The mental model of “fit the next model to the residuals of the previous” is enough for almost all practical purposes.</p>
+
+<h3 id="important-hyperparameters-in-gradient-boosting">Important hyperparameters in Gradient Boosting</h3>
+
+<p>Gradient Boosting has more knobs than Random Forest, and they really matter. The big ones are these.</p>
+
+<p><strong>n_estimators.</strong> Number of trees. Unlike Random Forest, more is not always better here. Too many trees in Gradient Boosting can overfit.</p>
+
+<p><strong>learning_rate.</strong> This is new. It controls how much each new tree contributes to the combined prediction. A smaller learning rate makes each tree contribute less, which means you need more trees overall but you usually get better generalization.</p>
+
+<p><strong>max_depth.</strong> How deep each tree can go. Gradient Boosting trees are usually shallow. Common values are 3 to 6. Much deeper than that and they tend to overfit.</p>
+
+<p><strong>subsample.</strong> Fraction of training data to use for each tree. Setting this to less than 1.0 (like 0.8) introduces randomness similar to bagging and helps prevent overfitting. This is sometimes called <strong>stochastic gradient boosting</strong>.</p>
+
+<p>The interplay between <strong>n_estimators</strong> and <strong>learning_rate</strong> is the most important one to understand.</p>
+
+<p>A common pattern. Set learning_rate to something small like 0.05 or 0.1, then crank up n_estimators until validation performance stops improving. The smaller the learning rate, the more trees you need, but the better the final model.</p>
+
+<hr />
+
+<h2 id="the-modern-champions-xgboost-lightgbm-catboost">The modern champions, XGBoost, LightGBM, CatBoost</h2>
+
+<p>Plain Gradient Boosting was great, but starting around 2014, three optimized libraries took the world by storm. They are essentially highly engineered versions of Gradient Boosting with clever tricks for speed and accuracy.</p>
+
+<h3 id="xgboost">XGBoost</h3>
+
+<p>XGBoost stands for <strong>Extreme Gradient Boosting</strong>. Released in 2014, it became the dominant algorithm in Kaggle competitions almost overnight.</p>
+
+<p>What makes it different.</p>
+
+<ul>
+  <li>It uses smarter regularization to fight overfitting.</li>
+  <li>It handles missing values automatically.</li>
+  <li>It uses second order information from the loss function (not just gradients but also curvature) for more accurate fits.</li>
+  <li>It is heavily parallelized for speed, even though boosting is inherently sequential.</li>
+  <li>It supports GPU training for very large datasets.</li>
+</ul>
+
+<p>If you do not know which tool to reach for on a tabular dataset, XGBoost is almost always a safe choice.</p>
+
+<h3 id="lightgbm">LightGBM</h3>
+
+<p>Released by Microsoft in 2017. Designed to be even faster and more memory efficient than XGBoost.</p>
+
+<p>What makes it different.</p>
+
+<ul>
+  <li>It grows trees leaf-wise instead of level-wise. That sounds technical but the practical effect is that it builds trees faster and often more accurately on big datasets.</li>
+  <li>It uses a clever sampling trick (Gradient-based One-Side Sampling) to focus on the most informative examples.</li>
+  <li>It bins continuous features for speed.</li>
+</ul>
+
+<p>LightGBM tends to be the fastest of the three on large datasets. On small or medium datasets, the difference may not matter much.</p>
+
+<h3 id="catboost">CatBoost</h3>
+
+<p>Released by Yandex in 2017. Designed to handle categorical features especially well.</p>
+
+<p>What makes it different.</p>
+
+<ul>
+  <li>It deals with categorical features without requiring you to do one hot encoding manually. It uses a clever statistical encoding internally.</li>
+  <li>It has built in protections against a subtle problem called target leakage that affects naive categorical encodings.</li>
+  <li>It often produces good results with minimal tuning.</li>
+</ul>
+
+<p>CatBoost is a great choice when your data has lots of categorical columns or when you do not want to spend much time preprocessing.</p>
+
+<h3 id="how-to-choose-between-them">How to choose between them</h3>
+
+<p>A simple rule of thumb.</p>
+
+<ul>
+  <li><strong>Small or medium dataset, mostly numeric.</strong> XGBoost is fine. LightGBM also fine.</li>
+  <li><strong>Big dataset, want it fast.</strong> LightGBM.</li>
+  <li><strong>Lots of categorical columns.</strong> CatBoost.</li>
+  <li><strong>Just starting out.</strong> XGBoost. It is the most popular and has the most learning material.</li>
+</ul>
+
+<p>In real practice, many practitioners try two or three of them and pick whichever works best on their specific problem.</p>
+
+<hr />
+
+<h2 id="a-simple-python-example-with-gradient-boosting">A simple Python example with Gradient Boosting</h2>
+
+<p>Let us train a Gradient Boosting model the same way we trained a Random Forest in Part 2.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">load_breast_cancer</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span><span class="p">,</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="n">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">GradientBoostingClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">roc_auc_score</span>
+
+<span class="c1"># Load data
+</span><span class="n">data</span> <span class="o">=</span> <span class="nf">load_breast_cancer</span><span class="p">()</span>
+<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">data</span><span class="p">,</span> <span class="n">data</span><span class="p">.</span><span class="n">target</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_val</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_val</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+<span class="p">)</span>
+
+<span class="c1"># Train a baseline gradient boosting model
+</span><span class="n">gb</span> <span class="o">=</span> <span class="nc">GradientBoostingClassifier</span><span class="p">(</span>
+    <span class="n">n_estimators</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">max_depth</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">gb</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="n">proba_val</span> <span class="o">=</span> <span class="n">gb</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_val</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation ROC AUC:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">proba_val</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Notice how similar the code is to Random Forest. Same scikit-learn pattern: create a model, fit, predict. The only difference is the model class and the hyperparameters.</p>
+
+<h3 id="tuning-gradient-boosting">Tuning Gradient Boosting</h3>
+
+<p>The same grid search workflow from Part 2 works for Gradient Boosting.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">parameters_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">n_estimators</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">500</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">learning_rate</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">max_depth</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="nc">GradientBoostingClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">),</span>
+    <span class="n">param_grid</span><span class="o">=</span><span class="n">parameters_grid</span><span class="p">,</span>
+    <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">roc_auc</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best parameters:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV ROC AUC:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>This searches 3 times 3 times 3 equals 27 combinations across 5 cross validation folds, so 135 fits total. Be patient on large datasets.</p>
+
+<h3 id="using-xgboost-instead">Using XGBoost instead</h3>
+
+<p>If you want to use XGBoost, install it first.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>xgboost
+</code></pre></div></div>
+
+<p>Then the code is almost the same as scikit-learn.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">xgboost</span> <span class="kn">import</span> <span class="n">XGBClassifier</span>
+
+<span class="n">xgb</span> <span class="o">=</span> <span class="nc">XGBClassifier</span><span class="p">(</span>
+    <span class="n">n_estimators</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">max_depth</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+    <span class="n">use_label_encoder</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+    <span class="n">eval_metric</span><span class="o">=</span><span class="sh">"</span><span class="s">logloss</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">xgb</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="n">proba_val</span> <span class="o">=</span> <span class="n">xgb</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_val</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">XGBoost Validation ROC AUC:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">proba_val</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>XGBoost usually gives a small but real improvement over scikit-learn’s GradientBoostingClassifier on most datasets, plus it is much faster on big data.</p>
+
+<hr />
+
+<h2 id="bagging-vs-boosting-when-to-use-which">Bagging vs Boosting, when to use which</h2>
+
+<p>Now that we have seen both families, here is a practical guide for choosing.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>When you want this</th>
+      <th>Reach for this</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Maximum accuracy on tabular data</td>
+      <td>Boosting (XGBoost, LightGBM, CatBoost)</td>
+    </tr>
+    <tr>
+      <td>A quick robust baseline</td>
+      <td>Random Forest</td>
+    </tr>
+    <tr>
+      <td>Easy to tune, hard to break</td>
+      <td>Random Forest</td>
+    </tr>
+    <tr>
+      <td>Highly parallelizable training</td>
+      <td>Random Forest</td>
+    </tr>
+    <tr>
+      <td>Sensitive to noisy labels</td>
+      <td>Random Forest</td>
+    </tr>
+    <tr>
+      <td>Tons of categorical features</td>
+      <td>CatBoost</td>
+    </tr>
+    <tr>
+      <td>Massive dataset, fast training</td>
+      <td>LightGBM</td>
+    </tr>
+    <tr>
+      <td>Built in handling of missing values</td>
+      <td>XGBoost or LightGBM</td>
+    </tr>
+    <tr>
+      <td>Maximum interpretability</td>
+      <td>Single decision tree</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A useful workflow.</p>
+
+<p>Step 1. Train a Random Forest with default settings. This gives you a baseline.</p>
+
+<p>Step 2. Train an XGBoost or LightGBM with default settings. Compare to baseline.</p>
+
+<p>Step 3. Tune the better of the two using grid search or randomized search.</p>
+
+<p>Step 4. Compare to your business requirements. Decide if more tuning is worth the effort.</p>
+
+<p>This workflow handles most real world tabular data problems very well.</p>
+
+<hr />
+
+<h2 id="common-pitfalls-with-boosting">Common pitfalls with boosting</h2>
+
+<p>Boosting is powerful but it has some traps. Watch out for these.</p>
+
+<h3 id="overfitting-silently">Overfitting silently</h3>
+
+<p>Unlike Random Forest, boosting can absolutely overfit. If you train too many trees with too high a learning rate and too deep individual trees, you can fit the noise perfectly while doing poorly on new data.</p>
+
+<p>Always use a validation set or cross validation to check generalization.</p>
+
+<h3 id="sensitivity-to-hyperparameters">Sensitivity to hyperparameters</h3>
+
+<p>Boosting has more knobs than Random Forest, and they interact in subtle ways. Spend time tuning learning_rate and n_estimators together.</p>
+
+<p>A useful trick. Use <strong>early stopping</strong>. Train a model with many trees, but stop adding trees as soon as validation performance stops improving. Most modern boosting libraries support this directly.</p>
+
+<h3 id="slow-training-without-parallelism">Slow training without parallelism</h3>
+
+<p>Boosting is inherently sequential. You cannot just throw more cores at it the way you can with Random Forest. The smart libraries (XGBoost, LightGBM) parallelize the work within each tree, but they cannot parallelize across trees.</p>
+
+<p>For huge datasets, choose libraries that support GPU training (XGBoost and LightGBM both do).</p>
+
+<h3 id="sensitivity-to-noisy-labels">Sensitivity to noisy labels</h3>
+
+<p>Boosting will keep boosting the weight of misclassified examples. If those examples are misclassified because they are mislabeled in the data (not because they are genuinely hard), boosting will fit the noise.</p>
+
+<p>This is one of the few situations where Random Forest is actually more robust than boosting.</p>
+
+<hr />
+
+<h2 id="what-we-have-learned-across-the-whole-tutorial">What we have learned across the whole tutorial</h2>
+
+<p>Three parts. Let us bring it all together.</p>
+
+<p><strong>From Part 1.</strong> An ensemble combines many models into a single prediction. They work because errors cancel out when models disagree, and because they can lower bias and variance at the same time. There are two main families. Bagging trains models in parallel on bootstrap samples. Boosting trains models in sequence, each one fixing the previous one’s mistakes.</p>
+
+<p><strong>From Part 2.</strong> Bagging is built on bootstrap sampling, which is sampling with replacement. Random Forest extends bagging by also randomizing which features each split considers. Tuning Random Forest mainly involves n_estimators and max_depth. Grid search with cross validation is the standard way to tune combinations of hyperparameters.</p>
+
+<p><strong>From Part 3.</strong> Boosting trains weak models in sequence. AdaBoost re-weights the training data to focus on hard examples. Gradient Boosting trains each new tree on the residuals of the previous ones. Modern champions like XGBoost, LightGBM, and CatBoost dominate most data competitions. They can overfit if not tuned carefully, but they almost always give the best results on tabular data.</p>
+
+<hr />
+
+<h2 id="where-to-go-from-here">Where to go from here</h2>
+
+<p>You now have the foundation to use the most powerful classical machine learning tools available today.</p>
+
+<p>A natural learning sequence from here.</p>
+
+<ul>
+  <li>Try XGBoost, LightGBM, and CatBoost on the same dataset and compare them.</li>
+  <li>Learn about <strong>early stopping</strong> to automatically pick the right number of trees.</li>
+  <li>Learn about <strong>feature importance</strong> in tree ensembles.</li>
+  <li>Learn about <strong>SHAP values</strong> for explaining individual predictions of complex tree models.</li>
+  <li>Learn about <strong>stacking</strong>, which is yet another ensemble technique that combines models from completely different families.</li>
+</ul>
+
+<p>But the single most useful thing you can do right now is to grab a tabular dataset you care about and try a Random Forest, a Gradient Boosting, and an XGBoost on it. Tune them. Compare them. The intuition you build from running real models is worth ten more tutorials.</p>
+
+<p>That is the end of the ensembles tutorial.</p>
+
+<p>Decision Trees in three parts. Ensembles in three parts. Together, these six tutorials cover almost everything you need to dominate classical machine learning on tabular data.</p>
+
+<p>Good luck and have fun.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">boosting</span>, <span class="tag">adaboost</span>, <span class="tag">gradient-boosting</span>, <span class="tag">xgboost</span>, <span class="tag">lightgbm</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

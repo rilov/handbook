@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ensembles - Part 2 - Bagging and Random Forests</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>Ensembles - Part 2 - Bagging and Random Forests</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="ensembles---part-2---bagging-and-random-forests">Ensembles - Part 2 - Bagging and Random Forests</h1>
+
+<h2 id="how-many-trees-become-a-forest">How many trees become a forest</h2>
+
+<p>In Part 1 we introduced the two big families of ensembles, bagging and boosting. We also met the most famous member of the bagging family, the Random Forest.</p>
+
+<p>Now we go deep on bagging.</p>
+
+<p>By the end of this part you will understand three things in real depth.</p>
+
+<ol>
+  <li>What bootstrap sampling actually is and why it matters.</li>
+  <li>How a Random Forest works step by step from the inside.</li>
+  <li>How to tune the hyperparameters of a Random Forest, including number of trees, maximum depth, and combinations using grid search.</li>
+</ol>
+
+<p>This part has the most code in the whole tutorial. We will build a Random Forest classifier on a real dataset and tune it the way you would in real work.</p>
+
+<p>Let us start with the foundation of bagging, which is something called bootstrap sampling.</p>
+
+<hr />
+
+<h2 id="bootstrap-sampling-the-foundation-of-bagging">Bootstrap sampling, the foundation of bagging</h2>
+
+<p>The word bagging stands for <strong>bootstrap aggregating</strong>.</p>
+
+<p>Bootstrap is the sampling method. Aggregating is what we do at the end with the predictions.</p>
+
+<p>Let us explain bootstrap sampling carefully because it is the heart of how bagging works.</p>
+
+<h3 id="what-bootstrap-sampling-means">What bootstrap sampling means</h3>
+
+<p>Suppose your training set has 1,000 rows. You want to create a slightly different version of this dataset to train one base model on.</p>
+
+<p>Here is what bootstrap sampling does.</p>
+
+<p>You draw a row at random from the original 1,000. You write it down. You <strong>put it back</strong> into the pool. You draw another row. You write it down. You put it back. You keep doing this 1,000 times.</p>
+
+<p>At the end you have a new dataset of 1,000 rows. But because you put each row back after picking it, some rows from the original got picked more than once, and some rows did not get picked at all.</p>
+
+<p>That is bootstrap sampling. It is sampling with replacement, of the same size as the original dataset.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    O["<b>Original data</b><br />1000 rows"]
+    O --&gt;|"sample with<br />replacement"| B1["<b>Bootstrap 1</b><br />1000 rows<br />(some duplicated,<br />some missing)"]
+    O --&gt;|"sample with<br />replacement"| B2["<b>Bootstrap 2</b><br />1000 rows"]
+    O --&gt;|"sample with<br />replacement"| B3["<b>Bootstrap 3</b><br />1000 rows"]
+    O --&gt;|"..."| BN["<b>Bootstrap N</b><br />1000 rows"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class B1,B2,B3,BN gray
+    class O midgray
+</div>
+
+<h3 id="why-bootstrap-sampling-is-useful">Why bootstrap sampling is useful</h3>
+
+<p>Each bootstrap sample looks <strong>almost</strong> like the original dataset, but is a little different. Some rows are missing. Others appear multiple times. That small variation is exactly what we want.</p>
+
+<p>When you train a decision tree on each bootstrap sample, the trees will be slightly different from each other. They will pick different splits at different places. They will make different mistakes.</p>
+
+<p>That is the secret. Bootstrap sampling is a cheap and clever way to create models that disagree with each other.</p>
+
+<p>And as we learned in Part 1, models that disagree with each other are exactly what an ensemble needs.</p>
+
+<h3 id="one-more-useful-detail-out-of-bag-samples">One more useful detail, out of bag samples</h3>
+
+<p>When you draw 1,000 rows with replacement from 1,000 rows, statistically about 63 percent of the original rows end up in the bootstrap. The other 37 percent are left out.</p>
+
+<p>Those left out rows are called <strong>out of bag</strong> samples, or OOB samples.</p>
+
+<p>This turns out to be very useful. Each tree was never trained on its own out of bag rows. So those rows can be used as a free validation set for that tree. Average the predictions across all trees on their out of bag rows, and you get something called the <strong>out of bag score</strong>, which is a good estimate of the model’s accuracy without needing a separate test set.</p>
+
+<p>Random Forest libraries like scikit-learn give you this score for free if you ask for it.</p>
+
+<hr />
+
+<h2 id="what-bagging-does-step-by-step">What bagging does, step by step</h2>
+
+<p>Now we can describe bagging clearly.</p>
+
+<p>Step 1. Take your original training data.</p>
+
+<p>Step 2. Create N different bootstrap samples from it.</p>
+
+<p>Step 3. Train one base model on each bootstrap sample. Usually the base model is a decision tree.</p>
+
+<p>Step 4. To make a prediction on a new data point, run that point through every model. For classification, take the majority vote. For regression, take the average.</p>
+
+<p>That is the entire bagging algorithm.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    O["<b>Original training data</b>"]
+    O --&gt; S1["<b>Bootstrap sample 1</b>"]
+    O --&gt; S2["<b>Bootstrap sample 2</b>"]
+    O --&gt; SN["<b>Bootstrap sample N</b>"]
+    S1 --&gt; T1["<b>Tree 1</b>"]
+    S2 --&gt; T2["<b>Tree 2</b>"]
+    SN --&gt; TN["<b>Tree N</b>"]
+    T1 --&gt; V["<b>Combine predictions</b><br />vote or average"]
+    T2 --&gt; V
+    TN --&gt; V
+    V --&gt; P["<b>Final prediction</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class S1,S2,SN,T1,T2,TN gray
+    class O,V,P midgray
+</div>
+
+<p>The result is a model that is much more stable and accurate than any single tree. Variance goes down. Bias stays about the same. That is the magic of bagging.</p>
+
+<hr />
+
+<h2 id="from-bagging-to-random-forests">From bagging to Random Forests</h2>
+
+<p>Plain bagging with decision trees is already pretty good. But Random Forest adds one more clever twist that makes it even better.</p>
+
+<p>Here is the problem with plain bagging.</p>
+
+<p>Even when you give each tree a different bootstrap sample, the trees still tend to look similar. Why? Because if there is one feature that is very strong, every tree will pick that feature first. Most trees end up looking like variations of the same shape.</p>
+
+<p>Similar trees mean their errors are correlated. Correlated errors do not cancel each other out as well. The benefit of averaging is reduced.</p>
+
+<p>Random Forest solves this with one extra rule.</p>
+
+<h3 id="the-extra-random-forest-rule">The extra random forest rule</h3>
+
+<blockquote>
+  <p>At every split, do not consider all the features. Consider only a random subset of them.</p>
+</blockquote>
+
+<p>That is it. That one rule changes everything.</p>
+
+<p>For example, suppose your dataset has 20 features. At each split, instead of looking at all 20 to find the best one, the tree might look at only 5 randomly chosen features and pick the best one out of those.</p>
+
+<p>The result is that different trees end up using different features at different places. The strong feature does not dominate every tree. The trees become more diverse, their errors become less correlated, and the average gets more accurate.</p>
+
+<p>This is the only difference between plain bagging with trees and Random Forest. But it is a huge difference in practice.</p>
+
+<h3 id="how-many-features-at-each-split">How many features at each split</h3>
+
+<p>A common rule of thumb for classification is to use the square root of the total number of features. So if you have 25 features, each split tries about 5 of them. If you have 100 features, each split tries about 10 of them.</p>
+
+<p>For regression, the common rule is to use one third of the features.</p>
+
+<p>These are defaults. You can tune them. But they are good starting points.</p>
+
+<hr />
+
+<h2 id="a-complete-picture-of-random-forest">A complete picture of Random Forest</h2>
+
+<p>Putting everything together, here is what Random Forest does.</p>
+
+<p>Step 1. Take the original training data.</p>
+
+<p>Step 2. Create N bootstrap samples.</p>
+
+<p>Step 3. For each bootstrap sample, grow a decision tree. But every time the tree needs to split, pick a random subset of features to consider, and only look at those.</p>
+
+<p>Step 4. Let each tree grow deep, with little or no pruning. Single trees overfit, but the average of many overfit trees still generalizes well.</p>
+
+<p>Step 5. To predict on a new data point, run it through every tree. Take a majority vote for classification or an average for regression.</p>
+
+<p>That is Random Forest.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    O["<b>Original data</b><br />n rows, p features"]
+    O --&gt; R1["<b>Bootstrap +<br />random feature subset<br />at each split</b>"]
+    R1 --&gt; T1["<b>Deep Tree 1</b>"]
+    R1 --&gt; T2["<b>Deep Tree 2</b>"]
+    R1 --&gt; T3["<b>Deep Tree 3</b>"]
+    R1 --&gt; TN["<b>Deep Tree N</b>"]
+    T1 --&gt; V["<b>Vote / Average</b>"]
+    T2 --&gt; V
+    T3 --&gt; V
+    TN --&gt; V
+    V --&gt; P["<b>Final prediction</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class T1,T2,T3,TN gray
+    class O,R1,V,P midgray
+</div>
+
+<p>This is one of the most successful and widely used machine learning algorithms in history. Banks, insurance companies, healthcare systems, and tech companies all rely on Random Forests for real production predictions every day.</p>
+
+<hr />
+
+<h2 id="the-hyperparameters-that-matter">The hyperparameters that matter</h2>
+
+<p>Random Forest has several knobs you can turn. Most people only need to know about three or four of them. Here are the important ones.</p>
+
+<h3 id="number-of-estimators-n_estimators">Number of estimators (n_estimators)</h3>
+
+<p>This is the number of trees in the forest.</p>
+
+<p>More trees usually means better and more stable predictions, up to a point. After enough trees, adding more does not help much but takes longer to train.</p>
+
+<p>Typical values: 100, 200, 500, 1000.</p>
+
+<h3 id="maximum-tree-depth-max_depth">Maximum tree depth (max_depth)</h3>
+
+<p>This controls how deep each individual tree is allowed to grow.</p>
+
+<p>In a single decision tree, deeper trees overfit. In a Random Forest, this is less of a problem because averaging across many trees reduces overfitting. Still, very deep trees take longer to train and can sometimes hurt performance.</p>
+
+<p>Typical values: 5, 7, 10, 15, or None (no limit).</p>
+
+<h3 id="maximum-features-at-each-split-max_features">Maximum features at each split (max_features)</h3>
+
+<p>How many features to consider at each split. We talked about this earlier.</p>
+
+<p>Typical values: “sqrt” (square root of total features) for classification, “log2”, or a specific number.</p>
+
+<h3 id="minimum-samples-per-split-min_samples_split">Minimum samples per split (min_samples_split)</h3>
+
+<p>The smallest group size that the tree is still allowed to split. Bigger values mean less splitting and shallower trees.</p>
+
+<p>Typical values: 2 (default), 5, 10, 20.</p>
+
+<h3 id="minimum-samples-per-leaf-min_samples_leaf">Minimum samples per leaf (min_samples_leaf)</h3>
+
+<p>The smallest size a leaf is allowed to be. Bigger values mean smoother decisions.</p>
+
+<p>Typical values: 1 (default), 5, 10.</p>
+
+<h3 id="class-weight-class_weight">Class weight (class_weight)</h3>
+
+<p>Useful when the classes are imbalanced. Setting this to “balanced” tells the algorithm to give more weight to the minority class.</p>
+
+<p>Typical values: None (default), “balanced”.</p>
+
+<p>For most beginners, the two most important hyperparameters to tune are <strong>n_estimators</strong> and <strong>max_depth</strong>. Let us see how to do that.</p>
+
+<hr />
+
+<h2 id="hyperparameter-tuning-step-by-step">Hyperparameter tuning, step by step</h2>
+
+<p>Now we get to the practical part. We will tune a Random Forest classifier the way you would tune one in real work. We will go through it in three stages.</p>
+
+<p>Stage 1. Tune the number of estimators alone.</p>
+
+<p>Stage 2. Tune the maximum depth alone.</p>
+
+<p>Stage 3. Tune both together using grid search with cross validation.</p>
+
+<p>This is exactly the workflow you want to know. Let us walk through it slowly.</p>
+
+<h3 id="setting-up">Setting up</h3>
+
+<p>We will use the famous breast cancer dataset that comes with scikit-learn. It has 569 rows and 30 features. The task is to predict whether a tumor is malignant or benign.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">load_breast_cancer</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">roc_auc_score</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Load the data
+</span><span class="n">data</span> <span class="o">=</span> <span class="nf">load_breast_cancer</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">data</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">data</span><span class="p">.</span><span class="n">feature_names</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">Series</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">target</span><span class="p">)</span>
+
+<span class="c1"># Split into training and validation sets
+</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_val</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_val</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+<span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Training rows:</span><span class="sh">"</span><span class="p">,</span> <span class="n">X_train</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation rows:</span><span class="sh">"</span><span class="p">,</span> <span class="n">X_val</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>This gives us roughly 400 rows for training and 170 rows for validation. We will use the validation set to measure how each model performs.</p>
+
+<h3 id="stage-1-tune-the-number-of-estimators-alone">Stage 1. Tune the number of estimators alone</h3>
+
+<p>We will try several values of n_estimators while keeping everything else fixed. For each value, we train a model and record both the accuracy and the ROC AUC score on the training and validation sets.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Create a list of values to tune over.
+# np.arange(50, 501, 50) gives 50, 100, 150, ..., 500
+</span><span class="n">num_estimators</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">501</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+
+<span class="c1"># Empty dataframe to record performance
+</span><span class="n">results_n</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">num_estimators</span><span class="p">:</span>
+    <span class="c1"># Build a Random Forest with the current value of n_estimators
+</span>    <span class="n">current_rf</span> <span class="o">=</span> <span class="nc">RandomForestClassifier</span><span class="p">(</span>
+        <span class="n">n_estimators</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+        <span class="n">max_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">class_weight</span><span class="o">=</span><span class="sh">"</span><span class="s">balanced</span><span class="sh">"</span><span class="p">,</span>
+        <span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">current_rf</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Done training with n_estimators = </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+    <span class="c1"># Predictions for accuracy
+</span>    <span class="n">y_pred_train</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+    <span class="n">y_pred_val</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_val</span><span class="p">)</span>
+
+    <span class="c1"># Predicted probabilities for ROC AUC
+</span>    <span class="n">proba_train</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_train</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">proba_val</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_val</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Store everything in the dataframe
+</span>    <span class="n">results_n</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="sh">"</span><span class="s">train_accuracy</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">y_pred_train</span><span class="p">)</span>
+    <span class="n">results_n</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="sh">"</span><span class="s">val_accuracy</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">y_pred_val</span><span class="p">)</span>
+    <span class="n">results_n</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="sh">"</span><span class="s">train_roc_auc</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">proba_train</span><span class="p">)</span>
+    <span class="n">results_n</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="sh">"</span><span class="s">val_roc_auc</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">proba_val</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">results_n</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>What is happening here, in plain words.</p>
+
+<p>We made a list of 10 values from 50 to 500 in steps of 50. For each value we built a Random Forest with that many trees, with maximum depth fixed at 5 for now. We trained the model on the training data. We measured how well it did on both the training and validation data, using both accuracy and ROC AUC.</p>
+
+<p>The print statement after the fit gives you visual feedback so you can see the loop progressing.</p>
+
+<h3 id="visualizing-the-results">Visualizing the results</h3>
+
+<p>Once we have the dataframe, we can plot it.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">results_n</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">results_n</span><span class="p">[</span><span class="sh">"</span><span class="s">val_accuracy</span><span class="sh">"</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">o</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation Accuracy vs Number of Estimators</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">n_estimators</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation Accuracy</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">results_n</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">results_n</span><span class="p">[</span><span class="sh">"</span><span class="s">val_roc_auc</span><span class="sh">"</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">o</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation ROC AUC vs Number of Estimators</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">n_estimators</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation ROC AUC</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>You will typically see that the metric jumps up quickly with the first few hundred trees and then flattens out. There may be a small spike or dip somewhere because validation scores are noisy on small datasets. The general pattern is that more trees help, then the help levels off.</p>
+
+<p>The key insight is that the metric does not keep climbing forever. After some point, adding more trees just costs you training time without giving you better predictions.</p>
+
+<h3 id="stage-2-tune-the-maximum-depth-alone">Stage 2. Tune the maximum depth alone</h3>
+
+<p>Now we fix the number of estimators and tune the depth instead.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">max_depths</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span>
+
+<span class="n">results_d</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">max_depths</span><span class="p">:</span>
+    <span class="n">current_rf</span> <span class="o">=</span> <span class="nc">RandomForestClassifier</span><span class="p">(</span>
+        <span class="n">n_estimators</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+        <span class="n">max_depth</span><span class="o">=</span><span class="n">d</span><span class="p">,</span>
+        <span class="n">class_weight</span><span class="o">=</span><span class="sh">"</span><span class="s">balanced</span><span class="sh">"</span><span class="p">,</span>
+        <span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">current_rf</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Done training with max_depth = </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+    <span class="n">y_pred_train</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+    <span class="n">y_pred_val</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_val</span><span class="p">)</span>
+    <span class="n">proba_train</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_train</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">proba_val</span> <span class="o">=</span> <span class="n">current_rf</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_val</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">results_d</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="sh">"</span><span class="s">train_accuracy</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">y_pred_train</span><span class="p">)</span>
+    <span class="n">results_d</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="sh">"</span><span class="s">val_accuracy</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">y_pred_val</span><span class="p">)</span>
+    <span class="n">results_d</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="sh">"</span><span class="s">train_roc_auc</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">proba_train</span><span class="p">)</span>
+    <span class="n">results_d</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="sh">"</span><span class="s">val_roc_auc</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">proba_val</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">results_d</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The shape is identical to the n_estimators loop, just tuning a different parameter.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">results_d</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">results_d</span><span class="p">[</span><span class="sh">"</span><span class="s">val_accuracy</span><span class="sh">"</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">o</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation Accuracy vs Max Depth</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">max_depth</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation Accuracy</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">results_d</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">results_d</span><span class="p">[</span><span class="sh">"</span><span class="s">val_roc_auc</span><span class="sh">"</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">o</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation ROC AUC vs Max Depth</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">max_depth</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Validation ROC AUC</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>The typical pattern looks like this. Performance starts low at depth 1 because the trees are too simple. It climbs steeply as depth increases. Around depth 5 to 8 it starts to flatten out. Past that, more depth does not help much and in some cases starts to hurt.</p>
+
+<p>You can use this curve to spot the sweet spot. For this dataset, depth 7 or 8 is usually a good choice.</p>
+
+<h3 id="why-tuning-one-at-a-time-can-mislead-you">Why tuning one at a time can mislead you</h3>
+
+<p>You might be tempted to pick the best n_estimators from Stage 1 and the best max_depth from Stage 2 and assume the combination is best.</p>
+
+<p>Unfortunately, hyperparameters interact. The best max_depth for n_estimators = 100 might be different from the best max_depth for n_estimators = 500.</p>
+
+<p>To find the best <strong>combination</strong>, we need to try combinations directly. That is what grid search is for.</p>
+
+<hr />
+
+<h2 id="stage-3-grid-search-with-cross-validation">Stage 3. Grid search with cross validation</h2>
+
+<p>Grid search is the standard way to tune multiple hyperparameters together.</p>
+
+<p>Here is the idea.</p>
+
+<p>Step 1. Define a grid. The grid is a list of values for each hyperparameter you want to tune.</p>
+
+<p>Step 2. Try every possible combination of values from the grid. For each combination, train a model and evaluate it.</p>
+
+<p>Step 3. Pick the combination that gave the best score.</p>
+
+<p>Cross validation is a way to make the evaluation more reliable. Instead of measuring on a single validation set, we split the training data into K parts (often 5). For each combination, we train on K minus 1 parts and evaluate on the remaining part. We do this K times so every part gets used for evaluation once. We average the K scores to get a single, more reliable estimate.</p>
+
+<p>Scikit-learn provides <code class="language-plaintext highlighter-rouge">GridSearchCV</code> which does all of this automatically.</p>
+
+<h3 id="the-code">The code</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span>
+
+<span class="c1"># Base model with the fixed settings that are not part of the search
+</span><span class="n">base_grid_model</span> <span class="o">=</span> <span class="nc">RandomForestClassifier</span><span class="p">(</span>
+    <span class="n">class_weight</span><span class="o">=</span><span class="sh">"</span><span class="s">balanced</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># The grid of values to search over.
+# In real work you would use larger lists. We keep it small for demonstration.
+</span><span class="n">parameters_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">n_estimators</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">max_depth</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="c1"># Set up grid search with 5 fold cross validation
+</span><span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="n">base_grid_model</span><span class="p">,</span>
+    <span class="n">param_grid</span><span class="o">=</span><span class="n">parameters_grid</span><span class="p">,</span>
+    <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">roc_auc</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Fit on the training data
+</span><span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1"># Report the best combination
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best parameters:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV ROC AUC score:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Walk through the code in plain words.</p>
+
+<p>We created a base model with the settings that we are not searching over, like class_weight and random_state.</p>
+
+<p>We defined a grid with two values for n_estimators and two values for max_depth. That gives 2 times 2 equals 4 candidate combinations.</p>
+
+<p>We set up GridSearchCV with 5 fold cross validation. So we will train and evaluate 5 times for each of the 4 combinations, totaling 20 model fits.</p>
+
+<p>We told it to score using ROC AUC.</p>
+
+<p>The verbose=4 setting prints helpful progress messages as it runs.</p>
+
+<p>When it finishes, <code class="language-plaintext highlighter-rouge">grid.best_params_</code> tells you the winning combination.</p>
+
+<p>A typical output for this dataset might look like this.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Best parameters: {'max_depth': 7, 'n_estimators': 200}
+Best CV ROC AUC score: 0.987
+</code></pre></div></div>
+
+<p>Translation. The optimal model in this small grid uses 200 trees and a maximum depth of 7. Its average ROC AUC across the 5 cross validation folds is about 0.987.</p>
+
+<h3 id="reading-verbose-output">Reading verbose output</h3>
+
+<p>When you run grid search with verbose set high, you will see lines like this.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Fitting 5 folds for each of 4 candidates, totalling 20 fits
+[CV 1/5; 1/4] START max_depth=5, n_estimators=100..............
+[CV 1/5; 1/4] END   max_depth=5, n_estimators=100, score=0.984 total time=0.5s
+[CV 2/5; 1/4] START max_depth=5, n_estimators=100..............
+...
+</code></pre></div></div>
+
+<p>The numbers like <code class="language-plaintext highlighter-rouge">1/5</code> mean fold 1 of 5. The numbers like <code class="language-plaintext highlighter-rouge">1/4</code> mean candidate 1 of 4. So you can see exactly where in the search you are.</p>
+
+<h3 id="larger-grids-in-real-work">Larger grids in real work</h3>
+
+<p>For demonstration we used a tiny grid with 4 combinations. In real work, your grid would be much bigger. Here is a more realistic grid.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">parameters_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">n_estimators</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">500</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">max_depth</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="bp">None</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">min_samples_split</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">max_features</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">sqrt</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">log2</span><span class="sh">"</span><span class="p">],</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>This grid has 4 times 5 times 3 times 2 equals 120 combinations. With 5 fold cross validation, that is 600 model fits. On a moderate dataset this can take many minutes or hours.</p>
+
+<p>If your grid gets too big, switch to <strong>RandomizedSearchCV</strong>. It samples a fixed number of random combinations from the grid instead of trying all of them. You usually find a near optimal combination much faster.</p>
+
+<hr />
+
+<h2 id="other-hyperparameters-worth-experimenting-with">Other hyperparameters worth experimenting with</h2>
+
+<p>We focused on n_estimators and max_depth because those are the most impactful. But there are several others worth trying once you have those dialed in.</p>
+
+<ul>
+  <li><strong>max_features.</strong> Controls how many features each split considers. Try “sqrt”, “log2”, or specific numbers.</li>
+  <li><strong>min_samples_split.</strong> Controls how big a node has to be before it can split.</li>
+  <li><strong>min_samples_leaf.</strong> Controls how small a leaf is allowed to be.</li>
+  <li><strong>bootstrap.</strong> Whether to use bootstrap sampling. Default is True. If you set this to False, every tree sees the full training data and you get something called Extra Trees.</li>
+  <li><strong>class_weight.</strong> Critical when the classes are imbalanced.</li>
+</ul>
+
+<p>The general advice is to tune the most impactful parameters first (n_estimators and max_depth), then see if the others make a noticeable difference.</p>
+
+<hr />
+
+<h2 id="a-note-on-training-time">A note on training time</h2>
+
+<p>Random Forests are computationally expensive.</p>
+
+<p>Training one tree is fast. But you are training hundreds of them, and each cross validation fold trains all of them again. With grid search, you multiply by the number of combinations.</p>
+
+<p>Be aware of three things when doing this in practice.</p>
+
+<p>First, training time grows linearly with n_estimators. Going from 100 trees to 500 trees takes about 5 times as long.</p>
+
+<p>Second, training time grows with max_depth. Deeper trees are more expensive.</p>
+
+<p>Third, scikit-learn’s Random Forest can use multiple CPU cores in parallel. Set <code class="language-plaintext highlighter-rouge">n_jobs = -1</code> in your model and grid search to use all cores. This can speed things up dramatically.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">RandomForestClassifier</span><span class="p">(...,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="nc">GridSearchCV</span><span class="p">(...,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>This is one of those small settings that gives you a 4x or 8x speedup for free. Always use it on real datasets.</p>
+
+<hr />
+
+<h2 id="what-we-have-learned-in-part-2">What we have learned in Part 2</h2>
+
+<p>Let us recap.</p>
+
+<p>We learned what bootstrap sampling is. It is sampling with replacement, of the same size as the original dataset. About 63 percent of unique rows end up in any bootstrap. The remaining 37 percent are out of bag samples.</p>
+
+<p>We learned what bagging does. It creates many bootstrap samples, trains one model per sample, and combines them by voting or averaging.</p>
+
+<p>We learned what makes Random Forest different from plain bagging. At every split, it considers only a random subset of features. This makes the trees more diverse and reduces correlated errors.</p>
+
+<p>We learned the most important hyperparameters of Random Forest, especially n_estimators and max_depth.</p>
+
+<p>We walked through full hyperparameter tuning in three stages. We tuned n_estimators alone, max_depth alone, and then both together using grid search with cross validation.</p>
+
+<p>We saw the typical patterns. More trees help up to a point, then plateau. Deeper trees help up to a point, then plateau or hurt. Tuning hyperparameters one at a time can mislead, so grid search over combinations is the right tool when you have time and compute.</p>
+
+<p>In Part 3 we move to the other family of ensembles. We will learn how boosting works, why it is so different from bagging, and meet the modern champions like XGBoost, LightGBM, and CatBoost that win most data competitions today.</p>
+
+<p>See you in Part 3.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">random-forest</span>, <span class="tag">bagging</span>, <span class="tag">bootstrap</span>, <span class="tag">hyperparameter-tuning</span>, <span class="tag">grid-search</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
