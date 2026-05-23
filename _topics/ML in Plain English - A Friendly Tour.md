@@ -47,6 +47,22 @@ This is **unsupervised learning**. You have data but no answers. You just want t
 
 Almost everything in machine learning falls into one of these two camps. Now let us walk through the techniques you will meet.
 
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    ML["<b>Machine Learning</b>"]
+    ML --> SUP["<b>Supervised</b><br/>You have answers<br/>in the training data"]
+    ML --> UNS["<b>Unsupervised</b><br/>No answers,<br/>just data"]
+    SUP --> REG["<b>Regression</b><br/>predict a number<br/>(price, demand)"]
+    SUP --> CLS["<b>Classification</b><br/>predict yes/no<br/>or a category"]
+    UNS --> CLUS["<b>Clustering</b><br/>find hidden groups"]
+    UNS --> SIM["<b>Similarity</b><br/>compare items"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class REG,CLS,CLUS,SIM gray
+    class ML,SUP,UNS midgray
+</div>
+
 ---
 
 ## Linear Regression, the straight line guesser
@@ -66,6 +82,18 @@ When you have more than one input, like size and number of bedrooms and age, lin
 * As a quick, simple baseline before trying anything fancier.
 
 It is the oldest, simplest tool in the kit. And often, it is good enough.
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    D["<b>Past sales data</b><br/>house size + price"]
+    D --> L["<b>Best straight line</b><br/>through the dots"]
+    L --> P["<b>Predicted price</b><br/>for a new house"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class L gray
+    class D,P midgray
+</div>
 
 ---
 
@@ -91,6 +119,20 @@ Despite the misleading name (it has "regression" in it but it is actually used f
 * Will the visitor click the ad? Yes or no.
 
 It is the bread-and-butter classifier of the business world.
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    F["<b>Customer info</b><br/>age, usage, plan"]
+    F --> S["<b>Sigmoid curve</b><br/>maps to 0...1"]
+    S --> D{"<b>Threshold</b><br/>above 0.5?"}
+    D -->|yes| Y["<b>Predict: Will churn</b>"]
+    D -->|no| N["<b>Predict: Will stay</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class S,D gray
+    class F,Y,N midgray
+</div>
 
 ---
 
@@ -120,6 +162,20 @@ There are three main flavours.
 
 In modern practice, regularization is on by default. It is not optional, it is hygiene.
 
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    M["<b>Plain Model</b><br/>memorizes everything,<br/>including noise"]
+    M --> R["<b>+ Regularization</b><br/>be reasonable,<br/>do not trust any single<br/>feature too much"]
+    R --> RID["<b>Ridge</b><br/>shrink all features<br/>gently"]
+    R --> LAS["<b>Lasso</b><br/>drop weak features<br/>completely"]
+    R --> EL["<b>Elastic Net</b><br/>a bit of both"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class RID,LAS,EL gray
+    class M,R midgray
+</div>
+
 ---
 
 ## Decision Trees, the game of 20 questions
@@ -141,6 +197,22 @@ It is like a game of 20 questions where the computer figured out the best questi
 * As building blocks for more powerful models (we will get to those next).
 
 A single decision tree by itself is rarely the best model in production. But trees are the secret ingredient in the most powerful classical ML techniques.
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    Q1{"<b>Income > $50k?</b>"}
+    Q1 -->|yes| Q2{"<b>Stable job?</b>"}
+    Q1 -->|no| R1["<b>Reject</b>"]
+    Q2 -->|yes| Q3{"<b>Debt < 35%?</b>"}
+    Q2 -->|no| R2["<b>Reject</b>"]
+    Q3 -->|yes| A1["<b>Approve</b>"]
+    Q3 -->|no| R3["<b>Reject</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class Q1,Q2,Q3 gray
+    class A1,R1,R2,R3 midgray
+</div>
 
 ---
 
@@ -168,6 +240,25 @@ Random Forest is one of the most reliable and useful algorithms in all of machin
 * You want a baseline before trying boosting.
 * You want to know which features matter most. Random forests give you free feature importance scores.
 
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    D["<b>Training data</b>"]
+    D --> T1["<b>Tree 1</b>"]
+    D --> T2["<b>Tree 2</b>"]
+    D --> T3["<b>Tree 3</b>"]
+    D --> TN["<b>Tree N</b>"]
+    T1 --> V["<b>Majority Vote</b>"]
+    T2 --> V
+    T3 --> V
+    TN --> V
+    V --> P["<b>Final Prediction</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class T1,T2,T3,TN gray
+    class D,V,P midgray
+</div>
+
 ### Boosting, the relay race
 
 A **Boosting** model is different in spirit. Instead of training many trees in parallel, you train them one at a time. Each new tree tries to fix the mistakes of the previous ones.
@@ -183,6 +274,23 @@ This idea is the basis of **AdaBoost**, **Gradient Boosting**, and the modern ch
 * You are building a system where every percent of accuracy matters (fraud detection, ad ranking, credit scoring).
 
 If you only ever learn one advanced technique, learn gradient boosting. It is the most powerful classical ML tool available today.
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    D["<b>Data</b>"]
+    D --> M1["<b>Model 1</b><br/>makes mistakes"]
+    M1 -->|fix errors| M2["<b>Model 2</b><br/>fixes Model 1's<br/>mistakes"]
+    M2 -->|fix errors| M3["<b>Model 3</b><br/>fixes what's left"]
+    M3 -->|...| MN["<b>Model N</b>"]
+    MN --> S["<b>Strong combined<br/>prediction</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class M1,M2,M3,MN gray
+    class D,S midgray
+</div>
+
+Notice the difference. Random Forest trains all trees in parallel, voting. Boosting trains trees one at a time, each fixing the previous one's mistakes.
 
 ---
 
@@ -213,6 +321,20 @@ Why does this matter? Because almost every unsupervised learning algorithm and m
 
 You will see distances everywhere once you start looking.
 
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    Q["<b>How do you compare<br/>two items?</b>"]
+    Q --> E["<b>Euclidean</b><br/>straight-line distance<br/>(ruler)"]
+    Q --> C["<b>Cosine</b><br/>same direction<br/>ignore size"]
+    Q --> PE["<b>Pearson</b><br/>do they move<br/>together?"]
+    Q --> J["<b>Jaccard</b><br/>how much do their<br/>sets overlap?"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class E,C,PE,J gray
+    class Q midgray
+</div>
+
 ---
 
 ## K-Means Clustering, sorting things into piles without labels
@@ -236,6 +358,22 @@ It is like sorting laundry. Throw it on the floor, group similar items together,
 
 K-Means is fast, simple, and works on huge datasets. But you have to tell it how many groups to look for, and it assumes the groups are roughly round blobs.
 
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    D["<b>Pile of\nunlabelled data</b>"]
+    D --> A["<b>Pick K starting<br/>centers (e.g. K=3)</b>"]
+    A --> B["<b>Assign each point<br/>to nearest center</b>"]
+    B --> C["<b>Move each center<br/>to mean of its points</b>"]
+    C --> CH{"<b>Did anything<br/>change?</b>"}
+    CH -->|yes| B
+    CH -->|no| F["<b>K clean groups</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class B,C gray
+    class D,A,CH,F midgray
+</div>
+
 ---
 
 ## Hierarchical Clustering, the family tree of your data
@@ -256,6 +394,28 @@ You then look at the tree and decide where to cut. Cut high to get a few big gro
 * In biology, gene analysis, document organization, anywhere relationships have natural depth.
 
 It is slower than K-Means on large data, but the tree it produces is uniquely useful for exploration.
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    ROOT["<b>All Animals</b>"]
+    ROOT --> MAM["<b>Mammals</b>"]
+    ROOT --> BIR["<b>Birds</b>"]
+    MAM --> PRI["<b>Primates</b>"]
+    MAM --> CAN["<b>Canines</b>"]
+    PRI --> HUM["<b>Humans</b>"]
+    PRI --> CHI["<b>Chimps</b>"]
+    CAN --> DOG["<b>Dogs</b>"]
+    CAN --> WOL["<b>Wolves</b>"]
+    BIR --> EAG["<b>Eagles</b>"]
+    BIR --> SPA["<b>Sparrows</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class HUM,CHI,DOG,WOL,EAG,SPA gray
+    class ROOT,MAM,BIR,PRI,CAN midgray
+</div>
+
+This is exactly what hierarchical clustering builds, automatically, from your data. Cut the tree at any level to get the number of groups you want.
 
 ---
 
@@ -282,6 +442,19 @@ It is exactly what a doctor does when they say "this patient looks a lot like th
 
 KNN is slow on huge datasets because every prediction has to compare against all the training data. But for small to medium problems, it is fast, simple, and often surprisingly good.
 
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    N["<b>New data point</b><br/>(no label)"]
+    N --> F["<b>Find the K nearest<br/>training points</b><br/>(e.g. K=5)"]
+    F --> V["<b>They vote</b><br/>4 say YES, 1 says NO"]
+    V --> P["<b>Prediction: YES</b>"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class F,V gray
+    class N,P midgray
+</div>
+
 ---
 
 ## Putting it all together, when to use what
@@ -302,6 +475,38 @@ Here is the same tour as a cheat sheet you can come back to.
 | You need to measure how similar two things are | Distance and Similarity Metrics |
 
 That is the entire toolkit. Every technique you will meet in the rest of the handbook fits somewhere in this table.
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    START{"<b>What is your<br/>problem?</b>"}
+    START -->|"have labels"| SUP["<b>Supervised</b>"]
+    START -->|"no labels"| UNS["<b>Unsupervised</b>"]
+
+    SUP -->|"predict a<br/>number"| NUM{"<b>Regression</b>"}
+    SUP -->|"predict yes/no<br/>or category"| CAT{"<b>Classification</b>"}
+
+    NUM -->|"simple, fast"| LR["<b>Linear Regression</b>"]
+    NUM -->|"complex patterns"| RF1["<b>Random Forest /<br/>Gradient Boosting</b>"]
+
+    CAT -->|"yes / no"| LOG["<b>Logistic Regression</b>"]
+    CAT -->|"need explainable"| DT["<b>Decision Tree</b>"]
+    CAT -->|"max accuracy"| XGB["<b>XGBoost / LightGBM</b>"]
+    CAT -->|"quick baseline"| KNN["<b>KNN</b>"]
+
+    UNS -->|"find groups"| GRP{"<b>Clustering</b>"}
+    UNS -->|"compare items"| DIST["<b>Distance Metrics</b>"]
+
+    GRP -->|"fast, flat groups"| KM["<b>K-Means</b>"]
+    GRP -->|"see full structure"| HC["<b>Hierarchical</b>"]
+
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class LR,RF1,LOG,DT,XGB,KNN,KM,HC,DIST gray
+    class START,SUP,UNS,NUM,CAT,GRP midgray
+</div>
+
+Use this flowchart as your decision tree (pun intended) when picking an algorithm for a new problem.
 
 ---
 
