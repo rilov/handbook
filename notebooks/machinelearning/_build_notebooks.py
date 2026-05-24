@@ -16,8 +16,19 @@ from pathlib import Path
 
 OUT = Path(__file__).parent
 
+def _splitlines_keep_nl(text):
+    """Split text into lines, keeping trailing \\n on every line except possibly the last.
+
+    The .ipynb spec requires each entry in `source` to end with \\n (except the last)
+    so that joining them recreates the original text. A plain str.split("\\n") drops
+    the newlines and Jupyter renders all lines on a single line - which makes code
+    cells syntactically invalid.
+    """
+    lines = text.split("\n")
+    return [ln + "\n" for ln in lines[:-1]] + ([lines[-1]] if lines[-1] else [])
+
 def md(text):
-    return {"cell_type": "markdown", "metadata": {}, "source": text.split("\n")}
+    return {"cell_type": "markdown", "metadata": {}, "source": _splitlines_keep_nl(text)}
 
 def code(text):
     return {
@@ -25,7 +36,7 @@ def code(text):
         "execution_count": None,
         "metadata": {},
         "outputs": [],
-        "source": text.split("\n"),
+        "source": _splitlines_keep_nl(text),
     }
 
 def save(name, cells):
