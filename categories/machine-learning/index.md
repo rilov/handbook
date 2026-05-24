@@ -21,6 +21,15 @@ Learn machine learning fundamentals and practical algorithms from scratch. The t
 11. K-Nearest Neighbours
 12. ML Quick Reference - Libraries, Metrics, and Cheat Sheet
 
+**Beginner-friendly companions:**
+
+- **#19. ML Glossary** — plain-English A-Z dictionary of every term
+- **#20. Common Pitfalls and Debugging Guide** — symptom → cause → fix lookup
+- **#21. FAQ** — "what's the difference between X and Y" answers
+- **#22. Algorithm Intuition Flashcards** — one-card-per-algorithm review
+- **#23. Visual Algorithm Comparison** — see every classifier on the same dataset
+- **#24. End-to-End Worked Project (Titanic)** — full ML pipeline from CSV to evaluation
+
 **New to ML? Start with #02** for a non-technical, story-style tour of every technique before diving into the details.
 
 **Need a quick lookup?** Jump to **#18** for the one-page reference covering every library, algorithm, and metric used in this handbook.
