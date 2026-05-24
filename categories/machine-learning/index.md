@@ -19,8 +19,11 @@ Learn machine learning fundamentals and practical algorithms from scratch. The t
 9. K-Means Clustering
 10. Hierarchical Clustering
 11. K-Nearest Neighbours
+12. ML Quick Reference - Libraries, Metrics, and Cheat Sheet
 
 **New to ML? Start with #02** for a non-technical, story-style tour of every technique before diving into the details.
+
+**Need a quick lookup?** Jump to **#18** for the one-page reference covering every library, algorithm, and metric used in this handbook.
 
 **What You'll Learn:**
 
