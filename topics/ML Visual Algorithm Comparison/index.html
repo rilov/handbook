@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>23. ML Visual Algorithm Comparison</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>23. ML Visual Algorithm Comparison</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="ml-visual-algorithm-comparison">ML Visual Algorithm Comparison</h1>
+
+<p>The fastest way to understand the difference between algorithms is to <strong>see</strong> them all on the same data. This page describes (and gives you the code to generate) the decision boundary each classifier draws.</p>
+
+<p>Run the code at the end of this page and you will see all the visualizations at once.</p>
+
+<hr />
+
+<h2 id="the-setup">The setup</h2>
+
+<p>We will use a synthetic 2D dataset called “moons” (two interleaving half-circles). It is small enough to plot, complex enough to be interesting, and nonlinear enough to separate the simple from the powerful classifiers.</p>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    D["<b>2D moons dataset</b><br />two interleaving<br />half-circles"]
+    D --&gt; M["<b>Every classifier</b><br />predicts every point<br />on a fine grid"]
+    M --&gt; V["<b>Decision boundary</b><br />visualized as<br />colored regions"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class M gray
+    class D,V midgray
+</div>
+
+<hr />
+
+<h2 id="how-each-algorithm-looks">How each algorithm looks</h2>
+
+<h3 id="logistic-regression">Logistic Regression</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> A single straight line (or smooth curve with polynomial features).</p>
+
+  <p><strong>Why it looks that way:</strong> Logistic regression is fundamentally linear. The decision is “above the line = class 1, below = class 0.”</p>
+
+  <p><strong>On moons:</strong> Fails. The two half-circles cannot be separated by a straight line. Accuracy hovers around 85%.</p>
+</blockquote>
+
+<h3 id="knn-k--1">KNN (K = 1)</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Wavy and jagged, hugging every training point.</p>
+
+  <p><strong>Why it looks that way:</strong> Each test point copies the label of its single nearest training point.</p>
+
+  <p><strong>On moons:</strong> Captures the shape but looks like a torn paper edge. Will overfit on noisy data.</p>
+</blockquote>
+
+<h3 id="knn-k--15">KNN (K = 15)</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Smooth and curving, follows the data shape gently.</p>
+
+  <p><strong>Why it looks that way:</strong> Each test point votes among 15 neighbours, so the boundary is the smooth majority surface.</p>
+
+  <p><strong>On moons:</strong> Excellent. Smoothly separates the two moons. Generally a great default.</p>
+</blockquote>
+
+<h3 id="decision-tree-max_depth3">Decision Tree (max_depth=3)</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Axis-aligned rectangles. Hard vertical and horizontal cuts.</p>
+
+  <p><strong>Why it looks that way:</strong> Each node splits on one feature at one threshold, producing right-angle boundaries.</p>
+
+  <p><strong>On moons:</strong> Captures the rough shape but with blocky, unnatural edges.</p>
+</blockquote>
+
+<h3 id="decision-tree-max_depthnone">Decision Tree (max_depth=None)</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Many tiny rectangles, often one per training point.</p>
+
+  <p><strong>Why it looks that way:</strong> The tree grew deep enough to memorize every point.</p>
+
+  <p><strong>On moons:</strong> Classic overfit. Looks great on training, will fail on slightly different data.</p>
+</blockquote>
+
+<h3 id="random-forest">Random Forest</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Smoother than a single tree, still vaguely blocky but with rounded edges.</p>
+
+  <p><strong>Why it looks that way:</strong> Many trees vote, so the hard rectangle edges of individual trees get averaged out.</p>
+
+  <p><strong>On moons:</strong> Very good. Smoother and more accurate than a single tree.</p>
+</blockquote>
+
+<h3 id="gradient-boosting">Gradient Boosting</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Very smooth, follows the data shape closely, can wrap around complex regions.</p>
+
+  <p><strong>Why it looks that way:</strong> Many shallow trees, each adding a small correction. The result is a finely tuned surface.</p>
+
+  <p><strong>On moons:</strong> Near-perfect. Often the best classical model.</p>
+</blockquote>
+
+<h3 id="naive-bayes">Naive Bayes</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> A smooth curve, often elliptical.</p>
+
+  <p><strong>Why it looks that way:</strong> Naive Bayes assumes each feature follows a simple distribution and combines them probabilistically.</p>
+
+  <p><strong>On moons:</strong> Decent but limited. Not as flexible as KNN or trees.</p>
+</blockquote>
+
+<h3 id="svm-with-rbf-kernel">SVM with RBF Kernel</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Smooth and curving, often the cleanest looking boundary.</p>
+
+  <p><strong>Why it looks that way:</strong> SVM with an RBF kernel implicitly maps points into a higher-dimensional space where a hyperplane can separate them, which projects back as a smooth curve.</p>
+
+  <p><strong>On moons:</strong> Excellent. One of the best on small low-dimensional problems.</p>
+</blockquote>
+
+<h3 id="neural-network-small">Neural Network (small)</h3>
+
+<blockquote>
+  <p><strong>Boundary shape:</strong> Smooth and curving, similar to SVM.</p>
+
+  <p><strong>Why it looks that way:</strong> Each layer of the network bends the input space, producing a smooth nonlinear boundary.</p>
+
+  <p><strong>On moons:</strong> Very good with proper tuning. Overkill for this size of problem.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="what-each-pattern-teaches-you">What each pattern teaches you</h2>
+
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'16px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    BS["<b>Boundary shape</b>"]
+    BS --&gt; S["<b>Straight line</b><br />Linear / Logistic"]
+    BS --&gt; R["<b>Rectangles</b><br />Decision Tree"]
+    BS --&gt; SR["<b>Smoothed rectangles</b><br />Random Forest"]
+    BS --&gt; SM["<b>Smooth curves</b><br />SVM (RBF), Neural Net,<br />Gradient Boosting"]
+    BS --&gt; J["<b>Jagged hugging</b><br />KNN (small K)"]
+    classDef gray fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef midgray fill:#bdbdbd,stroke:#222,stroke-width:1.5px,color:#000
+    class S,R,SR,SM,J gray
+    class BS midgray
+</div>
+
+<p>Once you have seen these patterns, you can almost guess what an unseen classifier will do just by knowing what family it belongs to.</p>
+
+<hr />
+
+<h2 id="the-code-to-generate-all-of-them">The code to generate all of them</h2>
+
+<p>Save this in a file and run it. You will see all 9 classifiers side by side on the moons dataset.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="n">matplotlib.colors</span> <span class="kn">import</span> <span class="n">ListedColormap</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_moons</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
+<span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">KNeighborsClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.tree</span> <span class="kn">import</span> <span class="n">DecisionTreeClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span><span class="p">,</span> <span class="n">GradientBoostingClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">GaussianNB</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.neural_network</span> <span class="kn">import</span> <span class="n">MLPClassifier</span>
+
+<span class="c1"># 1. Create the dataset
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_moons</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">().</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="c1"># 2. Models to compare
+</span><span class="n">classifiers</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">Logistic Regression</span><span class="sh">"</span><span class="p">:</span>   <span class="nc">LogisticRegression</span><span class="p">(),</span>
+    <span class="sh">"</span><span class="s">KNN (k=1)</span><span class="sh">"</span><span class="p">:</span>             <span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">KNN (k=15)</span><span class="sh">"</span><span class="p">:</span>            <span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">15</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Decision Tree (d=3)</span><span class="sh">"</span><span class="p">:</span>   <span class="nc">DecisionTreeClassifier</span><span class="p">(</span><span class="n">max_depth</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Decision Tree (full)</span><span class="sh">"</span><span class="p">:</span>  <span class="nc">DecisionTreeClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Random Forest</span><span class="sh">"</span><span class="p">:</span>         <span class="nc">RandomForestClassifier</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Gradient Boosting</span><span class="sh">"</span><span class="p">:</span>     <span class="nc">GradientBoostingClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Naive Bayes</span><span class="sh">"</span><span class="p">:</span>           <span class="nc">GaussianNB</span><span class="p">(),</span>
+    <span class="sh">"</span><span class="s">SVM (RBF)</span><span class="sh">"</span><span class="p">:</span>             <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">"</span><span class="s">rbf</span><span class="sh">"</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Neural Net</span><span class="sh">"</span><span class="p">:</span>            <span class="nc">MLPClassifier</span><span class="p">(</span><span class="n">hidden_layer_sizes</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="c1"># 3. Set up the grid for plotting decision boundaries
+</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mf">0.5</span>
+<span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">].</span><span class="nf">min</span><span class="p">()</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">].</span><span class="nf">max</span><span class="p">()</span> <span class="o">+</span> <span class="mf">0.5</span>
+<span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">meshgrid</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">),</span> <span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">))</span>
+
+<span class="n">cm</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="n">cm</span><span class="p">.</span><span class="n">RdBu</span>
+<span class="n">cm_bright</span> <span class="o">=</span> <span class="nc">ListedColormap</span><span class="p">([</span><span class="sh">"</span><span class="s">#FF0000</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">#0000FF</span><span class="sh">"</span><span class="p">])</span>
+
+<span class="c1"># 4. Plot each classifier
+</span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+<span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="p">.</span><span class="nf">ravel</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">clf</span><span class="p">)</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">classifiers</span><span class="p">.</span><span class="nf">items</span><span class="p">()):</span>
+    <span class="n">clf</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="n">score</span> <span class="o">=</span> <span class="n">clf</span><span class="p">.</span><span class="nf">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
+
+    <span class="c1"># Decision boundary
+</span>    <span class="k">if</span> <span class="nf">hasattr</span><span class="p">(</span><span class="n">clf</span><span class="p">,</span> <span class="sh">"</span><span class="s">decision_function</span><span class="sh">"</span><span class="p">):</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="n">clf</span><span class="p">.</span><span class="nf">decision_function</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="n">c_</span><span class="p">[</span><span class="n">xx</span><span class="p">.</span><span class="nf">ravel</span><span class="p">(),</span> <span class="n">yy</span><span class="p">.</span><span class="nf">ravel</span><span class="p">()])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="n">clf</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="n">c_</span><span class="p">[</span><span class="n">xx</span><span class="p">.</span><span class="nf">ravel</span><span class="p">(),</span> <span class="n">yy</span><span class="p">.</span><span class="nf">ravel</span><span class="p">()])[:,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">Z</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="n">xx</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="p">.</span><span class="nf">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cm</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X_train</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X_train</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">y_train</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cm_bright</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X_test</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X_test</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">y_test</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cm_bright</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">"</span><span class="s">x</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">.</span><span class="nf">set_title</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="se">\n</span><span class="s">Test acc = </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">.</span><span class="nf">set_xticks</span><span class="p">(())</span>
+    <span class="n">ax</span><span class="p">.</span><span class="nf">set_yticks</span><span class="p">(())</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>When you run this you will see, in a single picture, the exact differences between every classical algorithm. Look at the boundaries:</p>
+
+<ul>
+  <li>Logistic regression draws one line. Bad for moons.</li>
+  <li>Single trees draw boxes. Decent but blocky.</li>
+  <li>Random Forest smooths the boxes.</li>
+  <li>KNN at K=1 is jagged and overfits. KNN at K=15 is smooth.</li>
+  <li>SVM with RBF and Gradient Boosting draw nearly perfect smooth curves.</li>
+</ul>
+
+<p>This single plot teaches more about algorithm differences than reading any text. Run it once and the patterns will stick with you.</p>
+
+<hr />
+
+<h2 id="how-to-apply-this-insight">How to apply this insight</h2>
+
+<p>When you face a real problem, ask:</p>
+
+<ol>
+  <li><strong>Is my data linearly separable?</strong> If yes, logistic regression and linear SVM will work.</li>
+  <li><strong>Are the classes in irregular shapes?</strong> Use tree ensembles, KNN, RBF SVM, or neural nets.</li>
+  <li><strong>Do I need interpretability?</strong> Logistic regression or a shallow decision tree.</li>
+  <li><strong>Is my data noisy?</strong> Avoid deep decision trees and KNN with small K (they overfit noise).</li>
+  <li><strong>Do I have lots of data and want top accuracy?</strong> Gradient boosting.</li>
+</ol>
+
+<p>The boundary shape an algorithm produces tells you what kinds of problems it is good at. Linear boundaries for linear problems. Box boundaries for stepwise problems. Smooth curves for complex nonlinear problems.</p>
+
+<p>Internalize this and you will rarely pick the wrong algorithm for a problem again.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">comparison</span>, <span class="tag">decision-boundaries</span>, <span class="tag">visualization</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

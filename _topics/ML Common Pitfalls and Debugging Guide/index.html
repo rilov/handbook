@@ -1,0 +1,350 @@
+<h1 id="ml-common-pitfalls-and-debugging-guide">ML Common Pitfalls and Debugging Guide</h1>
+
+<p>Every ML practitioner hits the same walls. This page is a symptom → cause → fix guide for the most common situations. If your model is misbehaving, find the symptom that matches yours and follow the fix.</p>
+
+<hr />
+
+<h2 id="symptom-great-training-accuracy-poor-test-accuracy">Symptom: Great training accuracy, poor test accuracy</h2>
+
+<p><strong>Diagnosis:</strong> Classic <strong>overfitting</strong>. Your model memorized the training data including the noise, so it cannot generalize to new data.</p>
+
+<p><strong>Common causes:</strong></p>
+
+<ul>
+  <li>Model is too complex for the amount of data you have.</li>
+  <li>You have too many features compared to rows.</li>
+  <li>Your decision tree is too deep.</li>
+  <li>You forgot to use regularization.</li>
+  <li>You evaluated on training data by mistake.</li>
+</ul>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Add <strong>regularization</strong> (Ridge, Lasso, <code class="language-plaintext highlighter-rouge">alpha</code> parameter, or for tree models, set <code class="language-plaintext highlighter-rouge">max_depth</code>, <code class="language-plaintext highlighter-rouge">min_samples_leaf</code>, increase <code class="language-plaintext highlighter-rouge">min_samples_split</code>).</li>
+  <li>Get <strong>more data</strong> if you can.</li>
+  <li><strong>Reduce features</strong> with selection or PCA.</li>
+  <li>Use <strong>cross validation</strong> to confirm the problem is real, not just an unlucky split.</li>
+  <li>For neural nets, add <strong>dropout</strong> or <strong>early stopping</strong>.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-poor-training-accuracy-and-poor-test-accuracy">Symptom: Poor training accuracy AND poor test accuracy</h2>
+
+<p><strong>Diagnosis:</strong> <strong>Underfitting</strong>. Your model is too simple or you are not giving it enough signal.</p>
+
+<p><strong>Common causes:</strong></p>
+
+<ul>
+  <li>Linear model on highly nonlinear data.</li>
+  <li><code class="language-plaintext highlighter-rouge">max_depth</code> too small in a tree.</li>
+  <li>Too few features.</li>
+  <li>Features are not on the same scale (for distance-based or regularized models).</li>
+</ul>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Use a <strong>more flexible model</strong> (decision tree, random forest, gradient boosting).</li>
+  <li><strong>Add polynomial or interaction features</strong>.</li>
+  <li><strong>Engineer better features</strong> from your raw data.</li>
+  <li><strong>Reduce regularization</strong> (lower <code class="language-plaintext highlighter-rouge">alpha</code>, higher <code class="language-plaintext highlighter-rouge">C</code> for logistic regression).</li>
+  <li>Make sure your <strong>features are properly scaled</strong>.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-model-predicts-the-same-class-for-everything">Symptom: Model predicts the same class for everything</h2>
+
+<p><strong>Diagnosis:</strong> Almost always <strong>imbalanced classes</strong>. The cheapest way to maximize accuracy is to always guess the majority class.</p>
+
+<p><strong>Common causes:</strong></p>
+
+<ul>
+  <li>99% of your training labels are one class.</li>
+  <li>You evaluated with accuracy on imbalanced data, so the issue is hidden.</li>
+  <li>You did not balance, weight, or stratify.</li>
+</ul>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Stop using accuracy.</strong> Use <strong>F1</strong>, <strong>precision/recall</strong>, or <strong>ROC-AUC</strong> instead.</li>
+  <li>Use <code class="language-plaintext highlighter-rouge">class_weight="balanced"</code> in scikit-learn models.</li>
+  <li><strong>Oversample the minority class</strong> (SMOTE) or <strong>undersample the majority class</strong>.</li>
+  <li>Adjust the <strong>decision threshold</strong> (default 0.5 might not be right).</li>
+  <li>Use <strong>stratified sampling</strong> when splitting and cross-validating.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-test-accuracy-looks-suspiciously-high-99-on-a-hard-problem">Symptom: Test accuracy looks suspiciously high (99%+ on a hard problem)</h2>
+
+<p><strong>Diagnosis:</strong> Almost always <strong>data leakage</strong>. Information from the test set or the future is sneaking into training.</p>
+
+<p><strong>Common causes:</strong></p>
+
+<ul>
+  <li>You <strong>scaled the data before splitting</strong> (the scaler saw the test set).</li>
+  <li>You used the <strong>target</strong> as a feature, directly or indirectly.</li>
+  <li>Your features include information that would not be available at prediction time (target leakage).</li>
+  <li>You <strong>upsampled or transformed</strong> the data before splitting.</li>
+  <li>Duplicate rows between train and test.</li>
+</ul>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Always <strong>split first</strong>, then fit transformers only on training data.</li>
+  <li>Use <strong>scikit-learn Pipelines</strong> to prevent leakage automatically.</li>
+  <li><strong>Examine each feature</strong> and ask: would I have this at the moment of prediction?</li>
+  <li>Look for <strong>time-related features</strong> that encode the future.</li>
+  <li><strong>Drop duplicates</strong> before splitting.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-knn-or-k-means-gives-weird-results">Symptom: KNN or K-Means gives weird results</h2>
+
+<p><strong>Diagnosis:</strong> You probably <strong>forgot to scale your features</strong>. Distance-based algorithms are dominated by whichever feature has the biggest numeric range.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Always StandardScaler</strong> before KNN, K-Means, SVM, or any regularized linear model.</li>
+  <li>Use a <strong>Pipeline</strong> so you cannot forget.</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.cluster</span> <span class="kn">import</span> <span class="n">KMeans</span>
+
+<span class="n">pipe</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">scaler</span><span class="sh">"</span><span class="p">,</span> <span class="nc">StandardScaler</span><span class="p">()),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">model</span><span class="sh">"</span><span class="p">,</span> <span class="nc">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">10</span><span class="p">)),</span>
+<span class="p">])</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="symptom-model-performance-is-unstable-big-swings-between-runs">Symptom: Model performance is unstable, big swings between runs</h2>
+
+<p><strong>Diagnosis:</strong> Either the <strong>random seed</strong> is varying, or you have <strong>too little data</strong>.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Set random_state</strong> on every component (split, model, cv).</li>
+  <li>Use <strong>cross validation</strong> (5 or 10 folds) and report the mean.</li>
+  <li>Get more data.</li>
+  <li>Try simpler models (they have less variance).</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-gridsearchcv-is-taking-forever">Symptom: GridSearchCV is taking forever</h2>
+
+<p><strong>Diagnosis:</strong> Combinatorial explosion. With many parameters and many values, the number of combinations explodes.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Use <strong>RandomizedSearchCV</strong> instead. Sample 50 random combinations rather than testing all 10,000.</li>
+  <li>Set <code class="language-plaintext highlighter-rouge">n_jobs=-1</code> to use all CPU cores.</li>
+  <li><strong>Narrow the grid</strong> based on intuition. Tune one parameter at a time first.</li>
+  <li>Use fewer <strong>cv folds</strong> (3 instead of 10) for an initial pass, then refine.</li>
+  <li>For boosting, tune <code class="language-plaintext highlighter-rouge">n_estimators</code> with <strong>early stopping</strong> instead of grid search.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-coefficient-signs-flip-when-i-add-a-feature">Symptom: Coefficient signs flip when I add a feature</h2>
+
+<p><strong>Diagnosis:</strong> <strong>Multicollinearity</strong>. Two of your features are correlated and the model cannot decide which one should get the credit.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Check <strong>correlation matrix</strong> and <strong>VIF</strong> (Variance Inflation Factor).</li>
+  <li><strong>Drop one</strong> of the correlated features.</li>
+  <li>Use <strong>Ridge regression</strong> which handles multicollinearity gracefully.</li>
+  <li><strong>PCA</strong> to combine correlated features into uncorrelated components.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-my-model-says-99-accuracy-but-business-says-it-is-useless">Symptom: My model says 99% accuracy but business says it is useless</h2>
+
+<p><strong>Diagnosis:</strong> You optimized the <strong>wrong metric</strong>. Accuracy can be high while the model fails at the actual business problem.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Understand the cost of errors.</strong> Is a false positive more expensive than a false negative? Adjust your metric accordingly.</li>
+  <li><strong>Talk to stakeholders</strong> about what mistakes hurt and which do not.</li>
+  <li>Use <strong>precision</strong> if false positives are costly, <strong>recall</strong> if false negatives are.</li>
+  <li>Look at the <strong>confusion matrix</strong> directly to see what kinds of mistakes the model makes.</li>
+  <li>Build a <strong>custom scoring function</strong> if no off-the-shelf metric fits.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-model-worked-in-development-broken-in-production">Symptom: Model worked in development, broken in production</h2>
+
+<p><strong>Diagnosis:</strong> <strong>Distribution shift</strong>. The real-world data looks different from your training data.</p>
+
+<p><strong>Common causes:</strong></p>
+
+<ul>
+  <li>Customer behaviour changed (seasonal, post-COVID, etc.).</li>
+  <li>Data pipeline changed (new columns, different formats).</li>
+  <li>Feature engineering at predict time differs from training time.</li>
+  <li>Time of day, region, or device mix changed.</li>
+</ul>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Monitor input distributions</strong> in production. If they drift, retrain.</li>
+  <li><strong>Retrain regularly</strong> on fresh data.</li>
+  <li><strong>Save the entire pipeline</strong>, not just the model, so preprocessing matches.</li>
+  <li><strong>Set up A/B testing</strong> or shadow deployment before full rollout.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-probabilities-look-weird-every-prediction-is-001-or-099">Symptom: Probabilities look weird (every prediction is 0.01 or 0.99)</h2>
+
+<p><strong>Diagnosis:</strong> <strong>Uncalibrated probabilities</strong>. Some models (especially Random Forest and Gradient Boosting) output uncalibrated scores that do not correspond to true probabilities.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Use <strong>CalibratedClassifierCV</strong> to fix the probabilities.</li>
+  <li>Look at a <strong>calibration curve</strong> to confirm.</li>
+  <li>If you just need rankings, calibration is not necessary.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-my-loss-is-nan-or-inf">Symptom: My loss is NaN or Inf</h2>
+
+<p><strong>Diagnosis:</strong> Numerical issues. Most likely you have NaN values in your data, an extreme outlier, or a divide-by-zero in your code.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Check for missing values</strong> with <code class="language-plaintext highlighter-rouge">df.isnull().sum()</code>.</li>
+  <li><strong>Look for outliers</strong> with <code class="language-plaintext highlighter-rouge">df.describe()</code>. Cap them if extreme.</li>
+  <li><strong>Scale features</strong> so no value is astronomical.</li>
+  <li>For linear regression, look for <strong>perfectly correlated features</strong> (will cause singular matrices).</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-models-that-should-be-similar-give-wildly-different-results">Symptom: Models that should be similar give wildly different results</h2>
+
+<p><strong>Diagnosis:</strong> Either <strong>hyperparameters</strong> are very different, or one model is misconfigured.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Print the hyperparameters</strong> of each model. They might have very different defaults.</li>
+  <li>Make sure both are evaluated on the <strong>same train/test split</strong>.</li>
+  <li>Make sure both use the <strong>same preprocessing</strong>.</li>
+  <li>Use the same <strong>random_state</strong> everywhere.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-my-elbow-plot-does-not-have-a-clear-elbow">Symptom: My elbow plot does not have a clear elbow</h2>
+
+<p><strong>Diagnosis:</strong> Your data may not have natural clusters. Or it might have just one cluster, or many overlapping ones.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Try the <strong>silhouette score</strong> as a second opinion.</li>
+  <li>Plot the data in 2D with PCA or t-SNE to see if there is actually any structure.</li>
+  <li>Try <strong>DBSCAN</strong> which can find clusters of arbitrary shape.</li>
+  <li>Consider that maybe clustering is not the right approach for your data.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-scikit-learn-shows-a-warning-about-convergence">Symptom: scikit-learn shows a warning about convergence</h2>
+
+<p><strong>Diagnosis:</strong> The optimizer ran out of iterations before finding the best parameters.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li><strong>Increase <code class="language-plaintext highlighter-rouge">max_iter</code></strong> (default is 100 for logistic regression, often too low).</li>
+  <li><strong>Scale your features</strong> so the optimization is well-conditioned.</li>
+  <li><strong>Reduce regularization</strong> (<code class="language-plaintext highlighter-rouge">alpha</code> smaller, <code class="language-plaintext highlighter-rouge">C</code> larger) if it is too tight.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-my-features-have-hundreds-of-categories-model-crashes">Symptom: My features have hundreds of categories, model crashes</h2>
+
+<p><strong>Diagnosis:</strong> <strong>High cardinality categorical features</strong>. One-hot encoding creates hundreds of columns.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Use <strong>target encoding</strong> or <strong>frequency encoding</strong> instead of one-hot.</li>
+  <li><strong>Group rare categories</strong> into “Other”.</li>
+  <li>Use <strong>CatBoost</strong> which handles high cardinality natively.</li>
+  <li>Encode as <strong>embeddings</strong> if using deep learning.</li>
+</ol>
+
+<hr />
+
+<h2 id="symptom-time-series-cross-validation-is-wrong">Symptom: Time series cross validation is wrong</h2>
+
+<p><strong>Diagnosis:</strong> Standard CV shuffles the data, which leaks the future into training.</p>
+
+<p><strong>Fixes:</strong></p>
+
+<ol>
+  <li>Use <strong>TimeSeriesSplit</strong> from scikit-learn instead.</li>
+  <li>Never train on data from after the test period.</li>
+  <li>Always evaluate on a future hold-out, not random.</li>
+</ol>
+
+<hr />
+
+<h2 id="a-general-checklist-when-nothing-makes-sense">A general checklist when nothing makes sense</h2>
+
+<p>When you are stuck and your model behaves bizarrely, run through this list:</p>
+
+<ol>
+  <li><strong>Did I look at the data?</strong> Run <code class="language-plaintext highlighter-rouge">df.describe()</code> and <code class="language-plaintext highlighter-rouge">df.head()</code>. Plot histograms.</li>
+  <li><strong>Did I check for missing values?</strong> <code class="language-plaintext highlighter-rouge">df.isnull().sum()</code>.</li>
+  <li><strong>Did I check class balance?</strong> <code class="language-plaintext highlighter-rouge">df["target"].value_counts()</code>.</li>
+  <li><strong>Did I scale the features?</strong> Required for distance-based and regularized models.</li>
+  <li><strong>Did I split before transforming?</strong> Always split first.</li>
+  <li><strong>Did I use a Pipeline?</strong> Pipelines prevent half the bugs in ML.</li>
+  <li><strong>Did I check the test set is held out?</strong> Never seen during any tuning.</li>
+  <li><strong>Am I using the right metric?</strong> Accuracy on imbalanced data lies.</li>
+  <li><strong>Did I set random_state?</strong> For reproducible results.</li>
+  <li><strong>Did I try the simplest model first?</strong> Linear/logistic regression is your sanity check.</li>
+</ol>
+
+<p>If you go through this checklist and still cannot find the bug, write down what you tried and ask someone with fresh eyes. Half the time the issue is something you have looked at five times already and your brain skipped over it.</p>
+
+<hr />
+
+<h2 id="a-few-timeless-rules">A few timeless rules</h2>
+
+<ul>
+  <li><strong>Garbage in, garbage out.</strong> No algorithm fixes bad data.</li>
+  <li><strong>Simple beats clever.</strong> Try the simplest model first. If it works, ship it.</li>
+  <li><strong>Test data is sacred.</strong> Do not look at it. Do not tune to it. Use it once, at the end.</li>
+  <li><strong>A model is just an opinion.</strong> It can be confidently wrong. Always check.</li>
+  <li><strong>The hardest problems are not algorithm choice, they are data quality.</strong> Spend 80% of your time on the data.</li>
+</ul>
+
+<p>That is the entire debugging mindset condensed. Bookmark this page. You will need it.</p>

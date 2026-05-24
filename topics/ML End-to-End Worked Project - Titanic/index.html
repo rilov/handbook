@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>24. ML End-to-End Worked Project - Titanic</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>24. ML End-to-End Worked Project - Titanic</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="ml-end-to-end-worked-project---titanic">ML End-to-End Worked Project - Titanic</h1>
+
+<p>This is the project that ties everything together. We will take a real (but small) dataset and build a complete ML pipeline from scratch, using almost every concept from the previous tutorials.</p>
+
+<p>By the end you will have:</p>
+
+<ul>
+  <li>Explored a real dataset.</li>
+  <li>Cleaned messy data.</li>
+  <li>Engineered useful features.</li>
+  <li>Compared multiple models.</li>
+  <li>Tuned the best one.</li>
+  <li>Evaluated honestly on a held-out test set.</li>
+</ul>
+
+<p>This is the workflow you will use again and again in real ML work.</p>
+
+<hr />
+
+<h2 id="the-problem">The problem</h2>
+
+<p>The Titanic dataset contains passenger information from the 1912 disaster. For each passenger we know things like age, sex, ticket class, fare, and whether they survived.</p>
+
+<p><strong>Goal:</strong> Build a model that predicts whether a passenger survived.</p>
+
+<p>This is a <strong>binary classification</strong> problem. Survived = 1, did not survive = 0.</p>
+
+<hr />
+
+<h2 id="step-1-load-and-explore-the-data">Step 1. Load and explore the data</h2>
+
+<p>We use the version built into seaborn so you do not need to download anything.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span> <span class="n">seaborn</span> <span class="k">as</span> <span class="n">sns</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">sns</span><span class="p">.</span><span class="nf">load_dataset</span><span class="p">(</span><span class="sh">"</span><span class="s">titanic</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>        <span class="c1"># (891, 15)
+</span><span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="nf">head</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="nf">info</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="nf">describe</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p>You will see columns like:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">survived</code> (0 or 1, the target)</li>
+  <li><code class="language-plaintext highlighter-rouge">pclass</code> (1, 2, or 3 - ticket class)</li>
+  <li><code class="language-plaintext highlighter-rouge">sex</code>, <code class="language-plaintext highlighter-rouge">age</code>, <code class="language-plaintext highlighter-rouge">sibsp</code>, <code class="language-plaintext highlighter-rouge">parch</code>, <code class="language-plaintext highlighter-rouge">fare</code>, <code class="language-plaintext highlighter-rouge">embarked</code>, <code class="language-plaintext highlighter-rouge">class</code>, <code class="language-plaintext highlighter-rouge">who</code>, <code class="language-plaintext highlighter-rouge">adult_male</code>, <code class="language-plaintext highlighter-rouge">alone</code>, etc.</li>
+</ul>
+
+<p>Some are redundant (e.g. <code class="language-plaintext highlighter-rouge">pclass</code> and <code class="language-plaintext highlighter-rouge">class</code>). Some have missing values (<code class="language-plaintext highlighter-rouge">age</code>, <code class="language-plaintext highlighter-rouge">deck</code>, <code class="language-plaintext highlighter-rouge">embarked</code>).</p>
+
+<h3 id="check-class-balance">Check class balance</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">survived</span><span class="sh">"</span><span class="p">].</span><span class="nf">value_counts</span><span class="p">(</span><span class="n">normalize</span><span class="o">=</span><span class="bp">True</span><span class="p">))</span>
+<span class="c1"># 0  ~61%
+# 1  ~39%
+</span></code></pre></div></div>
+
+<p>Slightly imbalanced but not dramatically. Accuracy will be a reasonable starting metric.</p>
+
+<h3 id="look-at-missing-values">Look at missing values</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="nf">isnull</span><span class="p">().</span><span class="nf">sum</span><span class="p">().</span><span class="nf">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>You will see <code class="language-plaintext highlighter-rouge">deck</code> has many missing values (drop it), <code class="language-plaintext highlighter-rouge">age</code> has some missing values (impute it), <code class="language-plaintext highlighter-rouge">embarked</code> has two missing (impute or drop).</p>
+
+<hr />
+
+<h2 id="step-2-clean-and-engineer-features">Step 2. Clean and engineer features</h2>
+
+<h3 id="pick-the-columns-we-want">Pick the columns we want</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">"</span><span class="s">survived</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">pclass</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sex</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">age</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sibsp</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">parch</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fare</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">]].</span><span class="nf">copy</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>We dropped redundant columns (<code class="language-plaintext highlighter-rouge">class</code>, <code class="language-plaintext highlighter-rouge">who</code>, <code class="language-plaintext highlighter-rouge">adult_male</code>, <code class="language-plaintext highlighter-rouge">alone</code>, <code class="language-plaintext highlighter-rouge">embark_town</code>, <code class="language-plaintext highlighter-rouge">alive</code>, <code class="language-plaintext highlighter-rouge">adult_male</code>) and the mostly-missing <code class="language-plaintext highlighter-rouge">deck</code>.</p>
+
+<h3 id="engineer-some-new-features">Engineer some new features</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Family size = siblings/spouses + parents/children + self
+</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">family_size</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">sibsp</span><span class="sh">"</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">parch</span><span class="sh">"</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+
+<span class="c1"># Is the passenger travelling alone?
+</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">is_alone</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">family_size</span><span class="sh">"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Feature engineering like this often beats fancy models. Always look for combinations that have real-world meaning.</p>
+
+<h3 id="handle-missing-values">Handle missing values</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Age: fill with median
+</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">age</span><span class="sh">"</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">age</span><span class="sh">"</span><span class="p">].</span><span class="nf">median</span><span class="p">(),</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Embarked: fill with most common value
+</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">].</span><span class="nf">mode</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Fare: just in case
+</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">fare</span><span class="sh">"</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">fare</span><span class="sh">"</span><span class="p">].</span><span class="nf">median</span><span class="p">(),</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>For a more rigorous project, you would impute inside a Pipeline so it does not leak from test data. We will do that with <code class="language-plaintext highlighter-rouge">SimpleImputer</code> below.</p>
+
+<h3 id="encode-categorical-variables">Encode categorical variables</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">get_dummies</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">sex</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">],</span> <span class="n">drop_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="n">columns</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">sex</code> and <code class="language-plaintext highlighter-rouge">embarked</code> are categorical. <code class="language-plaintext highlighter-rouge">pd.get_dummies</code> turns them into 0/1 columns.</p>
+
+<hr />
+
+<h2 id="step-3-split-into-train-and-test">Step 3. Split into train and test</h2>
+
+<p>This must happen before any further preprocessing fitting.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="nf">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">survived</span><span class="sh">"</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">survived</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span>
+    <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">stratify</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>    <span class="c1"># keep class balance the same in train and test
+</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">X_train</span><span class="p">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">X_test</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Notice <code class="language-plaintext highlighter-rouge">stratify=y</code>. With imbalanced data, this ensures both train and test have similar class proportions.</p>
+
+<hr />
+
+<h2 id="step-4-build-a-baseline-pipeline">Step 4. Build a baseline pipeline</h2>
+
+<p>Always start with the simplest reasonable model. A Logistic Regression baseline tells us how hard the problem is.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">cross_val_score</span>
+
+<span class="n">baseline</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">scaler</span><span class="sh">"</span><span class="p">,</span> <span class="nc">StandardScaler</span><span class="p">()),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">model</span><span class="sh">"</span><span class="p">,</span>  <span class="nc">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">)),</span>
+<span class="p">])</span>
+
+<span class="n">cv_scores</span> <span class="o">=</span> <span class="nf">cross_val_score</span><span class="p">(</span><span class="n">baseline</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">accuracy</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Baseline CV accuracy: </span><span class="si">{</span><span class="n">cv_scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s"> (+/- </span><span class="si">{</span><span class="n">cv_scores</span><span class="p">.</span><span class="nf">std</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>You should see somewhere around 0.79-0.81. That is the bar to beat.</p>
+
+<hr />
+
+<h2 id="step-5-compare-several-models">Step 5. Compare several models</h2>
+
+<p>Now try a few different families and see which looks promising.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span><span class="p">,</span> <span class="n">GradientBoostingClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">KNeighborsClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.tree</span> <span class="kn">import</span> <span class="n">DecisionTreeClassifier</span>
+
+<span class="n">models</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">Logistic Regression</span><span class="sh">"</span><span class="p">:</span>  <span class="nc">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Decision Tree</span><span class="sh">"</span><span class="p">:</span>        <span class="nc">DecisionTreeClassifier</span><span class="p">(</span><span class="n">max_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Random Forest</span><span class="sh">"</span><span class="p">:</span>        <span class="nc">RandomForestClassifier</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Gradient Boosting</span><span class="sh">"</span><span class="p">:</span>    <span class="nc">GradientBoostingClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">KNN (k=5)</span><span class="sh">"</span><span class="p">:</span>            <span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">.</span><span class="nf">items</span><span class="p">():</span>
+    <span class="n">pipe</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([(</span><span class="sh">"</span><span class="s">scaler</span><span class="sh">"</span><span class="p">,</span> <span class="nc">StandardScaler</span><span class="p">()),</span> <span class="p">(</span><span class="sh">"</span><span class="s">model</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">)])</span>
+    <span class="n">scores</span> <span class="o">=</span> <span class="nf">cross_val_score</span><span class="p">(</span><span class="n">pipe</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">accuracy</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">results</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="mi">25</span><span class="n">s</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s"> (+/- </span><span class="si">{</span><span class="n">scores</span><span class="p">.</span><span class="nf">std</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>You will typically see Gradient Boosting and Random Forest leading the pack, around 0.83-0.84.</p>
+
+<hr />
+
+<h2 id="step-6-tune-the-best-model">Step 6. Tune the best model</h2>
+
+<p>Once you pick a winning algorithm, tune its hyperparameters.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span>
+
+<span class="n">pipe</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">scaler</span><span class="sh">"</span><span class="p">,</span> <span class="nc">StandardScaler</span><span class="p">()),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">model</span><span class="sh">"</span><span class="p">,</span>  <span class="nc">GradientBoostingClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)),</span>
+<span class="p">])</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">model__n_estimators</span><span class="sh">"</span><span class="p">:</span>  <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">model__learning_rate</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">model__max_depth</span><span class="sh">"</span><span class="p">:</span>     <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span>
+    <span class="n">pipe</span><span class="p">,</span>
+    <span class="n">param_grid</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">accuracy</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best params:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>This fits 27 candidates x 5 folds = 135 models. With <code class="language-plaintext highlighter-rouge">n_jobs=-1</code> it runs in parallel.</p>
+
+<hr />
+
+<h2 id="step-7-final-evaluation-on-the-held-out-test-set">Step 7. Final evaluation on the held-out test set</h2>
+
+<p>This is the moment of truth. We have not touched <code class="language-plaintext highlighter-rouge">X_test</code> and <code class="language-plaintext highlighter-rouge">y_test</code> yet.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">accuracy_score</span><span class="p">,</span>
+    <span class="n">classification_report</span><span class="p">,</span>
+    <span class="n">confusion_matrix</span><span class="p">,</span>
+    <span class="n">roc_auc_score</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">best_model</span> <span class="o">=</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_estimator_</span>
+<span class="n">y_pred</span> <span class="o">=</span> <span class="n">best_model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="n">y_proba</span> <span class="o">=</span> <span class="n">best_model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test accuracy:  </span><span class="si">{</span><span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test ROC-AUC:   </span><span class="si">{</span><span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_proba</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Confusion matrix:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">confusion_matrix</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Classification report:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">Died</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Survived</span><span class="sh">"</span><span class="p">]))</span>
+</code></pre></div></div>
+
+<p>Typical result is around 0.82-0.85 accuracy with ROC-AUC around 0.86-0.88. The confusion matrix tells you exactly what kinds of mistakes the model makes.</p>
+
+<hr />
+
+<h2 id="step-8-look-at-feature-importance">Step 8. Look at feature importance</h2>
+
+<p>Gradient Boosting gives you free feature importance scores. Use them to understand what drove the predictions.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">best_model</span><span class="p">.</span><span class="n">named_steps</span><span class="p">[</span><span class="sh">"</span><span class="s">model</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">importance</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">Series</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="n">feature_importances_</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">X_train</span><span class="p">.</span><span class="n">columns</span><span class="p">).</span><span class="nf">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">sns</span><span class="p">.</span><span class="nf">barplot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">importance</span><span class="p">.</span><span class="n">values</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">importance</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="sh">"</span><span class="s">gray</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Feature Importance (Gradient Boosting)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Importance</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>You will almost certainly see <code class="language-plaintext highlighter-rouge">sex_male</code> and <code class="language-plaintext highlighter-rouge">fare</code> at the top, followed by <code class="language-plaintext highlighter-rouge">age</code>, <code class="language-plaintext highlighter-rouge">pclass</code>, and <code class="language-plaintext highlighter-rouge">family_size</code>. The model learned what we already knew historically: women, the rich, and children had higher survival rates.</p>
+
+<p>This is what good ML looks like: numbers that align with reality.</p>
+
+<hr />
+
+<h2 id="step-9-sanity-check-with-predictions">Step 9. Sanity check with predictions</h2>
+
+<p>It is always a good idea to spot-check actual predictions.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">sample</span> <span class="o">=</span> <span class="n">X_test</span><span class="p">.</span><span class="nf">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Predicted probabilities of survival:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">best_model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">sample</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">].</span><span class="nf">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Actual:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">y_test</span><span class="p">.</span><span class="nf">head</span><span class="p">(</span><span class="mi">5</span><span class="p">).</span><span class="n">values</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>If the model says “5% survival” for an actual non-survivor, great. If it says “5% survival” for an actual survivor, look at the row and see why the model was wrong. Was that person old? Travelling third class? Now you understand both your data and your model.</p>
+
+<hr />
+
+<h2 id="the-full-pipeline-as-one-block">The full pipeline as one block</h2>
+
+<p>Here is the entire project in one paste-ready snippet.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">seaborn</span> <span class="k">as</span> <span class="n">sns</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span><span class="p">,</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="n">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">GradientBoostingClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">classification_report</span><span class="p">,</span> <span class="n">roc_auc_score</span>
+
+<span class="c1"># 1. Load
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">sns</span><span class="p">.</span><span class="nf">load_dataset</span><span class="p">(</span><span class="sh">"</span><span class="s">titanic</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">"</span><span class="s">survived</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">pclass</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">sex</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">age</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">sibsp</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">parch</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">fare</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">]].</span><span class="nf">copy</span><span class="p">()</span>
+
+<span class="c1"># 2. Feature engineering
+</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">family_size</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">sibsp</span><span class="sh">"</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">parch</span><span class="sh">"</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">is_alone</span><span class="sh">"</span><span class="p">]</span>    <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">family_size</span><span class="sh">"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="c1"># 3. Missing values
+</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">age</span><span class="sh">"</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">age</span><span class="sh">"</span><span class="p">].</span><span class="nf">median</span><span class="p">(),</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">].</span><span class="nf">mode</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">fare</span><span class="sh">"</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">fare</span><span class="sh">"</span><span class="p">].</span><span class="nf">median</span><span class="p">(),</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># 4. Encode
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">get_dummies</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">sex</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">embarked</span><span class="sh">"</span><span class="p">],</span> <span class="n">drop_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># 5. Split
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="nf">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="sh">"</span><span class="s">survived</span><span class="sh">"</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">survived</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+<span class="p">)</span>
+
+<span class="c1"># 6. Pipeline + grid search
+</span><span class="n">pipe</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">scaler</span><span class="sh">"</span><span class="p">,</span> <span class="nc">StandardScaler</span><span class="p">()),</span>
+    <span class="p">(</span><span class="sh">"</span><span class="s">model</span><span class="sh">"</span><span class="p">,</span>  <span class="nc">GradientBoostingClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)),</span>
+<span class="p">])</span>
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">model__n_estimators</span><span class="sh">"</span><span class="p">:</span>  <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">model__learning_rate</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">model__max_depth</span><span class="sh">"</span><span class="p">:</span>     <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="n">pipe</span><span class="p">,</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">"</span><span class="s">accuracy</span><span class="sh">"</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+
+<span class="c1"># 7. Final evaluation
+</span><span class="n">best</span> <span class="o">=</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_estimator_</span>
+<span class="n">y_pred</span>  <span class="o">=</span> <span class="n">best</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="n">y_proba</span> <span class="o">=</span> <span class="n">best</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test acc:    </span><span class="si">{</span><span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test ROC-AUC: </span><span class="si">{</span><span class="nf">roc_auc_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_proba</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">Died</span><span class="sh">"</span><span class="p">,</span><span class="sh">"</span><span class="s">Survived</span><span class="sh">"</span><span class="p">]))</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="what-you-just-did">What you just did</h2>
+
+<p>You ran the entire classical ML pipeline:</p>
+
+<ol>
+  <li><strong>Loaded and explored</strong> real data (with missing values and categorical features).</li>
+  <li><strong>Engineered features</strong> from your domain understanding.</li>
+  <li><strong>Cleaned</strong> the data and handled missing values.</li>
+  <li><strong>Split</strong> into train and test, stratified.</li>
+  <li><strong>Built a Pipeline</strong> with scaling and a classifier to prevent leakage.</li>
+  <li><strong>Compared</strong> several models with cross validation.</li>
+  <li><strong>Tuned</strong> the best one with GridSearchCV.</li>
+  <li><strong>Evaluated</strong> on a held-out test set with multiple metrics.</li>
+  <li><strong>Inspected</strong> feature importance to make sure the model learned sensible things.</li>
+</ol>
+
+<p>This workflow generalizes to almost any tabular ML problem. Take any new dataset, drop in your own columns, and 80% of the steps stay the same.</p>
+
+<hr />
+
+<h2 id="common-improvements-you-can-try">Common improvements you can try</h2>
+
+<ul>
+  <li><strong>Stratified K-fold</strong> instead of plain K-fold for imbalanced data.</li>
+  <li><strong>Smarter imputation.</strong> Use <code class="language-plaintext highlighter-rouge">SimpleImputer</code> inside the Pipeline so test data is never leaked.</li>
+  <li><strong>Extract title from name</strong> (Mr, Mrs, Miss, Master, Dr) - often a strong predictor.</li>
+  <li><strong>Try XGBoost / LightGBM</strong> instead of GradientBoostingClassifier. They are usually faster and often more accurate.</li>
+  <li><strong>Try CatBoost</strong> if you have many categorical features.</li>
+  <li><strong>Try a simple neural net</strong> with <code class="language-plaintext highlighter-rouge">MLPClassifier</code>. On this problem it will not help much, but it is good practice.</li>
+  <li><strong>Calibrate probabilities</strong> with <code class="language-plaintext highlighter-rouge">CalibratedClassifierCV</code> if you need actual probability estimates.</li>
+  <li><strong>Save your model</strong> with <code class="language-plaintext highlighter-rouge">joblib.dump(best, "model.pkl")</code> to use in production.</li>
+</ul>
+
+<hr />
+
+<h2 id="what-this-taught-you">What this taught you</h2>
+
+<p>Every concept from the previous tutorials showed up here. Linear regression’s foundation. Decision trees’ splits. Random forests’ voting. Gradient boosting’s sequential corrections. Cross validation’s robustness. Grid search’s tuning. Pipeline’s safety. Metric selection’s importance.</p>
+
+<p>This is what ML really looks like. Not 95% writing models from scratch. It is 80% data wrangling, 10% picking algorithms, 5% tuning, and 5% interpreting results.</p>
+
+<p>If you can do this project comfortably, you can do most real ML jobs. That is the whole point. 🚢</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">end-to-end</span>, <span class="tag">project</span>, <span class="tag">titanic</span>, <span class="tag">tutorial</span>, <span class="tag">walkthrough</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
