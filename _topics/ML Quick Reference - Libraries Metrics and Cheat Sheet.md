@@ -54,57 +54,57 @@ Every model in this handbook, with its scikit-learn (or other) import.
 
 ### Regression (predict a number)
 
-| Algorithm | Import | Class |
-|---|---|---|
-| Linear Regression | `from sklearn.linear_model import LinearRegression` | `LinearRegression()` |
-| Ridge Regression | `from sklearn.linear_model import Ridge` | `Ridge(alpha=1.0)` |
-| Lasso Regression | `from sklearn.linear_model import Lasso` | `Lasso(alpha=1.0)` |
-| Elastic Net | `from sklearn.linear_model import ElasticNet` | `ElasticNet(alpha=1.0, l1_ratio=0.5)` |
-| Polynomial Features | `from sklearn.preprocessing import PolynomialFeatures` | `PolynomialFeatures(degree=2)` |
-| Decision Tree | `from sklearn.tree import DecisionTreeRegressor` | `DecisionTreeRegressor()` |
-| Random Forest | `from sklearn.ensemble import RandomForestRegressor` | `RandomForestRegressor(n_estimators=100)` |
-| Gradient Boosting | `from sklearn.ensemble import GradientBoostingRegressor` | `GradientBoostingRegressor()` |
-| XGBoost | `from xgboost import XGBRegressor` | `XGBRegressor()` |
-| LightGBM | `from lightgbm import LGBMRegressor` | `LGBMRegressor()` |
-| KNN | `from sklearn.neighbors import KNeighborsRegressor` | `KNeighborsRegressor(n_neighbors=5)` |
+| Algorithm | What it does | Import | Class |
+|---|---|---|---|
+| Linear Regression | Fits the best straight line through your data | `from sklearn.linear_model import LinearRegression` | `LinearRegression()` |
+| Ridge Regression | Linear regression + L2 penalty to shrink all coefficients gently and stop overfitting | `from sklearn.linear_model import Ridge` | `Ridge(alpha=1.0)` |
+| Lasso Regression | Linear regression + L1 penalty that drives weak coefficients to exactly zero (auto feature selection) | `from sklearn.linear_model import Lasso` | `Lasso(alpha=1.0)` |
+| Elastic Net | Mix of Ridge and Lasso (both L1 and L2 penalties) | `from sklearn.linear_model import ElasticNet` | `ElasticNet(alpha=1.0, l1_ratio=0.5)` |
+| Polynomial Features | Adds squared, cubed, and interaction features so linear models can fit curves | `from sklearn.preprocessing import PolynomialFeatures` | `PolynomialFeatures(degree=2)` |
+| Decision Tree | Splits the data with yes/no questions to predict a number; interpretable but prone to overfit | `from sklearn.tree import DecisionTreeRegressor` | `DecisionTreeRegressor()` |
+| Random Forest | Many decision trees trained on random data slices, average their predictions; strong + low tuning | `from sklearn.ensemble import RandomForestRegressor` | `RandomForestRegressor(n_estimators=100)` |
+| Gradient Boosting | Trains trees sequentially, each fixing the previous ones' residual errors | `from sklearn.ensemble import GradientBoostingRegressor` | `GradientBoostingRegressor()` |
+| XGBoost | Highly optimized gradient boosting, the competition champion | `from xgboost import XGBRegressor` | `XGBRegressor()` |
+| LightGBM | Even faster gradient boosting, excels on very large datasets | `from lightgbm import LGBMRegressor` | `LGBMRegressor()` |
+| KNN | Predicts by averaging the K most similar training points (no real training, slow at predict time) | `from sklearn.neighbors import KNeighborsRegressor` | `KNeighborsRegressor(n_neighbors=5)` |
 
 ### Classification (predict yes/no or a category)
 
-| Algorithm | Import | Class |
-|---|---|---|
-| Logistic Regression | `from sklearn.linear_model import LogisticRegression` | `LogisticRegression()` |
-| Decision Tree | `from sklearn.tree import DecisionTreeClassifier` | `DecisionTreeClassifier()` |
-| Random Forest | `from sklearn.ensemble import RandomForestClassifier` | `RandomForestClassifier(n_estimators=100)` |
-| AdaBoost | `from sklearn.ensemble import AdaBoostClassifier` | `AdaBoostClassifier()` |
-| Gradient Boosting | `from sklearn.ensemble import GradientBoostingClassifier` | `GradientBoostingClassifier()` |
-| XGBoost | `from xgboost import XGBClassifier` | `XGBClassifier()` |
-| LightGBM | `from lightgbm import LGBMClassifier` | `LGBMClassifier()` |
-| KNN | `from sklearn.neighbors import KNeighborsClassifier` | `KNeighborsClassifier(n_neighbors=5)` |
+| Algorithm | What it does | Import | Class |
+|---|---|---|---|
+| Logistic Regression | Predicts a probability between 0 and 1 using the sigmoid curve, then threshold for yes/no | `from sklearn.linear_model import LogisticRegression` | `LogisticRegression()` |
+| Decision Tree | Yes/no question flowchart, each path ends in a class prediction; easy to read | `from sklearn.tree import DecisionTreeClassifier` | `DecisionTreeClassifier()` |
+| Random Forest | Many trees vote on the answer; reliable baseline with little tuning | `from sklearn.ensemble import RandomForestClassifier` | `RandomForestClassifier(n_estimators=100)` |
+| AdaBoost | Sequentially adds weak learners, each focusing on previously misclassified examples | `from sklearn.ensemble import AdaBoostClassifier` | `AdaBoostClassifier()` |
+| Gradient Boosting | Sequential trees that fix the errors of previous trees; one of the strongest classical methods | `from sklearn.ensemble import GradientBoostingClassifier` | `GradientBoostingClassifier()` |
+| XGBoost | Industry-standard boosting with regularization; usually the top performer on tabular data | `from xgboost import XGBClassifier` | `XGBClassifier()` |
+| LightGBM | Faster boosting alternative; handles big datasets and categorical features well | `from lightgbm import LGBMClassifier` | `LGBMClassifier()` |
+| KNN | Predicts the class by majority vote of the K closest training examples | `from sklearn.neighbors import KNeighborsClassifier` | `KNeighborsClassifier(n_neighbors=5)` |
 
 ### Clustering (find groups in unlabelled data)
 
-| Algorithm | Import | Class |
-|---|---|---|
-| K-Means | `from sklearn.cluster import KMeans` | `KMeans(n_clusters=K, n_init=10)` |
-| Hierarchical (sklearn) | `from sklearn.cluster import AgglomerativeClustering` | `AgglomerativeClustering(n_clusters=K, linkage="ward")` |
-| Hierarchical (scipy) | `from scipy.cluster.hierarchy import linkage, dendrogram` | `linkage(X, method="ward")` |
-| DBSCAN | `from sklearn.cluster import DBSCAN` | `DBSCAN(eps=0.5, min_samples=5)` |
+| Algorithm | What it does | Import | Class |
+|---|---|---|---|
+| K-Means | Splits data into K round-shaped groups by iteratively assigning points to the nearest centroid | `from sklearn.cluster import KMeans` | `KMeans(n_clusters=K, n_init=10)` |
+| Hierarchical (sklearn) | Builds a tree of merges from the bottom up; outputs flat clusters by cutting the tree | `from sklearn.cluster import AgglomerativeClustering` | `AgglomerativeClustering(n_clusters=K, linkage="ward")` |
+| Hierarchical (scipy) | Same as above but returns the full linkage matrix you can plot as a dendrogram | `from scipy.cluster.hierarchy import linkage, dendrogram` | `linkage(X, method="ward")` |
+| DBSCAN | Density-based clustering; finds arbitrary-shape clusters and labels outliers as noise | `from sklearn.cluster import DBSCAN` | `DBSCAN(eps=0.5, min_samples=5)` |
 
 ---
 
 ## Preprocessing - the tools you will use every time
 
-| Task | Import | Class |
-|---|---|---|
-| Standard scaling (mean 0, std 1) | `from sklearn.preprocessing import StandardScaler` | `StandardScaler()` |
-| Min-max scaling (range 0 to 1) | `from sklearn.preprocessing import MinMaxScaler` | `MinMaxScaler()` |
-| One-hot encoding | `from sklearn.preprocessing import OneHotEncoder` | `OneHotEncoder(sparse_output=False)` |
-| Ordinal encoding | `from sklearn.preprocessing import OrdinalEncoder` | `OrdinalEncoder()` |
-| Target encoding | `from category_encoders import TargetEncoder` | `TargetEncoder()` |
-| Train/test split | `from sklearn.model_selection import train_test_split` | `train_test_split(X, y, test_size=0.2)` |
-| Cross validation | `from sklearn.model_selection import cross_val_score` | `cross_val_score(model, X, y, cv=5)` |
-| Grid search | `from sklearn.model_selection import GridSearchCV` | `GridSearchCV(model, param_grid, cv=5)` |
-| Pipeline | `from sklearn.pipeline import Pipeline` | `Pipeline([("scaler", StandardScaler()), ("model", LR())])` |
+| Task | What it does | Import | Class |
+|---|---|---|---|
+| Standard scaling | Centers each feature to mean 0 and scales to std 1; essential for distance-based and regularized models | `from sklearn.preprocessing import StandardScaler` | `StandardScaler()` |
+| Min-max scaling | Squeezes each feature into the 0 to 1 range; useful for neural nets and image data | `from sklearn.preprocessing import MinMaxScaler` | `MinMaxScaler()` |
+| One-hot encoding | Turns one categorical column into multiple 0/1 columns, one per category | `from sklearn.preprocessing import OneHotEncoder` | `OneHotEncoder(sparse_output=False)` |
+| Ordinal encoding | Maps each category to an integer (use only when categories have natural order, e.g. low/med/high) | `from sklearn.preprocessing import OrdinalEncoder` | `OrdinalEncoder()` |
+| Target encoding | Replaces each category with the mean target value of that category; powerful but risk of leakage | `from category_encoders import TargetEncoder` | `TargetEncoder()` |
+| Train/test split | Randomly splits data into a training set and a held-out test set | `from sklearn.model_selection import train_test_split` | `train_test_split(X, y, test_size=0.2)` |
+| Cross validation | Repeatedly trains and tests the model on K different folds for a robust performance estimate | `from sklearn.model_selection import cross_val_score` | `cross_val_score(model, X, y, cv=5)` |
+| Grid search | Tries every combination of hyperparameters with cross validation and keeps the best | `from sklearn.model_selection import GridSearchCV` | `GridSearchCV(model, param_grid, cv=5)` |
+| Pipeline | Chains preprocessing and modeling steps into one object so train/test stay leak-free | `from sklearn.pipeline import Pipeline` | `Pipeline([("scaler", StandardScaler()), ("model", LR())])` |
 
 ---
 
@@ -275,18 +275,18 @@ The condensed pick-an-algorithm cheat sheet.
 
 The knobs that actually move the needle for each algorithm.
 
-| Algorithm | Top hyperparameters |
-|---|---|
-| Linear / Logistic Regression | `C`, `penalty` (`l1`, `l2`, `elasticnet`) |
-| Ridge / Lasso | `alpha` |
-| Elastic Net | `alpha`, `l1_ratio` |
-| Decision Tree | `max_depth`, `min_samples_split`, `min_samples_leaf`, `criterion` |
-| Random Forest | `n_estimators`, `max_depth`, `max_features`, `min_samples_leaf` |
-| Gradient Boosting / XGBoost / LightGBM | `n_estimators`, `learning_rate`, `max_depth`, `subsample`, `colsample_bytree`, `reg_alpha`, `reg_lambda` |
-| KNN | `n_neighbors`, `weights`, `metric` |
-| K-Means | `n_clusters`, `init`, `n_init` |
-| Hierarchical | `n_clusters`, `linkage` (`ward`, `complete`, `average`, `single`) |
-| DBSCAN | `eps`, `min_samples` |
+| Algorithm | Top hyperparameters | What they do |
+|---|---|---|
+| Linear / Logistic Regression | `C`, `penalty` | `C` is inverse of regularization strength (smaller C = stronger regularization). `penalty` picks L1 (Lasso), L2 (Ridge), or elasticnet |
+| Ridge / Lasso | `alpha` | Regularization strength. Higher alpha = simpler model, less overfitting |
+| Elastic Net | `alpha`, `l1_ratio` | `alpha` = strength. `l1_ratio` = mix between Lasso (1.0) and Ridge (0.0) |
+| Decision Tree | `max_depth`, `min_samples_split`, `min_samples_leaf`, `criterion` | `max_depth` limits tree depth (smaller = simpler). `min_samples_*` set min samples for a split/leaf. `criterion` = gini or entropy |
+| Random Forest | `n_estimators`, `max_depth`, `max_features`, `min_samples_leaf` | `n_estimators` = how many trees. `max_features` = features per split (sqrt is default). Others limit each tree's complexity |
+| Gradient Boosting / XGBoost / LightGBM | `n_estimators`, `learning_rate`, `max_depth`, `subsample`, `colsample_bytree`, `reg_alpha`, `reg_lambda` | `learning_rate` is the step size (smaller = more careful). `subsample`/`colsample_bytree` use a random fraction per tree. `reg_*` add L1/L2 penalties |
+| KNN | `n_neighbors`, `weights`, `metric` | `n_neighbors` = K. `weights` = uniform or distance (closer points count more). `metric` = euclidean, manhattan, cosine, etc. |
+| K-Means | `n_clusters`, `init`, `n_init` | `n_clusters` = K. `init` = k-means++ (smart init) or random. `n_init` = how many random restarts to try |
+| Hierarchical | `n_clusters`, `linkage` | `linkage` defines distance between clusters: ward (default, min variance), complete, average, or single |
+| DBSCAN | `eps`, `min_samples` | `eps` = max distance to be considered a neighbour. `min_samples` = points needed to form a dense region |
 
 ### Generic tuning template
 
