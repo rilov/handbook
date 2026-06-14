@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Syntactic Processing Part 3 - Tree Structures and Grammatical Agreement</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/natural-language-processing">Natural Language Processing</a> &mdash;
+    </nav>
+    <h2>Syntactic Processing Part 3 - Tree Structures and Grammatical Agreement</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/natural-language-processing">Natural Language Processing</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="syntactic-processing-part-3---tree-structures-and-grammatical-agreement">Syntactic Processing Part 3 - Tree Structures and Grammatical Agreement</h1>
+
+<h2 id="why-this-guide-exists">Why This Guide Exists</h2>
+
+<p>Understanding sentence structure is one thing. Visualizing it and ensuring it follows grammar rules is another. This guide covers parse trees (visual representations of syntax) and grammatical agreement (ensuring words match correctly).</p>
+
+<hr />
+
+<h2 id="segment-1-tree-structures">Segment 1: Tree Structures</h2>
+
+<h3 id="what-are-parse-trees">What are Parse Trees?</h3>
+
+<p><strong>Parse trees</strong> are visual representations of sentence structure, showing how words group into phrases and relate to each other.</p>
+
+<h3 id="tree-components">Tree Components</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        S                    ← Root node (Sentence)
+      /   \
+    NP      VP              ← Non-terminal nodes (phrases)
+   /  \     /  \
+ DET   N   V    NP          ← Pre-terminal nodes (POS tags)
+ |     |   |   /  \
+the   cat sleeps DET  N     ← Terminal nodes (actual words)
+               |     |
+              the  mat
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node Type</th>
+      <th>Description</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Root</strong></td>
+      <td>Top of tree</td>
+      <td>S (Sentence)</td>
+    </tr>
+    <tr>
+      <td><strong>Non-terminals</strong></td>
+      <td>Categories</td>
+      <td>NP, VP, PP</td>
+    </tr>
+    <tr>
+      <td><strong>Pre-terminals</strong></td>
+      <td>POS tags</td>
+      <td>DET, N, V</td>
+    </tr>
+    <tr>
+      <td><strong>Terminals</strong></td>
+      <td>Actual words</td>
+      <td>the, cat, sleeps</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="treebank-format">Treebank Format</h3>
+
+<p>Computers store trees in bracket notation:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(S (NP (DET the) (N cat)) (VP (V sleeps) (PP (PREP on) (NP (DET the) (N mat)))))
+</code></pre></div></div>
+
+<h3 id="why-tree-structures-matter">Why Tree Structures Matter</h3>
+
+<p><strong>Resolving ambiguity:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Flying planes can be dangerous"
+
+Tree 1: [Flying planes] can be dangerous (planes that are flying)
+Tree 2: Flying [planes can be dangerous] (act of flying planes)
+</code></pre></div></div>
+
+<p><strong>Information extraction:</strong></p>
+<ul>
+  <li>Find all noun phrases (who/what)</li>
+  <li>Find verb phrases (what happened)</li>
+  <li>Find prepositional phrases (when/where)</li>
+</ul>
+
+<hr />
+
+<h2 id="segment-2-python-tree-operations">Segment 2: Python Tree Operations</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.tree</span> <span class="kn">import</span> <span class="n">Tree</span>
+
+<span class="c1"># Create tree from bracket notation
+</span><span class="n">tree_string</span> <span class="o">=</span> <span class="sh">"</span><span class="s">(S (NP (DT The) (NN cat)) (VP (VBD slept) (PP (IN on) (NP (DT the) (NN mat)))))</span><span class="sh">"</span>
+<span class="n">tree</span> <span class="o">=</span> <span class="n">Tree</span><span class="p">.</span><span class="nf">fromstring</span><span class="p">(</span><span class="n">tree_string</span><span class="p">)</span>
+
+<span class="c1"># Tree properties
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Tree: </span><span class="si">{</span><span class="n">tree</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Height: </span><span class="si">{</span><span class="n">tree</span><span class="p">.</span><span class="nf">height</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># 4
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Leaves: </span><span class="si">{</span><span class="n">tree</span><span class="p">.</span><span class="nf">leaves</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># ['The', 'cat', 'slept', 'on', 'the', 'mat']
+</span>
+<span class="c1"># Navigate the tree
+</span><span class="k">for</span> <span class="n">subtree</span> <span class="ow">in</span> <span class="n">tree</span><span class="p">.</span><span class="nf">subtrees</span><span class="p">():</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Label: </span><span class="si">{</span><span class="n">subtree</span><span class="p">.</span><span class="nf">label</span><span class="p">()</span><span class="si">}</span><span class="s">, Leaves: </span><span class="si">{</span><span class="n">subtree</span><span class="p">.</span><span class="nf">leaves</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Draw tree (opens window)
+</span><span class="n">tree</span><span class="p">.</span><span class="nf">draw</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-3-grammatical-agreement">Segment 3: Grammatical Agreement</h2>
+
+<h3 id="what-is-grammatical-agreement">What is Grammatical Agreement?</h3>
+
+<p><strong>Grammatical agreement</strong> ensures words match in grammatical features:</p>
+<ul>
+  <li><strong>Number:</strong> singular vs plural</li>
+  <li><strong>Person:</strong> first, second, third</li>
+  <li><strong>Gender:</strong> masculine, feminine, neuter (in some languages)</li>
+</ul>
+
+<h3 id="types-of-agreement">Types of Agreement</h3>
+
+<h4 id="1-subject-verb-agreement">1. Subject-Verb Agreement</h4>
+<p>Verb must match subject in number.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Correct</th>
+      <th>Incorrect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>The dog <strong>runs</strong></td>
+      <td>The dog <strong>run</strong></td>
+    </tr>
+    <tr>
+      <td>The dogs <strong>run</strong></td>
+      <td>The dogs <strong>runs</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Tricky case:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The group of students are arguing" ← Incorrect!
+Subject = "group" (singular), so verb should be "is"
+</code></pre></div></div>
+
+<h4 id="2-noun-determiner-agreement">2. Noun-Determiner Agreement</h4>
+<p>Determiners must match noun number.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Correct</th>
+      <th>Incorrect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>a</strong> dog / <strong>the</strong> dog</td>
+      <td><strong>a</strong> dogs</td>
+    </tr>
+    <tr>
+      <td><strong>many</strong> dogs / <strong>the</strong> dogs</td>
+      <td><strong>many</strong> dog</td>
+    </tr>
+    <tr>
+      <td><strong>this</strong> book / <strong>these</strong> books</td>
+      <td><strong>this</strong> books</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="3-pronoun-antecedent-agreement">3. Pronoun-Antecedent Agreement</h4>
+<p>Pronouns must match the noun they refer to.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Correct</th>
+      <th>Incorrect (formal)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>The student finished <strong>his/her</strong> work</td>
+      <td>The student finished <strong>their</strong> work</td>
+    </tr>
+    <tr>
+      <td>Each student finished <strong>his/her</strong> exam</td>
+      <td>Each student finished <strong>their</strong> exam</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="agreement-in-other-languages">Agreement in Other Languages</h3>
+
+<p><strong>Spanish example:</strong></p>
+<ul>
+  <li>el gato <strong>blanco</strong> (masculine singular)</li>
+  <li>la casa <strong>blanca</strong> (feminine singular)</li>
+  <li>los gatos <strong>blancos</strong> (masculine plural)</li>
+  <li>las casas <strong>blancas</strong> (feminine plural)</li>
+</ul>
+
+<hr />
+
+<h2 id="segment-4-agreement-checking-in-python">Segment 4: Agreement Checking in Python</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">check_subject_verb_agreement</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">verb</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Simple check for subject-verb agreement</span><span class="sh">"""</span>
+    <span class="n">singular_subjects</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">student</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">person</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">man</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">woman</span><span class="sh">'</span><span class="p">]</span>
+    <span class="n">singular_verbs</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">runs</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eats</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">sleeps</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">is</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">was</span><span class="sh">'</span><span class="p">]</span>
+    <span class="n">plural_verbs</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">run</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eat</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">sleep</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">are</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">were</span><span class="sh">'</span><span class="p">]</span>
+    
+    <span class="c1"># Determine subject number
+</span>    <span class="k">if</span> <span class="n">subject</span><span class="p">.</span><span class="nf">endswith</span><span class="p">(</span><span class="sh">'</span><span class="s">s</span><span class="sh">'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">subject</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">'</span><span class="s">they</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">we</span><span class="sh">'</span><span class="p">]:</span>
+        <span class="n">subj_number</span> <span class="o">=</span> <span class="sh">'</span><span class="s">plural</span><span class="sh">'</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">subj_number</span> <span class="o">=</span> <span class="sh">'</span><span class="s">singular</span><span class="sh">'</span>
+    
+    <span class="c1"># Determine verb number
+</span>    <span class="k">if</span> <span class="n">verb</span> <span class="ow">in</span> <span class="n">singular_verbs</span><span class="p">:</span>
+        <span class="n">verb_number</span> <span class="o">=</span> <span class="sh">'</span><span class="s">singular</span><span class="sh">'</span>
+    <span class="k">elif</span> <span class="n">verb</span> <span class="ow">in</span> <span class="n">plural_verbs</span><span class="p">:</span>
+        <span class="n">verb_number</span> <span class="o">=</span> <span class="sh">'</span><span class="s">plural</span><span class="sh">'</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">Cannot determine verb number</span><span class="sh">"</span>
+    
+    <span class="k">if</span> <span class="n">subj_number</span> <span class="o">!=</span> <span class="n">verb_number</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">Error: </span><span class="sh">'</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="sh">'</span><span class="s"> (</span><span class="si">{</span><span class="n">subj_number</span><span class="si">}</span><span class="s">) does not agree with </span><span class="sh">'</span><span class="si">{</span><span class="n">verb</span><span class="si">}</span><span class="sh">'</span><span class="s"> (</span><span class="si">{</span><span class="n">verb_number</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span>
+    <span class="k">return</span> <span class="sh">"</span><span class="s">Agreement OK</span><span class="sh">"</span>
+
+<span class="c1"># Test examples
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">check_subject_verb_agreement</span><span class="p">(</span><span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">runs</span><span class="sh">"</span><span class="p">))</span>   <span class="c1"># OK
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">check_subject_verb_agreement</span><span class="p">(</span><span class="sh">"</span><span class="s">dogs</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">run</span><span class="sh">"</span><span class="p">))</span>   <span class="c1"># OK
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">check_subject_verb_agreement</span><span class="p">(</span><span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">run</span><span class="sh">"</span><span class="p">))</span>      <span class="c1"># Error
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">check_subject_verb_agreement</span><span class="p">(</span><span class="sh">"</span><span class="s">dogs</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">runs</span><span class="sh">"</span><span class="p">))</span>    <span class="c1"># Error
+</span></code></pre></div></div>
+
+<h3 id="why-agreement-matters-in-nlp">Why Agreement Matters in NLP</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Application</th>
+      <th>Why Agreement Matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Grammar checking</strong></td>
+      <td>Flag errors in writing</td>
+    </tr>
+    <tr>
+      <td><strong>Text generation</strong></td>
+      <td>Ensure output is grammatical</td>
+    </tr>
+    <tr>
+      <td><strong>Machine translation</strong></td>
+      <td>Preserve grammatical features</td>
+    </tr>
+    <tr>
+      <td><strong>Speech recognition</strong></td>
+      <td>Disambiguate similar sounds</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="segment-5-complete-syntactic-pipeline-example">Segment 5: Complete Syntactic Pipeline Example</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk</span> <span class="kn">import</span> <span class="n">pos_tag</span><span class="p">,</span> <span class="n">word_tokenize</span><span class="p">,</span> <span class="n">RegexpParser</span>
+<span class="kn">from</span> <span class="n">nltk.tree</span> <span class="kn">import</span> <span class="n">Tree</span>
+
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">punkt</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">averaged_perceptron_tagger</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog.</span><span class="sh">"</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Original: </span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 1: Tokenise
+</span><span class="n">tokens</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">1. Tokens: </span><span class="si">{</span><span class="n">tokens</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 2: POS Tag
+</span><span class="n">tags</span> <span class="o">=</span> <span class="nf">pos_tag</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">2. POS Tags:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">   </span><span class="si">{</span><span class="n">word</span><span class="si">:</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Chunk
+</span><span class="n">gamma</span> <span class="o">=</span> <span class="sa">r</span><span class="sh">"</span><span class="s">NP: {&lt;DT&gt;?&lt;JJ&gt;*&lt;NN&gt;+}</span><span class="sh">"</span>
+<span class="n">parser</span> <span class="o">=</span> <span class="nc">RegexpParser</span><span class="p">(</span><span class="n">gamma</span><span class="p">)</span>
+<span class="n">tree</span> <span class="o">=</span> <span class="n">parser</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">3. Chunks: </span><span class="si">{</span><span class="n">tree</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Summary
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span> <span class="o">+</span> <span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">SUMMARY</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">• Main subject: </span><span class="sh">'</span><span class="s">fox</span><span class="sh">'"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">• Main verb: </span><span class="sh">'</span><span class="s">jumps</span><span class="sh">'"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">• Noun phrases: </span><span class="sh">'</span><span class="s">The quick brown fox</span><span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="s">the lazy dog</span><span class="sh">'"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">• Grammatical check: Subject (fox/singular) + Verb (jumps/singular) = OK</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-6-session-summary">Segment 6: Session Summary</h2>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ol>
+  <li><strong>Parse trees</strong> visualize sentence structure hierarchically</li>
+  <li><strong>Treebank format</strong> uses bracket notation to store trees</li>
+  <li><strong>Grammatical agreement</strong> ensures words match in number, person, and gender</li>
+  <li><strong>Subject-verb agreement</strong> is the most critical type</li>
+  <li><strong>Agreement checking</strong> is essential for grammar checking and text generation</li>
+</ol>
+
+<h3 id="practice-questions">Practice Questions</h3>
+
+<p><strong>1. What are the four types of nodes in a parse tree?</strong></p>
+<details><summary>Answer</summary>Root, non-terminals, pre-terminals, terminals.</details>
+
+<p><strong>2. What is the subject-verb agreement rule?</strong></p>
+<details><summary>Answer</summary>Singular subjects take singular verbs, plural subjects take plural verbs.</details>
+
+<p><strong>3. Why is “The group of students are arguing” grammatically incorrect?</strong></p>
+<details><summary>Answer</summary>The subject is "group" (singular), so the verb should be "is" not "are."</details>
+
+<p><strong>4. Write the treebank notation for: “The cat sleeps.”</strong></p>
+<details><summary>Answer</summary>(S (NP (DT The) (NN cat)) (VP (VBZ sleeps)))</details>
+
+<hr />
+
+<h2 id="complete-syntactic-processing-series-summary">Complete Syntactic Processing Series Summary</h2>
+
+<p>You have now learned:</p>
+
+<p><strong>Part 1:</strong> POS Tagging and Shallow Parsing</p>
+<ul>
+  <li>Labeling words with grammatical types</li>
+  <li>Grouping words into phrases</li>
+</ul>
+
+<p><strong>Part 2:</strong> Context-Free Grammar and Parsing</p>
+<ul>
+  <li>Grammar rules for valid sentences</li>
+  <li>Constituency and dependency parsing</li>
+</ul>
+
+<p><strong>Part 3:</strong> Tree Structures and Grammatical Agreement</p>
+<ul>
+  <li>Visualizing sentence structure</li>
+  <li>Ensuring grammatical correctness</li>
+</ul>
+
+<p><strong>What Comes Next?</strong> Semantic Processing—understanding what sentences actually mean.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">nlp</span>, <span class="tag">syntactic-processing</span>, <span class="tag">tree-structures</span>, <span class="tag">parse-trees</span>, <span class="tag">grammatical-agreement</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

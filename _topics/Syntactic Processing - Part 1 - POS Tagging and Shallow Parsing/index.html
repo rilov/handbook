@@ -1,0 +1,363 @@
+<h1 id="syntactic-processing-part-1---pos-tagging-and-shallow-parsing">Syntactic Processing Part 1 - POS Tagging and Shallow Parsing</h1>
+
+<h2 id="why-this-guide-exists">Why This Guide Exists</h2>
+
+<p>You now know how to break text into words. But words alone do not tell the whole story.</p>
+
+<p>Consider: “The dog bit the man” vs “The man bit the dog.” Same words, different meanings. The difference is <strong>structure</strong>—the grammatical relationships between words.</p>
+
+<p>This guide covers the first layer of syntactic processing: identifying what type each word is, and grouping them into meaningful chunks.</p>
+
+<hr />
+
+<h2 id="segment-1-session-overview">Segment 1: Session Overview</h2>
+
+<h3 id="what-you-will-learn">What You Will Learn</h3>
+
+<ol>
+  <li><strong>Part-of-Speech Tagging</strong> – Labeling words as nouns, verbs, adjectives, etc.</li>
+  <li><strong>Shallow Parsing (Chunking)</strong> – Grouping words into phrases like “noun phrases” and “verb phrases”</li>
+</ol>
+
+<h3 id="the-analogy-sentence-architecture">The Analogy: Sentence Architecture</h3>
+
+<p>Think of a sentence like a building:</p>
+<ul>
+  <li><strong>Foundation:</strong> Main verb (holds everything together)</li>
+  <li><strong>Load-bearing walls:</strong> Subject, object (core participants)</li>
+  <li><strong>Support beams:</strong> Prepositions, conjunctions (connect parts)</li>
+  <li><strong>Decorations:</strong> Adjectives, adverbs (add detail)</li>
+</ul>
+
+<p>Lexical processing gave you the building materials (words). Syntactic processing creates the structure.</p>
+
+<hr />
+
+<h2 id="segment-2-part-of-speech-tagging">Segment 2: Part-of-Speech Tagging</h2>
+
+<h3 id="what-is-pos-tagging">What is POS Tagging?</h3>
+
+<p><strong>Part-of-Speech (POS) tagging</strong> is labeling each word with its grammatical role.</p>
+
+<h3 id="the-8-primary-parts-of-speech">The 8 Primary Parts of Speech</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>POS</th>
+      <th>Description</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Noun (N)</strong></td>
+      <td>Person, place, thing, idea</td>
+      <td>dog, city, happiness</td>
+    </tr>
+    <tr>
+      <td><strong>Pronoun (PRP)</strong></td>
+      <td>Replaces a noun</td>
+      <td>he, she, it, they</td>
+    </tr>
+    <tr>
+      <td><strong>Verb (V)</strong></td>
+      <td>Action or state</td>
+      <td>run, is, think</td>
+    </tr>
+    <tr>
+      <td><strong>Adjective (ADJ)</strong></td>
+      <td>Modifies a noun</td>
+      <td>quick, happy, blue</td>
+    </tr>
+    <tr>
+      <td><strong>Adverb (ADV)</strong></td>
+      <td>Modifies a verb/adjective</td>
+      <td>quickly, very, well</td>
+    </tr>
+    <tr>
+      <td><strong>Preposition (PREP)</strong></td>
+      <td>Shows relationship</td>
+      <td>in, on, at, with</td>
+    </tr>
+    <tr>
+      <td><strong>Conjunction (CONJ)</strong></td>
+      <td>Connects words/clauses</td>
+      <td>and, but, because</td>
+    </tr>
+    <tr>
+      <td><strong>Determiner (DET)</strong></td>
+      <td>Specifies a noun</td>
+      <td>the, a, an, this</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="why-pos-tagging-is-hard">Why POS Tagging is Hard</h3>
+
+<p>Many words can be multiple parts of speech:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>One Meaning</th>
+      <th>Another Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>book</strong></td>
+      <td>“I read a book” (noun)</td>
+      <td>“Book a flight” (verb)</td>
+    </tr>
+    <tr>
+      <td><strong>back</strong></td>
+      <td>“My back hurts” (noun)</td>
+      <td>“Go back home” (adverb)</td>
+    </tr>
+    <tr>
+      <td><strong>well</strong></td>
+      <td>“Drink from the well” (noun)</td>
+      <td>“She sings well” (adverb)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Context determines the correct tag.</strong></p>
+
+<h3 id="penn-treebank-tags-nltk">Penn Treebank Tags (NLTK)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Tag</th>
+      <th>Meaning</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>NN</td>
+      <td>Noun, singular</td>
+      <td>dog</td>
+    </tr>
+    <tr>
+      <td>NNS</td>
+      <td>Noun, plural</td>
+      <td>dogs</td>
+    </tr>
+    <tr>
+      <td>NNP</td>
+      <td>Proper noun</td>
+      <td>London</td>
+    </tr>
+    <tr>
+      <td>VB</td>
+      <td>Verb, base form</td>
+      <td>eat</td>
+    </tr>
+    <tr>
+      <td>VBD</td>
+      <td>Verb, past tense</td>
+      <td>ate</td>
+    </tr>
+    <tr>
+      <td>VBG</td>
+      <td>Verb, gerund</td>
+      <td>eating</td>
+    </tr>
+    <tr>
+      <td>VBN</td>
+      <td>Verb, past participle</td>
+      <td>eaten</td>
+    </tr>
+    <tr>
+      <td>JJ</td>
+      <td>Adjective</td>
+      <td>quick</td>
+    </tr>
+    <tr>
+      <td>RB</td>
+      <td>Adverb</td>
+      <td>quickly</td>
+    </tr>
+    <tr>
+      <td>IN</td>
+      <td>Preposition</td>
+      <td>in, on</td>
+    </tr>
+    <tr>
+      <td>DT</td>
+      <td>Determiner</td>
+      <td>the, a</td>
+    </tr>
+    <tr>
+      <td>PRP</td>
+      <td>Personal pronoun</td>
+      <td>I, you, he</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="python-example">Python Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span>
+
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">punkt</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">averaged_perceptron_tagger</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog</span><span class="sh">"</span>
+<span class="n">tokens</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="n">tags</span> <span class="o">=</span> <span class="n">nltk</span><span class="p">.</span><span class="nf">pos_tag</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+<span class="c1"># [('The', 'DT'), ('quick', 'JJ'), ('brown', 'JJ'), ('fox', 'NN'), 
+#  ('jumps', 'VBZ'), ('over', 'IN'), ('the', 'DT'), ('lazy', 'JJ'), ('dog', 'NN')]
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-3-shallow-parsing-chunking">Segment 3: Shallow Parsing (Chunking)</h2>
+
+<h3 id="what-is-shallow-parsing">What is Shallow Parsing?</h3>
+
+<p><strong>Shallow parsing</strong> (chunking) groups words into phrases without analyzing deep grammatical relationships. Think of it as finding “chunks” of meaning.</p>
+
+<h3 id="types-of-phrases">Types of Phrases</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Phrase Type</th>
+      <th>Contains</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Noun Phrase (NP)</strong></td>
+      <td>Noun + modifiers</td>
+      <td>“the quick brown fox”</td>
+    </tr>
+    <tr>
+      <td><strong>Verb Phrase (VP)</strong></td>
+      <td>Verb + helpers/objects</td>
+      <td>“jumps over the fence”</td>
+    </tr>
+    <tr>
+      <td><strong>Prepositional Phrase (PP)</strong></td>
+      <td>Preposition + object</td>
+      <td>“over the moon”</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="example">Example</h3>
+
+<p><strong>Sentence:</strong> “The quick brown fox jumps over the lazy dog”</p>
+
+<p><strong>Noun phrases identified:</strong></p>
+<ul>
+  <li>“The quick brown fox” (NP)</li>
+  <li>“the lazy dog” (NP)</li>
+</ul>
+
+<h3 id="python-chunking-example">Python Chunking Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.chunk</span> <span class="kn">import</span> <span class="n">RegexpParser</span>
+
+<span class="c1"># Define chunking grammar
+</span><span class="n">grammar</span> <span class="o">=</span> <span class="sa">r</span><span class="sh">"""</span><span class="s">
+    NP: {&lt;DT&gt;?&lt;JJ&gt;*&lt;NN&gt;}    # Determiner + adjectives + noun
+        {&lt;NNP&gt;+}            # Proper nouns
+    VP: {&lt;VB.*&gt;&lt;NP|PP&gt;*}    # Verb + noun phrase or prepositional phrase
+    PP: {&lt;IN&gt;&lt;NP&gt;}          # Preposition + noun phrase
+</span><span class="sh">"""</span>
+
+<span class="n">chunk_parser</span> <span class="o">=</span> <span class="nc">RegexpParser</span><span class="p">(</span><span class="n">grammar</span><span class="p">)</span>
+<span class="n">sentence</span> <span class="o">=</span> <span class="p">[(</span><span class="sh">"</span><span class="s">The</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">DT</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">quick</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">JJ</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">brown</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">JJ</span><span class="sh">"</span><span class="p">),</span> 
+            <span class="p">(</span><span class="sh">"</span><span class="s">fox</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NN</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">jumps</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">VBZ</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">over</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">IN</span><span class="sh">"</span><span class="p">),</span>
+            <span class="p">(</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">DT</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">lazy</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">JJ</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NN</span><span class="sh">"</span><span class="p">)]</span>
+
+<span class="n">tree</span> <span class="o">=</span> <span class="n">chunk_parser</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="n">sentence</span><span class="p">)</span>
+<span class="c1"># Visualizes as: (S (NP The/DT quick/JJ brown/JJ fox/NN) 
+#                 (VP jumps/VBZ (PP over/IN (NP the/DT lazy/JJ dog/NN))))
+</span></code></pre></div></div>
+
+<h3 id="shallow-vs-deep-parsing">Shallow vs Deep Parsing</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Shallow Parsing</th>
+      <th>Deep Parsing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Speed</strong></td>
+      <td>Fast</td>
+      <td>Slower</td>
+    </tr>
+    <tr>
+      <td><strong>Output</strong></td>
+      <td>Flat chunks</td>
+      <td>Full tree structure</td>
+    </tr>
+    <tr>
+      <td><strong>Relationships</strong></td>
+      <td>Limited</td>
+      <td>Comprehensive</td>
+    </tr>
+    <tr>
+      <td><strong>Use case</strong></td>
+      <td>Information extraction</td>
+      <td>Complete understanding</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="segment-4-session-summary">Segment 4: Session Summary</h2>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ol>
+  <li><strong>POS Tagging</strong> labels each word with its grammatical type
+    <ul>
+      <li>Context matters: “book” can be noun or verb</li>
+      <li>Penn Treebank tags are standard in NLP</li>
+    </ul>
+  </li>
+  <li><strong>Shallow Parsing</strong> groups words into phrases
+    <ul>
+      <li>Noun phrases, verb phrases, prepositional phrases</li>
+      <li>Fast and useful for information extraction</li>
+    </ul>
+  </li>
+  <li><strong>These techniques work together:</strong>
+    <ul>
+      <li>First tokenise, then tag, then chunk</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="practice-questions">Practice Questions</h3>
+
+<p><strong>1. What is the POS tag for “quickly”?</strong></p>
+<details><summary>Answer</summary>RB (Adverb)</details>
+
+<p><strong>2. What phrase type is “the lazy dog”?</strong></p>
+<details><summary>Answer</summary>Noun Phrase (NP)</details>
+
+<p><strong>3. Why is POS tagging challenging?</strong></p>
+<details><summary>Answer</summary>Many words can be different parts of speech depending on context.</details>
+
+<hr />
+
+<h2 id="what-comes-next">What Comes Next?</h2>
+
+<p>Part 2 covers <strong>Context-Free Grammar and Parsing</strong>—understanding complete sentence structures and building parse trees.</p>

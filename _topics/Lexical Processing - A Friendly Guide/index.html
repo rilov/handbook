@@ -1,0 +1,1362 @@
+<h1 id="lexical-processing---a-friendly-guide">Lexical Processing - A Friendly Guide</h1>
+
+<h2 id="why-this-guide-exists">Why This Guide Exists</h2>
+
+<p>Before a computer can understand what you are saying, it needs to chop your text into manageable pieces. This is lexical processing—the first major stage of the NLP pipeline.</p>
+
+<p>Think of it like preparing ingredients before cooking. You wouldn’t dump a whole chicken into a pot and hope for the best. You chop, clean, and organize everything first.</p>
+
+<p>This guide shows you how computers do exactly that with text—using friendly examples and real Python code you can run yourself.</p>
+
+<hr />
+
+<h2 id="segment-1-session-overview">Segment 1: Session Overview</h2>
+
+<h3 id="what-is-lexical-processing">What is Lexical Processing?</h3>
+
+<p><strong>Lexical processing</strong> is the set of techniques that break down raw text into individual words (or tokens) and normalize them into standard forms.</p>
+
+<p><strong>Why it matters:</strong></p>
+<ul>
+  <li>Computers cannot work with paragraphs—they need individual units</li>
+  <li>Words appear in different forms (run, running, ran) but mean the same thing</li>
+  <li>Text is messy (typos, abbreviations, inconsistent formatting)</li>
+</ul>
+
+<h3 id="what-you-will-learn">What You Will Learn</h3>
+
+<ol>
+  <li><strong>Text Normalisation</strong> – Making text consistent and clean</li>
+  <li><strong>Tokenisation</strong> – Splitting text into words and sentences</li>
+  <li><strong>Stopword Removal</strong> – Filtering out common but unimportant words</li>
+  <li><strong>Morphological Analysis</strong> – Understanding how words are built</li>
+  <li><strong>Spell Correction</strong> – Fixing typos automatically</li>
+  <li><strong>Stemming</strong> – Chopping words down to their roots</li>
+  <li><strong>Lemmatisation</strong> – Converting words to their dictionary forms</li>
+</ol>
+
+<h3 id="the-analogy-the-text-kitchen">The Analogy: The Text Kitchen</h3>
+
+<p>Imagine you are a chef receiving a crate of random ingredients:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Raw Delivery</th>
+      <th>Processing Step</th>
+      <th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>“HELLO world!!!”</td>
+      <td>Normalisation</td>
+      <td>“hello world”</td>
+    </tr>
+    <tr>
+      <td>“The quick brown fox jumps”</td>
+      <td>Tokenisation</td>
+      <td>[“The”, “quick”, “brown”, “fox”, “jumps”]</td>
+    </tr>
+    <tr>
+      <td>“running, runs, ran”</td>
+      <td>Stemming/Lemmatisation</td>
+      <td>“run”</td>
+    </tr>
+    <tr>
+      <td>“teh, recieve, seperate”</td>
+      <td>Spell Correction</td>
+      <td>“the, receive, separate”</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="segment-2-text-normalisation">Segment 2: Text Normalisation</h2>
+
+<h3 id="what-is-text-normalisation">What is Text Normalisation?</h3>
+
+<p>Text normalisation makes text consistent. It is like tidying up a messy room before you can find anything.</p>
+
+<h3 id="common-normalisation-techniques">Common Normalisation Techniques</h3>
+
+<h4 id="1-case-conversion">1. Case Conversion</h4>
+<p><strong>What:</strong> Convert everything to lowercase (or uppercase).</p>
+
+<p><strong>Why:</strong> “Apple” (company) and “apple” (fruit) should be treated the same for many tasks.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example
+</span><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The QUICK Brown Fox</span><span class="sh">"</span>
+<span class="n">normalized</span> <span class="o">=</span> <span class="n">text</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span>
+<span class="c1"># Result: "the quick brown fox"
+</span></code></pre></div></div>
+
+<p><strong>When to use:</strong> Search, matching, most analysis tasks.</p>
+
+<p><strong>When NOT to use:</strong> Named entity recognition (“Washington” the place vs. “washington” a verb).</p>
+
+<h4 id="2-removing-extra-whitespace">2. Removing Extra Whitespace</h4>
+<p><strong>What:</strong> Collapse multiple spaces, tabs, and newlines into single spaces.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Before
+</span><span class="sh">"</span><span class="s">Hello    world</span><span class="se">\n\n\t</span><span class="s">How   are   you?</span><span class="sh">"</span>
+
+<span class="c1"># After
+</span><span class="sh">"</span><span class="s">Hello world How are you?</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<h4 id="3-removing-special-characters">3. Removing Special Characters</h4>
+<p><strong>What:</strong> Strip punctuation, emojis, or other non-text elements.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Before
+</span><span class="sh">"</span><span class="s">Hello!!! How are you??? 😊 #excited</span><span class="sh">"</span>
+
+<span class="c1"># After (keep only letters and spaces)
+</span><span class="sh">"</span><span class="s">Hello How are you</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<p><strong>Caution:</strong> Sometimes special characters matter. “@username” in tweets contains information.</p>
+
+<h4 id="4-handling-contractions">4. Handling Contractions</h4>
+<p><strong>What:</strong> Expand shortened forms to full words.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Contraction</th>
+      <th>Expanded</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>don’t</td>
+      <td>do not</td>
+    </tr>
+    <tr>
+      <td>I’m</td>
+      <td>I am</td>
+    </tr>
+    <tr>
+      <td>can’t</td>
+      <td>cannot</td>
+    </tr>
+    <tr>
+      <td>won’t</td>
+      <td>will not</td>
+    </tr>
+    <tr>
+      <td>it’s</td>
+      <td>it is</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example logic
+</span><span class="n">contractions</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">don</span><span class="sh">'</span><span class="s">t</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">do not</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">I</span><span class="sh">'</span><span class="s">m</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">I am</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">can</span><span class="sh">'</span><span class="s">t</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">cannot</span><span class="sh">"</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>Why it matters:</strong> “I don’t like this” vs. “I do not like this”—without expansion, “don’t” is treated as one unique word.</p>
+
+<h4 id="5-handling-accented-characters">5. Handling Accented Characters</h4>
+<p><strong>What:</strong> Convert é, ñ, ü to e, n, u (or preserve them).</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Before
+</span><span class="sh">"</span><span class="s">café, naïve, résumé</span><span class="sh">"</span>
+
+<span class="c1"># After (ASCII normalization)
+</span><span class="sh">"</span><span class="s">cafe, naive, resume</span><span class="sh">"</span>
+</code></pre></div></div>
+
+<h3 id="real-world-example-search-engine">Real-World Example: Search Engine</h3>
+
+<p>When you search for “cafe” you want results for:</p>
+<ul>
+  <li>“cafe”</li>
+  <li>“café”</li>
+  <li>“CAFE”</li>
+  <li>“coffee shop” (maybe)</li>
+</ul>
+
+<p>Normalisation makes this possible.</p>
+
+<hr />
+
+<h2 id="segment-3-tokenisation">Segment 3: Tokenisation</h2>
+
+<h3 id="what-is-tokenisation">What is Tokenisation?</h3>
+
+<p><strong>Tokenisation</strong> is breaking text into smaller pieces called <strong>tokens</strong> (usually words or sentences).</p>
+
+<p>It is the most fundamental step in NLP—everything else builds on this.</p>
+
+<h3 id="word-tokenisation">Word Tokenisation</h3>
+
+<p>Splitting text into individual words.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Simple example
+</span><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps</span><span class="sh">"</span>
+<span class="n">tokens</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">The</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">quick</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">brown</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fox</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">jumps</span><span class="sh">"</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p><strong>But it is not always simple:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Challenge</th>
+      <th>Example</th>
+      <th>Decision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Contractions</td>
+      <td>“don’t”</td>
+      <td>[“do”, “n’t”] or [“don’t”]?</td>
+    </tr>
+    <tr>
+      <td>Hyphenated words</td>
+      <td>“state-of-the-art”</td>
+      <td>One token or [“state”, “of”, “the”, “art”]?</td>
+    </tr>
+    <tr>
+      <td>Numbers</td>
+      <td>“3.14”</td>
+      <td>One token or [“3”, “.”, “14”]?</td>
+    </tr>
+    <tr>
+      <td>URLs</td>
+      <td>“https://example.com”</td>
+      <td>One token or separate?</td>
+    </tr>
+    <tr>
+      <td>Email</td>
+      <td>“user@email.com”</td>
+      <td>One token or separate?</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="sentence-tokenisation">Sentence Tokenisation</h3>
+
+<p>Splitting paragraphs into individual sentences.</p>
+
+<p><strong>Challenges:</strong></p>
+<ul>
+  <li>“Dr. Smith went to Washington.” (“Dr.” is not the end of a sentence)</li>
+  <li>“The price is $3.50.” (Period is not the end)</li>
+  <li>“Mr. and Mrs. Jones arrived.” (Multiple abbreviations)</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example sentences
+</span><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Hello! How are you? I</span><span class="sh">'</span><span class="s">m fine. Thanks.</span><span class="sh">"</span>
+<span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">Hello!</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">How are you?</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">I</span><span class="sh">'</span><span class="s">m fine.</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Thanks.</span><span class="sh">"</span><span class="p">]</span>
+</code></pre></div></div>
+
+<h3 id="tokenisation-strategies">Tokenisation Strategies</h3>
+
+<h4 id="1-whitespace-tokenisation">1. Whitespace Tokenisation</h4>
+<p>Split on spaces. Fast but crude.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Hello, world!</span><span class="sh">"</span>
+<span class="c1"># Result: ["Hello,", "world!"]  # Punctuation stuck to words
+</span></code></pre></div></div>
+
+<h4 id="2-punctuation-based-tokenisation">2. Punctuation-Based Tokenisation</h4>
+<p>Split on punctuation too.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Hello, world!</span><span class="sh">"</span>
+<span class="c1"># Result: ["Hello", ",", "world", "!"]
+</span></code></pre></div></div>
+
+<h4 id="3-treebank-tokenisation">3. Treebank Tokenisation</h4>
+<p>Penn Treebank standard—handles contractions specially.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">I</span><span class="sh">'</span><span class="s">m happy.</span><span class="sh">"</span>
+<span class="c1"># Result: ["I", "'m", "happy", "."]
+</span></code></pre></div></div>
+
+<h4 id="4-subword-tokenisation-bpe-wordpiece">4. Subword Tokenisation (BPE, WordPiece)</h4>
+<p>Break rare words into smaller pieces.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">word</span> <span class="o">=</span> <span class="sh">"</span><span class="s">unhappiness</span><span class="sh">"</span>
+<span class="c1"># Result: ["un", "##hap", "##pi", "##ness"]
+# (Common in modern NLP like BERT)
+</span></code></pre></div></div>
+
+<h3 id="python-example-with-nltk">Python Example with NLTK</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span><span class="p">,</span> <span class="n">sent_tokenize</span>
+
+<span class="c1"># Download required data
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">punkt</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Word tokenisation
+</span><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Hello! I</span><span class="sh">'</span><span class="s">m learning NLP. It</span><span class="sh">'</span><span class="s">s fascinating!</span><span class="sh">"</span>
+<span class="n">words</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+<span class="c1"># ['Hello', '!', 'I', "'m", 'learning', 'NLP', '.', 'It', "'s", 'fascinating', '!']
+</span>
+<span class="c1"># Sentence tokenisation
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="nf">sent_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">sentences</span><span class="p">)</span>
+<span class="c1"># ['Hello!', "I'm learning NLP.", "It's fascinating!"]
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-4-stopword-removal">Segment 4: Stopword Removal</h2>
+
+<h3 id="what-are-stopwords">What are Stopwords?</h3>
+
+<p><strong>Stopwords</strong> are common words that carry little meaning: the, and, is, at, which, on, a, an, in.</p>
+
+<p>They appear in almost every sentence, so they do not help distinguish one document from another.</p>
+
+<h3 id="examples-by-language">Examples by Language</h3>
+
+<p><strong>English:</strong> a, an, the, and, or, but, in, on, at, to, for, of, with, by
+<strong>Spanish:</strong> el, la, de, que, y, a, los, del, se, las
+<strong>French:</strong> le, la, de, et, à, un, il, être, et, avoir</p>
+
+<h3 id="why-remove-stopwords">Why Remove Stopwords?</h3>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+  <li>Reduce dataset size (fewer unique words to process)</li>
+  <li>Focus on meaningful words</li>
+  <li>Improve processing speed</li>
+  <li>Often improves accuracy for tasks like classification</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Original</th>
+      <th>After Stopword Removal</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>“The quick brown fox jumps over the lazy dog”</td>
+      <td>“quick brown fox jumps over lazy dog”</td>
+    </tr>
+    <tr>
+      <td>“I am running in the park”</td>
+      <td>“running park”</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-not-to-remove-stopwords">When NOT to Remove Stopwords</h3>
+
+<ul>
+  <li><strong>Sentiment analysis:</strong> “not good” vs. “good”—removing “not” changes meaning</li>
+  <li><strong>Question answering:</strong> “Who is the president?”—removing “who” destroys the question</li>
+  <li><strong>Machine translation:</strong> Need all words to produce correct output</li>
+  <li><strong>Grammar checking:</strong> Need all words to check grammar</li>
+</ul>
+
+<h3 id="python-example">Python Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">stopwords</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span>
+
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">stopwords</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Get English stopwords
+</span><span class="n">stop_words</span> <span class="o">=</span> <span class="nf">set</span><span class="p">(</span><span class="n">stopwords</span><span class="p">.</span><span class="nf">words</span><span class="p">(</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">))</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog</span><span class="sh">"</span>
+<span class="n">words</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">.</span><span class="nf">lower</span><span class="p">())</span>
+
+<span class="c1"># Remove stopwords
+</span><span class="n">filtered</span> <span class="o">=</span> <span class="p">[</span><span class="n">word</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stop_words</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span>
+<span class="c1"># ['quick', 'brown', 'fox', 'jumps', 'lazy', 'dog']
+</span></code></pre></div></div>
+
+<h3 id="custom-stopword-lists">Custom Stopword Lists</h3>
+
+<p>Sometimes the default list is not right for your task.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Add domain-specific stopwords
+</span><span class="n">my_stopwords</span> <span class="o">=</span> <span class="n">stopwords</span><span class="p">.</span><span class="nf">words</span><span class="p">(</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">my_stopwords</span><span class="p">.</span><span class="nf">extend</span><span class="p">([</span><span class="sh">'</span><span class="s">app</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">click</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">user</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">page</span><span class="sh">'</span><span class="p">])</span>  <span class="c1"># For app reviews
+</span>
+<span class="c1"># Or create your own
+</span><span class="n">custom_stopwords</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">the</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">and</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">http</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">www</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">com</span><span class="sh">'</span><span class="p">}</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-5-morphological-analysis">Segment 5: Morphological Analysis</h2>
+
+<h3 id="what-is-morphology">What is Morphology?</h3>
+
+<p><strong>Morphology</strong> is the study of how words are built from smaller meaningful units called <strong>morphemes</strong>.</p>
+
+<p><strong>Example:</strong> “Unhappiness”</p>
+<ul>
+  <li>un- (prefix: not)</li>
+  <li>happy (root word)</li>
+  <li>-ness (suffix: state of being)</li>
+</ul>
+
+<p>Understanding this structure helps computers recognize that “unhappiness” relates to “happy.”</p>
+
+<h3 id="types-of-morphemes">Types of Morphemes</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Root/Stem</strong></td>
+      <td>Core meaning</td>
+      <td>run, happy, child</td>
+    </tr>
+    <tr>
+      <td><strong>Prefix</strong></td>
+      <td>Added before</td>
+      <td>un-, re-, pre-, dis-</td>
+    </tr>
+    <tr>
+      <td><strong>Suffix</strong></td>
+      <td>Added after</td>
+      <td>-ing, -ed, -ly, -ness</td>
+    </tr>
+    <tr>
+      <td><strong>Inflection</strong></td>
+      <td>Grammar changes</td>
+      <td>running, runs, ran (same word, different form)</td>
+    </tr>
+    <tr>
+      <td><strong>Derivation</strong></td>
+      <td>Creates new word</td>
+      <td>happy → happiness (different word class)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="why-morphology-matters-in-nlp">Why Morphology Matters in NLP</h3>
+
+<p><strong>Vocabulary reduction:</strong></p>
+<ul>
+  <li>run, runs, running, ran → run</li>
+  <li>4 words become 1 concept</li>
+</ul>
+
+<p><strong>Information extraction:</strong></p>
+<ul>
+  <li>“unhappy” = “not happy” (prefix carries meaning)</li>
+  <li>“teacher” = “teach” + “person who does” (suffix carries meaning)</li>
+</ul>
+
+<p><strong>Language understanding:</strong></p>
+<ul>
+  <li>Recognizing word relationships</li>
+  <li>Handling unknown words by breaking them apart</li>
+</ul>
+
+<h3 id="example-analysis">Example Analysis</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Morphological Breakdown</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>running</td>
+      <td>run + ing</td>
+      <td>action of run</td>
+    </tr>
+    <tr>
+      <td>impossible</td>
+      <td>im + possible</td>
+      <td>not possible</td>
+    </tr>
+    <tr>
+      <td>childhood</td>
+      <td>child + hood</td>
+      <td>state of being a child</td>
+    </tr>
+    <tr>
+      <td>nationalisation</td>
+      <td>nation + al + ise + ation</td>
+      <td>process of making national</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="segment-6-spell-correction">Segment 6: Spell Correction</h2>
+
+<h3 id="why-spell-correction-matters">Why Spell Correction Matters</h3>
+
+<p>Text is messy. People make typos, especially in:</p>
+<ul>
+  <li>Social media posts</li>
+  <li>Search queries</li>
+  <li>Text messages</li>
+  <li>User-generated content</li>
+</ul>
+
+<p>A good NLP system needs to handle: “teh” → “the”, “recieve” → “receive”</p>
+
+<h3 id="types-of-spelling-errors">Types of Spelling Errors</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Example</th>
+      <th>Cause</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Non-word errors</strong></td>
+      <td>“teh” for “the”</td>
+      <td>Typing mistake</td>
+    </tr>
+    <tr>
+      <td><strong>Real-word errors</strong></td>
+      <td>“there” for “their”</td>
+      <td>Homophone confusion</td>
+    </tr>
+    <tr>
+      <td><strong>Insertion</strong></td>
+      <td>“happpy” (extra p)</td>
+      <td>Fat fingers</td>
+    </tr>
+    <tr>
+      <td><strong>Deletion</strong></td>
+      <td>“hapen” (missing p)</td>
+      <td>Fast typing</td>
+    </tr>
+    <tr>
+      <td><strong>Substitution</strong></td>
+      <td>“giod” for “good”</td>
+      <td>Adjacent keys</td>
+    </tr>
+    <tr>
+      <td><strong>Transposition</strong></td>
+      <td>“hte” for “the”</td>
+      <td>Finger order</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="how-spell-correction-works">How Spell Correction Works</h3>
+
+<h4 id="1-detection">1. Detection</h4>
+<p>First, determine if a word is misspelled.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Check against dictionary:
+- "the" → in dictionary ✓
+- "teh" → not in dictionary ✗
+</code></pre></div></div>
+
+<h4 id="2-candidate-generation">2. Candidate Generation</h4>
+<p>Create possible corrections.</p>
+
+<p>For “teh”:</p>
+<ul>
+  <li>Edit distance 1: the, ten, tea, tech</li>
+  <li>Edit distance 2: they, them, then</li>
+</ul>
+
+<h4 id="3-ranking">3. Ranking</h4>
+<p>Choose the most likely correction.</p>
+
+<p>Factors:</p>
+<ul>
+  <li>Edit distance (fewer changes = better)</li>
+  <li>Word frequency (“the” is more common than “tea”)</li>
+  <li>Context (surrounding words)</li>
+</ul>
+
+<h3 id="edit-distance-levenshtein-distance">Edit Distance (Levenshtein Distance)</h3>
+
+<p>The minimum number of single-character edits needed to change one word into another.</p>
+
+<p><strong>Operations:</strong></p>
+<ul>
+  <li>Insertion: “car” → “cart”</li>
+  <li>Deletion: “cart” → “car”</li>
+  <li>Substitution: “cat” → “cut”</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kitten → sitting
+kitten → sitten (substitute k→s)
+sitten → sittin (substitute e→i)
+sittin → sitting (insert g)
+Distance = 3
+</code></pre></div></div>
+
+<h3 id="python-example-with-textblob">Python Example with TextBlob</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">textblob</span> <span class="kn">import</span> <span class="n">TextBlob</span>
+
+<span class="c1"># Simple spell correction
+</span><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">I am lerning NLP and it is fascinting</span><span class="sh">"</span>
+<span class="n">blob</span> <span class="o">=</span> <span class="nc">TextBlob</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="n">corrected</span> <span class="o">=</span> <span class="n">blob</span><span class="p">.</span><span class="nf">correct</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">corrected</span><span class="p">)</span>
+<span class="c1"># "I am learning NLP and it is fascinating"
+</span></code></pre></div></div>
+
+<h3 id="context-aware-correction">Context-Aware Correction</h3>
+
+<p>Sometimes context matters more than edit distance:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I am going to the markt"
+Candidates: mark, market, mart
+Best: "market" (context: "going to the...")
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-7-stemming">Segment 7: Stemming</h2>
+
+<h3 id="what-is-stemming">What is Stemming?</h3>
+
+<p><strong>Stemming</strong> chops off word endings to reduce words to their root form (stem). It uses simple rules and does not require a vocabulary.</p>
+
+<p><strong>Crude but fast.</strong></p>
+
+<h3 id="examples">Examples</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Stem</th>
+      <th>Rule Applied</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>running</td>
+      <td>run</td>
+      <td>Remove “ning”</td>
+    </tr>
+    <tr>
+      <td>runs</td>
+      <td>run</td>
+      <td>Remove “s”</td>
+    </tr>
+    <tr>
+      <td>runner</td>
+      <td>run</td>
+      <td>Remove “ner”</td>
+    </tr>
+    <tr>
+      <td>easily</td>
+      <td>easili</td>
+      <td>Remove “ly”</td>
+    </tr>
+    <tr>
+      <td>fairly</td>
+      <td>fairli</td>
+      <td>Remove “ly”</td>
+    </tr>
+    <tr>
+      <td>fishing</td>
+      <td>fish</td>
+      <td>Remove “ing”</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Notice:</strong> The stem is not always a real word (“easili” is not English).</p>
+
+<h3 id="common-stemming-algorithms">Common Stemming Algorithms</h3>
+
+<h4 id="1-porter-stemmer-1980">1. Porter Stemmer (1980)</h4>
+<p>The most widely used. Five phases of word reductions.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.stem</span> <span class="kn">import</span> <span class="n">PorterStemmer</span>
+
+<span class="n">stemmer</span> <span class="o">=</span> <span class="nc">PorterStemmer</span><span class="p">()</span>
+
+<span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">running</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">runs</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">runner</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">easily</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fairly</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">stems</span> <span class="o">=</span> <span class="p">[</span><span class="n">stemmer</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">stems</span><span class="p">)</span>
+<span class="c1"># ['run', 'run', 'runner', 'easili', 'fairli']
+</span></code></pre></div></div>
+
+<p><strong>Porter rules example:</strong></p>
+<ul>
+  <li>SSES → SS (“caresses” → “caress”)</li>
+  <li>IES → I (“ponies” → “poni”)</li>
+  <li>SS → SS (“caress” → “caress”)</li>
+  <li>S → “” (“cats” → “cat”)</li>
+</ul>
+
+<h4 id="2-snowball-stemmer-porter2">2. Snowball Stemmer (Porter2)</h4>
+<p>Improved version, handles more cases.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.stem</span> <span class="kn">import</span> <span class="n">SnowballStemmer</span>
+
+<span class="n">stemmer</span> <span class="o">=</span> <span class="nc">SnowballStemmer</span><span class="p">(</span><span class="sh">"</span><span class="s">english</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">stemmer</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="sh">"</span><span class="s">generously</span><span class="sh">"</span><span class="p">))</span>  <span class="c1"># 'generous'
+</span></code></pre></div></div>
+
+<h4 id="3-lancaster-stemmer">3. Lancaster Stemmer</h4>
+<p>More aggressive—chops more, faster.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.stem</span> <span class="kn">import</span> <span class="n">LancasterStemmer</span>
+
+<span class="n">stemmer</span> <span class="o">=</span> <span class="nc">LancasterStemmer</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">stemmer</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="sh">"</span><span class="s">maximum</span><span class="sh">"</span><span class="p">))</span>  <span class="c1"># 'maxim'
+</span><span class="nf">print</span><span class="p">(</span><span class="n">stemmer</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="sh">"</span><span class="s">multiply</span><span class="sh">"</span><span class="p">))</span>  <span class="c1"># 'multiply'
+</span></code></pre></div></div>
+
+<h3 id="comparison">Comparison</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Stemmer</th>
+      <th>Speed</th>
+      <th>Aggressiveness</th>
+      <th>Use Case</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Porter</td>
+      <td>Medium</td>
+      <td>Moderate</td>
+      <td>General purpose</td>
+    </tr>
+    <tr>
+      <td>Snowball</td>
+      <td>Medium</td>
+      <td>Moderate</td>
+      <td>Better than Porter</td>
+    </tr>
+    <tr>
+      <td>Lancaster</td>
+      <td>Fast</td>
+      <td>Very aggressive</td>
+      <td>When you want maximum reduction</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="when-to-use-stemming">When to Use Stemming</h3>
+
+<p><strong>Good for:</strong></p>
+<ul>
+  <li>Information retrieval (search engines)</li>
+  <li>Basic text classification</li>
+  <li>When speed matters more than precision</li>
+</ul>
+
+<p><strong>Not good for:</strong></p>
+<ul>
+  <li>Tasks needing real words</li>
+  <li>Output shown to users</li>
+  <li>When word meaning matters deeply</li>
+</ul>
+
+<hr />
+
+<h2 id="segment-8-lemmatisation">Segment 8: Lemmatisation</h2>
+
+<h3 id="what-is-lemmatisation">What is Lemmatisation?</h3>
+
+<p><strong>Lemmatisation</strong> converts words to their dictionary form (<strong>lemma</strong>) using vocabulary and morphological analysis.</p>
+
+<p><strong>Smarter but slower than stemming.</strong></p>
+
+<p><strong>Key difference:</strong> Lemmatisation produces real words.</p>
+
+<h3 id="examples-1">Examples</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Lemma</th>
+      <th>Part of Speech</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>running</td>
+      <td>run</td>
+      <td>verb</td>
+    </tr>
+    <tr>
+      <td>better</td>
+      <td>good</td>
+      <td>adjective</td>
+    </tr>
+    <tr>
+      <td>was</td>
+      <td>be</td>
+      <td>verb</td>
+    </tr>
+    <tr>
+      <td>mice</td>
+      <td>mouse</td>
+      <td>noun</td>
+    </tr>
+    <tr>
+      <td>are</td>
+      <td>be</td>
+      <td>verb</td>
+    </tr>
+    <tr>
+      <td>ate</td>
+      <td>eat</td>
+      <td>verb</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Compare with stemming:</strong></p>
+<ul>
+  <li>Stemming: “better” → “better” (unchanged, wrong)</li>
+  <li>Lemmatisation: “better” → “good” (correct)</li>
+</ul>
+
+<h3 id="why-lemmatisation-needs-context">Why Lemmatisation Needs Context</h3>
+
+<p>The same word can have different lemmas depending on its role:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Context</th>
+      <th>Lemma</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>saw</td>
+      <td>“I saw a movie”</td>
+      <td>see (verb)</td>
+    </tr>
+    <tr>
+      <td>saw</td>
+      <td>“Use a saw”</td>
+      <td>saw (noun)</td>
+    </tr>
+    <tr>
+      <td>leaves</td>
+      <td>“Leaves fall”</td>
+      <td>leaf (noun)</td>
+    </tr>
+    <tr>
+      <td>leaves</td>
+      <td>“She leaves”</td>
+      <td>leave (verb)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>This is why lemmatisers need <strong>Part-of-Speech tags</strong>.</p>
+
+<h3 id="python-example-with-nltk-1">Python Example with NLTK</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.stem</span> <span class="kn">import</span> <span class="n">WordNetLemmatizer</span>
+<span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">wordnet</span>
+
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">wordnet</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">averaged_perceptron_tagger</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">lemmatizer</span> <span class="o">=</span> <span class="nc">WordNetLemmatizer</span><span class="p">()</span>
+
+<span class="c1"># Without POS tag (defaults to noun)
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">running</span><span class="sh">"</span><span class="p">))</span>  <span class="c1"># 'running' (treated as noun)
+</span>
+<span class="c1"># With POS tag
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">running</span><span class="sh">"</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">wordnet</span><span class="p">.</span><span class="n">VERB</span><span class="p">))</span>  <span class="c1"># 'run'
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">better</span><span class="sh">"</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">wordnet</span><span class="p">.</span><span class="n">ADJ</span><span class="p">))</span>  <span class="c1"># 'good'
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">wordnet</span><span class="p">.</span><span class="n">VERB</span><span class="p">))</span>  <span class="c1"># 'wa' (be)
+</span></code></pre></div></div>
+
+<h3 id="pos-tag-mapping">POS Tag Mapping</h3>
+
+<p>NLTK and WordNet use different POS tag systems:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>NLTK Tag</th>
+      <th>WordNet POS</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>JJ</td>
+      <td>wordnet.ADJ</td>
+      <td>Adjective</td>
+    </tr>
+    <tr>
+      <td>NN</td>
+      <td>wordnet.NOUN</td>
+      <td>Noun</td>
+    </tr>
+    <tr>
+      <td>VB</td>
+      <td>wordnet.VERB</td>
+      <td>Verb</td>
+    </tr>
+    <tr>
+      <td>RB</td>
+      <td>wordnet.ADV</td>
+      <td>Adverb</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="segment-9-stemming-vs-lemmatisation">Segment 9: Stemming vs Lemmatisation</h2>
+
+<h3 id="quick-comparison">Quick Comparison</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Stemming</th>
+      <th>Lemmatisation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Method</strong></td>
+      <td>Chop endings with rules</td>
+      <td>Use vocabulary and POS</td>
+    </tr>
+    <tr>
+      <td><strong>Speed</strong></td>
+      <td>Fast</td>
+      <td>Slower</td>
+    </tr>
+    <tr>
+      <td><strong>Output</strong></td>
+      <td>May not be real words</td>
+      <td>Always real words</td>
+    </tr>
+    <tr>
+      <td><strong>Accuracy</strong></td>
+      <td>Crude</td>
+      <td>Precise</td>
+    </tr>
+    <tr>
+      <td><strong>Context needed</strong></td>
+      <td>No</td>
+      <td>Yes (POS tags)</td>
+    </tr>
+    <tr>
+      <td><strong>Use case</strong></td>
+      <td>Search, basic NLP</td>
+      <td>High-quality NLP</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="visual-example">Visual Example</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original: "The striped bats are hanging on their feet for best"
+
+Stemming (Porter):
+["the", "strip", "bat", "are", "hang", "on", "their", "feet", "for", "best"]
+
+Lemmatisation:
+["the", "striped", "bat", "be", "hang", "on", "their", "foot", "for", "good"]
+
+Key differences:
+- "striped" → "strip" (stemming loses meaning)
+- "are" → "are" (stemming misses verb)
+- "feet" → "foot" (lemmatisation knows plural)
+- "best" → "good" (lemmatisation knows comparative)
+</code></pre></div></div>
+
+<h3 id="when-to-use-which">When to Use Which</h3>
+
+<p><strong>Use Stemming when:</strong></p>
+<ul>
+  <li>Building a search engine (speed matters)</li>
+  <li>Working with massive datasets</li>
+  <li>You do not need human-readable output</li>
+  <li>Doing basic exploratory analysis</li>
+</ul>
+
+<p><strong>Use Lemmatisation when:</strong></p>
+<ul>
+  <li>Building production NLP systems</li>
+  <li>Output will be shown to users</li>
+  <li>Doing sentiment analysis (word meaning matters)</li>
+  <li>Working with machine learning models</li>
+</ul>
+
+<h3 id="real-world-analogy">Real-World Analogy</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th>Analogy</th>
+      <th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Stemming</td>
+      <td>Chopping vegetables with a big knife</td>
+      <td>Fast, but uneven pieces</td>
+    </tr>
+    <tr>
+      <td>Lemmatisation</td>
+      <td>Carefully cutting with a chef’s knife</td>
+      <td>Precise, perfect pieces</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="segment-10-lexical-processing-python-demonstration">Segment 10: Lexical Processing Python Demonstration</h2>
+
+<h3 id="complete-pipeline-example">Complete Pipeline Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span><span class="p">,</span> <span class="n">sent_tokenize</span>
+<span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">stopwords</span>
+<span class="kn">from</span> <span class="n">nltk.stem</span> <span class="kn">import</span> <span class="n">PorterStemmer</span><span class="p">,</span> <span class="n">WordNetLemmatizer</span>
+<span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">wordnet</span>
+
+<span class="c1"># Download required resources
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">punkt</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">stopwords</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">wordnet</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">averaged_perceptron_tagger</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Sample text
+</span><span class="n">raw_text</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+The striped bats were hanging on their feet and ate best fishes.
+After eating, they slept soundly while dreaming of flying.
+</span><span class="sh">"""</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">LEXICAL PROCESSING PIPELINE DEMONSTRATION</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Step 1: Text Normalisation
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">1. TEXT NORMALISATION</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">normalized</span> <span class="o">=</span> <span class="n">raw_text</span><span class="p">.</span><span class="nf">lower</span><span class="p">().</span><span class="nf">strip</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Lowercase: </span><span class="si">{</span><span class="n">normalized</span><span class="p">[</span><span class="si">:</span><span class="mi">60</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Sentence Tokenisation
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">2. SENTENCE TOKENISATION</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">sentences</span> <span class="o">=</span> <span class="nf">sent_tokenize</span><span class="p">(</span><span class="n">raw_text</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sent</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">sentences</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sentence </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">sent</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Word Tokenisation
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">3. WORD TOKENISATION</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">words</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">raw_text</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Tokens: </span><span class="si">{</span><span class="n">words</span><span class="p">[</span><span class="si">:</span><span class="mi">15</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Total tokens: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Stopword Removal
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">4. STOPWORD REMOVAL</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">stop_words</span> <span class="o">=</span> <span class="nf">set</span><span class="p">(</span><span class="n">stopwords</span><span class="p">.</span><span class="nf">words</span><span class="p">(</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">))</span>
+<span class="n">filtered</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">w</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stop_words</span> <span class="ow">and</span> <span class="n">w</span><span class="p">.</span><span class="nf">isalpha</span><span class="p">()]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Without stopwords: </span><span class="si">{</span><span class="n">filtered</span><span class="p">[</span><span class="si">:</span><span class="mi">15</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Removed </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="nf">len</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span><span class="si">}</span><span class="s"> stopwords</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Stemming
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">5. STEMMING (Porter Stemmer)</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">porter</span> <span class="o">=</span> <span class="nc">PorterStemmer</span><span class="p">()</span>
+<span class="n">stemmed</span> <span class="o">=</span> <span class="p">[</span><span class="n">porter</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">filtered</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Stemmed: </span><span class="si">{</span><span class="n">stemmed</span><span class="p">[</span><span class="si">:</span><span class="mi">15</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 6: Lemmatisation
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">6. LEMMATISATION</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">lemmatizer</span> <span class="o">=</span> <span class="nc">WordNetLemmatizer</span><span class="p">()</span>
+
+<span class="c1"># Helper to convert POS tags
+</span><span class="k">def</span> <span class="nf">get_wordnet_pos</span><span class="p">(</span><span class="n">treebank_tag</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">treebank_tag</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">J</span><span class="sh">'</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">wordnet</span><span class="p">.</span><span class="n">ADJ</span>
+    <span class="k">elif</span> <span class="n">treebank_tag</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">V</span><span class="sh">'</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">wordnet</span><span class="p">.</span><span class="n">VERB</span>
+    <span class="k">elif</span> <span class="n">treebank_tag</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">N</span><span class="sh">'</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">wordnet</span><span class="p">.</span><span class="n">NOUN</span>
+    <span class="k">elif</span> <span class="n">treebank_tag</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">R</span><span class="sh">'</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">wordnet</span><span class="p">.</span><span class="n">ADV</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">wordnet</span><span class="p">.</span><span class="n">NOUN</span>
+
+<span class="c1"># Get POS tags
+</span><span class="n">pos_tags</span> <span class="o">=</span> <span class="n">nltk</span><span class="p">.</span><span class="nf">pos_tag</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">POS Tags:</span><span class="sh">"</span><span class="p">,</span> <span class="n">pos_tags</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+
+<span class="c1"># Lemmatise with POS
+</span><span class="n">lemmatized</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">pos_tags</span><span class="p">:</span>
+    <span class="n">wn_tag</span> <span class="o">=</span> <span class="nf">get_wordnet_pos</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+    <span class="n">lemma</span> <span class="o">=</span> <span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">wn_tag</span><span class="p">)</span>
+    <span class="n">lemmatized</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">lemma</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Lemmatised: </span><span class="si">{</span><span class="n">lemmatized</span><span class="p">[</span><span class="si">:</span><span class="mi">15</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Summary
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span> <span class="o">+</span> <span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">SUMMARY</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Original tokens: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">After stopword removal: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Unique stems: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="nf">set</span><span class="p">(</span><span class="n">stemmed</span><span class="p">))</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Unique lemmas: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="nf">set</span><span class="p">(</span><span class="n">lemmatized</span><span class="p">))</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="expected-output">Expected Output</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>============================================================
+LEXICAL PROCESSING PIPELINE DEMONSTRATION
+============================================================
+
+1. TEXT NORMALISATION
+----------------------------------------
+Lowercase: the striped bats were hanging on their feet and...
+
+2. SENTENCE TOKENISATION
+----------------------------------------
+Sentence 1: The striped bats were hanging on their feet and ate best fishes.
+Sentence 2: After eating, they slept soundly while dreaming of flying.
+
+3. WORD TOKENISATION
+----------------------------------------
+Tokens: ['The', 'striped', 'bats', 'were', 'hanging', 'on', 'their', ...]
+Total tokens: 24
+
+4. STOPWORD REMOVAL
+----------------------------------------
+Without stopwords: ['striped', 'bats', 'hanging', 'feet', 'ate', ...]
+Removed 12 stopwords
+
+5. STEMMING (Porter Stemmer)
+----------------------------------------
+Stemmed: ['stripe', 'bat', 'hang', 'feet', 'ate', 'best', 'fish', ...]
+
+6. LEMMATISATION
+----------------------------------------
+POS Tags: [('striped', 'JJ'), ('bats', 'NNS'), ('hanging', 'VBG'), ...]
+Lemmatised: ['striped', 'bat', 'hang', 'foot', 'eat', 'good', 'fish', ...]
+
+============================================================
+SUMMARY
+============================================================
+Original tokens: 24
+After stopword removal: 12
+Unique stems: 10
+Unique lemmas: 11
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-11-session-summary">Segment 11: Session Summary</h2>
+
+<h3 id="what-we-learned">What We Learned</h3>
+
+<ol>
+  <li>
+    <p><strong>Text Normalisation</strong> – Making text consistent (case, spacing, contractions, accents)</p>
+  </li>
+  <li><strong>Tokenisation</strong> – Breaking text into words and sentences
+    <ul>
+      <li>Word tokenisation: Split into individual words</li>
+      <li>Sentence tokenisation: Split by sentence boundaries</li>
+    </ul>
+  </li>
+  <li><strong>Stopword Removal</strong> – Filtering common words (the, and, is)
+    <ul>
+      <li>Reduces data size</li>
+      <li>Focuses on meaningful words</li>
+      <li>But be careful with sentiment analysis</li>
+    </ul>
+  </li>
+  <li>
+    <p><strong>Morphological Analysis</strong> – Understanding word structure (prefixes, suffixes, roots)</p>
+  </li>
+  <li>
+    <p><strong>Spell Correction</strong> – Fixing typos using edit distance and context</p>
+  </li>
+  <li><strong>Stemming</strong> – Chopping word endings (fast, crude)
+    <ul>
+      <li>Porter, Snowball, Lancaster algorithms</li>
+      <li>Output may not be real words</li>
+    </ul>
+  </li>
+  <li><strong>Lemmatisation</strong> – Converting to dictionary forms (slow, precise)
+    <ul>
+      <li>Uses vocabulary and POS tags</li>
+      <li>Always produces real words</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ul>
+  <li><strong>Lexical processing prepares text for deeper analysis</strong></li>
+  <li><strong>Tokenisation is the foundation</strong>—everything builds on it</li>
+  <li><strong>Choose stemming for speed, lemmatisation for accuracy</strong></li>
+  <li><strong>Stopword removal is task-dependent</strong>—not always helpful</li>
+  <li><strong>These techniques often work together</strong> in a pipeline</li>
+</ul>
+
+<h3 id="the-pipeline-flow">The Pipeline Flow</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Raw Text
+    ↓
+Text Normalisation (lowercase, clean)
+    ↓
+Tokenisation (split into words)
+    ↓
+Stopword Removal (filter common words)
+    ↓
+Stemming OR Lemmatisation (normalize forms)
+    ↓
+Clean Tokens Ready for Analysis
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-12-practice-questions">Segment 12: Practice Questions</h2>
+
+<h3 id="quick-check-questions">Quick Check Questions</h3>
+
+<p><strong>1. What is the difference between tokenisation and normalisation?</strong></p>
+<details>
+<summary>Answer</summary>
+Normalisation makes text consistent (lowercase, remove spaces). Tokenisation splits text into individual units (words or sentences).
+</details>
+
+<p><strong>2. Why might you choose stemming over lemmatisation?</strong></p>
+<details>
+<summary>Answer</summary>
+Stemming is faster and simpler. Good for search engines or when processing speed matters more than perfect accuracy.
+</details>
+
+<p><strong>3. What are stopwords? Give three examples.</strong></p>
+<details>
+<summary>Answer</summary>
+Common words that carry little meaning: "the," "and," "is," "in," "at."
+</details>
+
+<p><strong>4. What is the edit distance between “kitten” and “sitting”?</strong></p>
+<details>
+<summary>Answer</summary>
+3. (k→s, e→i, add g)
+</details>
+
+<p><strong>5. Why does lemmatisation need Part-of-Speech tags?</strong></p>
+<details>
+<summary>Answer</summary>
+The same word can have different lemmas depending on its grammatical role (e.g., "saw" as verb = "see", as noun = "saw").
+</details>
+
+<h3 id="coding-questions">Coding Questions</h3>
+
+<p><strong>6. Write code to tokenise and remove stopwords from this text:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog!</span><span class="sh">"</span>
+</code></pre></div></div>
+<details>
+<summary>Answer</summary>
+
+```python
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+
+words = word_tokenize(text.lower())
+stop_words = set(stopwords.words('english'))
+filtered = [w for w in words if w.isalpha() and w not in stop_words]
+# Result: ['quick', 'brown', 'fox', 'jumps', 'lazy', 'dog']
+```
+</details>
+
+<p><strong>7. Compare stemming and lemmatisation results for:</strong></p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">better</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">running</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">geese</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">]</span>
+</code></pre></div></div>
+<details>
+<summary>Answer</summary>
+
+```python
+# Stemming: ['better', 'run', 'gees', 'wa']
+# Lemmatisation: ['good', 'run', 'goose', 'be']
+```
+</details>
+
+<h3 id="thought-questions">Thought Questions</h3>
+
+<p><strong>8. Why might removing stopwords hurt sentiment analysis?</strong></p>
+<details>
+<summary>Hint</summary>
+Think about the phrase "not good."
+</details>
+
+<p><strong>9. When would sentence tokenisation be more important than word tokenisation?</strong></p>
+<details>
+<summary>Hint</summary>
+Think about tasks that need to understand complete thoughts or document structure.
+</details>
+
+<p><strong>10. Design a custom stopword list for analyzing customer reviews of a mobile app.</strong></p>
+<details>
+<summary>Hint</summary>
+What words are common in app reviews but do not help you understand if the review is positive or negative?
+</details>
+
+<hr />
+
+<h2 id="what-comes-next">What Comes Next?</h2>
+
+<p>Now that text is tokenised and normalised, the next step is understanding <strong>structure</strong>. The Syntactic Processing guide covers:</p>
+
+<ul>
+  <li><strong>Part-of-Speech Tagging:</strong> Labeling words as nouns, verbs, adjectives</li>
+  <li><strong>Parsing:</strong> Understanding how words relate to each other</li>
+  <li><strong>Grammar:</strong> Recognising sentence structure</li>
+  <li><strong>Tree Structures:</strong> Visualising sentence relationships</li>
+</ul>
+
+<p>You have learned how to chop and prepare ingredients. Next, you will learn how to understand the recipe.</p>

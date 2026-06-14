@@ -1,0 +1,208 @@
+<h1 id="syntactic-processing-part-2---context-free-grammar-and-parsing">Syntactic Processing Part 2 - Context-Free Grammar and Parsing</h1>
+
+<h2 id="why-this-guide-exists">Why This Guide Exists</h2>
+
+<p>Words and phrases are not enough. To truly understand language, we need to know how words connect to form complete thoughts. This guide explains grammar rules and parsing—the process of analyzing sentence structure.</p>
+
+<hr />
+
+<h2 id="segment-1-context-free-grammar-cfg">Segment 1: Context-Free Grammar (CFG)</h2>
+
+<h3 id="what-is-cfg">What is CFG?</h3>
+
+<p><strong>Context-Free Grammar</strong> is a set of rules that define which sentences are grammatically valid.</p>
+
+<h3 id="grammar-components">Grammar Components</h3>
+
+<ol>
+  <li><strong>Terminal symbols:</strong> Actual words (the, dog, runs)</li>
+  <li><strong>Non-terminal symbols:</strong> Categories (Sentence, Noun Phrase, Verb)</li>
+  <li><strong>Production rules:</strong> How to expand non-terminals</li>
+  <li><strong>Start symbol:</strong> Where to begin (usually S for Sentence)</li>
+</ol>
+
+<h3 id="simple-english-grammar">Simple English Grammar</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>S → NP VP                    (Sentence = Noun Phrase + Verb Phrase)
+NP → DET N                   (Noun Phrase = Determiner + Noun)
+NP → DET ADJ N               (Noun Phrase = Determiner + Adjective + Noun)
+VP → V NP                    (Verb Phrase = Verb + Noun Phrase)
+VP → V                       (Verb Phrase = just a Verb)
+DET → "the" | "a" | "an"     (Determiner options)
+ADJ → "quick" | "brown"      (Adjective options)
+N → "fox" | "dog" | "cat"    (Noun options)
+V → "jumps" | "runs" | "eats" (Verb options)
+</code></pre></div></div>
+
+<h3 id="deriving-a-sentence">Deriving a Sentence</h3>
+
+<p>Start with <strong>S</strong>:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>S → NP VP → DET N VP → "the" N VP → "the" "fox" VP 
+  → "the" "fox" V NP → "the" "fox" "jumps" NP
+  → "the" "fox" "jumps" DET N → "the" "fox" "jumps" "the" "dog"
+</code></pre></div></div>
+
+<p><strong>Result:</strong> “the fox jumps the dog”</p>
+
+<p><strong>Note:</strong> This is grammatically valid but semantically odd. CFG checks grammar, not meaning!</p>
+
+<hr />
+
+<h2 id="segment-2-types-of-parsing">Segment 2: Types of Parsing</h2>
+
+<h3 id="constituency-parsing">Constituency Parsing</h3>
+
+<p>Builds a <strong>hierarchical tree</strong> showing phrases within phrases.</p>
+
+<p><strong>Example:</strong> “The cat sleeps”</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        S
+      /   \
+    NP      VP
+   /  \     /  \
+ DET    N  V
+ |      |  |
+the   cat sleeps
+</code></pre></div></div>
+
+<p><strong>Key concept:</strong> Constituents can move together</p>
+<ul>
+  <li>“The cat” → “It sleeps”</li>
+  <li>“sleeps” → “The cat does so”</li>
+</ul>
+
+<h3 id="dependency-parsing">Dependency Parsing</h3>
+
+<p>Shows <strong>direct relationships</strong> between words.</p>
+
+<p><strong>Example:</strong> “The cat sleeps”</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    sleeps (root)
+     /    \
+   cat    . (punctuation)
+   |
+  the
+</code></pre></div></div>
+
+<p><strong>Key labels:</strong></p>
+<ul>
+  <li><strong>nsubj:</strong> nominal subject (who is doing the action)</li>
+  <li><strong>dobj:</strong> direct object (what receives the action)</li>
+  <li><strong>prep:</strong> preposition</li>
+  <li><strong>amod:</strong> adjectival modifier</li>
+  <li><strong>det:</strong> determiner</li>
+</ul>
+
+<h3 id="constituency-vs-dependency">Constituency vs Dependency</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Constituency</th>
+      <th>Dependency</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Structure</strong></td>
+      <td>Hierarchical phrases</td>
+      <td>Word-to-word links</td>
+    </tr>
+    <tr>
+      <td><strong>Focus</strong></td>
+      <td>Phrase structure</td>
+      <td>Grammatical relations</td>
+    </tr>
+    <tr>
+      <td><strong>Best for</strong></td>
+      <td>Grammar checking</td>
+      <td>Information extraction</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="segment-3-ambiguity-in-parsing">Segment 3: Ambiguity in Parsing</h2>
+
+<p>Some sentences have multiple valid interpretations:</p>
+
+<p><strong>“I saw the man with the telescope”</strong></p>
+
+<p><strong>Interpretation 1:</strong> I used a telescope to see the man.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>VP: saw [the man] [with the telescope]  ← "with telescope" modifies "saw"
+</code></pre></div></div>
+
+<p><strong>Interpretation 2:</strong> I saw a man who had a telescope.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>VP: saw [the man with the telescope]  ← "with telescope" modifies "man"
+</code></pre></div></div>
+
+<p>This is why parsing is challenging—computers must choose between valid interpretations.</p>
+
+<hr />
+
+<h2 id="segment-4-python-examples">Segment 4: Python Examples</h2>
+
+<h3 id="dependency-parsing-with-spacy">Dependency Parsing with spaCy</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">'</span><span class="s">en_core_web_sm</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="mi">12</span><span class="si">}</span><span class="s"> | </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">dep_</span><span class="si">:</span><span class="mi">12</span><span class="si">}</span><span class="s"> | </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">head</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="mi">12</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>The          | det          | fox          
+quick        | amod         | fox          
+brown        | amod         | fox          
+fox          | nsubj        | jumps        
+jumps        | ROOT         | jumps        
+over         | prep         | jumps        
+the          | det          | dog          
+lazy         | amod         | dog          
+dog          | pobj         | over         
+</code></pre></div></div>
+
+<h3 id="creating-parse-trees">Creating Parse Trees</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.tree</span> <span class="kn">import</span> <span class="n">Tree</span>
+
+<span class="c1"># Create tree from bracket notation
+</span><span class="n">tree_string</span> <span class="o">=</span> <span class="sh">"</span><span class="s">(S (NP (DT The) (NN cat)) (VP (VBD slept)))</span><span class="sh">"</span>
+<span class="n">tree</span> <span class="o">=</span> <span class="n">Tree</span><span class="p">.</span><span class="nf">fromstring</span><span class="p">(</span><span class="n">tree_string</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="n">tree</span><span class="p">.</span><span class="nf">draw</span><span class="p">()</span>  <span class="c1"># Opens visualization window
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="segment-5-session-summary">Segment 5: Session Summary</h2>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<ol>
+  <li><strong>Context-Free Grammar</strong> defines valid sentence structures using rules</li>
+  <li><strong>Constituency parsing</strong> builds hierarchical phrase trees</li>
+  <li><strong>Dependency parsing</strong> shows direct word relationships</li>
+  <li><strong>Ambiguity</strong> is common—sentences can have multiple valid parses</li>
+  <li><strong>Different parsers serve different purposes</strong>—choose based on your task</li>
+</ol>
+
+<h3 id="practice-questions">Practice Questions</h3>
+
+<p><strong>1. What does S → NP VP mean in CFG?</strong></p>
+<details><summary>Answer</summary>A Sentence consists of a Noun Phrase followed by a Verb Phrase.</details>
+
+<p><strong>2. What is the difference between constituency and dependency parsing?</strong></p>
+<details><summary>Answer</summary>Constituency builds phrase hierarchies (NP, VP). Dependency shows word-to-word relationships (subject, object).</details>
+
+<p><strong>3. What does “nsubj” mean in dependency parsing?</strong></p>
+<details><summary>Answer</summary>Nominal subject—the word performing the action of the verb.</details>
+
+<hr />
+
+<h2 id="what-comes-next">What Comes Next?</h2>
+
+<p>Part 3 covers <strong>Tree Structures and Grammatical Agreement</strong>—visual representations of syntax and ensuring grammatical correctness.</p>
