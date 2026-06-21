@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Classical Text Generation Part 2 - Summarisation and Translation</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/natural-language-processing">Natural Language Processing</a> &mdash;
+    </nav>
+    <h2>Classical Text Generation Part 2 - Summarisation and Translation</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/natural-language-processing">Natural Language Processing</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="classical-text-generation-part-2---summarisation-and-translation">Classical Text Generation Part 2 - Summarisation and Translation</h1>
+
+<h2 id="where-we-left-off">Where We Left Off</h2>
+
+<p>Part 1 covered N-gram language models, perplexity, smoothing, and Markov chains — the statistical foundations of language generation.</p>
+
+<p>Now we put those foundations to work. This guide answers three practical questions:</p>
+
+<ol>
+  <li><strong>Sentence Generation:</strong> How do you generate text that sounds intentional, not random?</li>
+  <li><strong>Classical Summarisation:</strong> How do you automatically shorten a long document to its key points?</li>
+  <li><strong>Machine Translation:</strong> How did computers translate between languages before neural networks?</li>
+</ol>
+
+<hr />
+
+<h2 id="section-1-sentence-generation--beyond-random-sampling">Section 1: Sentence Generation — Beyond Random Sampling</h2>
+
+<h3 id="the-problem-with-pure-random-sampling">The Problem with Pure Random Sampling</h3>
+
+<p>In Part 1, you built a Markov text generator that randomly followed transitions. The output was vaguely English-shaped but often nonsensical:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"the cat ate the floor the dog sat on the fish"
+</code></pre></div></div>
+
+<p>Words and transitions follow the training distribution — but there is no goal, no coherence, no control.</p>
+
+<p>Real applications need better strategies for choosing the next word at each step.</p>
+
+<h3 id="strategy-1-greedy-decoding">Strategy 1: Greedy Decoding</h3>
+
+<p>At every step, always pick the <strong>most probable</strong> next word.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">greedy_generate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">start_word</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">15</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Always pick the most likely next word</span><span class="sh">"""</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">start_word</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="p">[</span><span class="n">current</span><span class="p">]</span>
+    
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">next_counts</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">current</span><span class="p">]</span>
+        <span class="c1"># Pick the word with highest count
+</span>        <span class="n">best_word</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">next_counts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">next_counts</span><span class="p">.</span><span class="n">get</span><span class="p">)</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">best_word</span><span class="p">)</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">best_word</span>
+        
+        <span class="k">if</span> <span class="n">best_word</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">'</span><span class="s">.</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">]:</span>
+            <span class="k">break</span>
+    
+    <span class="k">return</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Problem:</strong> Greedy decoding gets stuck in loops.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input: "the"
+Output: "the cat sat on the mat on the mat on the mat..."
+</code></pre></div></div>
+
+<p>Because “the” → “cat” → “sat” → “on” → “the” is the most probable path, the model keeps circling.</p>
+
+<h3 id="strategy-2-beam-search">Strategy 2: Beam Search</h3>
+
+<p>Instead of committing to the single best word at each step, beam search keeps the <strong>top K candidates</strong> (the “beam”) alive at each step.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Beam width = 3
+
+Step 1 — Start with "I":
+  Keep top 3 next words: [love (0.6), hate (0.2), like (0.15)]
+
+Step 2 — Expand each:
+  "I love" → [cats (0.4), dogs (0.4), pizza (0.2)]
+  "I hate" → [rain (0.5), mondays (0.3), traffic (0.2)]
+  "I like" → [coffee (0.5), running (0.3), reading (0.2)]
+  
+  Keep top 3 full sequences so far:
+    "I love cats"   (score: 0.6 × 0.4 = 0.24)
+    "I love dogs"   (score: 0.6 × 0.4 = 0.24)
+    "I hate rain"   (score: 0.2 × 0.5 = 0.10)
+
+Step 3 — Keep expanding the survivors...
+</code></pre></div></div>
+
+<p>At the end, pick the sequence with the highest total probability score.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">heapq</span>
+<span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">Counter</span>
+
+<span class="k">def</span> <span class="nf">beam_search</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">start_word</span><span class="p">,</span> <span class="n">beam_width</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Beam search text generation.
+    model: dict of {word: Counter of next words}
+    </span><span class="sh">"""</span>
+    <span class="kn">import</span> <span class="n">math</span>
+    
+    <span class="c1"># Beam: list of (log_prob, word_sequence)
+</span>    <span class="n">beam</span> <span class="o">=</span> <span class="p">[(</span><span class="mf">0.0</span><span class="p">,</span> <span class="p">[</span><span class="n">start_word</span><span class="p">])]</span>
+    <span class="n">completed</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">max_length</span><span class="p">):</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">log_prob</span><span class="p">,</span> <span class="n">sequence</span> <span class="ow">in</span> <span class="n">beam</span><span class="p">:</span>
+            <span class="n">current_word</span> <span class="o">=</span> <span class="n">sequence</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="k">if</span> <span class="n">current_word</span> <span class="o">==</span> <span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span> <span class="ow">or</span> <span class="n">current_word</span> <span class="o">==</span> <span class="sh">'</span><span class="s">.</span><span class="sh">'</span><span class="p">:</span>
+                <span class="n">completed</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="n">log_prob</span><span class="p">,</span> <span class="n">sequence</span><span class="p">))</span>
+                <span class="k">continue</span>
+            
+            <span class="k">if</span> <span class="n">current_word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model</span><span class="p">:</span>
+                <span class="n">completed</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="n">log_prob</span><span class="p">,</span> <span class="n">sequence</span><span class="p">))</span>
+                <span class="k">continue</span>
+            
+            <span class="n">total</span> <span class="o">=</span> <span class="nf">sum</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">current_word</span><span class="p">].</span><span class="nf">values</span><span class="p">())</span>
+            
+            <span class="c1"># Expand: try every possible next word
+</span>            <span class="k">for</span> <span class="n">next_word</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">model</span><span class="p">[</span><span class="n">current_word</span><span class="p">].</span><span class="nf">items</span><span class="p">():</span>
+                <span class="n">prob</span> <span class="o">=</span> <span class="n">count</span> <span class="o">/</span> <span class="n">total</span>
+                <span class="n">new_log_prob</span> <span class="o">=</span> <span class="n">log_prob</span> <span class="o">+</span> <span class="n">math</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">prob</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+                <span class="n">candidates</span><span class="p">.</span><span class="nf">append</span><span class="p">((</span><span class="n">new_log_prob</span><span class="p">,</span> <span class="n">sequence</span> <span class="o">+</span> <span class="p">[</span><span class="n">next_word</span><span class="p">]))</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">break</span>
+        
+        <span class="c1"># Keep only top beam_width candidates
+</span>        <span class="n">beam</span> <span class="o">=</span> <span class="n">heapq</span><span class="p">.</span><span class="nf">nlargest</span><span class="p">(</span><span class="n">beam_width</span><span class="p">,</span> <span class="n">candidates</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    
+    <span class="n">completed</span><span class="p">.</span><span class="nf">extend</span><span class="p">(</span><span class="n">beam</span><span class="p">)</span>
+    
+    <span class="c1"># Return the best sequence
+</span>    <span class="n">best_log_prob</span><span class="p">,</span> <span class="n">best_sequence</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">completed</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">return</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">best_sequence</span><span class="p">),</span> <span class="n">best_log_prob</span>
+
+<span class="c1"># Example usage
+</span><span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">Counter</span>
+<span class="kn">import</span> <span class="n">random</span>
+
+<span class="c1"># Build a small bigram model
+</span><span class="n">corpus</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+i love cats and dogs . 
+i love pizza and pasta .
+cats love fish and milk .
+dogs love bones and running .
+the cat sat on the mat .
+the dog ran in the park .
+</span><span class="sh">"""</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nf">defaultdict</span><span class="p">(</span><span class="n">Counter</span><span class="p">)</span>
+<span class="n">words</span> <span class="o">=</span> <span class="n">corpus</span><span class="p">.</span><span class="nf">split</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="n">model</span><span class="p">[</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">]][</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="c1"># Generate with beam search
+</span><span class="n">result</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="nf">beam_search</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">,</span> <span class="n">beam_width</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Beam search output: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Log probability: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Beam search produces more coherent text</strong> than greedy or random sampling, which is why it is used in machine translation and text summarisation systems.</p>
+
+<h3 id="strategy-3-temperature-sampling">Strategy 3: Temperature Sampling</h3>
+
+<p>Instead of always picking the most probable word (greedy) or randomly sampling from the raw distribution (flat), temperature sampling lets you control how “adventurous” the model is.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Temperature T:
+  T = 1.0   → sample from the original distribution
+  T &lt; 1.0   → more conservative, likely words dominate (towards greedy)
+  T &gt; 1.0   → more adventurous, unlikely words get a chance (more random)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="k">def</span> <span class="nf">temperature_sample</span><span class="p">(</span><span class="n">word_counts</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Sample next word with temperature control.
+    </span><span class="sh">"""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="nf">list</span><span class="p">(</span><span class="n">word_counts</span><span class="p">.</span><span class="nf">keys</span><span class="p">())</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">(</span><span class="nf">list</span><span class="p">(</span><span class="n">word_counts</span><span class="p">.</span><span class="nf">values</span><span class="p">()),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    
+    <span class="c1"># Apply temperature: divide log probabilities by T
+</span>    <span class="n">scaled</span> <span class="o">=</span> <span class="n">counts</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">temperature</span><span class="p">)</span>
+    <span class="n">probs</span> <span class="o">=</span> <span class="n">scaled</span> <span class="o">/</span> <span class="n">scaled</span><span class="p">.</span><span class="nf">sum</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">probs</span><span class="p">)</span>
+
+<span class="c1"># Compare temperatures on "love" → next word
+</span><span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="n">love_follows</span> <span class="o">=</span> <span class="nc">Counter</span><span class="p">({</span><span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="sh">'</span><span class="s">dogs</span><span class="sh">'</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="sh">'</span><span class="s">pizza</span><span class="sh">'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">'</span><span class="s">running</span><span class="sh">'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">'</span><span class="s">jazz</span><span class="sh">'</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Next word after </span><span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">T=0.3 (conservative, repeats top words):</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s"> </span><span class="sh">"</span><span class="p">,</span> <span class="nf">temperature_sample</span><span class="p">(</span><span class="n">love_follows</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.3</span><span class="p">))</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">T=1.0 (normal sampling):</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s"> </span><span class="sh">"</span><span class="p">,</span> <span class="nf">temperature_sample</span><span class="p">(</span><span class="n">love_follows</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">1.0</span><span class="p">))</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">T=2.0 (adventurous, rare words appear more):</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s"> </span><span class="sh">"</span><span class="p">,</span> <span class="nf">temperature_sample</span><span class="p">(</span><span class="n">love_follows</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">2.0</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Temperature is used everywhere — including modern GPT-style models. When you see a “creativity” slider in an AI writing tool, it is usually adjusting temperature.</p>
+
+<hr />
+
+<h2 id="section-2-classical-summarisation--keeping-what-matters">Section 2: Classical Summarisation — Keeping What Matters</h2>
+
+<h3 id="what-is-automatic-summarisation">What Is Automatic Summarisation?</h3>
+
+<p>Automatic summarisation compresses a document down to its key points. Two fundamentally different approaches:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Approach</th>
+      <th>Method</th>
+      <th>Output</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Extractive</strong></td>
+      <td>Pick the most important existing sentences</td>
+      <td>Original sentences, rearranged/selected</td>
+    </tr>
+    <tr>
+      <td><strong>Abstractive</strong></td>
+      <td>Generate new sentences that capture the meaning</td>
+      <td>New text, may not appear in original</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Classical methods are almost entirely <strong>extractive</strong> — they identify and select the best sentences rather than generating new ones. Abstractive summarisation required neural networks to become practical.</p>
+
+<h3 id="how-extractive-summarisation-works">How Extractive Summarisation Works</h3>
+
+<p>The core task: <strong>rank every sentence by importance, then pick the top N</strong>.</p>
+
+<p>The challenge: what makes a sentence “important”?</p>
+
+<h4 id="signal-1-tf-idf-score">Signal 1: TF-IDF Score</h4>
+
+<p>Sentences containing words with high TF-IDF scores are likely important — they contain the distinctive vocabulary of the document.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="k">def</span> <span class="nf">tfidf_summarise</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">num_sentences</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Extractive summarisation using TF-IDF sentence scoring</span><span class="sh">"""</span>
+    
+    <span class="c1"># Split into sentences
+</span>    <span class="kn">import</span> <span class="n">re</span>
+    <span class="n">sentences</span> <span class="o">=</span> <span class="n">re</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sa">r</span><span class="sh">'</span><span class="s">(?&lt;=[.!?])\s+</span><span class="sh">'</span><span class="p">,</span> <span class="n">text</span><span class="p">.</span><span class="nf">strip</span><span class="p">())</span>
+    
+    <span class="k">if</span> <span class="nf">len</span><span class="p">(</span><span class="n">sentences</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">num_sentences</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">text</span>
+    
+    <span class="c1"># Build TF-IDF over sentences (treating each sentence as a document)
+</span>    <span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">(</span><span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">tfidf_matrix</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">sentences</span><span class="p">)</span>
+    
+    <span class="c1"># Score each sentence: sum of its word TF-IDF scores
+</span>    <span class="n">sentence_scores</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">asarray</span><span class="p">(</span><span class="n">tfidf_matrix</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)).</span><span class="nf">flatten</span><span class="p">()</span>
+    
+    <span class="c1"># Pick top N sentences (preserve original order)
+</span>    <span class="n">top_indices</span> <span class="o">=</span> <span class="nf">sorted</span><span class="p">(</span>
+        <span class="n">np</span><span class="p">.</span><span class="nf">argsort</span><span class="p">(</span><span class="n">sentence_scores</span><span class="p">)[</span><span class="o">-</span><span class="n">num_sentences</span><span class="p">:].</span><span class="nf">tolist</span><span class="p">()</span>
+    <span class="p">)</span>
+    
+    <span class="n">summary</span> <span class="o">=</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">sentences</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">top_indices</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">summary</span>
+
+<span class="c1"># Test
+</span><span class="n">article</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+The Amazon rainforest is the world</span><span class="sh">'</span><span class="s">s largest tropical rainforest, covering over 
+five and a half million square kilometres. It is home to an estimated 10% of all 
+species on Earth, including jaguars, anacondas, and hundreds of bird species. 
+The forest plays a critical role in regulating the global climate by absorbing 
+enormous amounts of carbon dioxide. Deforestation is the biggest threat to the 
+Amazon, with cattle ranching and agriculture responsible for most land clearance. 
+In recent years, the rate of deforestation has accelerated, alarming scientists 
+and conservationists worldwide. Protecting the Amazon is considered essential 
+for meeting global climate targets and preserving biodiversity. Several 
+international agreements aim to reduce deforestation, but enforcement remains 
+a significant challenge.
+</span><span class="sh">"""</span>
+
+<span class="n">summary</span> <span class="o">=</span> <span class="nf">tfidf_summarise</span><span class="p">(</span><span class="n">article</span><span class="p">,</span> <span class="n">num_sentences</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">SUMMARY:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="signal-2-sentence-position">Signal 2: Sentence Position</h4>
+
+<p>Position in a document is a strong signal:</p>
+<ul>
+  <li><strong>First sentence of each paragraph</strong> → usually a topic sentence</li>
+  <li><strong>First and last sentences of the whole document</strong> → introduction and conclusion</li>
+  <li><strong>Sentences in early paragraphs</strong> → typically more important</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">position_score</span><span class="p">(</span><span class="n">sentence_index</span><span class="p">,</span> <span class="n">total_sentences</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Sentences at the beginning score higher.
+    Simple linear decay.
+    </span><span class="sh">"""</span>
+    <span class="k">return</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">sentence_index</span> <span class="o">/</span> <span class="n">total_sentences</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span>
+</code></pre></div></div>
+
+<h4 id="signal-3-keyword-frequency">Signal 3: Keyword Frequency</h4>
+
+<p>Sentences that contain words which appear frequently throughout the document are likely about the central topic.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">stopwords</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span>
+
+<span class="k">def</span> <span class="nf">keyword_score</span><span class="p">(</span><span class="n">sentence</span><span class="p">,</span> <span class="n">document_word_freq</span><span class="p">,</span> <span class="n">stop_words</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Score a sentence by the frequency of its content words</span><span class="sh">"""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">sentence</span><span class="p">.</span><span class="nf">lower</span><span class="p">())</span>
+    <span class="n">content_words</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">w</span><span class="p">.</span><span class="nf">isalpha</span><span class="p">()</span> <span class="ow">and</span> <span class="n">w</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stop_words</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">content_words</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    
+    <span class="k">return</span> <span class="nf">sum</span><span class="p">(</span><span class="n">document_word_freq</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">content_words</span><span class="p">)</span> <span class="o">/</span> <span class="nf">len</span><span class="p">(</span><span class="n">content_words</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="textrank--graph-based-summarisation">TextRank — Graph-Based Summarisation</h3>
+
+<p><strong>TextRank</strong> is one of the most popular classical summarisation algorithms. It adapts Google’s PageRank — the algorithm that ranks web pages — to rank sentences.</p>
+
+<p>The idea: <strong>sentences that are similar to many other sentences are central to the document and therefore important</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: Represent every sentence as a TF-IDF vector
+Step 2: Build a graph where sentences are nodes
+Step 3: Add edges between sentences weighted by their cosine similarity
+Step 4: Run PageRank — important sentences have many strong connections
+Step 5: Pick top N sentences by PageRank score
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># pip install sumy  (implements TextRank and other summarisers)
+</span><span class="kn">from</span> <span class="n">sumy.parsers.plaintext</span> <span class="kn">import</span> <span class="n">PlaintextParser</span>
+<span class="kn">from</span> <span class="n">sumy.nlp.tokenizers</span> <span class="kn">import</span> <span class="n">Tokenizer</span>
+<span class="kn">from</span> <span class="n">sumy.summarizers.text_rank</span> <span class="kn">import</span> <span class="n">TextRankSummarizer</span>
+
+<span class="k">def</span> <span class="nf">textrank_summarise</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">num_sentences</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">PlaintextParser</span><span class="p">.</span><span class="nf">from_string</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="nc">Tokenizer</span><span class="p">(</span><span class="sh">"</span><span class="s">english</span><span class="sh">"</span><span class="p">))</span>
+    <span class="n">summarizer</span> <span class="o">=</span> <span class="nc">TextRankSummarizer</span><span class="p">()</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="nf">summarizer</span><span class="p">(</span><span class="n">parser</span><span class="p">.</span><span class="n">document</span><span class="p">,</span> <span class="n">num_sentences</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="nf">str</span><span class="p">(</span><span class="n">sentence</span><span class="p">)</span> <span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">)</span>
+
+<span class="c1"># Or using the popular gensim implementation
+</span><span class="kn">from</span> <span class="n">gensim.summarization</span> <span class="kn">import</span> <span class="n">summarize</span>  <span class="c1"># gensim &lt; 4.0
+</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="nf">summarize</span><span class="p">(</span><span class="n">article</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>  <span class="c1"># Keep 30% of original
+</span></code></pre></div></div>
+
+<h3 id="limitations-of-classical-summarisation">Limitations of Classical Summarisation</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Limitation</th>
+      <th>Why It Happens</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Cannot merge information from multiple sentences</td>
+      <td>Only selects, never generates</td>
+    </tr>
+    <tr>
+      <td>May miss implicit key points</td>
+      <td>Does not understand meaning</td>
+    </tr>
+    <tr>
+      <td>Repetition between selected sentences</td>
+      <td>No awareness of redundancy</td>
+    </tr>
+    <tr>
+      <td>Cannot infer or abstract</td>
+      <td>Purely statistical</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These limitations are why <strong>abstractive summarisation</strong> with neural networks (transformers) became so important. Classical summarisation is still used today when speed and interpretability matter.</p>
+
+<hr />
+
+<h2 id="section-3-machine-translation--crossing-the-language-barrier">Section 3: Machine Translation — Crossing the Language Barrier</h2>
+
+<h3 id="the-challenge">The Challenge</h3>
+
+<p>Translating between languages is deceptively hard. It is not just swapping words. Languages differ in:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Difference</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Word order</strong></td>
+      <td>English: “I love you” → Japanese: “I you love”</td>
+    </tr>
+    <tr>
+      <td><strong>Grammatical gender</strong></td>
+      <td>French: “le soleil” (masculine sun), “la lune” (feminine moon)</td>
+    </tr>
+    <tr>
+      <td><strong>No direct equivalent</strong></td>
+      <td>German “Schadenfreude” has no English single word</td>
+    </tr>
+    <tr>
+      <td><strong>Idiomatic expressions</strong></td>
+      <td>“It’s raining cats and dogs” → cannot translate literally</td>
+    </tr>
+    <tr>
+      <td><strong>Morphology</strong></td>
+      <td>Finnish has 15 grammatical cases; English has almost none</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Classical systems tackled this with two approaches: rule-based and statistical.</p>
+
+<h3 id="approach-1-rule-based-machine-translation-rbmt">Approach 1: Rule-Based Machine Translation (RBMT)</h3>
+
+<p>Linguists hand-write rules to convert one language to another:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Rule: In Spanish, adjectives follow nouns (usually)
+English: "red car"
+Spanish: "coche rojo"  (car red)
+
+Rule: Spanish verbs encode subject in conjugation
+English: "I speak / you speak / he speaks"
+Spanish: "hablo / hablas / habla"  (no separate pronoun needed)
+</code></pre></div></div>
+
+<p><strong>How RBMT works:</strong></p>
+<ol>
+  <li><strong>Parse</strong> the source sentence (get its structure)</li>
+  <li><strong>Transfer</strong> the structure to the target language structure using rules</li>
+  <li><strong>Generate</strong> the target language sentence</li>
+</ol>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>English input: "The old man walks slowly"
+    ↓ Parse
+[NP: the old man] [VP: walks slowly]
+[DET: the] [ADJ: old] [N: man] [V: walks] [ADV: slowly]
+    ↓ Transfer rules (EN → ES)
+[DET: el] [N: hombre] [ADJ: viejo] [V: camina] [ADV: lentamente]
+    ↓ Generate
+Spanish output: "El hombre viejo camina lentamente"
+</code></pre></div></div>
+
+<p><strong>Pros:</strong> Predictable, no training data needed, transparent
+<strong>Cons:</strong> Thousands of rules to write, brittle for irregular language, enormous maintenance cost</p>
+
+<h3 id="approach-2-statistical-machine-translation-smt">Approach 2: Statistical Machine Translation (SMT)</h3>
+
+<p>Instead of rules, SMT learns translation patterns from <strong>large collections of parallel texts</strong> — the same document in two languages (like EU parliament proceedings translated into all EU languages).</p>
+
+<p>SMT combines two models:</p>
+
+<p><strong>Translation Model:</strong> What word/phrase in Language B matches what in Language A?</p>
+
+<p>Learned from aligned parallel corpora:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"cat" ↔ "gato" (many times in Spanish data)
+"dog" ↔ "perro"
+"I love" ↔ "yo amo" or "me gusta"
+"running water" ↔ "agua corriente" (phrase-level alignment)
+</code></pre></div></div>
+
+<p><strong>Language Model:</strong> Does this output actually sound like natural Language B?</p>
+
+<p>This is the N-gram model from Part 1! The language model ensures the translation is fluent in the target language, not just word-for-word.</p>
+
+<p><strong>The SMT formula:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Best translation = argmax P(target | source)
+                 = argmax P(source | target) × P(target)
+                           ↑ translation model  ↑ language model
+</code></pre></div></div>
+
+<p>In plain English: find the target sentence that is both a likely translation of the source AND sounds natural in the target language.</p>
+
+<h3 id="phrase-based-smt">Phrase-Based SMT</h3>
+
+<p>A major improvement was moving from word-by-word translation to <strong>phrase-based</strong> translation. The system learns whole phrases as translation units:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"New York"      → "Nueva York"   (not "Nueva" + "York" separately)
+"by the way"    → "por cierto"   (idiom: translate as unit)
+"looking for"   → "buscando"     (verb phrase)
+"United States" → "Estados Unidos"
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Simplified illustration of phrase-based translation lookup
+</span><span class="n">phrase_table</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">the cat</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">el gato</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">the dog</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">el perro</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">is running</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">está corriendo</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">in the park</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">en el parque</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">the cat is running</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">el gato está corriendo</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">in the garden</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">en el jardín</span><span class="sh">"</span>
+<span class="p">}</span>
+
+<span class="k">def</span> <span class="nf">simple_phrase_translate</span><span class="p">(</span><span class="n">sentence</span><span class="p">,</span> <span class="n">phrase_table</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Very simplified phrase-based translation.
+    Tries to match longest phrase first (greedy).
+    </span><span class="sh">"""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">sentence</span><span class="p">.</span><span class="nf">lower</span><span class="p">().</span><span class="nf">split</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+        <span class="c1"># Try to match longest phrase starting at position i
+</span>        <span class="n">matched</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">phrase</span> <span class="o">=</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">length</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">phrase</span> <span class="ow">in</span> <span class="n">phrase_table</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">phrase_table</span><span class="p">[</span><span class="n">phrase</span><span class="p">])</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="n">length</span>
+                <span class="n">matched</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">break</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">matched</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">[</span><span class="si">{</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s">?]</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># unknown word
+</span>            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">return</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">simple_phrase_translate</span><span class="p">(</span><span class="sh">"</span><span class="s">the cat is running in the park</span><span class="sh">"</span><span class="p">,</span> <span class="n">phrase_table</span><span class="p">))</span>
+<span class="c1"># "el gato está corriendo en el parque"
+</span></code></pre></div></div>
+
+<h3 id="the-bleu-score--evaluating-translation-quality">The BLEU Score — Evaluating Translation Quality</h3>
+
+<p>How do you measure if a translation is good? <strong>BLEU (Bilingual Evaluation Understudy)</strong> is the standard metric.</p>
+
+<p>The idea: compare the machine translation to one or more <strong>human reference translations</strong>, measuring how many N-grams overlap.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Reference: "The cat is on the mat"
+Candidate: "The cat is on the mat"        BLEU ≈ 1.0 (perfect)
+Candidate: "The cat sat on the mat"       BLEU ≈ 0.8 (one word different)
+Candidate: "A feline rests upon the rug"  BLEU ≈ 0.1 (no N-gram overlap)
+</code></pre></div></div>
+
+<p><strong>The maths (simplified):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>BLEU = brevity penalty × geometric mean of n-gram precisions for n=1,2,3,4
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.translate.bleu_score</span> <span class="kn">import</span> <span class="n">sentence_bleu</span><span class="p">,</span> <span class="n">SmoothingFunction</span>
+
+<span class="n">reference</span> <span class="o">=</span> <span class="p">[[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">]]</span>
+<span class="n">candidate1</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">candidate2</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">candidate3</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">a</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">feline</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">rests</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">upon</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">rug</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="n">smooth</span> <span class="o">=</span> <span class="nc">SmoothingFunction</span><span class="p">().</span><span class="n">method1</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Perfect match BLEU:  </span><span class="si">{</span><span class="nf">sentence_bleu</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">candidate1</span><span class="p">,</span> <span class="n">smoothing_function</span><span class="o">=</span><span class="n">smooth</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">One word off BLEU:   </span><span class="si">{</span><span class="nf">sentence_bleu</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">candidate2</span><span class="p">,</span> <span class="n">smoothing_function</span><span class="o">=</span><span class="n">smooth</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Different vocab BLEU:</span><span class="si">{</span><span class="nf">sentence_bleu</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">candidate3</span><span class="p">,</span> <span class="n">smoothing_function</span><span class="o">=</span><span class="n">smooth</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="why-classical-translation-was-eventually-replaced">Why Classical Translation Was Eventually Replaced</h3>
+
+<p>Statistical MT dominated the 2000s but had fundamental ceilings:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Limitation</th>
+      <th>Why It Matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>No global context</strong></td>
+      <td>Translates phrases locally, misses document-level context</td>
+    </tr>
+    <tr>
+      <td><strong>Fixed phrase table</strong></td>
+      <td>Cannot translate new phrases or terminology</td>
+    </tr>
+    <tr>
+      <td><strong>Language model is shallow</strong></td>
+      <td>N-gram models cannot capture long-range agreement</td>
+    </tr>
+    <tr>
+      <td><strong>Cannot reorder flexibly</strong></td>
+      <td>Some language pairs need massive structural reordering</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In 2016-2017, <strong>neural machine translation</strong> (encoder-decoder with attention) overtook all statistical systems, and by 2018 the transformer architecture made it even better. Google Translate switched from phrase-based SMT to neural MT in 2016.</p>
+
+<hr />
+
+<h2 id="section-4-the-complete-classical-nlp-generation-toolkit">Section 4: The Complete Classical NLP Generation Toolkit</h2>
+
+<p>Here is a summary of everything covered across both text generation guides:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TASK: Generate text
+  ├── Build an N-gram language model (learn from corpus)
+  ├── Apply smoothing (Laplace, backoff, interpolation)
+  ├── Evaluate quality with perplexity
+  └── Generate using:
+        ├── Greedy decoding (fast, gets stuck in loops)
+        ├── Beam search (best quality, explores K paths)
+        └── Temperature sampling (control creativity)
+
+TASK: Summarise a document
+  ├── Score sentences by TF-IDF content words
+  ├── Score by position in document
+  ├── Score by keyword frequency
+  ├── Use TextRank (graph-based PageRank on sentence similarity)
+  └── Select top N sentences (extractive — no generation needed)
+
+TASK: Translate between languages
+  ├── Rule-based: hand-write linguistic transfer rules
+  └── Statistical (SMT):
+        ├── Learn translation model from parallel corpora
+        ├── Learn language model from target language text
+        ├── Combine with phrase tables for multi-word units
+        └── Evaluate with BLEU score
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="section-5-practice-questions">Section 5: Practice Questions</h2>
+
+<p><strong>1. What is the difference between greedy decoding and beam search?</strong></p>
+<details><summary>Answer</summary>
+Greedy decoding always picks the single most probable next word at each step. Beam search keeps the top K candidate sequences alive and explores them all, picking the globally best path at the end. Beam search produces better results but is slower.
+</details>
+
+<p><strong>2. What does temperature &gt; 1.0 do to text generation?</strong></p>
+<details><summary>Answer</summary>
+It makes the probability distribution flatter, giving unlikely words more chance of being chosen. The output becomes more diverse and creative but also more likely to be incoherent.
+</details>
+
+<p><strong>3. What is the difference between extractive and abstractive summarisation?</strong></p>
+<details><summary>Answer</summary>
+Extractive summarisation selects and returns existing sentences from the original document. Abstractive summarisation generates new sentences that capture the meaning, potentially using vocabulary not in the original.
+</details>
+
+<p><strong>4. In TextRank, what does it mean for a sentence to have a high PageRank score?</strong></p>
+<details><summary>Answer</summary>
+The sentence is similar to many other sentences in the document, meaning it covers ideas that are central and recurring throughout the text — so it is a good representative of the document's main content.
+</details>
+
+<p><strong>5. In Statistical MT, what role does the language model play?</strong></p>
+<details><summary>Answer</summary>
+The translation model picks candidate translations based on word/phrase alignments from parallel data. The language model ensures the output actually sounds fluent and natural in the target language — it filters out grammatically awkward translations.
+</details>
+
+<p><strong>6. What does a BLEU score of 1.0 mean?</strong></p>
+<details><summary>Answer</summary>
+The machine translation exactly matches the human reference translation — a perfect score. In practice, scores above 0.4 are considered good for most language pairs.
+</details>
+
+<p><strong>7. Why did phrase-based SMT outperform word-by-word SMT?</strong></p>
+<details><summary>Answer</summary>
+Many words change their meaning or form when combined into phrases ("by the way", "New York"). Translating whole phrases as units captures these multi-word patterns, producing more accurate and natural-sounding translations.
+</details>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">nlp</span>, <span class="tag">text-generation</span>, <span class="tag">sentence-generation</span>, <span class="tag">summarisation</span>, <span class="tag">machine-translation</span>, <span class="tag">classical-nlp</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

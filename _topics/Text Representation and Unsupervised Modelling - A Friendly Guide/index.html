@@ -1,0 +1,694 @@
+<h1 id="text-representation-and-unsupervised-modelling---a-friendly-guide">Text Representation and Unsupervised Modelling - A Friendly Guide</h1>
+
+<h2 id="why-this-guide-exists">Why This Guide Exists</h2>
+
+<p>Every machine learning algorithm works with numbers. Not words. So before you can do anything interesting with text, you need to answer one fundamental question: <strong>how do you turn a sentence into numbers?</strong></p>
+
+<p>The answer you choose has a massive impact on everything downstream. Get it wrong, and even a perfect model cannot save you. Get it right, and remarkably simple models can produce excellent results.</p>
+
+<p>This guide walks through the main approaches—from the crude-but-surprisingly-effective Bag of Words, to TF-IDF, to modern Word Embeddings that capture meaning. Then it shows how these representations unlock powerful <strong>unsupervised</strong> techniques like Topic Modelling—where you discover the hidden themes in thousands of documents without any labelling.</p>
+
+<hr />
+
+<h2 id="section-1-the-problem--computers-cannot-read">Section 1: The Problem — Computers Cannot Read</h2>
+
+<h3 id="why-banana-means-nothing-to-a-computer">Why “Banana” Means Nothing to a Computer</h3>
+
+<p>To you, “banana” immediately brings to mind a yellow fruit, a specific taste, something you find in a fruit bowl. To a computer, “banana” is just the character sequence b-a-n-a-n-a. It has no idea that “banana” is similar to “mango” or related to “fruit”.</p>
+
+<p>Machine learning algorithms need numbers. Specifically, they need vectors—lists of numbers where similar things produce similar vectors.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Human understanding:
+  banana ≈ mango ≈ fruit  (semantically similar)
+  banana ≠ justice        (semantically unrelated)
+
+What the computer needs:
+  banana → [0.2, 0.8, 0.1, ...]
+  mango  → [0.3, 0.7, 0.1, ...]   ← close to banana!
+  justice→ [-0.5, 0.1, 0.9, ...]  ← far from banana
+</code></pre></div></div>
+
+<p>The question is: how do we build this mapping from words to numbers?</p>
+
+<hr />
+
+<h2 id="section-2-bag-of-words--the-simple-starting-point">Section 2: Bag-of-Words — The Simple Starting Point</h2>
+
+<h3 id="the-core-idea">The Core Idea</h3>
+
+<p>Imagine you have a bag. You read a document, and for every word you find, you throw a copy of that word into the bag. At the end, you count how many times each word appears.</p>
+
+<p>That count vector <strong>is</strong> your document representation. You have thrown away:</p>
+<ul>
+  <li>Word order (“I love cats” and “cats love I” look the same)</li>
+  <li>Grammar</li>
+  <li>Context</li>
+</ul>
+
+<p>But you have kept the most important thing: <strong>which words appear and how often</strong>.</p>
+
+<h3 id="building-a-bag-of-words-step-by-step">Building a Bag-of-Words Step by Step</h3>
+
+<p><strong>Step 1: Build the vocabulary</strong></p>
+
+<p>Collect all unique words across all documents.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Documents:
+  Doc 1: "I love cats"
+  Doc 2: "I love dogs"
+  Doc 3: "dogs chase cats"
+
+Vocabulary: [cats, chase, dogs, I, love]  ← sorted alphabetically
+</code></pre></div></div>
+
+<p><strong>Step 2: Represent each document as a count vector</strong></p>
+
+<p>Each position corresponds to a vocabulary word.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Document</th>
+      <th>cats</th>
+      <th>chase</th>
+      <th>dogs</th>
+      <th>I</th>
+      <th>love</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Doc 1: “I love cats”</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>Doc 2: “I love dogs”</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>Doc 3: “dogs chase cats”</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Step 3: Use these vectors in a machine learning model</strong></p>
+
+<p>Now Doc 1 = <code class="language-plaintext highlighter-rouge">[1, 0, 0, 1, 1]</code> — a vector of numbers that any algorithm can work with.</p>
+
+<h3 id="python-example">Python Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">CountVectorizer</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">I love cats</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">I love dogs</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">dogs chase cats</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">cats and dogs are pets</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="c1"># Build BoW model
+</span><span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">CountVectorizer</span><span class="p">()</span>
+<span class="n">bow_matrix</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="c1"># Show vocabulary
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Vocabulary:</span><span class="sh">"</span><span class="p">,</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">())</span>
+<span class="c1"># ['and', 'are', 'cats', 'chase', 'dogs', 'love', 'pets']
+</span>
+<span class="c1"># Show document vectors
+</span><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">(</span>
+    <span class="n">bow_matrix</span><span class="p">.</span><span class="nf">toarray</span><span class="p">(),</span>
+    <span class="n">columns</span><span class="o">=</span><span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">(),</span>
+    <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="sh">"</span><span class="s">Doc</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="sh">"</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">documents</span><span class="p">))]</span>
+<span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>      and  are  cats  chase  dogs  love  pets
+Doc1    0    0     1      0     0     1     0
+Doc2    0    0     0      0     1     1     0
+Doc3    0    0     1      1     1     0     0
+Doc4    1    1     1      0     1     0     1
+</code></pre></div></div>
+
+<h3 id="the-problem-with-raw-counts">The Problem with Raw Counts</h3>
+
+<p>Raw counts have a fundamental flaw: <strong>common words dominate</strong>.</p>
+
+<p>In a collection of news articles, “the”, “and”, “said”, “was” appear thousands of times. They swamp the signal from meaningful words like “parliament”, “vaccine”, or “earthquake”.</p>
+
+<p>Two ways to fix this:</p>
+<ol>
+  <li>Remove stopwords (already covered in Lexical Processing)</li>
+  <li>Use TF-IDF to weight words by how distinctive they are</li>
+</ol>
+
+<hr />
+
+<h2 id="section-3-tf-idf--rewarding-the-distinctive-words">Section 3: TF-IDF — Rewarding the Distinctive Words</h2>
+
+<h3 id="the-intuition">The Intuition</h3>
+
+<p>TF-IDF answers one question: <strong>how important is this word to this particular document, relative to the whole collection?</strong></p>
+
+<p>A word is important to a document if:</p>
+<ol>
+  <li>It appears <strong>frequently</strong> in that document (TF — Term Frequency)</li>
+  <li>It appears <strong>rarely</strong> across all documents (IDF — Inverse Document Frequency)</li>
+</ol>
+
+<p>Words that are common everywhere (the, and, is) score low on IDF because they appear in every document — they are not distinctive. Words that only appear in a few documents score high because they signal something specific.</p>
+
+<h3 id="the-formula">The Formula</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TF-IDF(word, document) = TF(word, document) × IDF(word)
+</code></pre></div></div>
+
+<p><strong>Term Frequency (TF):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TF = (number of times word appears in document) / (total words in document)
+</code></pre></div></div>
+
+<p><strong>Inverse Document Frequency (IDF):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>IDF = log(total documents / number of documents containing word)
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">log</code> is important — it dampens the effect so that a word appearing in 10 documents does not score 10x a word appearing in 1 document.</p>
+
+<h3 id="worked-example">Worked Example</h3>
+
+<p><strong>Corpus: 3 movie reviews</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Doc A: "the film was great the acting was superb"
+Doc B: "the film was boring and slow"
+Doc C: "superb acting and great direction"
+</code></pre></div></div>
+
+<p><strong>Compute TF for “superb” in Doc A:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TF = 1 occurrence / 8 total words = 0.125
+</code></pre></div></div>
+
+<p><strong>Compute IDF for “superb”:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Total docs = 3
+Docs containing "superb" = 2 (Doc A and Doc C)
+IDF = log(3/2) = log(1.5) ≈ 0.18
+</code></pre></div></div>
+
+<p><strong>TF-IDF for “superb” in Doc A:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TF-IDF = 0.125 × 0.18 ≈ 0.022
+</code></pre></div></div>
+
+<p><strong>Compute TF-IDF for “the” in Doc A:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TF = 2/8 = 0.25
+IDF = log(3/3) = log(1) = 0      ← "the" appears in all docs
+TF-IDF = 0.25 × 0 = 0            ← zero! "the" is not distinctive
+</code></pre></div></div>
+
+<p>The word “the” gets zero importance, even though it is the most frequent word. “Superb” gets a meaningful score because it is distinctive.</p>
+
+<h3 id="python-example-1">Python Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">the film was great the acting was superb</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">the film was boring and slow</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">superb acting and great direction</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">()</span>
+<span class="n">tfidf_matrix</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">(</span>
+    <span class="n">tfidf_matrix</span><span class="p">.</span><span class="nf">toarray</span><span class="p">().</span><span class="nf">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
+    <span class="n">columns</span><span class="o">=</span><span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">(),</span>
+    <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">Doc A</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Doc B</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Doc C</span><span class="sh">"</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output (abbreviated):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>         acting  and  boring  direction  film  great  slow  superb   the   was
+Doc A     0.337  0.0   0.000      0.000 0.254  0.254   0.0   0.254 0.508 0.508
+Doc B     0.000  0.0   0.482      0.000 0.365  0.000   0.482 0.000 0.365 0.365
+Doc C     0.337  0.0   0.000      0.482 0.000  0.337   0.0   0.337 0.000 0.000
+</code></pre></div></div>
+
+<p>Notice: “the” and “was” have high scores in Doc A just because they repeat — but in a real use case you would remove stopwords first. “boring” and “slow” strongly identify Doc B as unique. “direction” uniquely identifies Doc C.</p>
+
+<h3 id="bow-vs-tf-idf-when-to-use-each">BoW vs TF-IDF: When to Use Each</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Better Choice</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Short texts, simple classification</td>
+      <td>BoW</td>
+    </tr>
+    <tr>
+      <td>Document search / retrieval</td>
+      <td>TF-IDF</td>
+    </tr>
+    <tr>
+      <td>Comparing long documents</td>
+      <td>TF-IDF</td>
+    </tr>
+    <tr>
+      <td>Spam detection</td>
+      <td>Either works well</td>
+    </tr>
+    <tr>
+      <td>Fast baseline</td>
+      <td>BoW</td>
+    </tr>
+    <tr>
+      <td>Meaningful word weighting</td>
+      <td>TF-IDF</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="section-4-word-embeddings--words-as-locations-in-space">Section 4: Word Embeddings — Words as Locations in Space</h2>
+
+<h3 id="why-bow-and-tf-idf-are-still-limited">Why BoW and TF-IDF Are Still Limited</h3>
+
+<p>Both BoW and TF-IDF treat every word as completely independent. They have no idea that:</p>
+<ul>
+  <li>“cat” and “kitten” are related</li>
+  <li>“great” and “excellent” mean similar things</li>
+  <li>“Paris” and “France” are connected (city + country)</li>
+</ul>
+
+<p>This means two documents saying “the film was excellent” and “the movie was superb” would look very different to a BoW model — different vocabulary, low similarity score — even though they express the same opinion.</p>
+
+<p><strong>Word embeddings</strong> fix this.</p>
+
+<h3 id="the-core-idea-words-have-neighbours">The Core Idea: Words Have Neighbours</h3>
+
+<p>The insight behind embeddings comes from linguistics: <strong>you can learn a word’s meaning from the company it keeps.</strong></p>
+
+<p>If “kitten” and “cat” tend to appear near the same words (“fluffy”, “meowed”, “fur”, “purring”), they probably mean similar things. If “king” and “queen” share many neighbours (“royal”, “crown”, “throne”), they are related.</p>
+
+<p>By training a neural network to predict a word from its neighbours (or vice versa), each word ends up with a dense vector of numbers — its <strong>embedding</strong> — where words with similar meanings are close together in space.</p>
+
+<h3 id="famous-vector-arithmetic">Famous Vector Arithmetic</h3>
+
+<p>Word embeddings encode semantic relationships as geometric directions in the vector space:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>king - man + woman ≈ queen
+
+Paris - France + Italy ≈ Rome
+
+doctor - man + woman ≈ nurse   ← (reflects training data biases)
+</code></pre></div></div>
+
+<p>This is not magic — it emerges from the statistical patterns in how words co-occur in billions of sentences.</p>
+
+<h3 id="two-key-algorithms">Two Key Algorithms</h3>
+
+<h4 id="word2vec-google-2013">Word2Vec (Google, 2013)</h4>
+
+<p>Two architectures for training:</p>
+
+<p><strong>CBOW (Continuous Bag of Words):</strong> Given surrounding words, predict the centre word.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The ___ sat on the mat" → predict "cat"
+Context: [The, sat, on, the, mat] → Target: cat
+</code></pre></div></div>
+
+<p><strong>Skip-gram:</strong> Given the centre word, predict surrounding words.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"cat" → predict [The, sat, on, the, mat]
+</code></pre></div></div>
+
+<p>Skip-gram works better for rare words. CBOW is faster.</p>
+
+<h4 id="glove-stanford-2014">GloVe (Stanford, 2014)</h4>
+
+<p>GloVe (Global Vectors) works differently — instead of a neural network predicting words, it directly factorises the co-occurrence matrix. The result is similar high-quality embeddings with a cleaner mathematical story.</p>
+
+<h3 id="python-example-using-pre-trained-word2vec">Python Example: Using Pre-trained Word2Vec</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># pip install gensim
+</span><span class="kn">import</span> <span class="n">gensim.downloader</span> <span class="k">as</span> <span class="n">api</span>
+
+<span class="c1"># Download pre-trained embeddings (trained on Google News, 3 billion words)
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Loading model... (this downloads ~1.6GB the first time)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">api</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">word2vec-google-news-300</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Find similar words
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Words similar to </span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="n">topn</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> similarity: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Words similar to </span><span class="sh">'</span><span class="s">london</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="sh">"</span><span class="s">london</span><span class="sh">"</span><span class="p">,</span> <span class="n">topn</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> similarity: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Vector arithmetic
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">king - man + woman =</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="n">positive</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">king</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">woman</span><span class="sh">"</span><span class="p">],</span> <span class="n">negative</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">man</span><span class="sh">"</span><span class="p">],</span> <span class="n">topn</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> score: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Similarity between words
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Similarity (cat, dog):    </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="nf">similarity</span><span class="p">(</span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Similarity (cat, banana): </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="nf">similarity</span><span class="p">(</span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">banana</span><span class="sh">'</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Expected output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Words similar to 'cat':
+  cats            similarity: 0.822
+  dog             similarity: 0.760
+  kitten          similarity: 0.726
+  feline          similarity: 0.720
+  puppy           similarity: 0.709
+
+king - man + woman =
+  queen           score: 0.711
+  monarch         score: 0.636
+  princess        score: 0.628
+
+Similarity (cat, dog):    0.760
+Similarity (cat, banana): 0.192
+</code></pre></div></div>
+
+<h3 id="smaller-example-training-your-own-embeddings">Smaller Example: Training Your Own Embeddings</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">gensim.models</span> <span class="kn">import</span> <span class="n">Word2Vec</span>
+
+<span class="c1"># Small training corpus
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ate</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fish</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">chased</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">dogs</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">and</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cats</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">are</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">pets</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fetched</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ball</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">fish</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">swim</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">in</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">river</span><span class="sh">"</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="c1"># Train Word2Vec
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">Word2Vec</span><span class="p">(</span>
+    <span class="n">sentences</span><span class="p">,</span>
+    <span class="n">vector_size</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>   <span class="c1"># embedding dimensions
+</span>    <span class="n">window</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>         <span class="c1"># context window size
+</span>    <span class="n">min_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>      <span class="c1"># minimum word frequency
+</span>    <span class="n">workers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span>
+<span class="p">)</span>
+
+<span class="c1"># Find similar words
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Most similar to </span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">wv</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="n">topn</span><span class="o">=</span><span class="mi">3</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Most similar to </span><span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">wv</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="n">topn</span><span class="o">=</span><span class="mi">3</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Similarity (cat, dog): </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="n">wv</span><span class="p">.</span><span class="nf">similarity</span><span class="p">(</span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="section-5-topic-modelling--finding-hidden-themes">Section 5: Topic Modelling — Finding Hidden Themes</h2>
+
+<h3 id="the-problem-you-have-100000-documents">The Problem: You Have 100,000 Documents</h3>
+
+<p>Imagine you work at a newspaper archive. You have 100,000 articles spanning 20 years, and no one has ever tagged or categorised them. A new journalist asks: “What were the main topics covered?”</p>
+
+<p>You cannot read them all. You cannot label them manually — there are too many and you do not know the categories in advance.</p>
+
+<p><strong>Topic modelling</strong> is the answer. It automatically discovers the hidden thematic structure of a document collection — with no labelled data at all.</p>
+
+<h3 id="what-is-a-topic">What Is a Topic?</h3>
+
+<p>In topic modelling, a <strong>topic</strong> is a probability distribution over words. The model discovers that certain words tend to appear together, and groups them into a theme.</p>
+
+<p>For example, in a news archive, the model might discover:</p>
+
+<p><strong>Topic 1 (Sport):</strong> football, goal, player, match, stadium, team, score, league
+<strong>Topic 2 (Politics):</strong> election, parliament, vote, minister, party, government, policy
+<strong>Topic 3 (Health):</strong> hospital, doctor, vaccine, patient, treatment, disease, NHS</p>
+
+<p>Nobody told the model these categories existed. It found them purely by noticing which words co-occur.</p>
+
+<p>Each document is then described as a <strong>mixture of topics</strong>:</p>
+<ul>
+  <li>“England won the match but the prime minister missed it” → 60% sport, 40% politics</li>
+  <li>“The hospital trialled a new vaccine” → 100% health</li>
+</ul>
+
+<h3 id="nmf-the-method-behind-the-magic">NMF: The Method Behind the Magic</h3>
+
+<p><strong>Non-negative Matrix Factorisation (NMF)</strong> is a particularly intuitive approach to topic modelling.</p>
+
+<p>The core idea: take your TF-IDF matrix (documents × words) and factorise it into two smaller matrices.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Documents × Words  ≈  Documents × Topics  ×  Topics × Words
+    (big matrix)         (how much         (which words
+                          each doc          define each
+                          belongs to        topic)
+                          each topic)
+</code></pre></div></div>
+
+<p><strong>Why “non-negative”?</strong> Because negative values in a topic make no sense — you cannot have -0.3 of “football” in a topic. NMF forces all values to be ≥ 0, which makes the topics interpretable.</p>
+
+<h3 id="step-by-step-example">Step-by-Step Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">NMF</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Sample documents
+</span><span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">The football team won the championship match last night</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The election results show the winning party gained seats in parliament</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Doctors recommend the new vaccine for all adults at the hospital</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The player scored three goals in the final match of the season</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Government policy on healthcare spending was debated in parliament</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The hospital launched a new treatment programme for patients</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The football league announced the fixtures for next season</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The prime minister addressed parliament after the election</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Clinical trials for the new vaccine showed positive results</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The team</span><span class="sh">'</span><span class="s">s manager praised the players after their championship win</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1"># Step 1: Convert to TF-IDF
+</span><span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">(</span>
+    <span class="n">max_features</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>     <span class="c1"># keep only top 30 words
+</span>    <span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span> <span class="c1"># remove stopwords
+</span><span class="p">)</span>
+<span class="n">tfidf_matrix</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+<span class="n">feature_names</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">()</span>
+
+<span class="c1"># Step 2: Apply NMF to discover 3 topics
+</span><span class="n">nmf_model</span> <span class="o">=</span> <span class="nc">NMF</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="n">doc_topics</span> <span class="o">=</span> <span class="n">nmf_model</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">tfidf_matrix</span><span class="p">)</span>  <span class="c1"># how much each doc = each topic
+</span><span class="n">topic_words</span> <span class="o">=</span> <span class="n">nmf_model</span><span class="p">.</span><span class="n">components_</span>                  <span class="c1"># which words define each topic
+</span>
+<span class="c1"># Step 3: Display top words for each topic
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">DISCOVERED TOPICS</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+<span class="n">topic_labels</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">Topic A</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Topic B</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Topic C</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="nf">zip</span><span class="p">(</span><span class="n">topic_words</span><span class="p">,</span> <span class="n">topic_labels</span><span class="p">)):</span>
+    <span class="n">top_word_indices</span> <span class="o">=</span> <span class="n">topic</span><span class="p">.</span><span class="nf">argsort</span><span class="p">()[</span><span class="o">-</span><span class="mi">8</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># top 8 words
+</span>    <span class="n">top_words</span> <span class="o">=</span> <span class="p">[</span><span class="n">feature_names</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">top_word_indices</span><span class="p">]</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">top_words</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Show dominant topic for each document
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n\n</span><span class="s">DOCUMENT → TOPIC ASSIGNMENTS</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">documents</span><span class="p">):</span>
+    <span class="n">dominant_topic</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">doc_topics</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">confidence</span> <span class="o">=</span> <span class="n">doc_topics</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">dominant_topic</span><span class="p">]</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Doc </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s">: [</span><span class="si">{</span><span class="n">topic_labels</span><span class="p">[</span><span class="n">dominant_topic</span><span class="p">]</span><span class="si">}</span><span class="s">] (score: </span><span class="si">{</span><span class="n">confidence</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="sh">'</span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="si">:</span><span class="mi">55</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">'"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Expected output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DISCOVERED TOPICS
+==================================================
+
+Topic A: football, match, team, season, player, championship, goals, league
+Topic B: election, parliament, minister, party, government, policy, seats
+Topic C: hospital, vaccine, treatment, patients, doctors, clinical, healthcare
+
+DOCUMENT → TOPIC ASSIGNMENTS
+==================================================
+Doc 1: [Topic A] (score: 0.89)  'The football team won the championship...'
+Doc 2: [Topic B] (score: 0.91)  'The election results show the winning...'
+Doc 3: [Topic C] (score: 0.87)  'Doctors recommend the new vaccine...'
+Doc 5: [Topic B] (score: 0.73)  'Government policy on healthcare...'  ← mixed
+</code></pre></div></div>
+
+<p>Notice Doc 5 (government policy on healthcare) is assigned to politics but with lower confidence — it mixes both politics and health vocabulary.</p>
+
+<h3 id="choosing-the-number-of-topics">Choosing the Number of Topics</h3>
+
+<p>One challenge with topic modelling: you have to decide how many topics to look for in advance.</p>
+
+<p><strong>Too few topics</strong> → overly broad, unmeaningful themes
+<strong>Too many topics</strong> → overly specific, redundant themes</p>
+
+<p>Common approaches:</p>
+<ul>
+  <li><strong>Coherence score:</strong> Measures how semantically similar the top words in each topic are. Higher = more coherent topics.</li>
+  <li><strong>Try several values</strong> and inspect results qualitatively</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">gensim.models</span> <span class="kn">import</span> <span class="n">CoherenceModel</span>
+<span class="kn">import</span> <span class="n">gensim.corpora</span> <span class="k">as</span> <span class="n">corpora</span>
+
+<span class="c1"># Tip: gensim's LDA also does topic modelling with coherence scoring
+# For NMF, visually inspect topics for n=3,5,10,20 and pick the most interpretable
+</span></code></pre></div></div>
+
+<h3 id="real-world-applications">Real-World Applications</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use Case</th>
+      <th>How Topic Modelling Helps</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Customer feedback</strong></td>
+      <td>Automatically surface top complaint themes from thousands of reviews</td>
+    </tr>
+    <tr>
+      <td><strong>News aggregation</strong></td>
+      <td>Tag articles by topic without manual labelling</td>
+    </tr>
+    <tr>
+      <td><strong>Research papers</strong></td>
+      <td>Discover research trends across thousands of papers over decades</td>
+    </tr>
+    <tr>
+      <td><strong>Legal documents</strong></td>
+      <td>Find the key subjects across contracts in a data room</td>
+    </tr>
+    <tr>
+      <td><strong>Social media monitoring</strong></td>
+      <td>Identify emerging conversation themes in real-time</td>
+    </tr>
+    <tr>
+      <td><strong>Support tickets</strong></td>
+      <td>Route tickets by discovered topic, not keyword rules</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="section-6-how-it-all-fits-together">Section 6: How It All Fits Together</h2>
+
+<p>Here is how the three representation methods relate to each other:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Raw Text
+    ↓
+Preprocessing (tokenise, lowercase, remove stopwords, lemmatise)
+    ↓
+Choose representation:
+
+┌─────────────┬──────────────────────────────────────────────────────┐
+│ Bag-of-Words│ Fast, simple. Each word is independent. Good baseline│
+├─────────────┼──────────────────────────────────────────────────────┤
+│ TF-IDF      │ Downweights common words, upweights distinctive ones │
+│             │ Better for search and document comparison            │
+├─────────────┼──────────────────────────────────────────────────────┤
+│ Embeddings  │ Words have relationships. "cat" ≈ "kitten".          │
+│             │ Best for tasks needing semantic understanding        │
+└─────────────┴──────────────────────────────────────────────────────┘
+    ↓
+Feed vectors into:
+  - Supervised model → classification, sentiment, NER
+  - Unsupervised model → topic modelling, clustering, search
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="section-7-practice-questions">Section 7: Practice Questions</h2>
+
+<p><strong>1. Why does Bag-of-Words lose word order, and when does that not matter?</strong></p>
+<details><summary>Answer</summary>
+BoW counts word occurrences without caring about position. This does not matter much for document classification (a review containing "terrible" and "slow" is negative regardless of order) but matters for sentiment nuance ("not good" vs "good not").
+</details>
+
+<p><strong>2. A word appears in every document in your corpus. What is its IDF score?</strong></p>
+<details><summary>Answer</summary>
+log(N/N) = log(1) = 0. Its TF-IDF score is zero — it is not distinctive to any document.
+</details>
+
+<p><strong>3. What does a word embedding vector represent?</strong></p>
+<details><summary>Answer</summary>
+A dense list of numbers (typically 100–300 dimensions) that positions the word in a semantic space where similar words are close together. The values are learned from patterns of word co-occurrence in large text corpora.
+</details>
+
+<p><strong>4. What does NMF produce when applied to a TF-IDF matrix?</strong></p>
+<details><summary>Answer</summary>
+Two matrices: one describing how much each document belongs to each topic, and one describing which words define each topic. Together they approximate the original TF-IDF matrix.
+</details>
+
+<p><strong>5. You have 50,000 customer reviews and want to understand what people are complaining about — without any pre-defined categories. Which approach would you use?</strong></p>
+<details><summary>Answer</summary>
+Topic modelling (e.g. NMF on a TF-IDF matrix). It is unsupervised — it discovers the complaint themes automatically from the data without needing labelled examples.
+</details>
+
+<p><strong>6. Why do word embeddings outperform TF-IDF for semantic similarity tasks?</strong></p>
+<details><summary>Answer</summary>
+TF-IDF treats every word as independent — "excellent" and "superb" look completely different. Word embeddings place semantically similar words close together in vector space, so documents with similar meaning get high similarity scores even if they use different vocabulary.
+</details>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Technique</th>
+      <th>What It Does</th>
+      <th>Best For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Bag-of-Words</strong></td>
+      <td>Counts word occurrences in a document</td>
+      <td>Simple classification, fast baselines</td>
+    </tr>
+    <tr>
+      <td><strong>TF-IDF</strong></td>
+      <td>Weights words by how distinctive they are</td>
+      <td>Document search, comparison, retrieval</td>
+    </tr>
+    <tr>
+      <td><strong>Word Embeddings</strong></td>
+      <td>Places words in semantic space by meaning</td>
+      <td>Semantic similarity, modern NLP models</td>
+    </tr>
+    <tr>
+      <td><strong>Topic Modelling (NMF)</strong></td>
+      <td>Discovers hidden themes in document collections</td>
+      <td>Unsupervised analysis, content categorisation</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The journey from raw text to machine learning is: <strong>clean → tokenise → represent → model</strong>. This guide covered the representation step — the bridge that makes everything else possible.</p>
