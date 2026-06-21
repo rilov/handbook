@@ -1,0 +1,1159 @@
+<h1 id="nlp-libraries--python-toolkit-reference">NLP Libraries — Python Toolkit Reference</h1>
+
+<p>Every code example in this series uses real Python libraries. This guide explains each one clearly — what it does, how to install it, and exactly which functions to use for which task.</p>
+
+<hr />
+
+<h2 id="quick-map-library--topic">Quick Map: Library → Topic</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Best Library</th>
+      <th>Alternative</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tokenisation</td>
+      <td>NLTK, spaCy</td>
+      <td>Python <code class="language-plaintext highlighter-rouge">split()</code> for basics</td>
+    </tr>
+    <tr>
+      <td>Stemming</td>
+      <td>NLTK</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>Lemmatisation</td>
+      <td>NLTK, spaCy</td>
+      <td>TextBlob</td>
+    </tr>
+    <tr>
+      <td>POS Tagging</td>
+      <td>spaCy, NLTK</td>
+      <td>TextBlob</td>
+    </tr>
+    <tr>
+      <td>Dependency Parsing</td>
+      <td>spaCy</td>
+      <td>StanfordNLP</td>
+    </tr>
+    <tr>
+      <td>Named Entity Recognition</td>
+      <td>spaCy</td>
+      <td>NLTK (basic)</td>
+    </tr>
+    <tr>
+      <td>Bag-of-Words / TF-IDF</td>
+      <td>scikit-learn</td>
+      <td>NLTK</td>
+    </tr>
+    <tr>
+      <td>Topic Modelling (NMF)</td>
+      <td>scikit-learn</td>
+      <td>gensim (LDA)</td>
+    </tr>
+    <tr>
+      <td>Word Embeddings</td>
+      <td>gensim</td>
+      <td>spaCy vectors</td>
+    </tr>
+    <tr>
+      <td>CRF (NER sequence model)</td>
+      <td>sklearn-crfsuite</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>Translation quality (BLEU)</td>
+      <td>NLTK</td>
+      <td>sacrebleu</td>
+    </tr>
+    <tr>
+      <td>Summarisation</td>
+      <td>sumy, gensim</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="library-1-nltk">Library 1: NLTK</h2>
+
+<h3 id="what-is-it">What Is It?</h3>
+
+<p><strong>NLTK (Natural Language Toolkit)</strong> is the oldest and most widely taught Python NLP library. It was built for education and research, so it comes with built-in datasets, corpora, and every classical NLP algorithm. It is not the fastest, but it is the most comprehensive for learning.</p>
+
+<h3 id="install">Install</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>nltk
+</code></pre></div></div>
+
+<p>After installing, download the data packages you need:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+
+<span class="c1"># Download everything (safe for beginners — ~3.5GB)
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">all</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Or download only what you need (recommended):
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">punkt</span><span class="sh">'</span><span class="p">)</span>           <span class="c1"># sentence and word tokeniser
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">punkt_tab</span><span class="sh">'</span><span class="p">)</span>       <span class="c1"># updated punkt data
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">averaged_perceptron_tagger</span><span class="sh">'</span><span class="p">)</span>  <span class="c1"># POS tagger
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">averaged_perceptron_tagger_eng</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">wordnet</span><span class="sh">'</span><span class="p">)</span>         <span class="c1"># WordNet lexical database
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">omw-1.4</span><span class="sh">'</span><span class="p">)</span>         <span class="c1"># Open Multilingual Wordnet
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">stopwords</span><span class="sh">'</span><span class="p">)</span>       <span class="c1"># list of stopwords
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">maxent_ne_chunker</span><span class="sh">'</span><span class="p">)</span>  <span class="c1"># named entity chunker
+</span><span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">words</span><span class="sh">'</span><span class="p">)</span>           <span class="c1"># English word list
+</span></code></pre></div></div>
+
+<hr />
+
+<h3 id="nltk-tokenisation">NLTK: Tokenisation</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span><span class="p">,</span> <span class="n">sent_tokenize</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Dr. Smith went to London. He attended the NLP conference on 14 June.</span><span class="sh">"</span>
+
+<span class="c1"># Word tokenisation
+</span><span class="n">words</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+<span class="c1"># ['Dr.', 'Smith', 'went', 'to', 'London', '.', 'He', 'attended',
+#  'the', 'NLP', 'conference', 'on', '14', 'June', '.']
+</span>
+<span class="c1"># Sentence tokenisation
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="nf">sent_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">sentences</span><span class="p">)</span>
+<span class="c1"># ['Dr. Smith went to London.', 'He attended the NLP conference on 14 June.']
+# Note: correctly keeps "Dr. Smith" in one sentence
+</span></code></pre></div></div>
+
+<p><strong>Used in:</strong> Lexical Processing guide</p>
+
+<hr />
+
+<h3 id="nltk-stopwords">NLTK: Stopwords</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">stopwords</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span>
+
+<span class="n">stop_words</span> <span class="o">=</span> <span class="nf">set</span><span class="p">(</span><span class="n">stopwords</span><span class="p">.</span><span class="nf">words</span><span class="p">(</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Total stopwords: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">stop_words</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Total stopwords: 179
+</span>
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">This is a simple example showing how to remove stopwords from text</span><span class="sh">"</span>
+<span class="n">words</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">.</span><span class="nf">lower</span><span class="p">())</span>
+
+<span class="n">filtered</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stop_words</span> <span class="ow">and</span> <span class="n">w</span><span class="p">.</span><span class="nf">isalpha</span><span class="p">()]</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span>
+<span class="c1"># ['simple', 'example', 'showing', 'remove', 'stopwords', 'text']
+</span></code></pre></div></div>
+
+<p><strong>Used in:</strong> Lexical Processing guide</p>
+
+<hr />
+
+<h3 id="nltk-stemming">NLTK: Stemming</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.stem</span> <span class="kn">import</span> <span class="n">PorterStemmer</span><span class="p">,</span> <span class="n">LancasterStemmer</span><span class="p">,</span> <span class="n">SnowballStemmer</span>
+
+<span class="n">porter</span> <span class="o">=</span> <span class="nc">PorterStemmer</span><span class="p">()</span>
+<span class="n">lancaster</span> <span class="o">=</span> <span class="nc">LancasterStemmer</span><span class="p">()</span>
+<span class="n">snowball</span> <span class="o">=</span> <span class="nc">SnowballStemmer</span><span class="p">(</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">running</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">runs</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">easily</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">happiness</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">studies</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">beautiful</span><span class="sh">'</span><span class="p">]</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="sh">'</span><span class="s">Word</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Porter</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Lancaster</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Snowball</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">55</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">word</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">porter</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="n">word</span><span class="p">)</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">lancaster</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="n">word</span><span class="p">)</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">snowball</span><span class="p">.</span><span class="nf">stem</span><span class="p">(</span><span class="n">word</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Word            Porter          Lancaster       Snowball
+-------------------------------------------------------
+running         run             run             run
+runs            run             run             run
+easily          easili          easy            easili
+happiness       happi           happy           happi
+studies         studi           study           studi
+beautiful       beauti          beaut           beauti
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Lexical Processing guide</p>
+
+<hr />
+
+<h3 id="nltk-lemmatisation">NLTK: Lemmatisation</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.stem</span> <span class="kn">import</span> <span class="n">WordNetLemmatizer</span>
+
+<span class="n">lemmatizer</span> <span class="o">=</span> <span class="nc">WordNetLemmatizer</span><span class="p">()</span>
+
+<span class="c1"># Default: assumes noun
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">running</span><span class="sh">"</span><span class="p">))</span>    <span class="c1"># running (wrong — no POS)
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">running</span><span class="sh">"</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="sh">'</span><span class="s">v</span><span class="sh">'</span><span class="p">))</span>  <span class="c1"># run (correct)
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">better</span><span class="sh">"</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="sh">'</span><span class="s">a</span><span class="sh">'</span><span class="p">))</span>   <span class="c1"># good
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="sh">'</span><span class="s">v</span><span class="sh">'</span><span class="p">))</span>       <span class="c1"># be
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">mice</span><span class="sh">"</span><span class="p">))</span>               <span class="c1"># mouse
+</span><span class="nf">print</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="sh">"</span><span class="s">wolves</span><span class="sh">"</span><span class="p">))</span>             <span class="c1"># wolf
+</span>
+<span class="c1"># Always pass the POS tag for best results
+</span><span class="n">pos_map</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">N</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">n</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">V</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">v</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">J</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">a</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">R</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">}</span>  <span class="c1"># map Penn tags to WordNet
+</span>
+<span class="kn">from</span> <span class="n">nltk</span> <span class="kn">import</span> <span class="n">pos_tag</span><span class="p">,</span> <span class="n">word_tokenize</span>
+
+<span class="k">def</span> <span class="nf">lemmatize_sentence</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+    <span class="n">tokens</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+    <span class="n">tagged</span> <span class="o">=</span> <span class="nf">pos_tag</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tagged</span><span class="p">:</span>
+        <span class="n">wn_pos</span> <span class="o">=</span> <span class="n">pos_map</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">tag</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="sh">'</span><span class="s">n</span><span class="sh">'</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">lemmatizer</span><span class="p">.</span><span class="nf">lemmatize</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">wn_pos</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">lemmatize_sentence</span><span class="p">(</span><span class="sh">"</span><span class="s">The dogs were running and the cats were sleeping</span><span class="sh">"</span><span class="p">))</span>
+<span class="c1"># ['The', 'dog', 'be', 'run', 'and', 'the', 'cat', 'be', 'sleep']
+</span></code></pre></div></div>
+
+<p><strong>Used in:</strong> Lexical Processing guide</p>
+
+<hr />
+
+<h3 id="nltk-pos-tagging">NLTK: POS Tagging</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk</span> <span class="kn">import</span> <span class="n">pos_tag</span><span class="p">,</span> <span class="n">word_tokenize</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog</span><span class="sh">"</span>
+<span class="n">tokens</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="n">tagged</span> <span class="o">=</span> <span class="nf">pos_tag</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">tagged</span><span class="p">)</span>
+<span class="c1"># [('The', 'DT'), ('quick', 'JJ'), ('brown', 'JJ'), ('fox', 'NN'),
+#  ('jumps', 'VBZ'), ('over', 'IN'), ('the', 'DT'), ('lazy', 'JJ'), ('dog', 'NN')]
+</span>
+<span class="c1"># Look up what a tag means
+</span><span class="nf">print</span><span class="p">(</span><span class="n">nltk</span><span class="p">.</span><span class="nb">help</span><span class="p">.</span><span class="nf">upenn_tagset</span><span class="p">(</span><span class="sh">'</span><span class="s">JJ</span><span class="sh">'</span><span class="p">))</span>   <span class="c1"># Adjective
+</span><span class="nf">print</span><span class="p">(</span><span class="n">nltk</span><span class="p">.</span><span class="nb">help</span><span class="p">.</span><span class="nf">upenn_tagset</span><span class="p">(</span><span class="sh">'</span><span class="s">VBZ</span><span class="sh">'</span><span class="p">))</span>  <span class="c1"># Verb, 3rd person singular present
+</span></code></pre></div></div>
+
+<p><strong>Used in:</strong> Syntactic Processing Part 1 guide</p>
+
+<hr />
+
+<h3 id="nltk-chunking-shallow-parsing">NLTK: Chunking (Shallow Parsing)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk</span> <span class="kn">import</span> <span class="n">pos_tag</span><span class="p">,</span> <span class="n">word_tokenize</span><span class="p">,</span> <span class="n">RegexpParser</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog</span><span class="sh">"</span>
+<span class="n">tokens</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="n">tagged</span> <span class="o">=</span> <span class="nf">pos_tag</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span>
+
+<span class="c1"># Define a grammar for noun phrases
+</span><span class="n">grammar</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+    NP: {&lt;DT&gt;?&lt;JJ&gt;*&lt;NN&gt;}   # Optional determiner, any adjectives, then a noun
+    VP: {&lt;VBZ&gt;&lt;IN&gt;}         # Verb followed by preposition
+</span><span class="sh">"""</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="nc">RegexpParser</span><span class="p">(</span><span class="n">grammar</span><span class="p">)</span>
+<span class="n">tree</span> <span class="o">=</span> <span class="n">parser</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="n">tagged</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="c1"># (S
+#   (NP The/DT quick/JJ brown/JJ fox/NN)
+#   (VP jumps/VBZ over/IN)
+#   (NP the/DT lazy/JJ dog/NN))
+</span>
+<span class="c1"># Visualise (opens a window — comment out if running headless)
+# tree.draw()
+</span>
+<span class="c1"># Iterate over chunks
+</span><span class="k">for</span> <span class="n">subtree</span> <span class="ow">in</span> <span class="n">tree</span><span class="p">.</span><span class="nf">subtrees</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">subtree</span><span class="p">.</span><span class="nf">label</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">'</span><span class="s">NP</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">VP</span><span class="sh">'</span><span class="p">]:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">subtree</span><span class="p">.</span><span class="nf">label</span><span class="p">()</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">subtree</span><span class="p">.</span><span class="nf">leaves</span><span class="p">())</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Syntactic Processing Part 1 guide</p>
+
+<hr />
+
+<h3 id="nltk-wordnet">NLTK: WordNet</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">wordnet</span> <span class="k">as</span> <span class="n">wn</span>
+
+<span class="c1"># Look up synsets for a word
+</span><span class="n">synsets</span> <span class="o">=</span> <span class="n">wn</span><span class="p">.</span><span class="nf">synsets</span><span class="p">(</span><span class="sh">'</span><span class="s">bank</span><span class="sh">'</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="s">bank</span><span class="sh">'</span><span class="s"> has </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">synsets</span><span class="p">)</span><span class="si">}</span><span class="s"> senses:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">syn</span> <span class="ow">in</span> <span class="n">synsets</span><span class="p">[:</span><span class="mi">4</span><span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">syn</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">syn</span><span class="p">.</span><span class="nf">definition</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Get synonyms, antonyms
+</span><span class="n">syn</span> <span class="o">=</span> <span class="n">wn</span><span class="p">.</span><span class="nf">synset</span><span class="p">(</span><span class="sh">'</span><span class="s">happy.a.01</span><span class="sh">'</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Definition: </span><span class="si">{</span><span class="n">syn</span><span class="p">.</span><span class="nf">definition</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Synonyms: </span><span class="si">{</span><span class="p">[</span><span class="n">l</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">syn</span><span class="p">.</span><span class="nf">lemmas</span><span class="p">()]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Antonyms: </span><span class="si">{</span><span class="p">[</span><span class="n">l</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">syn</span><span class="p">.</span><span class="nf">lemmas</span><span class="p">()[</span><span class="mi">0</span><span class="p">].</span><span class="nf">antonyms</span><span class="p">()]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Hypernyms and hyponyms
+</span><span class="n">dog</span> <span class="o">=</span> <span class="n">wn</span><span class="p">.</span><span class="nf">synset</span><span class="p">(</span><span class="sh">'</span><span class="s">dog.n.01</span><span class="sh">'</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Hypernyms of dog: </span><span class="si">{</span><span class="p">[</span><span class="n">h</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">dog</span><span class="p">.</span><span class="nf">hypernyms</span><span class="p">()]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Hyponyms of dog: </span><span class="si">{</span><span class="p">[</span><span class="n">h</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">dog</span><span class="p">.</span><span class="nf">hyponyms</span><span class="p">()[</span><span class="si">:</span><span class="mi">5</span><span class="p">]]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Word similarity
+</span><span class="n">cat</span> <span class="o">=</span> <span class="n">wn</span><span class="p">.</span><span class="nf">synset</span><span class="p">(</span><span class="sh">'</span><span class="s">cat.n.01</span><span class="sh">'</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Similarity (dog, cat): </span><span class="si">{</span><span class="n">dog</span><span class="p">.</span><span class="nf">path_similarity</span><span class="p">(</span><span class="n">cat</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Similarity (dog, car): </span><span class="si">{</span><span class="n">dog</span><span class="p">.</span><span class="nf">path_similarity</span><span class="p">(</span><span class="n">wn</span><span class="p">.</span><span class="nf">synset</span><span class="p">(</span><span class="sh">'</span><span class="s">car.n.01</span><span class="sh">'</span><span class="p">))</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Semantic Processing Part 1 guide</p>
+
+<hr />
+
+<h3 id="nltk-named-entity-recognition">NLTK: Named Entity Recognition</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk</span> <span class="kn">import</span> <span class="n">word_tokenize</span><span class="p">,</span> <span class="n">pos_tag</span><span class="p">,</span> <span class="n">ne_chunk</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Apple CEO Tim Cook announced record profits in Cupertino last Tuesday.</span><span class="sh">"</span>
+
+<span class="n">tokens</span> <span class="o">=</span> <span class="nf">word_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="n">tagged</span> <span class="o">=</span> <span class="nf">pos_tag</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span>
+<span class="n">tree</span> <span class="o">=</span> <span class="nf">ne_chunk</span><span class="p">(</span><span class="n">tagged</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="c1"># (S
+#   (ORGANIZATION Apple/NNP)
+#   CEO/NNP
+#   (PERSON Tim/NNP Cook/NNP)
+#   announced/VBD
+#   ...
+#   (GPE Cupertino/NNP)
+#   last/JJ
+#   Tuesday/NNP .)
+</span>
+<span class="c1"># Extract named entities
+</span><span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">tree</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nf">hasattr</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="sh">'</span><span class="s">label</span><span class="sh">'</span><span class="p">):</span>
+        <span class="n">entity</span> <span class="o">=</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">chunk</span><span class="p">.</span><span class="nf">leaves</span><span class="p">())</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">chunk</span><span class="p">.</span><span class="nf">label</span><span class="p">()</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">entity</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Semantic Processing Part 2 guide</p>
+
+<hr />
+
+<h3 id="nltk-bleu-score">NLTK: BLEU Score</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.translate.bleu_score</span> <span class="kn">import</span> <span class="n">sentence_bleu</span><span class="p">,</span> <span class="n">corpus_bleu</span><span class="p">,</span> <span class="n">SmoothingFunction</span>
+
+<span class="c1"># Single sentence BLEU
+</span><span class="n">reference</span> <span class="o">=</span> <span class="p">[[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">]]</span>  <span class="c1"># list of reference lists
+</span><span class="n">candidate</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="n">smooth</span> <span class="o">=</span> <span class="nc">SmoothingFunction</span><span class="p">().</span><span class="n">method1</span>
+
+<span class="n">score</span> <span class="o">=</span> <span class="nf">sentence_bleu</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">candidate</span><span class="p">,</span> <span class="n">smoothing_function</span><span class="o">=</span><span class="n">smooth</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Perfect match BLEU: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>    <span class="c1"># 1.000
+</span>
+<span class="n">candidate2</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">score2</span> <span class="o">=</span> <span class="nf">sentence_bleu</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">candidate2</span><span class="p">,</span> <span class="n">smoothing_function</span><span class="o">=</span><span class="n">smooth</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">One word off BLEU:  </span><span class="si">{</span><span class="n">score2</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>   <span class="c1"># ~0.800
+</span>
+<span class="c1"># Corpus BLEU (multiple sentences)
+</span><span class="n">references</span> <span class="o">=</span> <span class="p">[[[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">]],</span>
+              <span class="p">[[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ran</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">in</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">park</span><span class="sh">"</span><span class="p">]]]</span>
+<span class="n">hypotheses</span> <span class="o">=</span> <span class="p">[[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">],</span>
+              <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ran</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">in</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">park</span><span class="sh">"</span><span class="p">]]</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Corpus BLEU: </span><span class="si">{</span><span class="nf">corpus_bleu</span><span class="p">(</span><span class="n">references</span><span class="p">,</span> <span class="n">hypotheses</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># 1.000
+</span></code></pre></div></div>
+
+<p><strong>Used in:</strong> Classical Text Generation Part 2 guide</p>
+
+<hr />
+
+<h2 id="library-2-spacy">Library 2: spaCy</h2>
+
+<h3 id="what-is-it-1">What Is It?</h3>
+
+<p><strong>spaCy</strong> is the industry-standard NLP library for production use. It is fast (written in Cython), accurate, and handles the full NLP pipeline in one call. While NLTK is educational, spaCy is what you use in real applications.</p>
+
+<h3 id="install-1">Install</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>spacy
+
+<span class="c"># Download a language model (choose one):</span>
+python <span class="nt">-m</span> spacy download en_core_web_sm   <span class="c"># small — fast, less accurate (~12MB)</span>
+python <span class="nt">-m</span> spacy download en_core_web_md   <span class="c"># medium — includes word vectors (~43MB)</span>
+python <span class="nt">-m</span> spacy download en_core_web_lg   <span class="c"># large — best accuracy (~741MB)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="spacy-the-full-pipeline-in-one-call">spaCy: The Full Pipeline in One Call</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">en_core_web_sm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Apple CEO Tim Cook announced $94.8 billion in revenue in Cupertino on Tuesday.</span><span class="sh">"</span>
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>  <span class="c1"># Runs the FULL pipeline: tokenise → POS → parse → NER
+</span>
+<span class="c1"># Everything is available on the doc object
+</span><span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> POS: </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">pos_</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">8</span><span class="si">}</span><span class="s"> DEP: </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">dep_</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> HEAD: </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">head</span><span class="p">.</span><span class="n">text</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Apple           POS: PROPN    DEP: nsubj      HEAD: announced
+CEO             POS: PROPN    DEP: appos      HEAD: Apple
+Tim             POS: PROPN    DEP: compound   HEAD: Cook
+Cook            POS: PROPN    DEP: appos      HEAD: CEO
+announced       POS: VERB     DEP: ROOT       HEAD: announced
+...
+</code></pre></div></div>
+
+<p><strong>Used across:</strong> Syntactic Processing, Semantic Processing guides</p>
+
+<hr />
+
+<h3 id="spacy-tokenisation-and-sentence-detection">spaCy: Tokenisation and Sentence Detection</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">en_core_web_sm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Dr. Smith went to London. He loves NLP.</span><span class="sh">"</span>
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+<span class="c1"># Tokens
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Tokens:</span><span class="sh">"</span><span class="p">,</span> <span class="p">[</span><span class="n">token</span><span class="p">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">])</span>
+
+<span class="c1"># Sentences
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Sentences:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">sent</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">.</span><span class="n">sents</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="sh">'</span><span class="si">{</span><span class="n">sent</span><span class="p">.</span><span class="n">text</span><span class="si">}</span><span class="sh">'"</span><span class="p">)</span>
+
+<span class="c1"># Token properties
+</span><span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">[:</span><span class="mi">5</span><span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> lemma=</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">lemma_</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> is_stop=</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">is_stop</span><span class="si">}</span><span class="s"> is_punct=</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">is_punct</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Lexical Processing guide</p>
+
+<hr />
+
+<h3 id="spacy-pos-tagging">spaCy: POS Tagging</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">en_core_web_sm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="sh">'</span><span class="s">Token</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">POS</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Fine-grained Tag</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Explanation</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">pos_</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">tag_</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">spacy</span><span class="p">.</span><span class="nf">explain</span><span class="p">(</span><span class="n">token</span><span class="p">.</span><span class="n">tag_</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Token        POS        Fine-grained Tag  Explanation
+------------------------------------------------------------
+The          DET        DT               determiner
+quick        ADJ        JJ               adjective
+brown        ADJ        JJ               adjective
+fox          NOUN       NN               noun, singular or mass
+jumps        VERB       VBZ              verb, 3rd person singular present
+...
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Syntactic Processing Part 1 guide</p>
+
+<hr />
+
+<h3 id="spacy-dependency-parsing">spaCy: Dependency Parsing</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">en_core_web_sm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="sh">"</span><span class="s">The chef sliced the tomatoes with a sharp knife</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="sh">'</span><span class="s">Token</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Dep</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Head</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Meaning</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">55</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">dep_</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">head</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">spacy</span><span class="p">.</span><span class="nf">explain</span><span class="p">(</span><span class="n">token</span><span class="p">.</span><span class="n">dep_</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Navigate the tree
+</span><span class="n">root</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">doc</span> <span class="k">if</span> <span class="n">t</span><span class="p">.</span><span class="n">dep_</span> <span class="o">==</span> <span class="sh">'</span><span class="s">ROOT</span><span class="sh">'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Root verb: </span><span class="si">{</span><span class="n">root</span><span class="p">.</span><span class="n">text</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Subject:   </span><span class="si">{</span><span class="p">[</span><span class="n">t</span><span class="p">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">root</span><span class="p">.</span><span class="n">lefts</span> <span class="k">if</span> <span class="n">t</span><span class="p">.</span><span class="n">dep_</span> <span class="o">==</span> <span class="sh">'</span><span class="s">nsubj</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Object:    </span><span class="si">{</span><span class="p">[</span><span class="n">t</span><span class="p">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">root</span><span class="p">.</span><span class="n">rights</span> <span class="k">if</span> <span class="n">t</span><span class="p">.</span><span class="n">dep_</span> <span class="o">==</span> <span class="sh">'</span><span class="s">dobj</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Syntactic Processing Part 2 guide, Semantic Processing Part 2 guide</p>
+
+<hr />
+
+<h3 id="spacy-named-entity-recognition">spaCy: Named Entity Recognition</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">en_core_web_sm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Apple CEO Tim Cook announced $94.8 billion in revenue in Cupertino on Tuesday.</span><span class="sh">"</span>
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="sh">'</span><span class="s">Entity</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">25</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Label</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Explanation</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">.</span><span class="n">ents</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">ent</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">25</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">ent</span><span class="p">.</span><span class="n">label_</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">spacy</span><span class="p">.</span><span class="nf">explain</span><span class="p">(</span><span class="n">ent</span><span class="p">.</span><span class="n">label_</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Entity                    Label        Explanation
+------------------------------------------------------------
+Apple                     ORG          Companies, agencies, institutions
+Tim Cook                  PERSON       People, including fictional
+$94.8 billion             MONEY        Monetary values, including unit
+Cupertino                 GPE          Countries, cities, states
+Tuesday                   DATE         Absolute or relative dates or periods
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Semantic Processing Part 2 guide</p>
+
+<hr />
+
+<h3 id="spacy-iob-tags">spaCy: IOB Tags</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">en_core_web_sm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="sh">"</span><span class="s">Sundar Pichai joined Google in 2004.</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="sh">'</span><span class="s">Token</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">IOB</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Entity Type</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">35</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+    <span class="n">iob</span> <span class="o">=</span> <span class="n">token</span><span class="p">.</span><span class="n">ent_iob_</span>
+    <span class="n">etype</span> <span class="o">=</span> <span class="n">token</span><span class="p">.</span><span class="n">ent_type_</span> <span class="ow">or</span> <span class="sh">"</span><span class="s">-</span><span class="sh">"</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">iob</span><span class="si">}</span><span class="s">-</span><span class="si">{</span><span class="n">etype</span><span class="si">}</span><span class="sh">"</span> <span class="k">if</span> <span class="n">iob</span> <span class="o">!=</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span> <span class="k">else</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">12</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">etype</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Semantic Processing Part 2 guide</p>
+
+<hr />
+
+<h3 id="spacy-noun-phrases-and-lemmatisation">spaCy: Noun Phrases and Lemmatisation</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">spacy</span>
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">en_core_web_sm</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">doc</span> <span class="o">=</span> <span class="nf">nlp</span><span class="p">(</span><span class="sh">"</span><span class="s">The running dogs were chasing the flying birds</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Noun phrases (chunking)
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Noun phrases:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">.</span><span class="n">noun_chunks</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="sh">'</span><span class="si">{</span><span class="n">chunk</span><span class="p">.</span><span class="n">text</span><span class="si">}</span><span class="sh">'</span><span class="s"> (root: </span><span class="si">{</span><span class="n">chunk</span><span class="p">.</span><span class="n">root</span><span class="p">.</span><span class="n">text</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Lemmas
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Token → Lemma:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">token</span><span class="p">.</span><span class="n">is_punct</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">text</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">15</span><span class="si">}</span><span class="s"> → </span><span class="si">{</span><span class="n">token</span><span class="p">.</span><span class="n">lemma_</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Lexical Processing, Syntactic Processing Part 1 guides</p>
+
+<hr />
+
+<h2 id="library-3-scikit-learn">Library 3: scikit-learn</h2>
+
+<h3 id="what-is-it-2">What Is It?</h3>
+
+<p><strong>scikit-learn</strong> is Python’s general-purpose machine learning library. In NLP it handles text vectorisation (BoW, TF-IDF), unsupervised methods (NMF topic modelling), and all classifiers (Naive Bayes, SVM, Logistic Regression).</p>
+
+<h3 id="install-2">Install</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>scikit-learn
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="scikit-learn-bag-of-words">scikit-learn: Bag-of-Words</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">CountVectorizer</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">I love cats and dogs</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Dogs love to run in the park</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Cats and dogs are great pets</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">CountVectorizer</span><span class="p">()</span>
+<span class="n">bow_matrix</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">(</span>
+    <span class="n">bow_matrix</span><span class="p">.</span><span class="nf">toarray</span><span class="p">(),</span>
+    <span class="n">columns</span><span class="o">=</span><span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">(),</span>
+    <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="sh">"</span><span class="s">Doc</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="sh">"</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">documents</span><span class="p">))]</span>
+<span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># Useful parameters
+</span><span class="n">vectorizer_custom</span> <span class="o">=</span> <span class="nc">CountVectorizer</span><span class="p">(</span>
+    <span class="n">lowercase</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>          <span class="c1"># convert to lowercase (default True)
+</span>    <span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">,</span>    <span class="c1"># remove English stopwords
+</span>    <span class="n">max_features</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>        <span class="c1"># keep only top 100 words by frequency
+</span>    <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>      <span class="c1"># include both unigrams and bigrams
+</span>    <span class="n">min_df</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>                <span class="c1"># ignore words appearing in fewer than 2 documents
+</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Text Representation guide</p>
+
+<hr />
+
+<h3 id="scikit-learn-tf-idf">scikit-learn: TF-IDF</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">the film was great the acting was superb</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">the film was boring and slow</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">superb acting and great direction</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">(</span><span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">tfidf_matrix</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">(</span>
+    <span class="n">tfidf_matrix</span><span class="p">.</span><span class="nf">toarray</span><span class="p">().</span><span class="nf">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
+    <span class="n">columns</span><span class="o">=</span><span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">(),</span>
+    <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">Doc A</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Doc B</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Doc C</span><span class="sh">"</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># Find most important words for each document
+</span><span class="n">feature_names</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">([</span><span class="sh">"</span><span class="s">Doc A</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Doc B</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Doc C</span><span class="sh">"</span><span class="p">]):</span>
+    <span class="n">scores</span> <span class="o">=</span> <span class="n">tfidf_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="nf">toarray</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">top_indices</span> <span class="o">=</span> <span class="n">scores</span><span class="p">.</span><span class="nf">argsort</span><span class="p">()[</span><span class="o">-</span><span class="mi">3</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">top_words</span> <span class="o">=</span> <span class="p">[(</span><span class="n">feature_names</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="nf">round</span><span class="p">(</span><span class="n">scores</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="mi">3</span><span class="p">))</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">top_indices</span><span class="p">]</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">doc</span><span class="si">}</span><span class="s"> top words: </span><span class="si">{</span><span class="n">top_words</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Text Representation guide</p>
+
+<hr />
+
+<h3 id="scikit-learn-nmf-topic-modelling">scikit-learn: NMF Topic Modelling</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">NMF</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">The football team won the championship match last night</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The election results show the winning party gained seats in parliament</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Doctors recommend the new vaccine for all adults at the hospital</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The player scored three goals in the final match of the season</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Government policy on healthcare spending was debated in parliament</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The hospital launched a new treatment programme for patients</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1"># Step 1: TF-IDF
+</span><span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">(</span><span class="n">max_features</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">tfidf</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+<span class="n">words</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">()</span>
+
+<span class="c1"># Step 2: NMF — discover 3 topics
+</span><span class="n">nmf</span> <span class="o">=</span> <span class="nc">NMF</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="n">doc_topics</span> <span class="o">=</span> <span class="n">nmf</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">tfidf</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Print top words per topic
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Discovered Topics:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">topic</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">nmf</span><span class="p">.</span><span class="n">components_</span><span class="p">):</span>
+    <span class="n">top_words</span> <span class="o">=</span> <span class="p">[</span><span class="n">words</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">topic</span><span class="p">.</span><span class="nf">argsort</span><span class="p">()[</span><span class="o">-</span><span class="mi">6</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Topic </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">top_words</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Document → dominant topic
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Document assignments:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">documents</span><span class="p">):</span>
+    <span class="n">topic_num</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">doc_topics</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Topic </span><span class="si">{</span><span class="n">topic_num</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="si">:</span><span class="mi">50</span><span class="p">]</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Text Representation guide</p>
+
+<hr />
+
+<h3 id="scikit-learn-text-classification-pipeline">scikit-learn: Text Classification Pipeline</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">MultinomialNB</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
+<span class="kn">from</span> <span class="n">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">classification_report</span>
+
+<span class="c1"># Example: sentiment classification
+</span><span class="n">texts</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">I love this product it is amazing</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Terrible quality, waste of money</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Great value, would buy again</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Awful experience, never again</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Fantastic! Exceeded all expectations</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Broken on arrival, very disappointed</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># 1=positive, 0=negative
+</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">texts</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="c1"># Pipeline: TF-IDF → Classifier
+</span><span class="n">pipeline</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">tfidf</span><span class="sh">'</span><span class="p">,</span> <span class="nc">TfidfVectorizer</span><span class="p">(</span><span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)),</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">clf</span><span class="sh">'</span><span class="p">,</span> <span class="nc">LogisticRegression</span><span class="p">()),</span>
+<span class="p">])</span>
+
+<span class="n">pipeline</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">pipeline</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">negative</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">positive</span><span class="sh">'</span><span class="p">]))</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="library-4-gensim">Library 4: gensim</h2>
+
+<h3 id="what-is-it-3">What Is It?</h3>
+
+<p><strong>gensim</strong> specialises in topic modelling and word embeddings. It is the go-to library for Word2Vec, Doc2Vec, LDA (an alternative to NMF for topics), and document similarity.</p>
+
+<h3 id="install-3">Install</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>gensim
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="gensim-word2vec--training-your-own">gensim: Word2Vec — Training Your Own</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">gensim.models</span> <span class="kn">import</span> <span class="n">Word2Vec</span>
+
+<span class="c1"># Each sentence is a list of words
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ate</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fish</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">chased</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">dogs</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">and</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cats</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">are</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">pets</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fetched</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ball</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">fish</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">swim</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">in</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">river</span><span class="sh">"</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">Word2Vec</span><span class="p">(</span>
+    <span class="n">sentences</span><span class="p">,</span>
+    <span class="n">vector_size</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>    <span class="c1"># size of each word vector
+</span>    <span class="n">window</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>          <span class="c1"># context window (words either side)
+</span>    <span class="n">min_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>       <span class="c1"># minimum frequency to include word
+</span>    <span class="n">sg</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>              <span class="c1"># 0=CBOW, 1=Skip-gram
+</span>    <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>        <span class="c1"># training passes
+</span>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Most similar words
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Similar to </span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">wv</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="n">topn</span><span class="o">=</span><span class="mi">3</span><span class="p">))</span>
+
+<span class="c1"># Word vector
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Vector for </span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">wv</span><span class="p">[</span><span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">][:</span><span class="mi">5</span><span class="p">],</span> <span class="sh">"</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># first 5 dims
+</span>
+<span class="c1"># Cosine similarity
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Similarity (cat, dog): </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="n">wv</span><span class="p">.</span><span class="nf">similarity</span><span class="p">(</span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Similarity (cat, fish): </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="n">wv</span><span class="p">.</span><span class="nf">similarity</span><span class="p">(</span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">fish</span><span class="sh">'</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Save and reload
+</span><span class="n">model</span><span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="sh">"</span><span class="s">word2vec.model</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">loaded</span> <span class="o">=</span> <span class="n">Word2Vec</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">word2vec.model</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Text Representation guide</p>
+
+<hr />
+
+<h3 id="gensim-pre-trained-embeddings">gensim: Pre-trained Embeddings</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">gensim.downloader</span> <span class="k">as</span> <span class="n">api</span>
+
+<span class="c1"># List available pre-trained models
+# api.info()['models'].keys()
+</span>
+<span class="c1"># Download a smaller model (word2vec trained on text8 corpus — ~33MB)
+</span><span class="n">model</span> <span class="o">=</span> <span class="n">api</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">word2vec-google-news-300</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># 300-dim, trained on 3B words
+</span>
+<span class="c1"># Or smaller options:
+# model = api.load("glove-wiki-gigaword-50")    # GloVe 50-dim, ~66MB
+# model = api.load("glove-twitter-25")          # GloVe Twitter 25-dim, ~47MB
+</span>
+<span class="c1"># Vector arithmetic
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">king - man + woman:</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="n">positive</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">king</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">woman</span><span class="sh">"</span><span class="p">],</span> <span class="n">negative</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">man</span><span class="sh">"</span><span class="p">],</span> <span class="n">topn</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Analogy: Paris is to France as Rome is to?
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">most_similar</span><span class="p">(</span><span class="n">positive</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">Rome</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">France</span><span class="sh">"</span><span class="p">],</span> <span class="n">negative</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">Paris</span><span class="sh">"</span><span class="p">],</span> <span class="n">topn</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Rome:France :: Paris:? → </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>  <span class="c1"># Italy
+</span></code></pre></div></div>
+
+<p><strong>Used in:</strong> Text Representation guide</p>
+
+<hr />
+
+<h3 id="gensim-lda-topic-modelling">gensim: LDA Topic Modelling</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">gensim</span> <span class="kn">import</span> <span class="n">corpora</span>
+<span class="kn">from</span> <span class="n">gensim.models</span> <span class="kn">import</span> <span class="n">LdaModel</span>
+<span class="kn">from</span> <span class="n">gensim.parsing.preprocessing</span> <span class="kn">import</span> <span class="n">preprocess_string</span>
+
+<span class="c1"># Preprocessing
+</span><span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">The football team won the championship match</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Parliament debated the election results</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Hospital launched a new vaccine programme</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The player scored goals in the final match</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Government healthcare policy debated in parliament</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Doctors treat patients with new medicine at the hospital</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">processed</span> <span class="o">=</span> <span class="p">[</span><span class="nf">preprocess_string</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">documents</span><span class="p">]</span>
+
+<span class="c1"># Build dictionary and corpus
+</span><span class="n">dictionary</span> <span class="o">=</span> <span class="n">corpora</span><span class="p">.</span><span class="nc">Dictionary</span><span class="p">(</span><span class="n">processed</span><span class="p">)</span>
+<span class="n">corpus</span> <span class="o">=</span> <span class="p">[</span><span class="n">dictionary</span><span class="p">.</span><span class="nf">doc2bow</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">processed</span><span class="p">]</span>
+
+<span class="c1"># Train LDA
+</span><span class="n">lda</span> <span class="o">=</span> <span class="nc">LdaModel</span><span class="p">(</span>
+    <span class="n">corpus</span><span class="p">,</span>
+    <span class="n">num_topics</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">id2word</span><span class="o">=</span><span class="n">dictionary</span><span class="p">,</span>
+    <span class="n">passes</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Print topics
+</span><span class="k">for</span> <span class="n">topic_id</span><span class="p">,</span> <span class="n">topic</span> <span class="ow">in</span> <span class="n">lda</span><span class="p">.</span><span class="nf">print_topics</span><span class="p">(</span><span class="n">num_words</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Topic </span><span class="si">{</span><span class="n">topic_id</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">topic</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Assign topics to a new document
+</span><span class="n">new_doc</span> <span class="o">=</span> <span class="nf">preprocess_string</span><span class="p">(</span><span class="sh">"</span><span class="s">The goalkeeper saved the match</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">bow</span> <span class="o">=</span> <span class="n">dictionary</span><span class="p">.</span><span class="nf">doc2bow</span><span class="p">(</span><span class="n">new_doc</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Topic distribution:</span><span class="sh">"</span><span class="p">,</span> <span class="n">lda</span><span class="p">[</span><span class="n">bow</span><span class="p">])</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="library-5-sklearn-crfsuite">Library 5: sklearn-crfsuite</h2>
+
+<h3 id="what-is-it-4">What Is It?</h3>
+
+<p><strong>sklearn-crfsuite</strong> is a wrapper around CRFsuite that follows the scikit-learn API. It is the standard library for training Conditional Random Field models for sequence labelling tasks like NER.</p>
+
+<h3 id="install-4">Install</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>sklearn-crfsuite
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="sklearn-crfsuite-crf-for-ner">sklearn-crfsuite: CRF for NER</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">sklearn_crfsuite</span>
+<span class="kn">from</span> <span class="n">sklearn_crfsuite</span> <span class="kn">import</span> <span class="n">metrics</span>
+
+<span class="k">def</span> <span class="nf">word_features</span><span class="p">(</span><span class="n">sentence</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Extract features for the word at position i</span><span class="sh">"""</span>
+    <span class="n">word</span> <span class="o">=</span> <span class="n">sentence</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">postag</span> <span class="o">=</span> <span class="n">sentence</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">features</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">'</span><span class="s">word.lower</span><span class="sh">'</span><span class="p">:</span> <span class="n">word</span><span class="p">.</span><span class="nf">lower</span><span class="p">(),</span>
+        <span class="sh">'</span><span class="s">word.isupper</span><span class="sh">'</span><span class="p">:</span> <span class="n">word</span><span class="p">.</span><span class="nf">isupper</span><span class="p">(),</span>
+        <span class="sh">'</span><span class="s">word.istitle</span><span class="sh">'</span><span class="p">:</span> <span class="n">word</span><span class="p">.</span><span class="nf">istitle</span><span class="p">(),</span>
+        <span class="sh">'</span><span class="s">word.isdigit</span><span class="sh">'</span><span class="p">:</span> <span class="n">word</span><span class="p">.</span><span class="nf">isdigit</span><span class="p">(),</span>
+        <span class="sh">'</span><span class="s">postag</span><span class="sh">'</span><span class="p">:</span> <span class="n">postag</span><span class="p">,</span>
+        <span class="sh">'</span><span class="s">postag[:2]</span><span class="sh">'</span><span class="p">:</span> <span class="n">postag</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span>
+        <span class="sh">'</span><span class="s">word[-3:]</span><span class="sh">'</span><span class="p">:</span> <span class="n">word</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:],</span>   <span class="c1"># suffix
+</span>        <span class="sh">'</span><span class="s">word[-2:]</span><span class="sh">'</span><span class="p">:</span> <span class="n">word</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:],</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">prev_word</span> <span class="o">=</span> <span class="n">sentence</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">features</span><span class="p">[</span><span class="sh">'</span><span class="s">prev_word.lower</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">prev_word</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span>
+        <span class="n">features</span><span class="p">[</span><span class="sh">'</span><span class="s">prev_word.istitle</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">prev_word</span><span class="p">.</span><span class="nf">istitle</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">features</span><span class="p">[</span><span class="sh">'</span><span class="s">BOS</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c1"># beginning of sentence
+</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nf">len</span><span class="p">(</span><span class="n">sentence</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">next_word</span> <span class="o">=</span> <span class="n">sentence</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">features</span><span class="p">[</span><span class="sh">'</span><span class="s">next_word.lower</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">next_word</span><span class="p">.</span><span class="nf">lower</span><span class="p">()</span>
+        <span class="n">features</span><span class="p">[</span><span class="sh">'</span><span class="s">next_word.istitle</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">next_word</span><span class="p">.</span><span class="nf">istitle</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">features</span><span class="p">[</span><span class="sh">'</span><span class="s">EOS</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c1"># end of sentence
+</span>
+    <span class="k">return</span> <span class="n">features</span>
+
+<span class="k">def</span> <span class="nf">sent_to_features</span><span class="p">(</span><span class="n">sent</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="nf">word_features</span><span class="p">(</span><span class="n">sent</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">sent</span><span class="p">))]</span>
+
+<span class="k">def</span> <span class="nf">sent_to_labels</span><span class="p">(</span><span class="n">sent</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">label</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">sent</span><span class="p">]</span>
+
+<span class="c1"># Training data format: [(word, pos_tag, iob_label), ...]
+</span><span class="n">train_sents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[(</span><span class="sh">"</span><span class="s">Tim</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NNP</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">B-PERSON</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">Cook</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NNP</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">I-PERSON</span><span class="sh">"</span><span class="p">),</span>
+     <span class="p">(</span><span class="sh">"</span><span class="s">joined</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">VBD</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">Apple</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NNP</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">B-ORG</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">.</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">.</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span><span class="p">)],</span>
+    <span class="p">[(</span><span class="sh">"</span><span class="s">London</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NNP</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">B-GPE</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">VBZ</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span><span class="p">),</span>
+     <span class="p">(</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">DT</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">capital</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NN</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span><span class="p">),</span> <span class="p">(</span><span class="sh">"</span><span class="s">.</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">.</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">O</span><span class="sh">"</span><span class="p">)],</span>
+<span class="p">]</span>
+
+<span class="n">X_train</span> <span class="o">=</span> <span class="p">[</span><span class="nf">sent_to_features</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">train_sents</span><span class="p">]</span>
+<span class="n">y_train</span> <span class="o">=</span> <span class="p">[</span><span class="nf">sent_to_labels</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">train_sents</span><span class="p">]</span>
+
+<span class="c1"># Train CRF
+</span><span class="n">crf</span> <span class="o">=</span> <span class="n">sklearn_crfsuite</span><span class="p">.</span><span class="nc">CRF</span><span class="p">(</span>
+    <span class="n">algorithm</span><span class="o">=</span><span class="sh">'</span><span class="s">lbfgs</span><span class="sh">'</span><span class="p">,</span>
+    <span class="n">c1</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>            <span class="c1"># L1 regularisation
+</span>    <span class="n">c2</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>            <span class="c1"># L2 regularisation
+</span>    <span class="n">max_iterations</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">all_possible_transitions</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">crf</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1"># Predict
+</span><span class="n">X_test</span> <span class="o">=</span> <span class="p">[</span><span class="nf">sent_to_features</span><span class="p">(</span><span class="n">train_sents</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+<span class="n">pred</span> <span class="o">=</span> <span class="n">crf</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Predicted labels:</span><span class="sh">"</span><span class="p">,</span> <span class="n">pred</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Semantic Processing Part 2 guide</p>
+
+<hr />
+
+<h2 id="library-6-textblob">Library 6: TextBlob</h2>
+
+<h3 id="what-is-it-5">What Is It?</h3>
+
+<p><strong>TextBlob</strong> is a beginner-friendly wrapper around NLTK and Pattern. It trades flexibility for simplicity — great for quick prototyping, spell correction, and basic sentiment analysis.</p>
+
+<h3 id="install-5">Install</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>textblob
+python <span class="nt">-m</span> textblob.download_corpora
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="textblob-basic-nlp-tasks">TextBlob: Basic NLP Tasks</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">textblob</span> <span class="kn">import</span> <span class="n">TextBlob</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The quick brown fox jumps over the lazy dog. Natural language processing is fascinating.</span><span class="sh">"</span>
+<span class="n">blob</span> <span class="o">=</span> <span class="nc">TextBlob</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+<span class="c1"># Tokenisation
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Words:</span><span class="sh">"</span><span class="p">,</span> <span class="n">blob</span><span class="p">.</span><span class="n">words</span><span class="p">[:</span><span class="mi">6</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Sentences:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">list</span><span class="p">(</span><span class="n">blob</span><span class="p">.</span><span class="n">sentences</span><span class="p">))</span>
+
+<span class="c1"># POS Tagging
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">POS Tags:</span><span class="sh">"</span><span class="p">,</span> <span class="n">blob</span><span class="p">.</span><span class="n">tags</span><span class="p">[:</span><span class="mi">6</span><span class="p">])</span>
+
+<span class="c1"># Noun phrases
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Noun phrases:</span><span class="sh">"</span><span class="p">,</span> <span class="n">blob</span><span class="p">.</span><span class="n">noun_phrases</span><span class="p">)</span>
+
+<span class="c1"># Lemmatisation (word by word)
+</span><span class="kn">from</span> <span class="n">textblob</span> <span class="kn">import</span> <span class="n">Word</span>
+<span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">"</span><span class="s">running</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">better</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">geese</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s"> → </span><span class="si">{</span><span class="nc">Word</span><span class="p">(</span><span class="n">word</span><span class="p">).</span><span class="nf">lemmatize</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="textblob-spell-correction">TextBlob: Spell Correction</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">textblob</span> <span class="kn">import</span> <span class="n">TextBlob</span>
+
+<span class="n">mistakes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">I havv goood speling</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Natrual langauge procesing is intresting</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">The qiuck brwon fox</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="k">for</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">mistakes</span><span class="p">:</span>
+    <span class="n">blob</span> <span class="o">=</span> <span class="nc">TextBlob</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Original:  </span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Corrected: </span><span class="si">{</span><span class="n">blob</span><span class="p">.</span><span class="nf">correct</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Lexical Processing guide</p>
+
+<hr />
+
+<h3 id="textblob-sentiment-analysis">TextBlob: Sentiment Analysis</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">textblob</span> <span class="kn">import</span> <span class="n">TextBlob</span>
+
+<span class="n">reviews</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">This product is absolutely amazing! Best purchase ever.</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Terrible quality. Broke after one day. Very disappointed.</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">It</span><span class="sh">'</span><span class="s">s okay, nothing special but does the job.</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">Fantastic value for money, highly recommend!</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="sh">'</span><span class="s">Review</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">50</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Polarity</span><span class="sh">'</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">10</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="sh">'</span><span class="s">Sentiment</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">75</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">reviews</span><span class="p">:</span>
+    <span class="n">blob</span> <span class="o">=</span> <span class="nc">TextBlob</span><span class="p">(</span><span class="n">review</span><span class="p">)</span>
+    <span class="n">polarity</span> <span class="o">=</span> <span class="n">blob</span><span class="p">.</span><span class="n">sentiment</span><span class="p">.</span><span class="n">polarity</span>  <span class="c1"># -1 (negative) to +1 (positive)
+</span>    <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Positive</span><span class="sh">"</span> <span class="k">if</span> <span class="n">polarity</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sh">"</span><span class="s">Negative</span><span class="sh">"</span> <span class="k">if</span> <span class="n">polarity</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sh">"</span><span class="s">Neutral</span><span class="sh">"</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">review</span><span class="p">[</span><span class="si">:</span><span class="mi">48</span><span class="p">]</span><span class="si">:</span><span class="o">&lt;</span><span class="mi">50</span><span class="si">}</span><span class="s"> </span><span class="si">{</span><span class="n">polarity</span><span class="si">:</span><span class="o">&gt;+</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">     </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="library-7-sumy">Library 7: sumy</h2>
+
+<h3 id="what-is-it-6">What Is It?</h3>
+
+<p><strong>sumy</strong> provides classical extractive summarisation algorithms including TextRank, LexRank, LSA, and Luhn — all with a clean, consistent interface.</p>
+
+<h3 id="install-6">Install</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>sumy
+python <span class="nt">-c</span> <span class="s2">"import nltk; nltk.download('punkt')"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h3 id="sumy-textrank-summarisation">sumy: TextRank Summarisation</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sumy.parsers.plaintext</span> <span class="kn">import</span> <span class="n">PlaintextParser</span>
+<span class="kn">from</span> <span class="n">sumy.nlp.tokenizers</span> <span class="kn">import</span> <span class="n">Tokenizer</span>
+<span class="kn">from</span> <span class="n">sumy.summarizers.text_rank</span> <span class="kn">import</span> <span class="n">TextRankSummarizer</span>
+<span class="kn">from</span> <span class="n">sumy.summarizers.lex_rank</span> <span class="kn">import</span> <span class="n">LexRankSummarizer</span>
+<span class="kn">from</span> <span class="n">sumy.summarizers.lsa</span> <span class="kn">import</span> <span class="n">LsaSummarizer</span>
+
+<span class="n">article</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+The Amazon rainforest is the world</span><span class="sh">'</span><span class="s">s largest tropical rainforest, covering over 
+five and a half million square kilometres. It is home to an estimated 10% of all 
+species on Earth, including jaguars, anacondas, and hundreds of bird species. 
+The forest plays a critical role in regulating the global climate by absorbing 
+enormous amounts of carbon dioxide. Deforestation is the biggest threat to the 
+Amazon, with cattle ranching and agriculture responsible for most land clearance. 
+In recent years, the rate of deforestation has accelerated, alarming scientists 
+and conservationists worldwide. Protecting the Amazon is considered essential 
+for meeting global climate targets and preserving biodiversity.
+</span><span class="sh">"""</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">PlaintextParser</span><span class="p">.</span><span class="nf">from_string</span><span class="p">(</span><span class="n">article</span><span class="p">,</span> <span class="nc">Tokenizer</span><span class="p">(</span><span class="sh">"</span><span class="s">english</span><span class="sh">"</span><span class="p">))</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">=== TextRank (2 sentences) ===</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">summarizer</span> <span class="o">=</span> <span class="nc">TextRankSummarizer</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="nf">summarizer</span><span class="p">(</span><span class="n">parser</span><span class="p">.</span><span class="n">document</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">sentence</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">=== LexRank (2 sentences) ===</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">summarizer</span> <span class="o">=</span> <span class="nc">LexRankSummarizer</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="nf">summarizer</span><span class="p">(</span><span class="n">parser</span><span class="p">.</span><span class="n">document</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">sentence</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Used in:</strong> Classical Text Generation Part 2 guide</p>
+
+<hr />
+
+<h2 id="installation-summary">Installation Summary</h2>
+
+<p>Copy and run this block to install everything at once:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Core libraries</span>
+pip <span class="nb">install </span>nltk spacy scikit-learn gensim textblob sumy sklearn-crfsuite
+
+<span class="c"># spaCy language models</span>
+python <span class="nt">-m</span> spacy download en_core_web_sm
+python <span class="nt">-m</span> spacy download en_core_web_md   <span class="c"># optional, includes word vectors</span>
+
+<span class="c"># TextBlob corpora</span>
+python <span class="nt">-m</span> textblob.download_corpora
+
+<span class="c"># NLTK data packages</span>
+python <span class="nt">-c</span> <span class="s2">"
+import nltk
+packages = [
+    'punkt', 'punkt_tab',
+    'averaged_perceptron_tagger', 'averaged_perceptron_tagger_eng',
+    'wordnet', 'omw-1.4',
+    'stopwords',
+    'maxent_ne_chunker', 'words'
+]
+for p in packages:
+    nltk.download(p)
+print('All NLTK packages downloaded.')
+"</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="which-library-for-which-guide">Which Library for Which Guide</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Guide</th>
+      <th>Libraries Used</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Lexical Processing</td>
+      <td><code class="language-plaintext highlighter-rouge">nltk</code> (tokenise, stem, lemmatise, stopwords), <code class="language-plaintext highlighter-rouge">spacy</code> (lemma, tokens), <code class="language-plaintext highlighter-rouge">textblob</code> (spell correction)</td>
+    </tr>
+    <tr>
+      <td>Syntactic Processing Part 1</td>
+      <td><code class="language-plaintext highlighter-rouge">nltk</code> (POS tag, chunking, RegexpParser), <code class="language-plaintext highlighter-rouge">spacy</code> (POS, noun_chunks)</td>
+    </tr>
+    <tr>
+      <td>Syntactic Processing Part 2</td>
+      <td><code class="language-plaintext highlighter-rouge">nltk</code> (CFG, ChartParser), <code class="language-plaintext highlighter-rouge">spacy</code> (dependency parse)</td>
+    </tr>
+    <tr>
+      <td>Syntactic Processing Part 3</td>
+      <td><code class="language-plaintext highlighter-rouge">nltk</code> (parse trees, tree drawing), <code class="language-plaintext highlighter-rouge">spacy</code></td>
+    </tr>
+    <tr>
+      <td>Semantic Processing Part 1</td>
+      <td><code class="language-plaintext highlighter-rouge">nltk</code> (WordNet, Lesk algorithm), <code class="language-plaintext highlighter-rouge">spacy</code>, <code class="language-plaintext highlighter-rouge">numpy</code></td>
+    </tr>
+    <tr>
+      <td>Semantic Processing Part 2</td>
+      <td><code class="language-plaintext highlighter-rouge">spacy</code> (NER, IOB, dep parse), <code class="language-plaintext highlighter-rouge">sklearn-crfsuite</code> (CRF)</td>
+    </tr>
+    <tr>
+      <td>Text Representation</td>
+      <td><code class="language-plaintext highlighter-rouge">scikit-learn</code> (CountVectorizer, TfidfVectorizer, NMF), <code class="language-plaintext highlighter-rouge">gensim</code> (Word2Vec)</td>
+    </tr>
+    <tr>
+      <td>Classical Text Gen Part 1</td>
+      <td>Pure Python, <code class="language-plaintext highlighter-rouge">collections</code>, <code class="language-plaintext highlighter-rouge">math</code>, <code class="language-plaintext highlighter-rouge">random</code></td>
+    </tr>
+    <tr>
+      <td>Classical Text Gen Part 2</td>
+      <td>Pure Python (beam search, temperature), <code class="language-plaintext highlighter-rouge">sklearn</code> (TF-IDF summarisation), <code class="language-plaintext highlighter-rouge">sumy</code> (TextRank), <code class="language-plaintext highlighter-rouge">nltk</code> (BLEU)</td>
+    </tr>
+  </tbody>
+</table>
