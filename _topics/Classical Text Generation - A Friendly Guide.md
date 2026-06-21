@@ -1,7 +1,7 @@
 ---
 title: "Classical Text Generation - A Friendly Guide"
 category: Natural Language Processing
-order: 8
+order: 9
 tags:
   - nlp
   - text-generation

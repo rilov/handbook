@@ -1,7 +1,7 @@
 ---
 title: "Text Representation and Unsupervised Modelling - A Friendly Guide"
 category: Natural Language Processing
-order: 9
+order: 8
 tags:
   - nlp
   - text-representation
