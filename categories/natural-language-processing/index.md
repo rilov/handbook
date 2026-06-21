@@ -46,6 +46,8 @@ Natural Language Processing (NLP) — teaching computers to understand human lan
 
 12. **[NLP Cheat Sheet - Key Terms and Concepts]({{ site.baseurl }}/topics/nlp-cheat-sheet-key-terms-and-concepts)** - Every important NLP term with plain-English definitions, memory aids, comparison tables, and the full pipeline at a glance
 
+13. **[NLP Libraries - Python Toolkit Reference]({{ site.baseurl }}/topics/nlp-libraries-python-toolkit-reference)** - Complete guide to NLTK, spaCy, scikit-learn, gensim, TextBlob, sumy, and sklearn-crfsuite — with install instructions and ready-to-run code for every task
+
 ---
 
 **Learning Path:**
