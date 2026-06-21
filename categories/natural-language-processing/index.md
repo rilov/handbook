@@ -42,6 +42,10 @@ Natural Language Processing (NLP) — teaching computers to understand human lan
 
 11. **[Machine Learning with NLP - A Friendly Guide]({{ site.baseurl }}/topics/machine-learning-with-nlp-a-friendly-guide)** - How machine learning transforms text into predictions (sentiment analysis, classification, NER)
 
+**Quick Reference:**
+
+12. **[NLP Cheat Sheet - Key Terms and Concepts]({{ site.baseurl }}/topics/nlp-cheat-sheet-key-terms-and-concepts)** - Every important NLP term with plain-English definitions, memory aids, comparison tables, and the full pipeline at a glance
+
 ---
 
 **Learning Path:**
