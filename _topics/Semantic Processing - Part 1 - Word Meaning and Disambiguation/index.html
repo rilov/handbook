@@ -1,0 +1,571 @@
+<h1 id="semantic-processing-part-1---word-meaning-and-disambiguation">Semantic Processing Part 1 - Word Meaning and Disambiguation</h1>
+
+<h2 id="why-this-guide-exists">Why This Guide Exists</h2>
+
+<p>You have learned how to break text into words (lexical processing) and understand sentence structure (syntactic processing). Now comes the hardest part: <strong>what do those words actually mean?</strong></p>
+
+<p>The word “bank” appears in:</p>
+<ul>
+  <li>“I went to the bank to deposit my cheque.”</li>
+  <li>“We sat on the river bank watching the ducks.”</li>
+</ul>
+
+<p>Same word. Completely different meanings. A computer that cannot tell the difference will make embarrassing mistakes.</p>
+
+<p>This guide explains how computers tackle meaning—starting with the dictionary of word senses, all the way to learning meaning from patterns in text.</p>
+
+<hr />
+
+<h2 id="what-is-semantic-processing">What Is Semantic Processing?</h2>
+
+<p><strong>Semantic processing</strong> is the stage where we go from structure to meaning. Instead of asking “what is this word?” (POS tagging) or “how does the sentence fit together?” (parsing), we ask <strong>“what does this actually mean?”</strong></p>
+
+<p>Think of the three stages like reading a recipe:</p>
+<ul>
+  <li><strong>Lexical:</strong> Identify the ingredients listed</li>
+  <li><strong>Syntactic:</strong> Understand the order of steps</li>
+  <li><strong>Semantic:</strong> Grasp <em>what the dish is</em> and <em>why each step matters</em></li>
+</ul>
+
+<hr />
+
+<h2 id="section-1-lexical-semantics--the-meaning-of-individual-words">Section 1: Lexical Semantics — The Meaning of Individual Words</h2>
+
+<h3 id="words-are-not-just-strings-of-letters">Words Are Not Just Strings of Letters</h3>
+
+<p>When you read the word “bright”, your brain instantly connects it to concepts: light, intelligence, colour, cheerfulness. You know it relates to “shine” and “glow”. You know it is the opposite of “dull” and “dark”. None of that is obvious from the letters B-R-I-G-H-T.</p>
+
+<p><strong>Lexical semantics</strong> is the study of word meaning and how words relate to one another.</p>
+
+<h3 id="four-key-relationships-between-words">Four Key Relationships Between Words</h3>
+
+<h4 id="1-synonyms--same-meaning">1. Synonyms — Same Meaning</h4>
+<p>Words that mean roughly the same thing.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Synonyms</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>happy</td>
+      <td>joyful, glad, content, pleased</td>
+    </tr>
+    <tr>
+      <td>fast</td>
+      <td>quick, rapid, swift, speedy</td>
+    </tr>
+    <tr>
+      <td>begin</td>
+      <td>start, commence, initiate</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Why it matters in NLP:</strong> A search for “fast cars” should also find “rapid vehicles.” If you treat words as just strings, you miss this connection.</p>
+
+<h4 id="2-antonyms--opposite-meaning">2. Antonyms — Opposite Meaning</h4>
+<p>Words with opposite meanings.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Antonym</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>hot</td>
+      <td>cold</td>
+    </tr>
+    <tr>
+      <td>increase</td>
+      <td>decrease</td>
+    </tr>
+    <tr>
+      <td>optimistic</td>
+      <td>pessimistic</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Why it matters in NLP:</strong> Sentiment analysis must understand that “not bad” is positive, not negative. Antonym relationships help.</p>
+
+<h4 id="3-hyponyms-and-hypernyms--specific-vs-general">3. Hyponyms and Hypernyms — Specific vs General</h4>
+<p>A <strong>hyponym</strong> is a more specific version. A <strong>hypernym</strong> is the broader category.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Animal (hypernym)
+   ├── Dog (hyponym of Animal)
+   │     ├── Labrador (hyponym of Dog)
+   │     └── Poodle   (hyponym of Dog)
+   └── Bird (hyponym of Animal)
+         ├── Robin    (hyponym of Bird)
+         └── Eagle    (hyponym of Bird)
+</code></pre></div></div>
+
+<p><strong>Why it matters in NLP:</strong> A question about “animals in Australia” should include answers about “kangaroos” even if the document never uses the word “animal.”</p>
+
+<h4 id="4-meronyms--part-whole-relationships">4. Meronyms — Part-Whole Relationships</h4>
+<p>A <strong>meronym</strong> is a part of something.</p>
+
+<ul>
+  <li>“wheel” is a meronym of “car”</li>
+  <li>“chapter” is a meronym of “book”</li>
+  <li>“sleeve” is a meronym of “shirt”</li>
+</ul>
+
+<p><strong>Why it matters in NLP:</strong> If someone asks “what are the parts of an engine?”, the system needs to understand part-whole relationships.</p>
+
+<h3 id="wordnet-the-lexical-database">WordNet: The Lexical Database</h3>
+
+<p>All of these relationships are captured in <strong>WordNet</strong>, a large English lexical database built at Princeton.</p>
+
+<p>In WordNet, words are grouped into <strong>synsets</strong> (synonym sets)—groups of words that share the same meaning.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">nltk</span>
+<span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">wordnet</span>
+
+<span class="n">nltk</span><span class="p">.</span><span class="nf">download</span><span class="p">(</span><span class="sh">'</span><span class="s">wordnet</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Find synsets for "bank"
+</span><span class="n">synsets</span> <span class="o">=</span> <span class="n">wordnet</span><span class="p">.</span><span class="nf">synsets</span><span class="p">(</span><span class="sh">"</span><span class="s">bank</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">synsets</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">s</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">s</span><span class="p">.</span><span class="nf">definition</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Output (abbreviated):
+# bank.n.01: sloping land (especially the slope beside a body of water)
+# bank.n.02: a financial institution that accepts deposits
+# bank.v.01: tip laterally (as of an aircraft during a turn)
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Find synonyms for "happy"
+</span><span class="n">synonyms</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">syn</span> <span class="ow">in</span> <span class="n">wordnet</span><span class="p">.</span><span class="nf">synsets</span><span class="p">(</span><span class="sh">"</span><span class="s">happy</span><span class="sh">"</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">lemma</span> <span class="ow">in</span> <span class="n">syn</span><span class="p">.</span><span class="nf">lemmas</span><span class="p">():</span>
+        <span class="n">synonyms</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">lemma</span><span class="p">.</span><span class="nf">name</span><span class="p">())</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">set</span><span class="p">(</span><span class="n">synonyms</span><span class="p">))</span>
+<span class="c1"># {'felicitous', 'glad', 'happy', 'well-chosen'}
+</span>
+<span class="c1"># Find antonyms
+</span><span class="k">for</span> <span class="n">syn</span> <span class="ow">in</span> <span class="n">wordnet</span><span class="p">.</span><span class="nf">synsets</span><span class="p">(</span><span class="sh">"</span><span class="s">happy</span><span class="sh">"</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">lemma</span> <span class="ow">in</span> <span class="n">syn</span><span class="p">.</span><span class="nf">lemmas</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">lemma</span><span class="p">.</span><span class="nf">antonyms</span><span class="p">():</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Antonym of happy: </span><span class="si">{</span><span class="n">lemma</span><span class="p">.</span><span class="nf">antonyms</span><span class="p">()[</span><span class="mi">0</span><span class="p">].</span><span class="nf">name</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Antonym of happy: unhappy
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="section-2-word-sense-disambiguation--which-meaning-did-you-mean">Section 2: Word Sense Disambiguation — Which Meaning Did You Mean?</h2>
+
+<h3 id="the-problem-of-polysemy">The Problem of Polysemy</h3>
+
+<p><strong>Polysemy</strong> is when a single word has multiple related meanings. This is extremely common in English.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Meaning 1</th>
+      <th>Meaning 2</th>
+      <th>Meaning 3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>bank</td>
+      <td>financial institution</td>
+      <td>river edge</td>
+      <td>to tilt an aircraft</td>
+    </tr>
+    <tr>
+      <td>bat</td>
+      <td>cricket bat</td>
+      <td>flying mammal</td>
+      <td>to hit</td>
+    </tr>
+    <tr>
+      <td>cold</td>
+      <td>low temperature</td>
+      <td>illness</td>
+      <td>unfriendly</td>
+    </tr>
+    <tr>
+      <td>run</td>
+      <td>to move fast</td>
+      <td>a score in cricket</td>
+      <td>to manage (a business)</td>
+    </tr>
+    <tr>
+      <td>light</td>
+      <td>illumination</td>
+      <td>not heavy</td>
+      <td>pale in colour</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A machine translation system that does not handle this will produce comically wrong outputs.</p>
+
+<blockquote>
+  <p>“I went to the bank” translated to French must decide: <em>la banque</em> (financial) or <em>la rive</em> (river)?</p>
+</blockquote>
+
+<h3 id="word-sense-disambiguation-wsd">Word Sense Disambiguation (WSD)</h3>
+
+<p><strong>WSD</strong> is the task of automatically determining which sense of a word is being used, based on context.</p>
+
+<h4 id="approach-1-dictionary-based-knowledge-methods">Approach 1: Dictionary-Based (Knowledge Methods)</h4>
+
+<p>Use a dictionary (like WordNet) to figure out which sense fits best.</p>
+
+<p><strong>The Lesk Algorithm</strong> — the classic approach:</p>
+
+<ol>
+  <li>Take the word to be disambiguated and its context words</li>
+  <li>Look up all senses of that word in a dictionary</li>
+  <li>Count how many context words overlap with each sense’s definition</li>
+  <li>Pick the sense with the most overlap</li>
+</ol>
+
+<p><strong>Example:</strong></p>
+
+<p>Sentence: <em>“I deposited money at the bank.”</em>
+Context words: deposited, money, at</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Sense 1 (financial): "a financial institution that accepts deposits and channels money into lending activities"
+Overlap with context: deposits ✓, money ✓ → score: 2
+
+Sense 2 (river): "sloping land beside a body of water"
+Overlap with context: none → score: 0
+
+Winner: Sense 1 (financial institution)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">nltk.corpus</span> <span class="kn">import</span> <span class="n">wordnet</span>
+<span class="kn">from</span> <span class="n">nltk.tokenize</span> <span class="kn">import</span> <span class="n">word_tokenize</span>
+
+<span class="k">def</span> <span class="nf">simple_lesk</span><span class="p">(</span><span class="n">sentence</span><span class="p">,</span> <span class="n">ambiguous_word</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Simplified Lesk algorithm</span><span class="sh">"""</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="nf">set</span><span class="p">(</span><span class="nf">word_tokenize</span><span class="p">(</span><span class="n">sentence</span><span class="p">.</span><span class="nf">lower</span><span class="p">()))</span>
+    <span class="n">best_sense</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">max_overlap</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">for</span> <span class="n">synset</span> <span class="ow">in</span> <span class="n">wordnet</span><span class="p">.</span><span class="nf">synsets</span><span class="p">(</span><span class="n">ambiguous_word</span><span class="p">):</span>
+        <span class="c1"># Get definition words
+</span>        <span class="n">definition</span> <span class="o">=</span> <span class="nf">set</span><span class="p">(</span><span class="nf">word_tokenize</span><span class="p">(</span><span class="n">synset</span><span class="p">.</span><span class="nf">definition</span><span class="p">().</span><span class="nf">lower</span><span class="p">()))</span>
+        <span class="c1"># Count overlap with context
+</span>        <span class="n">overlap</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">context</span> <span class="o">&amp;</span> <span class="n">definition</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">overlap</span> <span class="o">&gt;</span> <span class="n">max_overlap</span><span class="p">:</span>
+            <span class="n">max_overlap</span> <span class="o">=</span> <span class="n">overlap</span>
+            <span class="n">best_sense</span> <span class="o">=</span> <span class="n">synset</span>
+    
+    <span class="k">return</span> <span class="n">best_sense</span>
+
+<span class="c1"># Test
+</span><span class="n">sentence1</span> <span class="o">=</span> <span class="sh">"</span><span class="s">I went to the bank to deposit my money</span><span class="sh">"</span>
+<span class="n">sense1</span> <span class="o">=</span> <span class="nf">simple_lesk</span><span class="p">(</span><span class="n">sentence1</span><span class="p">,</span> <span class="sh">"</span><span class="s">bank</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sentence: </span><span class="sh">'</span><span class="si">{</span><span class="n">sentence1</span><span class="si">}</span><span class="sh">'"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sense: </span><span class="si">{</span><span class="n">sense1</span><span class="p">.</span><span class="nf">definition</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">sentence2</span> <span class="o">=</span> <span class="sh">"</span><span class="s">We sat on the grassy bank by the river</span><span class="sh">"</span>
+<span class="n">sense2</span> <span class="o">=</span> <span class="nf">simple_lesk</span><span class="p">(</span><span class="n">sentence2</span><span class="p">,</span> <span class="sh">"</span><span class="s">bank</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Sentence: </span><span class="sh">'</span><span class="si">{</span><span class="n">sentence2</span><span class="si">}</span><span class="sh">'"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sense: </span><span class="si">{</span><span class="n">sense2</span><span class="p">.</span><span class="nf">definition</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="approach-2-context-based-machine-learning">Approach 2: Context-Based (Machine Learning)</h4>
+
+<p>Train a classifier that looks at surrounding words to predict the correct sense.</p>
+
+<p><strong>Features used:</strong></p>
+<ul>
+  <li>The 2-3 words immediately before/after the target word</li>
+  <li>Part-of-speech tags of surrounding words</li>
+  <li>Topic of the document</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Context</th>
+      <th>Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>“deposited money at the <strong>bank</strong>”</td>
+      <td>financial</td>
+    </tr>
+    <tr>
+      <td>“river <strong>bank</strong> was muddy”</td>
+      <td>geography</td>
+    </tr>
+    <tr>
+      <td>“sat beside the <strong>bank</strong> of flowers”</td>
+      <td>edge/side</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A trained classifier learns: when “money” or “deposit” appears nearby → financial sense.</p>
+
+<h4 id="approach-3-modern-neural-methods">Approach 3: Modern Neural Methods</h4>
+
+<p>Modern systems use <strong>word embeddings in context</strong> (like BERT). The key insight: the same word produces different numerical vectors depending on surrounding words.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"bank" in "river bank" → vector: [0.2, -0.8, 0.5, ...]
+"bank" in "deposit money" → vector: [0.9, 0.1, -0.3, ...]
+</code></pre></div></div>
+
+<p>These different vectors are then matched to the correct sense.</p>
+
+<hr />
+
+<h2 id="section-3-how-words-travel-together--distributional-semantics">Section 3: How Words Travel Together — Distributional Semantics</h2>
+
+<h3 id="the-core-idea-you-are-known-by-the-company-you-keep">The Core Idea: You Are Known by the Company You Keep</h3>
+
+<p>Here is a fascinating insight from linguistics: <strong>you can figure out what a word means by looking at what other words appear near it.</strong></p>
+
+<p>Consider these two sentences:</p>
+<ul>
+  <li>“The <em>wampimuk</em> climbed the tree and ate some berries.”</li>
+  <li>“The <em>wampimuk</em> growled and showed its teeth.”</li>
+</ul>
+
+<p>You have never seen “wampimuk” before. But from the context, you can guess it is probably an animal. The words around it (climbed, tree, berries, growled, teeth) tell you everything.</p>
+
+<p>This is the core idea of <strong>distributional semantics</strong>: <em>a word’s meaning is reflected by the words it appears alongside.</em></p>
+
+<h3 id="co-occurrence-models">Co-Occurrence Models</h3>
+
+<p><strong>Co-occurrence</strong> simply means: which words tend to appear near each other?</p>
+
+<p>We can build a <strong>co-occurrence matrix</strong>—a table showing how often each word appears in the same sentence (or window) as every other word.</p>
+
+<p><strong>Example corpus:</strong></p>
+<ul>
+  <li>“I love ice cream”</li>
+  <li>“I love coffee”</li>
+  <li>“Dogs love bones”</li>
+  <li>“Dogs love running”</li>
+</ul>
+
+<p><strong>Co-occurrence matrix (window = whole sentence):</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>I</th>
+      <th>love</th>
+      <th>ice</th>
+      <th>cream</th>
+      <th>coffee</th>
+      <th>dogs</th>
+      <th>bones</th>
+      <th>running</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>love</td>
+      <td>2</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>ice</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>dogs</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>What this tells us:</strong></p>
+<ul>
+  <li>“ice” and “cream” co-occur a lot → they are related</li>
+  <li>“dogs” and “bones” co-occur → they are related</li>
+  <li>“ice” and “dogs” do not co-occur → they are unrelated</li>
+</ul>
+
+<p>This lets us build a picture of word meaning purely from data, with no human-crafted dictionaries.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="k">def</span> <span class="nf">build_cooccurrence_matrix</span><span class="p">(</span><span class="n">sentences</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Build a simple co-occurrence matrix</span><span class="sh">"""</span>
+    <span class="n">cooccurrence</span> <span class="o">=</span> <span class="nf">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="nf">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+    
+    <span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="n">sentences</span><span class="p">:</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">sentence</span><span class="p">.</span><span class="nf">lower</span><span class="p">().</span><span class="nf">split</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">word</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span> <span class="o">-</span> <span class="n">window_size</span><span class="p">)</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">),</span> <span class="n">i</span> <span class="o">+</span> <span class="n">window_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span><span class="p">:</span>
+                    <span class="n">cooccurrence</span><span class="p">[</span><span class="n">word</span><span class="p">][</span><span class="n">words</span><span class="p">[</span><span class="n">j</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">return</span> <span class="n">cooccurrence</span>
+
+<span class="c1"># Example usage
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">I love ice cream</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">I love coffee</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">dogs love bones</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">dogs love running</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="n">matrix</span> <span class="o">=</span> <span class="nf">build_cooccurrence_matrix</span><span class="p">(</span><span class="n">sentences</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Words near </span><span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">dict</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">]))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Words near </span><span class="sh">'</span><span class="s">dogs</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">dict</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="sh">'</span><span class="s">dogs</span><span class="sh">'</span><span class="p">]))</span>
+</code></pre></div></div>
+
+<h3 id="pointwise-mutual-information-pmi">Pointwise Mutual Information (PMI)</h3>
+
+<p>Raw counts have a problem: common words like “the” and “is” will co-occur with everything, so they appear highly related to everything—even unrelated words.</p>
+
+<p><strong>PMI solves this</strong> by asking: <em>“Does this pair of words appear together more than you would expect by chance?”</em></p>
+
+<p>The formula:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PMI(word1, word2) = log( P(word1, word2) / (P(word1) × P(word2)) )
+</code></pre></div></div>
+
+<p><strong>In plain English:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PMI = log( how often they appear together / how often you'd expect them together by chance )
+</code></pre></div></div>
+
+<ul>
+  <li><strong>PMI &gt; 0:</strong> Words appear together more than expected → they are related</li>
+  <li><strong>PMI ≈ 0:</strong> Words appear together about as expected → unrelated</li>
+  <li><strong>PMI &lt; 0:</strong> Words appear together less than expected → they avoid each other</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+
+<p>In a large text corpus:</p>
+<ul>
+  <li>“ice” and “cream” appear together far more than chance → high positive PMI</li>
+  <li>“dog” and “justice” rarely appear together → low or negative PMI</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">math</span>
+<span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="k">def</span> <span class="nf">compute_pmi</span><span class="p">(</span><span class="n">corpus_sentences</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Compute PMI for word pairs</span><span class="sh">"""</span>
+    <span class="n">word_counts</span> <span class="o">=</span> <span class="nc">Counter</span><span class="p">()</span>
+    <span class="n">pair_counts</span> <span class="o">=</span> <span class="nc">Counter</span><span class="p">()</span>
+    <span class="n">total_words</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="n">corpus_sentences</span><span class="p">:</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">sentence</span><span class="p">.</span><span class="nf">lower</span><span class="p">().</span><span class="nf">split</span><span class="p">()</span>
+        <span class="n">total_words</span> <span class="o">+=</span> <span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+            <span class="n">word_counts</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w1</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">w2</span> <span class="ow">in</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:]:</span>
+                <span class="n">pair</span> <span class="o">=</span> <span class="nf">tuple</span><span class="p">(</span><span class="nf">sorted</span><span class="p">([</span><span class="n">w1</span><span class="p">,</span> <span class="n">w2</span><span class="p">]))</span>
+                <span class="n">pair_counts</span><span class="p">[</span><span class="n">pair</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="n">pmi_scores</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="nf">for </span><span class="p">(</span><span class="n">w1</span><span class="p">,</span> <span class="n">w2</span><span class="p">),</span> <span class="n">pair_count</span> <span class="ow">in</span> <span class="n">pair_counts</span><span class="p">.</span><span class="nf">items</span><span class="p">():</span>
+        <span class="n">p_w1</span> <span class="o">=</span> <span class="n">word_counts</span><span class="p">[</span><span class="n">w1</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_words</span>
+        <span class="n">p_w2</span> <span class="o">=</span> <span class="n">word_counts</span><span class="p">[</span><span class="n">w2</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_words</span>
+        <span class="n">p_pair</span> <span class="o">=</span> <span class="n">pair_count</span> <span class="o">/</span> <span class="n">total_words</span>
+        
+        <span class="k">if</span> <span class="n">p_w1</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">p_w2</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">pmi</span> <span class="o">=</span> <span class="n">math</span><span class="p">.</span><span class="nf">log2</span><span class="p">(</span><span class="n">p_pair</span> <span class="o">/</span> <span class="p">(</span><span class="n">p_w1</span> <span class="o">*</span> <span class="n">p_w2</span><span class="p">))</span>
+            <span class="n">pmi_scores</span><span class="p">[(</span><span class="n">w1</span><span class="p">,</span> <span class="n">w2</span><span class="p">)]</span> <span class="o">=</span> <span class="nf">round</span><span class="p">(</span><span class="n">pmi</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">pmi_scores</span>
+
+<span class="c1"># Example
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">ice cream is delicious</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">cream cheese is tasty</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">dogs eat bones</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">dogs love their owners</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">I love ice cream</span><span class="sh">"</span>
+<span class="p">]</span>
+
+<span class="n">pmi</span> <span class="o">=</span> <span class="nf">compute_pmi</span><span class="p">(</span><span class="n">sentences</span><span class="p">)</span>
+<span class="c1"># Sort by PMI score
+</span><span class="n">top_pairs</span> <span class="o">=</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">pmi</span><span class="p">.</span><span class="nf">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">pair</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">top_pairs</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="mi">10</span><span class="si">}</span><span class="s"> + </span><span class="si">{</span><span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="mi">10</span><span class="si">}</span><span class="s"> | PMI: </span><span class="si">{</span><span class="n">score</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Positive PMI (PPMI):</strong> A common improvement is to clip all negative values to 0 (since negative PMI is unreliable with small datasets):</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">ppmi</span> <span class="o">=</span> <span class="p">{</span><span class="n">pair</span><span class="p">:</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span> <span class="k">for</span> <span class="n">pair</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">pmi</span><span class="p">.</span><span class="nf">items</span><span class="p">()}</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="section-4-practice-questions">Section 4: Practice Questions</h2>
+
+<p><strong>1. What is polysemy? Give an example.</strong></p>
+<details><summary>Answer</summary>
+Polysemy is when a single word has multiple related meanings. Example: "cold" can mean low temperature, a viral illness, or an unfriendly attitude.
+</details>
+
+<p><strong>2. What does the Lesk algorithm do to pick a word sense?</strong></p>
+<details><summary>Answer</summary>
+It counts how many context words from the sentence overlap with each dictionary definition of the word, then picks the sense with the most overlap.
+</details>
+
+<p><strong>3. What does a high PMI score between two words tell you?</strong></p>
+<details><summary>Answer</summary>
+Those two words appear together far more often than you would expect by chance, meaning they are strongly associated.
+</details>
+
+<p><strong>4. What is the difference between a synonym and a hyponym?</strong></p>
+<details><summary>Answer</summary>
+Synonyms share the same meaning (happy / joyful). A hyponym is a more specific type of a broader category (Labrador is a hyponym of Dog).
+</details>
+
+<p><strong>5. Why is raw co-occurrence count not always enough? What does PMI fix?</strong></p>
+<details><summary>Answer</summary>
+Frequent words like "the" co-occur with everything, making them look related to every word. PMI normalises by how often the words would co-occur by chance, so only genuinely associated pairs score highly.
+</details>
+
+<hr />
+
+<h2 id="what-comes-next">What Comes Next?</h2>
+
+<p>Part 2 moves from individual word meaning to identifying <em>who is doing what to whom</em> in a sentence—covering Semantic Role Labelling, Named Entity Recognition, IOB tagging, Conditional Random Fields, and Coreference Resolution.</p>

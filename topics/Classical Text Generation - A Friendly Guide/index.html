@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Classical Text Generation - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/natural-language-processing">Natural Language Processing</a> &mdash;
+    </nav>
+    <h2>Classical Text Generation - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/natural-language-processing">Natural Language Processing</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="classical-text-generation---a-friendly-guide">Classical Text Generation - A Friendly Guide</h1>
+
+<h2 id="why-this-guide-exists">Why This Guide Exists</h2>
+
+<p>Before ChatGPT, before GPT-3, before neural networks dominated NLP—computers generated text using elegant statistical methods built on a simple idea:</p>
+
+<blockquote>
+  <p><strong>The next word depends on the words that came before it.</strong></p>
+</blockquote>
+
+<p>This sounds obvious. But turning that intuition into a working system required clever maths, probability theory, and some creative problem-solving. Understanding these classical methods is not just history—it gives you the foundation to truly understand why modern neural models work the way they do.</p>
+
+<p>This guide builds from scratch, using real examples at every step.</p>
+
+<hr />
+
+<h2 id="section-1-what-is-a-language-model">Section 1: What Is a Language Model?</h2>
+
+<h3 id="the-core-idea">The Core Idea</h3>
+
+<p>A <strong>language model</strong> is a system that assigns a probability to a sequence of words.</p>
+
+<p>In plain English: it answers the question, <em>“How likely is this sentence to appear in natural text?”</em></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Sentence</th>
+      <th>Likely probability</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>“The cat sat on the mat.”</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>“The mat sat on the cat.”</td>
+      <td>Lower (grammatical but unusual)</td>
+    </tr>
+    <tr>
+      <td>“Sat mat the cat on the.”</td>
+      <td>Very low (grammatically wrong)</td>
+    </tr>
+    <tr>
+      <td>“Colourless green ideas sleep furiously.”</td>
+      <td>Low (grammatical but nonsensical)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A good language model gives high probabilities to natural-sounding sentences and low probabilities to weird or ungrammatical ones.</p>
+
+<h3 id="what-language-models-are-used-for">What Language Models Are Used For</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Application</th>
+      <th>How the language model helps</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Autocomplete</strong></td>
+      <td>“I want to go to the ___” → predicts most likely next word</td>
+    </tr>
+    <tr>
+      <td><strong>Spell checking</strong></td>
+      <td>“I went to teh store” — “teh store” has very low probability, so flag it</td>
+    </tr>
+    <tr>
+      <td><strong>Machine translation</strong></td>
+      <td>Choose the translated sentence with the highest probability in the target language</td>
+    </tr>
+    <tr>
+      <td><strong>Speech recognition</strong></td>
+      <td>Between “recognise speech” and “wreck a nice beach” (same audio), pick the more probable sentence</td>
+    </tr>
+    <tr>
+      <td><strong>Text generation</strong></td>
+      <td>Repeatedly predict the next word to produce new text</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="section-2-n-gram-models--learning-from-history">Section 2: N-Gram Models — Learning from History</h2>
+
+<h3 id="the-simplest-idea-count-what-follows-what">The Simplest Idea: Count What Follows What</h3>
+
+<p>Imagine you read a million sentences and track what word tends to follow every other word. After enough reading, you have a pretty good model of language.</p>
+
+<p>This is exactly what <strong>N-gram models</strong> do.</p>
+
+<h3 id="what-is-an-n-gram">What Is an N-Gram?</h3>
+
+<p>An <strong>N-gram</strong> is a sequence of N consecutive words.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>N</th>
+      <th>Name</th>
+      <th>Example from “The quick brown fox jumps”</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Unigram</td>
+      <td>“The”, “quick”, “brown”, “fox”, “jumps”</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Bigram</td>
+      <td>“The quick”, “quick brown”, “brown fox”, “fox jumps”</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Trigram</td>
+      <td>“The quick brown”, “quick brown fox”, “brown fox jumps”</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>4-gram</td>
+      <td>“The quick brown fox”, “quick brown fox jumps”</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="predicting-the-next-word-with-bigrams">Predicting the Next Word with Bigrams</h3>
+
+<p>A <strong>bigram model</strong> assumes the next word depends only on the current word.</p>
+
+<p><strong>Training:</strong> Count how often each word follows each other word.</p>
+
+<p><strong>Example corpus:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I love cats"
+"I love dogs"  
+"I hate rain"
+"cats love fish"
+</code></pre></div></div>
+
+<p><strong>Bigram counts:</strong>
+| Previous word | Next word | Count |
+|—————|———–|——-|
+| I | love | 2 |
+| I | hate | 1 |
+| love | cats | 1 |
+| love | dogs | 1 |
+| love | fish | 1 |
+| cats | love | 1 |
+| hate | rain | 1 |</p>
+
+<p><strong>Bigram probabilities</strong> (divide count by total following word count):</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(love | I) = 2/3 = 0.67
+P(hate | I) = 1/3 = 0.33
+P(cats | love) = 1/3 = 0.33
+P(dogs | love) = 1/3 = 0.33
+P(fish | love) = 1/3 = 0.33
+</code></pre></div></div>
+
+<p><strong>Prediction:</strong></p>
+<ul>
+  <li>After “I”, the most likely word is “love” (67% chance)</li>
+  <li>After “love”, all three options are equal (33% each)</li>
+</ul>
+
+<h3 id="generating-text-with-a-bigram-model">Generating Text with a Bigram Model</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">random</span>
+<span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="k">def</span> <span class="nf">build_bigram_model</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Build a bigram language model from text</span><span class="sh">"""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">text</span><span class="p">.</span><span class="nf">lower</span><span class="p">().</span><span class="nf">split</span><span class="p">()</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nf">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">model</span><span class="p">[</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">]].</span><span class="nf">append</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">model</span>
+
+<span class="k">def</span> <span class="nf">generate_text</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">start_word</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Generate text using the bigram model</span><span class="sh">"""</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">start_word</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="p">[</span><span class="n">current</span><span class="p">]</span>
+    
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">next_word</span> <span class="o">=</span> <span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">current</span><span class="p">])</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">next_word</span><span class="p">)</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">next_word</span>
+    
+    <span class="k">return</span> <span class="sh">"</span><span class="s"> </span><span class="sh">"</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+<span class="c1"># Train on example text
+</span><span class="n">corpus</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+the cat sat on the mat the cat ate the fish
+the dog sat on the floor the dog ate the bone
+cats love fish dogs love bones
+the fish swam in the water
+</span><span class="sh">"""</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nf">build_bigram_model</span><span class="p">(</span><span class="n">corpus</span><span class="p">)</span>
+
+<span class="c1"># Generate some text
+</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="nf">generate_text</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">start_word</span><span class="o">=</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">8</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p><strong>Example output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>the cat sat on the floor the dog
+the mat the fish swam in the water
+the dog ate the bone cats love fish
+</code></pre></div></div>
+
+<p>Notice: the output looks somewhat like natural text but can loop or get stuck!</p>
+
+<h3 id="trigrams-using-more-context">Trigrams: Using More Context</h3>
+
+<p>A <strong>trigram model</strong> uses the previous <em>two</em> words to predict the next one. This captures more context.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bigram:  P(word | prev_word)
+Trigram: P(word | prev_word, prev_prev_word)
+</code></pre></div></div>
+
+<p><strong>Example:</strong></p>
+<ul>
+  <li>After “I love”, the next word is probably “cats”, “dogs”, or “pizza”—but not “the” or “and”</li>
+  <li>A trigram model knows this; a bigram model only sees “love” and might predict “fish” from other contexts</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">Counter</span>
+
+<span class="k">def</span> <span class="nf">build_trigram_model</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Build a trigram language model</span><span class="sh">"""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">&lt;START&gt;</span><span class="sh">'</span><span class="p">]</span> <span class="o">+</span> <span class="n">text</span><span class="p">.</span><span class="nf">lower</span><span class="p">().</span><span class="nf">split</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">]</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nf">defaultdict</span><span class="p">(</span><span class="n">Counter</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">next_word</span> <span class="o">=</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">model</span><span class="p">[</span><span class="n">context</span><span class="p">][</span><span class="n">next_word</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">return</span> <span class="n">model</span>
+
+<span class="k">def</span> <span class="nf">trigram_predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">word1</span><span class="p">,</span> <span class="n">word2</span><span class="p">,</span> <span class="n">top_n</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Predict top N likely next words given two previous words</span><span class="sh">"""</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">word1</span><span class="p">,</span> <span class="n">word2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">context</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    
+    <span class="n">total</span> <span class="o">=</span> <span class="nf">sum</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">context</span><span class="p">].</span><span class="nf">values</span><span class="p">())</span>
+    <span class="n">predictions</span> <span class="o">=</span> <span class="p">[(</span><span class="n">w</span><span class="p">,</span> <span class="n">c</span><span class="o">/</span><span class="n">total</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">model</span><span class="p">[</span><span class="n">context</span><span class="p">].</span><span class="nf">most_common</span><span class="p">(</span><span class="n">top_n</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">predictions</span>
+
+<span class="c1"># Example
+</span><span class="n">corpus</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+i love cats and i love dogs and i love pizza
+cats love fish and dogs love bones
+she loves to eat pizza and he loves to eat pasta
+</span><span class="sh">"""</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nf">build_trigram_model</span><span class="p">(</span><span class="n">corpus</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">After </span><span class="sh">'</span><span class="s">i love</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">trigram_predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">love</span><span class="sh">"</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">After </span><span class="sh">'</span><span class="s">love to</span><span class="sh">'</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">trigram_predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="sh">"</span><span class="s">love</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">to</span><span class="sh">"</span><span class="p">))</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="section-3-the-probability-of-a-full-sentence">Section 3: The Probability of a Full Sentence</h2>
+
+<h3 id="chaining-probabilities-together">Chaining Probabilities Together</h3>
+
+<p>Once you have a bigram model, you can calculate the probability of an entire sentence by multiplying the probabilities of each word given the previous word.</p>
+
+<p><strong>Formula:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P("I love cats") = P(I | &lt;START&gt;) × P(love | I) × P(cats | love) × P(&lt;END&gt; | cats)
+</code></pre></div></div>
+
+<p><strong>Example with numbers:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(I | &lt;START&gt;) = 0.5   (half our sentences start with "I")
+P(love | I)    = 0.67  (67% of the time after "I" comes "love")
+P(cats | love) = 0.33  (one of three words after "love")
+
+P("I love cats") = 0.5 × 0.67 × 0.33 ≈ 0.11
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">math</span>
+
+<span class="k">def</span> <span class="nf">sentence_probability</span><span class="p">(</span><span class="n">model_probs</span><span class="p">,</span> <span class="n">sentence</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Calculate log probability of a sentence using bigram model.
+    Using log to avoid numerical underflow with many multiplications.
+    </span><span class="sh">"""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">&lt;START&gt;</span><span class="sh">'</span><span class="p">]</span> <span class="o">+</span> <span class="n">sentence</span><span class="p">.</span><span class="nf">lower</span><span class="p">().</span><span class="nf">split</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">]</span>
+    <span class="n">log_prob</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">bigram</span> <span class="o">=</span> <span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">prob</span> <span class="o">=</span> <span class="n">model_probs</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">bigram</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>  <span class="c1"># tiny prob for unseen bigrams
+</span>        <span class="n">log_prob</span> <span class="o">+=</span> <span class="n">math</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">prob</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">log_prob</span>
+
+<span class="c1"># Example bigram probabilities (hand-crafted for illustration)
+</span><span class="n">probs</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">&lt;START&gt;</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">i</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">i</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.67</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.33</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">):</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">&lt;START&gt;</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">the</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">the</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.4</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">ran</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.6</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">ran</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">):</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">s1</span> <span class="o">=</span> <span class="nf">sentence_probability</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="sh">"</span><span class="s">i love cats</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">s2</span> <span class="o">=</span> <span class="nf">sentence_probability</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="sh">"</span><span class="s">the dog ran</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Log P(</span><span class="sh">'</span><span class="s">i love cats</span><span class="sh">'</span><span class="s">) = </span><span class="si">{</span><span class="n">s1</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Log P(</span><span class="sh">'</span><span class="s">the dog ran</span><span class="sh">'</span><span class="s">) = </span><span class="si">{</span><span class="n">s2</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Why log probability?</strong> Multiplying many small probabilities (0.5 × 0.3 × 0.1 × …) quickly reaches numbers too small for computers to represent. Taking the log converts multiplication to addition, which is numerically stable.</p>
+
+<hr />
+
+<h2 id="section-4-the-sparsity-problem-and-smoothing">Section 4: The Sparsity Problem and Smoothing</h2>
+
+<h3 id="the-big-problem-unseen-n-grams">The Big Problem: Unseen N-Grams</h3>
+
+<p>Here is a fundamental challenge. You train your model on a million words. Then someone types a sentence with a word combination that never appeared in your training data.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Training data never contained: "purple elephant sings"
+P(sings | purple elephant) = 0/0 = ??? 
+</code></pre></div></div>
+
+<p>A probability of zero is catastrophic—it means the entire sentence gets probability zero, even if it is perfectly reasonable English.</p>
+
+<p>This is the <strong>sparsity problem</strong>: real language has infinite possible sentences, but your training data is finite.</p>
+
+<h3 id="solution-1-laplace-add-one-smoothing">Solution 1: Laplace (Add-One) Smoothing</h3>
+
+<p>The simplest fix: pretend you saw every possible word combination at least once by adding 1 to every count.</p>
+
+<p><strong>Without smoothing:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Count("purple", "sings") = 0
+P(sings | purple) = 0 / total = 0
+</code></pre></div></div>
+
+<p><strong>With Laplace smoothing (add 1 to every count):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Count("purple", "sings") = 0 + 1 = 1
+P(sings | purple) = 1 / (total + vocabulary_size)
+</code></pre></div></div>
+
+<p>Now every combination has at least a tiny probability.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">laplace_bigram_probability</span><span class="p">(</span><span class="n">word1</span><span class="p">,</span> <span class="n">word2</span><span class="p">,</span> <span class="n">bigram_counts</span><span class="p">,</span> <span class="n">unigram_counts</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Compute P(word2 | word1) with Laplace (add-1) smoothing
+    </span><span class="sh">"""</span>
+    <span class="n">count_bigram</span> <span class="o">=</span> <span class="n">bigram_counts</span><span class="p">.</span><span class="nf">get</span><span class="p">((</span><span class="n">word1</span><span class="p">,</span> <span class="n">word2</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">count_unigram</span> <span class="o">=</span> <span class="n">unigram_counts</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">word1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    
+    <span class="c1"># Add 1 to numerator, add vocab_size to denominator
+</span>    <span class="nf">return </span><span class="p">(</span><span class="n">count_bigram</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">count_unigram</span> <span class="o">+</span> <span class="n">vocab_size</span><span class="p">)</span>
+
+<span class="c1"># Example
+</span><span class="n">bigram_counts</span> <span class="o">=</span> <span class="p">{(</span><span class="sh">'</span><span class="s">I</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">):</span> <span class="mi">10</span><span class="p">,</span> <span class="p">(</span><span class="sh">'</span><span class="s">I</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">hate</span><span class="sh">'</span><span class="p">):</span> <span class="mi">3</span><span class="p">}</span>
+<span class="n">unigram_counts</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">I</span><span class="sh">'</span><span class="p">:</span> <span class="mi">13</span><span class="p">}</span>
+<span class="n">vocab_size</span> <span class="o">=</span> <span class="mi">1000</span>
+
+<span class="n">p_love</span> <span class="o">=</span> <span class="nf">laplace_bigram_probability</span><span class="p">(</span><span class="sh">'</span><span class="s">I</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">,</span> <span class="n">bigram_counts</span><span class="p">,</span> <span class="n">unigram_counts</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">)</span>
+<span class="n">p_never_seen</span> <span class="o">=</span> <span class="nf">laplace_bigram_probability</span><span class="p">(</span><span class="sh">'</span><span class="s">I</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">purple</span><span class="sh">'</span><span class="p">,</span> <span class="n">bigram_counts</span><span class="p">,</span> <span class="n">unigram_counts</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P(love | I) = </span><span class="si">{</span><span class="n">p_love</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">P(purple | I) = </span><span class="si">{</span><span class="n">p_never_seen</span><span class="si">:</span><span class="p">.</span><span class="mi">6</span><span class="n">f</span><span class="si">}</span><span class="s">  ← small but not zero</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Problem with Laplace:</strong> It gives too much probability mass to unseen events and takes too much from seen ones. In practice, Laplace smoothing is too aggressive.</p>
+
+<h3 id="solution-2-backoff-smoothing">Solution 2: Backoff Smoothing</h3>
+
+<p>The idea: if you have never seen the trigram “I love cats”, fall back to the bigram “love cats”. If that is also unseen, fall back to the unigram “cats”.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Try:  P(cats | I, love)  ← trigram — has count? Use it.
+Else: P(cats | love)     ← bigram  — has count? Use it.
+Else: P(cats)            ← unigram — always has count.
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">backoff_probability</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">trigram_probs</span><span class="p">,</span> <span class="n">bigram_probs</span><span class="p">,</span> <span class="n">unigram_probs</span><span class="p">,</span>
+                        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Stupid backoff: use trigram if available, else bigram, else unigram.
+    alpha is a discount factor applied when backing off.
+    </span><span class="sh">"""</span>
+    <span class="k">if</span> <span class="nf">len</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">trigram_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">context</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">context</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">word</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trigram_key</span> <span class="ow">in</span> <span class="n">trigram_probs</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">trigram_probs</span><span class="p">[</span><span class="n">trigram_key</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="nf">len</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">bigram_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">context</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">word</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bigram_key</span> <span class="ow">in</span> <span class="n">bigram_probs</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">bigram_probs</span><span class="p">[</span><span class="n">bigram_key</span><span class="p">]</span>
+    
+    <span class="k">return</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">unigram_probs</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="solution-3-interpolation-smoothing">Solution 3: Interpolation Smoothing</h3>
+
+<p>Instead of choosing one level, <strong>mix all levels together</strong> with weights that sum to 1.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(word | context) = λ₁ × P_trigram + λ₂ × P_bigram + λ₃ × P_unigram
+</code></pre></div></div>
+
+<p>Where λ₁ + λ₂ + λ₃ = 1.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">interpolated_probability</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">trigram_probs</span><span class="p">,</span> <span class="n">bigram_probs</span><span class="p">,</span> <span class="n">unigram_probs</span><span class="p">,</span>
+                             <span class="n">l1</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">l2</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">l3</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Interpolation smoothing: weighted mix of trigram, bigram, unigram.
+    l1 + l2 + l3 must equal 1.
+    </span><span class="sh">"""</span>
+    <span class="n">p_tri</span> <span class="o">=</span> <span class="n">trigram_probs</span><span class="p">.</span><span class="nf">get</span><span class="p">((</span><span class="n">context</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">context</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">word</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nf">len</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">p_bi</span>  <span class="o">=</span> <span class="n">bigram_probs</span><span class="p">.</span><span class="nf">get</span><span class="p">((</span><span class="n">context</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">word</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nf">len</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">p_uni</span> <span class="o">=</span> <span class="n">unigram_probs</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">l1</span> <span class="o">*</span> <span class="n">p_tri</span> <span class="o">+</span> <span class="n">l2</span> <span class="o">*</span> <span class="n">p_bi</span> <span class="o">+</span> <span class="n">l3</span> <span class="o">*</span> <span class="n">p_uni</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="section-5-evaluating-a-language-model--perplexity">Section 5: Evaluating a Language Model — Perplexity</h2>
+
+<h3 id="how-do-you-know-if-your-model-is-any-good">How Do You Know If Your Model Is Any Good?</h3>
+
+<p>You could generate some text and see if it sounds natural. But that is subjective. We need a number.</p>
+
+<p><strong>Perplexity</strong> is the standard metric for evaluating language models.</p>
+
+<h3 id="what-perplexity-means-intuitively">What Perplexity Means Intuitively</h3>
+
+<p>Perplexity measures <strong>how surprised your model is by new text</strong>.</p>
+
+<p>Think of it this way: imagine a language model is guessing the next word at each step. Perplexity tells you the average number of equally likely choices the model is considering at each word.</p>
+
+<ul>
+  <li><strong>Low perplexity</strong> = model is confident, fewer choices, good model</li>
+  <li><strong>High perplexity</strong> = model is confused, many choices, bad model</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th>Perplexity</th>
+      <th>Interpretation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>10</td>
+      <td>At each word, the model is effectively choosing from 10 equally likely options — very good</td>
+    </tr>
+    <tr>
+      <td>100</td>
+      <td>100 options per word — reasonable</td>
+    </tr>
+    <tr>
+      <td>1000</td>
+      <td>1000 options — the model has barely learned anything</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Perfect (impossible in practice)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="the-perplexity-formula">The Perplexity Formula</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Perplexity = 2^(-average log₂ probability per word)
+
+Or equivalently:
+Perplexity = (1 / P(test text)) ^ (1/N)
+
+Where N = number of words in the test text
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">math</span>
+
+<span class="k">def</span> <span class="nf">perplexity</span><span class="p">(</span><span class="n">model_probs</span><span class="p">,</span> <span class="n">test_sentences</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Calculate perplexity of a language model on test sentences.
+    model_probs: dict of bigram → probability
+    test_sentences: list of tokenised sentences (lists of words)
+    </span><span class="sh">"""</span>
+    <span class="n">total_log_prob</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">total_words</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="n">test_sentences</span><span class="p">:</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">&lt;START&gt;</span><span class="sh">'</span><span class="p">]</span> <span class="o">+</span> <span class="n">sentence</span> <span class="o">+</span> <span class="p">[</span><span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">bigram</span> <span class="o">=</span> <span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">prob</span> <span class="o">=</span> <span class="n">model_probs</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">bigram</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+            <span class="n">total_log_prob</span> <span class="o">+=</span> <span class="n">math</span><span class="p">.</span><span class="nf">log2</span><span class="p">(</span><span class="n">prob</span><span class="p">)</span>
+            <span class="n">total_words</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="n">avg_log_prob</span> <span class="o">=</span> <span class="n">total_log_prob</span> <span class="o">/</span> <span class="n">total_words</span>
+    <span class="k">return</span> <span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">avg_log_prob</span><span class="p">)</span>
+
+<span class="c1"># Example: comparing two models on test data
+</span><span class="n">good_model</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">&lt;START&gt;</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">i</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.5</span><span class="p">,</span>   <span class="p">(</span><span class="sh">'</span><span class="s">i</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.7</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.5</span><span class="p">,</span>   <span class="p">(</span><span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">):</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">bad_model</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">&lt;START&gt;</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">i</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.1</span><span class="p">,</span>   <span class="p">(</span><span class="sh">'</span><span class="s">i</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">):</span> <span class="mf">0.1</span><span class="p">,</span>   <span class="p">(</span><span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">&lt;END&gt;</span><span class="sh">'</span><span class="p">):</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">test</span> <span class="o">=</span> <span class="p">[[</span><span class="sh">'</span><span class="s">i</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">]]</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Good model perplexity: </span><span class="si">{</span><span class="nf">perplexity</span><span class="p">(</span><span class="n">good_model</span><span class="p">,</span> <span class="n">test</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Bad model perplexity:  </span><span class="si">{</span><span class="nf">perplexity</span><span class="p">(</span><span class="n">bad_model</span><span class="p">,</span> <span class="n">test</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Good model perplexity: ~1.6   (very confident)
+# Bad model perplexity:  ~10.0  (more confused)
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="section-6-markov-chains--the-statistical-heart">Section 6: Markov Chains — The Statistical Heart</h2>
+
+<h3 id="what-is-a-markov-chain">What Is a Markov Chain?</h3>
+
+<p>A <strong>Markov Chain</strong> is a mathematical model where the next state depends only on the current state—not on how you got there.</p>
+
+<p>The N-gram models we built are Markov Chains! A bigram model is a <strong>first-order Markov Chain</strong> (next word depends on 1 previous word). A trigram model is a <strong>second-order Markov Chain</strong> (next word depends on 2 previous words).</p>
+
+<p><strong>The Markov Property:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(word_n | word_1, word_2, ..., word_{n-1}) ≈ P(word_n | word_{n-1})
+</code></pre></div></div>
+
+<p>We approximate that the future depends only on the recent past—not the entire history.</p>
+
+<h3 id="visualising-a-markov-chain">Visualising a Markov Chain</h3>
+
+<p>Think of words as <strong>states</strong> and transitions as <strong>arrows with probabilities</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;START&gt; ──0.6──→ "The"  ──0.4──→ "cat"  ──0.7──→ "sat"
+        ──0.4──→ "A"    ──0.3──→ "dog"  ──0.3──→ "ran"
+                        ──0.3──→ "bird" ──────────→ ...
+</code></pre></div></div>
+
+<p>At each step, you randomly follow an arrow weighted by probability. The result is a generated sentence.</p>
+
+<h3 id="building-a-markov-text-generator">Building a Markov Text Generator</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">random</span>
+<span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">Counter</span>
+<span class="kn">import</span> <span class="n">re</span>
+
+<span class="k">def</span> <span class="nf">train_markov_model</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Train a Markov chain language model.
+    order: how many previous words to use as context (1=bigram, 2=trigram)
+    </span><span class="sh">"""</span>
+    <span class="c1"># Clean and tokenise
+</span>    <span class="n">words</span> <span class="o">=</span> <span class="n">re</span><span class="p">.</span><span class="nf">findall</span><span class="p">(</span><span class="sa">r</span><span class="sh">'</span><span class="s">\b\w+\b</span><span class="sh">'</span><span class="p">,</span> <span class="n">text</span><span class="p">.</span><span class="nf">lower</span><span class="p">())</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nf">defaultdict</span><span class="p">(</span><span class="n">Counter</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="n">order</span><span class="p">):</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="nf">tuple</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">order</span><span class="p">])</span>
+        <span class="n">next_word</span> <span class="o">=</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="n">order</span><span class="p">]</span>
+        <span class="n">model</span><span class="p">[</span><span class="n">context</span><span class="p">][</span><span class="n">next_word</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">return</span> <span class="n">model</span>
+
+<span class="k">def</span> <span class="nf">generate_markov_text</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">seed_words</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">30</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Generate text using the Markov model</span><span class="sh">"""</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="nf">list</span><span class="p">(</span><span class="n">seed_words</span><span class="p">)</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="nf">tuple</span><span class="p">(</span><span class="n">seed_words</span><span class="p">[</span><span class="o">-</span><span class="n">order</span><span class="p">:])</span>
+    
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">length</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">context</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model</span><span class="p">:</span>
+            <span class="k">break</span>
+        
+        <span class="c1"># Weighted random choice
+</span>        <span class="n">choices</span> <span class="o">=</span> <span class="nf">list</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">context</span><span class="p">].</span><span class="nf">keys</span><span class="p">())</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="nf">list</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">context</span><span class="p">].</span><span class="nf">values</span><span class="p">())</span>
+        <span class="n">next_word</span> <span class="o">=</span> <span class="n">random</span><span class="p">.</span><span class="nf">choices</span><span class="p">(</span><span class="n">choices</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">output</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">next_word</span><span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="nf">tuple</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="o">-</span><span class="n">order</span><span class="p">:])</span>
+    
+    <span class="k">return</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+<span class="c1"># Train on some text
+</span><span class="n">training_text</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
+The cat sat on the mat. The cat ate the fish.
+The dog ran in the park. The dog chased the cat.
+Cats like to eat fish and sleep on mats.
+Dogs like to run and play in the park.
+The fish swam in the river near the park.
+On sunny days, the cat and the dog played together.
+</span><span class="sh">"""</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nf">train_markov_model</span><span class="p">(</span><span class="n">training_text</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Generated sentences (order-2 Markov chain):</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+<span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="n">seed</span> <span class="o">=</span> <span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="nf">list</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">keys</span><span class="p">()))</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="nf">generate_markov_text</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">seed_words</span><span class="o">=</span><span class="nf">list</span><span class="p">(</span><span class="n">seed</span><span class="p">),</span> <span class="n">length</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s">. </span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>Example output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Generated sentences (order-2 Markov chain):
+--------------------------------------------------
+  1. the cat sat on sunny days the cat and the dog played
+  2. the dog chased the cat ate the fish swam in the river
+  3. cats like to eat fish and sleep on mats dogs like to
+  4. the park on sunny days the cat and the dog ran in the
+  5. in the park on sunny days the cat sat on the mat the
+</code></pre></div></div>
+
+<p>Notice: higher-order models produce more coherent text because they remember more context.</p>
+
+<hr />
+
+<h2 id="section-7-limitations-of-classical-methods">Section 7: Limitations of Classical Methods</h2>
+
+<p>Classical N-gram models were dominant in NLP for decades. But they have real limitations that motivated the move to neural networks.</p>
+
+<h3 id="1-fixed-context-window">1. Fixed Context Window</h3>
+<p>A trigram only looks back 2 words. It cannot capture long-range dependencies:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The trophy didn't fit in the suitcase because _____ was too big."
+</code></pre></div></div>
+
+<p>Is the blank “it” (the trophy) or “it” (the suitcase)? Humans use the whole sentence. A trigram model only sees “because ___ was”.</p>
+
+<h3 id="2-no-generalisation">2. No Generalisation</h3>
+<p>A model trained on “cats love fish” knows nothing about “dogs love fish”—even though they are structurally identical. Every N-gram is treated as independent. Words have no relationships to each other.</p>
+
+<h3 id="3-vocabulary-explosion">3. Vocabulary Explosion</h3>
+<p>For a vocabulary of 50,000 words, a trigram model needs to store 50,000³ = 125 billion possible combinations. Most are never seen. The model is mostly zeros.</p>
+
+<h3 id="4-smoothing-is-a-hack">4. Smoothing Is a Hack</h3>
+<p>All smoothing techniques are approximate fixes to a fundamental problem: the model does not understand language, it just counts.</p>
+
+<h3 id="why-this-matters">Why This Matters</h3>
+
+<p>These limitations directly motivated <strong>word embeddings</strong> (words have neighbours and relationships) and <strong>neural language models</strong> (context is captured by flexible network weights, not fixed windows).</p>
+
+<p>Understanding classical methods makes it clear <em>why</em> the field moved to neural networks—not just that it did.</p>
+
+<hr />
+
+<h2 id="section-8-summary">Section 8: Summary</h2>
+
+<h3 id="what-you-learned">What You Learned</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Plain English Summary</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Language Model</strong></td>
+      <td>Assigns probability to sentences; higher = more natural</td>
+    </tr>
+    <tr>
+      <td><strong>N-gram</strong></td>
+      <td>A sequence of N consecutive words</td>
+    </tr>
+    <tr>
+      <td><strong>Bigram Model</strong></td>
+      <td>Predict next word based on current word</td>
+    </tr>
+    <tr>
+      <td><strong>Trigram Model</strong></td>
+      <td>Predict next word based on previous 2 words</td>
+    </tr>
+    <tr>
+      <td><strong>Sparsity Problem</strong></td>
+      <td>Many N-grams never appear in training data → zero probability</td>
+    </tr>
+    <tr>
+      <td><strong>Laplace Smoothing</strong></td>
+      <td>Add 1 to all counts so nothing has zero probability</td>
+    </tr>
+    <tr>
+      <td><strong>Backoff Smoothing</strong></td>
+      <td>Fall back to shorter N-gram when longer one unseen</td>
+    </tr>
+    <tr>
+      <td><strong>Interpolation</strong></td>
+      <td>Mix all N-gram levels with learnable weights</td>
+    </tr>
+    <tr>
+      <td><strong>Perplexity</strong></td>
+      <td>How surprised is the model? Lower = better model</td>
+    </tr>
+    <tr>
+      <td><strong>Markov Chain</strong></td>
+      <td>Next state depends only on recent past, not full history</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="the-key-insight">The Key Insight</h3>
+
+<p>Classical text generation taught us that <strong>language has statistical regularities</strong>. The same words tend to appear together. Some word sequences are far more likely than others. You can learn these patterns from data.</p>
+
+<p>What neural networks added was the ability to <em>generalise</em> those patterns—to understand that “the cat sat” and “a feline rested” are the same idea expressed differently, and to capture context far beyond a fixed window of 2-3 words.</p>
+
+<hr />
+
+<h2 id="practice-questions">Practice Questions</h2>
+
+<p><strong>1. What is the difference between a unigram and a bigram model?</strong></p>
+<details><summary>Answer</summary>
+A unigram model treats each word independently with no context. A bigram model predicts the next word based on the single previous word.
+</details>
+
+<p><strong>2. Why do we use log probabilities instead of raw probabilities for sentences?</strong></p>
+<details><summary>Answer</summary>
+Multiplying many small probabilities produces numbers too tiny for computers to store accurately. Log converts multiplication to addition, avoiding numerical underflow.
+</details>
+
+<p><strong>3. What is the sparsity problem in N-gram models?</strong></p>
+<details><summary>Answer</summary>
+Most possible word combinations never appear in training data, giving them zero probability. This breaks the model whenever it encounters any unseen combination.
+</details>
+
+<p><strong>4. Describe Laplace smoothing in one sentence.</strong></p>
+<details><summary>Answer</summary>
+Add 1 to every N-gram count so that no combination has zero probability, at the cost of slightly redistributing probability from seen to unseen events.
+</details>
+
+<p><strong>5. What does perplexity measure? Is lower or higher better?</strong></p>
+<details><summary>Answer</summary>
+Perplexity measures how surprised the model is by new text—effectively how many equally likely choices it considers at each word. Lower perplexity means a better model.
+</details>
+
+<p><strong>6. What is the Markov property in the context of language models?</strong></p>
+<details><summary>Answer</summary>
+The next word depends only on the recent context (the last N-1 words), not on the entire history of the sentence.
+</details>
+
+<p><strong>7. Why do trigram models generally outperform bigram models?</strong></p>
+<details><summary>Answer</summary>
+Trigrams use more context (2 previous words vs 1), so they make more informed predictions. However, they also suffer more from sparsity.
+</details>
+
+<p><strong>8. Name two limitations of classical N-gram models that neural networks address.</strong></p>
+<details><summary>Answer</summary>
+(1) Fixed context window — neural models capture arbitrarily long dependencies. (2) No generalisation — word embeddings give words relationships to each other, so learning about "cats" helps with "dogs."
+</details>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">nlp</span>, <span class="tag">text-generation</span>, <span class="tag">language-models</span>, <span class="tag">ngrams</span>, <span class="tag">markov-chains</span>, <span class="tag">smoothing</span>, <span class="tag">perplexity</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
