@@ -28,18 +28,24 @@ Natural Language Processing (NLP) — teaching computers to understand human lan
 
 7. **[Semantic Processing Part 2 - Entities, Roles, and Coreference]({{ site.baseurl }}/topics/semantic-processing-part-2-entities-roles-and-coreference)** - Semantic Role Labelling, Named Entity Recognition, IOB tagging, Conditional Random Fields, and Coreference Resolution
 
+**Text Representation and Unsupervised Modelling:**
+
+8. **[Text Representation and Unsupervised Modelling]({{ site.baseurl }}/topics/text-representation-and-unsupervised-modelling-a-friendly-guide)** - Bag-of-Words, TF-IDF, Word Embeddings (Word2Vec/GloVe), and Topic Modelling with NMF
+
 **Classical Text Generation:**
 
-8. **[Classical Text Generation - A Friendly Guide]({{ site.baseurl }}/topics/classical-text-generation-a-friendly-guide)** - N-gram language models, Markov chains, smoothing techniques, perplexity, and the foundations of modern text generation
+9. **[Classical Text Generation Part 1 - Language Models and Markov Chains]({{ site.baseurl }}/topics/classical-text-generation-a-friendly-guide)** - N-gram language models, Markov chains, smoothing techniques, and perplexity
+
+10. **[Classical Text Generation Part 2 - Summarisation and Translation]({{ site.baseurl }}/topics/classical-text-generation-part-2-summarisation-and-translation)** - Sentence generation strategies (beam search, temperature), extractive summarisation (TextRank), and statistical machine translation
 
 **Applying ML to NLP:**
 
-9. **[Machine Learning with NLP - A Friendly Guide]({{ site.baseurl }}/topics/machine-learning-with-nlp-a-friendly-guide)** - How machine learning transforms text into predictions (sentiment analysis, classification, NER)
+11. **[Machine Learning with NLP - A Friendly Guide]({{ site.baseurl }}/topics/machine-learning-with-nlp-a-friendly-guide)** - How machine learning transforms text into predictions (sentiment analysis, classification, NER)
 
 ---
 
 **Learning Path:**
 
-Start with the **Introduction** to understand the big picture, then move through **Lexical Processing** to learn how computers break down text. Continue with **Syntactic Processing** (Parts 1-3) to understand sentence structure. Then explore **Semantic Processing** (Parts 1-2) to understand meaning, entities, and references. Learn how computers generate text in **Classical Text Generation**. Finally, see how **ML with NLP** builds practical applications on top of all these foundations.
+Start with the **Introduction** to understand the big picture, then move through **Lexical Processing** to learn how computers break down text. Continue with **Syntactic Processing** (Parts 1-3) for sentence structure. Explore **Semantic Processing** (Parts 1-2) for meaning and entities. Learn how to represent text as numbers in **Text Representation**. Then see how classical systems **generate, summarise, and translate** text. Finally, see how **ML with NLP** builds practical applications on top of all these foundations.
 
 All guides use friendly explanations, real-world examples, and working Python code you can run yourself.
