@@ -1,0 +1,463 @@
+<h1 id="understanding-neurons-and-neural-networks--a-friendly-guide">Understanding Neurons and Neural Networks — A Friendly Guide</h1>
+
+<p>Deep learning starts with one simple idea: a computer can learn by imitating how brain cells work. In this guide, we will build that idea from the ground up.</p>
+
+<hr />
+
+<h2 id="1-the-big-picture">1. The Big Picture</h2>
+
+<p>A <strong>neural network</strong> is a stack of tiny calculators called <strong>neurons</strong>. Each neuron looks at some inputs, multiplies them by numbers called <strong>weights</strong>, adds a small shift called a <strong>bias</strong>, and then applies a non-linearity called an <strong>activation function</strong>.</p>
+
+<p>The magic is that the network learns the weights and biases from data.</p>
+
+<hr />
+
+<h2 id="2-the-biological-inspiration">2. The Biological Inspiration</h2>
+
+<p>Your brain contains about 86 billion <strong>neurons</strong>. Each neuron has:</p>
+
+<ul>
+  <li><strong>Dendrites</strong> — branches that receive signals from other neurons</li>
+  <li><strong>Soma</strong> — the cell body that combines those signals</li>
+  <li><strong>Axon</strong> — a long fibre that sends out a signal if the combined input is strong enough</li>
+</ul>
+
+<p>A neuron fires when the incoming signals are strong enough. This “all-or-nothing” behaviour inspired the artificial neuron.</p>
+
+<hr />
+
+<h2 id="3-the-artificial-neuron">3. The Artificial Neuron</h2>
+
+<p>Imagine a neuron that decides whether to buy a house based on three inputs:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Input</th>
+      <th>Value</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">x₁</code></td>
+      <td>1200</td>
+      <td>size in square feet</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">x₂</code></td>
+      <td>3</td>
+      <td>number of bedrooms</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">x₃</code></td>
+      <td>2</td>
+      <td>distance to city centre in km</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each input gets a <strong>weight</strong> that tells the neuron how important it is:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Weight</th>
+      <th>Value</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">w₁</code></td>
+      <td>0.5</td>
+      <td>size matters a lot</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">w₂</code></td>
+      <td>0.2</td>
+      <td>bedrooms matter a little</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">w₃</code></td>
+      <td>-0.4</td>
+      <td>distance hurts the score</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The neuron computes a <strong>weighted sum</strong> and then adds a <strong>bias</strong>.</p>
+
+<hr />
+
+<h2 id="4-the-formula">4. The Formula</h2>
+
+<h3 id="weighted-sum">Weighted Sum</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = (x₁ × w₁) + (x₂ × w₂) + (x₃ × w₃) + b
+</code></pre></div></div>
+
+<p>In short form:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = Σ (xᵢ × wᵢ) + b
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Think of <code class="language-plaintext highlighter-rouge">Σ</code> as a “shopping basket” — you throw all the <code class="language-plaintext highlighter-rouge">x × w</code> items in, then add the bias as the tip.</p>
+</blockquote>
+
+<h3 id="worked-example">Worked Example</h3>
+
+<p>Using the house example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = (1200 × 0.5) + (3 × 0.2) + (2 × -0.4) + 10
+z = 600 + 0.6 - 0.8 + 10
+z = 609.8
+</code></pre></div></div>
+
+<p>The raw score <code class="language-plaintext highlighter-rouge">z = 609.8</code> is not yet useful. We pass it through an <strong>activation function</strong>.</p>
+
+<hr />
+
+<h2 id="5-activation-functions">5. Activation Functions</h2>
+
+<p>An activation function decides whether the neuron “fires” and how strongly.</p>
+
+<h3 id="sigmoid--the-squeezes-everything-to-0-1-function">Sigmoid — The Squeezes-Everything-To-0-1 Function</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>σ(z) = 1 / (1 + e^(-z))
+</code></pre></div></div>
+
+<ul>
+  <li>Output is always between 0 and 1</li>
+  <li>Useful for probabilities</li>
+</ul>
+
+<p><strong>Memory trick:</strong> The letter <code class="language-plaintext highlighter-rouge">S</code> looks like the sigmoid curve — a smooth “S” that squashes everything.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">math</span>
+
+<span class="k">def</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">math</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z</span><span class="p">))</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">sigmoid</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>    <span class="c1"># 0.5 — exactly the middle
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">sigmoid</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>   <span class="c1"># close to 1.0
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">sigmoid</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">))</span>  <span class="c1"># close to 0.0
+</span></code></pre></div></div>
+
+<h3 id="relu--the-if-negative-zero-function">ReLU — The “If Negative, Zero” Function</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ReLU(z) = max(0, z)
+</code></pre></div></div>
+
+<ul>
+  <li>If input is positive, leave it alone</li>
+  <li>If input is negative, make it zero</li>
+  <li>Most popular activation in modern deep learning</li>
+</ul>
+
+<p><strong>Memory trick:</strong> ReLU is like a bouncer at a club — positive numbers get in, negative numbers are blocked.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">relu</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">relu</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>   <span class="c1"># 5
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">relu</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">))</span>  <span class="c1"># 0
+</span></code></pre></div></div>
+
+<h3 id="tanh--the-squeezes-everything-to-minus-1-1-function">Tanh — The Squeezes-Everything-To-Minus-1-1 Function</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z))
+</code></pre></div></div>
+
+<ul>
+  <li>Output is between -1 and 1</li>
+  <li>Useful when negative values are meaningful</li>
+</ul>
+
+<p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">tanh</code> is sigmoid stretched to go from -1 to 1 instead of 0 to 1.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">math</span>
+
+<span class="k">def</span> <span class="nf">tanh</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">math</span><span class="p">.</span><span class="nf">tanh</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">tanh</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>    <span class="c1"># 0.0
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">tanh</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>    <span class="c1"># 0.96
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">tanh</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">))</span>   <span class="c1"># -0.96
+</span></code></pre></div></div>
+
+<h3 id="activation-function-cheat-sheet">Activation Function Cheat Sheet</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Formula</th>
+      <th>Output Range</th>
+      <th>When to Use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Sigmoid</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">1 / (1 + e^(-z))</code></td>
+      <td>0 to 1</td>
+      <td>Binary classification output</td>
+    </tr>
+    <tr>
+      <td><strong>Tanh</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">(e^z - e^(-z)) / (e^z + e^(-z))</code></td>
+      <td>-1 to 1</td>
+      <td>Hidden layers in older networks</td>
+    </tr>
+    <tr>
+      <td><strong>ReLU</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">max(0, z)</code></td>
+      <td>0 to ∞</td>
+      <td>Most modern hidden layers</td>
+    </tr>
+    <tr>
+      <td><strong>Softmax</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">e^(zᵢ) / Σ e^(zⱼ)</code></td>
+      <td>0 to 1 (sums to 1)</td>
+      <td>Multi-class classification output</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p><strong>Memory trick for Softmax:</strong> It turns a list of scores into probabilities that add up to 1 — like a normalised “ranking”.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="6-from-one-neuron-to-a-network">6. From One Neuron to a Network</h2>
+
+<p>A single neuron is just a linear model. To learn complex patterns, we connect many neurons together.</p>
+
+<h3 id="layers">Layers</h3>
+
+<ul>
+  <li><strong>Input layer</strong> — receives the raw data</li>
+  <li><strong>Hidden layer</strong> — neurons that transform the input</li>
+  <li><strong>Output layer</strong> — produces the final prediction</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input Layer    Hidden Layer    Output Layer
+
+   x₁ ───────────→ ● ───────────────→ ●
+                   ↑                   ↑
+   x₂ ───────────→ ● ───────────────→ ●
+                   ↑                   ↑
+   x₃ ───────────→ ● ───────────────→ ●
+</code></pre></div></div>
+
+<p><strong>Why “deep”?</strong> Because we stack many hidden layers. A network with 3+ hidden layers is usually called “deep”.</p>
+
+<h3 id="why-depth-matters">Why Depth Matters</h3>
+
+<p>Think of recognising a face:</p>
+
+<ul>
+  <li>Layer 1: detects edges</li>
+  <li>Layer 2: combines edges into eyes, noses, mouths</li>
+  <li>Layer 3: combines features into full faces</li>
+</ul>
+
+<p>Each layer builds a slightly more complex representation. Early layers see simple patterns; deeper layers see concepts.</p>
+
+<hr />
+
+<h2 id="7-the-forward-pass">7. The Forward Pass</h2>
+
+<p>The forward pass is what happens when data flows through the network to produce a prediction.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Layer 1:  z₁ = x · W₁ + b₁        a₁ = activation(z₁)
+Layer 2:  z₂ = a₁ · W₂ + b₂       a₂ = activation(z₂)
+Output:   z₃ = a₂ · W₃ + b₃        y_hat = activation(z₃)
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">z</code> is the “raw score” (before activation), and <code class="language-plaintext highlighter-rouge">a</code> is the “activated” value (after activation).</p>
+</blockquote>
+
+<h3 id="python-example-with-numpy">Python Example with NumPy</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Inputs: 1 sample, 3 features
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+
+<span class="c1"># One hidden layer with 2 neurons
+</span><span class="n">W1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span>     <span class="c1"># weights for hidden neuron 1
+</span>               <span class="p">[</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>    <span class="c1"># weights for hidden neuron 2
+</span>               <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">]])</span>    <span class="c1"># weights for hidden neuron 3
+</span><span class="n">b1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">])</span>
+
+<span class="c1"># Output layer: 1 neuron
+</span><span class="n">W2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mf">0.7</span><span class="p">],</span>
+               <span class="p">[</span><span class="o">-</span><span class="mf">0.7</span><span class="p">]])</span>
+<span class="n">b2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">2</span><span class="p">])</span>
+
+<span class="c1"># Forward pass
+</span><span class="n">z1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">W1</span><span class="p">)</span> <span class="o">+</span> <span class="n">b1</span>
+<span class="n">a1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">z1</span><span class="p">)</span>   <span class="c1"># ReLU
+</span>
+<span class="n">z2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">W2</span><span class="p">)</span> <span class="o">+</span> <span class="n">b2</span>
+<span class="n">output</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z2</span><span class="p">))</span>  <span class="c1"># sigmoid
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Raw hidden scores: </span><span class="si">{</span><span class="n">z1</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Activated hidden:  </span><span class="si">{</span><span class="n">a1</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Final prediction:  </span><span class="si">{</span><span class="n">output</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="8-what-the-network-learns">8. What the Network Learns</h2>
+
+<p>The network learns two things:</p>
+
+<ol>
+  <li><strong>Weights</strong> — how strongly each input should influence each neuron</li>
+  <li><strong>Biases</strong> — the baseline tendency of each neuron to fire</li>
+</ol>
+
+<p>During training, we compare the network’s prediction <code class="language-plaintext highlighter-rouge">ŷ</code> to the true answer <code class="language-plaintext highlighter-rouge">y</code>, compute an error, and use an algorithm called <strong>backpropagation</strong> to update every weight and bias slightly.</p>
+
+<p>We will cover backpropagation in a later guide. For now, remember:</p>
+
+<blockquote>
+  <p><strong>Learning = changing weights and biases to make the error smaller.</strong></p>
+</blockquote>
+
+<hr />
+
+<h2 id="9-common-mistakes">9. Common Mistakes</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mistake</th>
+      <th>Why It Happens</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Forgetting the bias</td>
+      <td>Bias lets the neuron shift its decision boundary</td>
+      <td>Always include <code class="language-plaintext highlighter-rouge">+ b</code></td>
+    </tr>
+    <tr>
+      <td>Using sigmoid in hidden layers</td>
+      <td>Sigmoid can cause vanishing gradients</td>
+      <td>Use ReLU instead</td>
+    </tr>
+    <tr>
+      <td>Thinking one neuron is enough</td>
+      <td>A single neuron is just a linear classifier</td>
+      <td>Use hidden layers for complex tasks</td>
+    </tr>
+    <tr>
+      <td>Using wrong activation for output</td>
+      <td>Regression needs no activation; classification needs sigmoid/softmax</td>
+      <td>Match activation to task</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-quick-review">10. Quick Review</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>What It Is</th>
+      <th>Formula / Memory Trick</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Neuron</strong></td>
+      <td>A tiny computing unit</td>
+      <td>Inputs → weights → bias → activation</td>
+    </tr>
+    <tr>
+      <td><strong>Weighted sum</strong></td>
+      <td>Adds up the influence of all inputs</td>
+      <td><code class="language-plaintext highlighter-rouge">z = Σ xᵢwᵢ + b</code> — “shopping basket”</td>
+    </tr>
+    <tr>
+      <td><strong>Bias</strong></td>
+      <td>A constant shift</td>
+      <td><code class="language-plaintext highlighter-rouge">+ b</code> — the neuron’s starting mood</td>
+    </tr>
+    <tr>
+      <td><strong>Activation</strong></td>
+      <td>Decides how strongly the neuron fires</td>
+      <td>Sigmoid = S-curve; ReLU = bouncer</td>
+    </tr>
+    <tr>
+      <td><strong>Layer</strong></td>
+      <td>A group of neurons</td>
+      <td>Input → Hidden → Output</td>
+    </tr>
+    <tr>
+      <td><strong>Deep network</strong></td>
+      <td>A network with many hidden layers</td>
+      <td>Each layer learns a richer feature</td>
+    </tr>
+    <tr>
+      <td><strong>Forward pass</strong></td>
+      <td>Data flowing through the network</td>
+      <td><code class="language-plaintext highlighter-rouge">z = xW + b</code>, then <code class="language-plaintext highlighter-rouge">a = activation(z)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="11-try-it-yourself">11. Try It Yourself</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># A tiny network: 2 inputs, 1 hidden neuron, 1 output neuron
+</span>
+<span class="k">def</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">relu</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="p">.</span><span class="nf">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+<span class="c1"># Inputs: temperature (°C) and humidity (%)
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">25.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">])</span>
+
+<span class="c1"># Hidden neuron: weights + bias
+</span><span class="n">W1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">0.3</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">])</span>
+<span class="n">b1</span> <span class="o">=</span> <span class="mf">5.0</span>
+
+<span class="c1"># Output neuron: weight + bias
+</span><span class="n">W2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">0.8</span><span class="p">])</span>
+<span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">3.0</span>
+
+<span class="c1"># Forward pass
+</span><span class="n">hidden</span> <span class="o">=</span> <span class="nf">relu</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">W1</span><span class="p">)</span> <span class="o">+</span> <span class="n">b1</span><span class="p">)</span>
+<span class="n">output</span> <span class="o">=</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">hidden</span><span class="p">,</span> <span class="n">W2</span><span class="p">)</span> <span class="o">+</span> <span class="n">b2</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Will it rain? Probability: </span><span class="si">{</span><span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>A neural network is a stack of artificial neurons.</li>
+  <li>Each neuron computes <code class="language-plaintext highlighter-rouge">z = Σ xᵢwᵢ + b</code> and then applies an activation function.</li>
+  <li>Sigmoid outputs probabilities between 0 and 1; ReLU is the most common hidden-layer activation.</li>
+  <li>Depth lets the network learn increasingly complex features.</li>
+  <li>During training, the network learns weights and biases to reduce prediction error.</li>
+</ul>
