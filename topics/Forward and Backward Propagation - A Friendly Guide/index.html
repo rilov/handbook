@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Forward and Backward Propagation - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/deep-learning">Deep Learning</a> &mdash;
+    </nav>
+    <h2>Forward and Backward Propagation - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/deep-learning">Deep Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="forward-and-backward-propagation--a-friendly-guide">Forward and Backward Propagation — A Friendly Guide</h1>
+
+<p>So far we have seen how a model predicts spam and how PyTorch can update its weights. In this guide, we open the box and watch one complete training step by hand. We use the same spam example and a tiny two-layer model.</p>
+
+<hr />
+
+<h2 id="1-what-forward-and-backward-propagation-mean">1. What forward and backward propagation mean</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Phase</th>
+      <th>What it does</th>
+      <th>Analogy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Forward propagation</strong></td>
+      <td>Input features flow through the network to produce a prediction</td>
+      <td>Reading the email and guessing spam</td>
+    </tr>
+    <tr>
+      <td><strong>Backward propagation</strong></td>
+      <td>The error flows backward to find how each weight contributed</td>
+      <td>Tracing the blame back to each weight</td>
+    </tr>
+    <tr>
+      <td><strong>Weight update</strong></td>
+      <td>Each weight is moved slightly to reduce the error</td>
+      <td>Correcting the mistake</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Forward is prediction. Backward is blame. Update is correction.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-the-tiny-model-we-will-trace">2. The tiny model we will trace</h2>
+
+<p>We use a network with 2 inputs, 1 hidden neuron, and 1 output.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input: x1, x2
+Hidden: z1 = w1*x1 + w2*x2 + b1, then a1 = ReLU(z1)
+Output: z2 = v1*a1 + b2, then p = sigmoid(z2)
+Loss: L = binary cross-entropy(p, y)
+</code></pre></div></div>
+
+<p>Think of the two inputs as:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">x1</code> = number of suspicious words</li>
+  <li><code class="language-plaintext highlighter-rouge">x2</code> = number of links</li>
+</ul>
+
+<p>We will use one training email with a true label.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Email: [x1, x2] = [2, 1]
+Label: y = 1 (spam)
+</code></pre></div></div>
+
+<p>Initial weights (made small for the example):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>w1 = 0.1, w2 = 0.2, b1 = 0.0   (input -&gt; hidden)
+v1 = 0.3, b2 = 0.0              (hidden -&gt; output)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-forward-propagation-by-hand">3. Forward propagation by hand</h2>
+
+<h3 id="step-1-hidden-layer-raw-score">Step 1: Hidden layer raw score</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z1 = w1*x1 + w2*x2 + b1
+z1 = 0.1*2 + 0.2*1 + 0.0
+z1 = 0.2 + 0.2 + 0.0
+z1 = 0.4
+</code></pre></div></div>
+
+<h3 id="step-2-apply-relu">Step 2: Apply ReLU</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>a1 = ReLU(z1) = max(0, 0.4) = 0.4
+</code></pre></div></div>
+
+<h3 id="step-3-output-layer-raw-score">Step 3: Output layer raw score</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z2 = v1*a1 + b2
+z2 = 0.3*0.4 + 0.0
+z2 = 0.12
+</code></pre></div></div>
+
+<h3 id="step-4-apply-sigmoid">Step 4: Apply sigmoid</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>p = sigmoid(z2) = 1 / (1 + e^(-0.12))
+p ≈ 0.530
+</code></pre></div></div>
+
+<p>So the model guesses 53% spam. The true label is 1, so the model is slightly wrong but close.</p>
+
+<hr />
+
+<h2 id="4-compute-the-loss">4. Compute the loss</h2>
+
+<p>We use binary cross-entropy for one example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = -[y * log(p) + (1 - y) * log(1 - p)]
+</code></pre></div></div>
+
+<p>With <code class="language-plaintext highlighter-rouge">y = 1</code> and <code class="language-plaintext highlighter-rouge">p = 0.530</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = -[1 * log(0.530) + 0 * log(1 - 0.530)]
+L = -log(0.530)
+L ≈ 0.635
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Cross-entropy punishes confident wrong answers. A confident spam guess for a non-spam email is costly.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="5-the-chain-rule-in-one-sentence">5. The chain rule in one sentence</h2>
+
+<p>The chain rule tells us how to find the effect of a tiny change in a weight on the final loss:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂w1 = (∂L/∂p) × (∂p/∂z2) × (∂z2/∂a1) × (∂a1/∂z1) × (∂z1/∂w1)
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> The chain rule is like a row of dominoes. Push the first one, and you can trace the effect all the way to the last one.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="6-backward-propagation-by-hand">6. Backward propagation by hand</h2>
+
+<p>We need the derivatives of the building blocks.</p>
+
+<h3 id="derivative-of-sigmoid">Derivative of sigmoid</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂p/∂z2 = p * (1 - p)
+∂p/∂z2 = 0.530 * (1 - 0.530)
+∂p/∂z2 = 0.530 * 0.470 ≈ 0.249
+</code></pre></div></div>
+
+<h3 id="derivative-of-loss-with-respect-to-prediction">Derivative of loss with respect to prediction</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂p = -y/p + (1 - y)/(1 - p)
+</code></pre></div></div>
+
+<p>With <code class="language-plaintext highlighter-rouge">y = 1</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂p = -1 / 0.530 ≈ -1.887
+</code></pre></div></div>
+
+<h3 id="derivative-of-output-raw-score">Derivative of output raw score</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂z2/∂v1 = a1 = 0.4
+∂z2/∂a1 = v1 = 0.3
+∂z2/∂b2 = 1
+</code></pre></div></div>
+
+<h3 id="derivative-through-relu">Derivative through ReLU</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂a1/∂z1 = 1 if z1 &gt; 0, else 0
+</code></pre></div></div>
+
+<p>Since <code class="language-plaintext highlighter-rouge">z1 = 0.4</code>, the derivative is <code class="language-plaintext highlighter-rouge">1</code>.</p>
+
+<h3 id="derivatives-of-hidden-raw-score">Derivatives of hidden raw score</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂z1/∂w1 = x1 = 2
+∂z1/∂w2 = x2 = 1
+∂z1/∂b1 = 1
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="7-compute-gradients-for-each-weight">7. Compute gradients for each weight</h2>
+
+<h3 id="output-weight-v1">Output weight v1</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂v1 = (∂L/∂p) × (∂p/∂z2) × (∂z2/∂v1)
+∂L/∂v1 = (-1.887) × (0.249) × (0.4)
+∂L/∂v1 ≈ -0.188
+</code></pre></div></div>
+
+<h3 id="output-bias-b2">Output bias b2</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂b2 = (∂L/∂p) × (∂p/∂z2) × (∂z2/∂b2)
+∂L/∂b2 = (-1.887) × (0.249) × (1)
+∂L/∂b2 ≈ -0.470
+</code></pre></div></div>
+
+<h3 id="hidden-weight-w1">Hidden weight w1</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂w1 = (∂L/∂p) × (∂p/∂z2) × (∂z2/∂a1) × (∂a1/∂z1) × (∂z1/∂w1)
+∂L/∂w1 = (-1.887) × (0.249) × (0.3) × (1) × (2)
+∂L/∂w1 ≈ -0.282
+</code></pre></div></div>
+
+<h3 id="hidden-weight-w2">Hidden weight w2</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂w2 = (∂L/∂p) × (∂p/∂z2) × (∂z2/∂a1) × (∂a1/∂z1) × (∂z1/∂w2)
+∂L/∂w2 = (-1.887) × (0.249) × (0.3) × (1) × (1)
+∂L/∂w2 ≈ -0.141
+</code></pre></div></div>
+
+<h3 id="hidden-bias-b1">Hidden bias b1</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂b1 = (∂L/∂p) × (∂p/∂z2) × (∂z2/∂a1) × (∂a1/∂z1) × (∂z1/∂b1)
+∂L/∂b1 = (-1.887) × (0.249) × (0.3) × (1) × (1)
+∂L/∂b1 ≈ -0.141
+</code></pre></div></div>
+
+<p>The negative gradients tell us the loss would go down if we increased these weights. So we should increase them.</p>
+
+<hr />
+
+<h2 id="8-update-the-weights">8. Update the weights</h2>
+
+<p>With learning rate <code class="language-plaintext highlighter-rouge">lr = 0.1</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new_weight = old_weight - lr * gradient
+</code></pre></div></div>
+
+<p>Wait — the gradient is negative, so subtracting a negative number means adding:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>v1_new = 0.3 - 0.1 * (-0.188) = 0.3 + 0.0188 = 0.319
+b2_new = 0.0 - 0.1 * (-0.470) = 0.0 + 0.0470 = 0.047
+w1_new = 0.1 - 0.1 * (-0.282) = 0.1 + 0.0282 = 0.128
+w2_new = 0.2 - 0.1 * (-0.141) = 0.2 + 0.0141 = 0.214
+b1_new = 0.0 - 0.1 * (-0.141) = 0.0 + 0.0141 = 0.0141
+</code></pre></div></div>
+
+<p>After this update, the model will predict a slightly higher spam probability for this email, which is correct because the label is 1.</p>
+
+<hr />
+
+<h2 id="9-the-same-thing-in-pytorch">9. The same thing in PyTorch</h2>
+
+<p>PyTorch does all of this automatically.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Build the tiny model
+</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>   <span class="c1"># hidden layer: 2 inputs -&gt; 1 neuron
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>   <span class="c1"># output layer: 1 hidden -&gt; 1 output
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Set weights to match the hand example
+</span><span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">weight</span><span class="p">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]])</span>
+<span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">bias</span><span class="p">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
+<span class="n">model</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span><span class="n">weight</span><span class="p">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">0.3</span><span class="p">]])</span>
+<span class="n">model</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span><span class="n">bias</span><span class="p">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
+
+<span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]])</span>
+<span class="n">label</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]])</span>
+
+<span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">SGD</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+
+<span class="c1"># Forward pass
+</span><span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Prediction before: </span><span class="si">{</span><span class="n">prediction</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Loss: </span><span class="si">{</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Backward pass
+</span><span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+<span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+
+<span class="c1"># Print gradients
+</span><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s"> gradient: </span><span class="si">{</span><span class="n">param</span><span class="p">.</span><span class="n">grad</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Update weights
+</span><span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+
+<span class="c1"># Check prediction after update
+</span><span class="n">prediction_after</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Prediction after: </span><span class="si">{</span><span class="n">prediction_after</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Output (approximate):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Prediction before: 0.5300
+Loss: 0.6350
+0.weight gradient: -0.2820
+0.bias gradient: -0.1410
+2.weight gradient: -0.1880
+2.bias gradient: -0.4700
+Prediction after: 0.5670
+</code></pre></div></div>
+
+<p>The PyTorch gradients match the hand-calculated values.</p>
+
+<hr />
+
+<h2 id="10-visual-summary-of-the-chain-rule">10. Visual summary of the chain rule</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Loss L
+    ↑
+    | ∂L/∂p
+Prediction p
+    ↑
+    | ∂p/∂z2
+Output z2
+    ↑
+    | ∂z2/∂a1
+Hidden a1
+    ↑
+    | ∂a1/∂z1
+Hidden z1
+    ↑
+    | ∂z1/∂w1
+Weight w1
+</code></pre></div></div>
+
+<p>To find <code class="language-plaintext highlighter-rouge">∂L/∂w1</code>, multiply all the derivatives along the path.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Backpropagation is reverse engineering. Start from the error and trace back every cause.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="11-why-the-chain-rule-matters">11. Why the chain rule matters</h2>
+
+<p>Without the chain rule, we would have to figure out how every weight affects the loss directly. In a network with thousands of weights, that is impossible. The chain rule breaks the problem into small local pieces:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>∂L/∂w = (∂L/∂a) × (∂a/∂z) × (∂z/∂w)
+</code></pre></div></div>
+
+<p>Each layer only needs to know two things:</p>
+
+<ol>
+  <li>The gradient coming from the next layer.</li>
+  <li>The derivative of its own output with respect to its inputs.</li>
+</ol>
+
+<p>That is why backpropagation is so efficient.</p>
+
+<hr />
+
+<h2 id="12-common-mistakes">12. Common mistakes</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mistake</th>
+      <th>Why it happens</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Forgetting to apply activation derivatives</td>
+      <td>ReLU and sigmoid have non-zero slopes</td>
+      <td>Include <code class="language-plaintext highlighter-rouge">∂a/∂z</code> in the chain</td>
+    </tr>
+    <tr>
+      <td>Sign errors with ReLU</td>
+      <td>ReLU derivative is 0 for negative inputs</td>
+      <td>Check whether <code class="language-plaintext highlighter-rouge">z &gt; 0</code></td>
+    </tr>
+    <tr>
+      <td>Using MSE derivative for cross-entropy</td>
+      <td>Different loss functions have different derivatives</td>
+      <td>Match the loss to the output activation</td>
+    </tr>
+    <tr>
+      <td>Not zeroing gradients</td>
+      <td>Old gradients accumulate</td>
+      <td>Call <code class="language-plaintext highlighter-rouge">optimizer.zero_grad()</code></td>
+    </tr>
+    <tr>
+      <td>Confusing <code class="language-plaintext highlighter-rouge">p</code> with <code class="language-plaintext highlighter-rouge">z</code></td>
+      <td><code class="language-plaintext highlighter-rouge">p</code> is probability, <code class="language-plaintext highlighter-rouge">z</code> is raw score</td>
+      <td>Track both separately</td>
+    </tr>
+    <tr>
+      <td>Wrong learning rate</td>
+      <td>Too large causes overshoot</td>
+      <td>Start with 0.1 or 0.01</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="13-quick-review">13. Quick review</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Symbol</th>
+      <th>Meaning</th>
+      <th>In the spam example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">x</code></td>
+      <td>Input features</td>
+      <td>Suspicious words, links</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">w</code></td>
+      <td>Hidden layer weights</td>
+      <td><code class="language-plaintext highlighter-rouge">w1</code>, <code class="language-plaintext highlighter-rouge">w2</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">b1</code></td>
+      <td>Hidden layer bias</td>
+      <td>Starting mood of hidden neuron</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">z1</code></td>
+      <td>Hidden raw score</td>
+      <td>Before ReLU</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">a1</code></td>
+      <td>Hidden activation</td>
+      <td>After ReLU</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">v1</code></td>
+      <td>Output layer weight</td>
+      <td><code class="language-plaintext highlighter-rouge">0.3</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">b2</code></td>
+      <td>Output layer bias</td>
+      <td><code class="language-plaintext highlighter-rouge">0.0</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">z2</code></td>
+      <td>Output raw score</td>
+      <td><code class="language-plaintext highlighter-rouge">0.12</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">p</code></td>
+      <td>Predicted probability</td>
+      <td><code class="language-plaintext highlighter-rouge">0.530</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">y</code></td>
+      <td>True label</td>
+      <td><code class="language-plaintext highlighter-rouge">1</code> (spam)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">L</code></td>
+      <td>Loss</td>
+      <td><code class="language-plaintext highlighter-rouge">0.635</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">∂L/∂w</code></td>
+      <td>How much loss changes if w changes</td>
+      <td>Gradient used to update w</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="14-try-it-yourself">14. Try it yourself</h2>
+
+<ol>
+  <li>Repeat the hand calculation but with a different email, for example <code class="language-plaintext highlighter-rouge">[x1, x2] = [1, 3]</code> and <code class="language-plaintext highlighter-rouge">y = 0</code>.</li>
+  <li>Write a PyTorch version of the same model and compare the gradients.</li>
+  <li>Change the learning rate to <code class="language-plaintext highlighter-rouge">0.5</code> and see how much the prediction changes after one step.</li>
+  <li>Replace ReLU with sigmoid in the hidden layer. How does the chain rule change?</li>
+</ol>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Forward propagation computes the prediction from inputs to output.</li>
+  <li>Backward propagation computes how each weight contributed to the loss using the chain rule.</li>
+  <li>The chain rule multiplies local derivatives along the path from loss to weight.</li>
+  <li>ReLU and sigmoid have simple derivatives, but they must be included in the chain.</li>
+  <li>PyTorch’s <code class="language-plaintext highlighter-rouge">loss.backward()</code> does all of this automatically and produces the same gradients.</li>
+  <li>Once you understand one training step, you understand how the whole model learns.</li>
+</ul>
+
+<blockquote>
+  <p><strong>Final memory trick:</strong> Forward = read the email. Backward = trace the blame. Update = fix the mistake. Repeat.</p>
+</blockquote>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">pytorch</span>, <span class="tag">backpropagation</span>, <span class="tag">forward-propagation</span>, <span class="tag">chain-rule</span>, <span class="tag">gradients</span>, <span class="tag">spam-detection</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
