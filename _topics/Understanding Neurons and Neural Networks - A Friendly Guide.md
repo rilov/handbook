@@ -66,6 +66,8 @@ Converted into numbers:
 [3, 1, 0, 0.20, 47]
 ```
 
+> **Who decides what counts as suspicious?** In this simple model, a human does. A person might write a list of words like "win", "free", "prize", and "money", then count how many appear in the email. The neural network only learns how much weight to give that count. Later, in deep learning, the model can learn which words are suspicious directly from thousands of labelled emails.
+
 This collection of numbers is called a **feature vector**. In PyTorch, it becomes a **tensor**:
 
 ```python
