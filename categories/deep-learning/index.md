@@ -8,14 +8,14 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 
 **Recommended Learning Path:**
 
-1. **[Understanding Neurons and Neural Networks]({{ site.baseurl }}/topics/understanding-neurons-and-neural-networks)** — Turn a real email into numbers, multiply by weights, add a bias, apply sigmoid, and produce a spam probability. Includes a neural network diagram.
-2. **[From Machine Learning to Deep Learning]({{ site.baseurl }}/topics/from-machine-learning-to-deep-learning)** — Compare hand-crafted spam features with learned features, and see why hidden layers and non-linearity matter.
-3. **[Tensors and Tensor Operations]({{ site.baseurl }}/topics/tensors-and-tensor-operations)** — The same email features as tensors: shapes, batches, matrix multiplication, broadcasting, and GPU movement.
-4. **[Data Handling with Dataset and DataLoader]({{ site.baseurl }}/topics/data-handling-with-dataset-and-dataloader)** — Build a spam `Dataset`, create batches, shuffle, split train/val/test, and normalise features.
-5. **[Parameters in PyTorch]({{ site.baseurl }}/topics/parameters-in-pytorch)** — Weights, biases, `requires_grad`, parameter counting, freezing, initialisation, saving, and loading using the spam model.
-6. **[Forward and Backward Propagation]({{ site.baseurl }}/topics/forward-and-backward-propagation)** — A worked numerical example showing exactly how forward prediction and backpropagation with the chain rule update a two-layer spam model.
-7. **[Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How spam detection mirrors neurons, synapses, memory, attention, and generalisation in the brain.
-8. **[Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
+1. **[Part 1: Understanding Neurons and Neural Networks]({{ site.baseurl }}/topics/understanding-neurons-and-neural-networks)** — Turn a real email into numbers, multiply by weights, add a bias, apply sigmoid, and produce a spam probability. Includes a neural network diagram.
+2. **[Part 2: From Machine Learning to Deep Learning]({{ site.baseurl }}/topics/from-machine-learning-to-deep-learning)** — Compare hand-crafted spam features with learned features, and see why hidden layers and non-linearity matter.
+3. **[Part 3: Tensors and Tensor Operations]({{ site.baseurl }}/topics/tensors-and-tensor-operations)** — The same email features as tensors: shapes, batches, matrix multiplication, broadcasting, and GPU movement.
+4. **[Part 4: Data Handling with Dataset and DataLoader]({{ site.baseurl }}/topics/data-handling-with-dataset-and-dataloader)** — Build a spam `Dataset`, create batches, shuffle, split train/val/test, and normalise features.
+5. **[Part 5: Parameters in PyTorch]({{ site.baseurl }}/topics/parameters-in-pytorch)** — Weights, biases, `requires_grad`, parameter counting, freezing, initialisation, saving, and loading using the spam model.
+6. **[Part 6: Forward and Backward Propagation]({{ site.baseurl }}/topics/forward-and-backward-propagation)** — A worked numerical example showing exactly how forward prediction and backpropagation with the chain rule update a two-layer spam model.
+7. **[Part 7: Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How spam detection mirrors neurons, synapses, memory, attention, and generalisation in the brain.
+8. **[Part 8: Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
 
 **What You'll Learn:**
 

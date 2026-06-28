@@ -1,5 +1,5 @@
 ---
-title: "Cognitive Analogies - Brain-inspired Learning"
+title: "Part 7: Cognitive Analogies - Brain-inspired Learning"
 category: Deep Learning
 order: 7
 tags:
@@ -15,7 +15,7 @@ tags:
 summary: Learn how deep learning mirrors ideas from the brain, using the spam-detection example throughout. Covers pattern recognition, memory, attention, generalisation, and learning from mistakes.
 ---
 
-# Cognitive Analogies — Brain-inspired Learning
+# Part 7: Cognitive Analogies — Brain-inspired Learning
 
 Neural networks are called "neural" because they borrow ideas from the brain. But they are not brains. In this guide, we use the spam-detection example to see how deep learning mirrors ideas from human cognition.
 

@@ -1,5 +1,5 @@
 ---
-title: "Deep Learning Cheat Sheet - Formulas and Memory Tricks"
+title: "Part 8: Deep Learning Cheat Sheet - Formulas and Memory Tricks"
 category: Deep Learning
 order: 8
 tags:
@@ -13,7 +13,7 @@ tags:
 summary: A one-page reference for every deep learning formula and concept from the tutorial series, all using the spam-detection example. Each formula has a memory trick.
 ---
 
-# Deep Learning Cheat Sheet — Formulas and Memory Tricks
+# Part 8: Deep Learning Cheat Sheet — Formulas and Memory Tricks
 
 A quick reference for everything in the Deep Learning series. Every formula and concept uses the spam-detection example.
 

@@ -1,5 +1,5 @@
 ---
-title: "Tensors and Tensor Operations - A Friendly Guide"
+title: "Part 3: Tensors and Tensor Operations - A Friendly Guide"
 category: Deep Learning
 order: 3
 tags:
@@ -13,7 +13,7 @@ tags:
 summary: Learn tensors and tensor operations using the same spam-detection example. Covers feature vectors, batches of emails, weights, matrix multiplication, broadcasting, and reshaping.
 ---
 
-# Tensors and Tensor Operations — A Friendly Guide
+# Part 3: Tensors and Tensor Operations — A Friendly Guide
 
 Everything in a spam-detection model is a tensor. The email features are a tensor, the weights are a tensor, the bias is a tensor, and even the final probability is a tensor. In this guide, we will see exactly how those tensors work.
 

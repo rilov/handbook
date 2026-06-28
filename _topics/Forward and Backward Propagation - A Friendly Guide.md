@@ -1,5 +1,5 @@
 ---
-title: "Forward and Backward Propagation - A Friendly Guide"
+title: "Part 6: Forward and Backward Propagation - A Friendly Guide"
 category: Deep Learning
 order: 6
 tags:
@@ -15,7 +15,7 @@ tags:
 summary: Learn exactly what happens during forward and backward propagation, using a two-layer spam-detection model. Worked numerical example with the chain rule included.
 ---
 
-# Forward and Backward Propagation — A Friendly Guide
+# Part 6: Forward and Backward Propagation — A Friendly Guide
 
 So far we have seen how a model predicts spam and how PyTorch can update its weights. In this guide, we open the box and watch one complete training step by hand. We use the same spam example and a tiny two-layer model.
 

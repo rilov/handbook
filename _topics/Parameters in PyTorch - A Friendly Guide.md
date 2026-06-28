@@ -1,5 +1,5 @@
 ---
-title: "Parameters in PyTorch - A Friendly Guide"
+title: "Part 5: Parameters in PyTorch - A Friendly Guide"
 category: Deep Learning
 order: 5
 tags:
@@ -16,7 +16,7 @@ tags:
 summary: Learn how PyTorch creates, tracks, and updates learnable parameters for a spam-detection model. Understand weights, biases, requires_grad, and how to inspect and manage model parameters.
 ---
 
-# Parameters in PyTorch — A Friendly Guide
+# Part 5: Parameters in PyTorch — A Friendly Guide
 
 When you build a spam-detection model, the things that learn are called **parameters**. In PyTorch, parameters are automatically created, tracked, and updated. This guide explains how that works using the same email example.
 

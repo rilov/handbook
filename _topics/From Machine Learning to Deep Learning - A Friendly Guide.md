@@ -1,5 +1,5 @@
 ---
-title: "From Machine Learning to Deep Learning - A Friendly Guide"
+title: "Part 2: From Machine Learning to Deep Learning - A Friendly Guide"
 category: Deep Learning
 order: 2
 tags:
@@ -15,7 +15,7 @@ tags:
 summary: Learn what changes when you move from traditional machine learning to deep learning, using the same spam-detection example throughout. Covers feature engineering, feature learning, hidden layers, and why non-linearity matters.
 ---
 
-# From Machine Learning to Deep Learning — A Friendly Guide
+# Part 2: From Machine Learning to Deep Learning — A Friendly Guide
 
 Let us continue with the spam email example. We already saw that a single neuron can take five numbers and produce a spam probability. Now we will ask: what changes if we switch from traditional machine learning to deep learning?
 

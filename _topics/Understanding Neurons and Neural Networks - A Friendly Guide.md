@@ -1,5 +1,5 @@
 ---
-title: "Understanding Neurons and Neural Networks - A Friendly Guide"
+title: "Part 1: Understanding Neurons and Neural Networks - A Friendly Guide"
 category: Deep Learning
 order: 1
 tags:
@@ -16,7 +16,7 @@ tags:
 summary: Learn how a neural network decides whether an email is spam by turning real-world information into numbers, multiplying by weights, adding a bias, and applying an activation function. Uses a single, concrete example throughout.
 ---
 
-# Understanding Neurons and Neural Networks — A Friendly Guide
+# Part 1: Understanding Neurons and Neural Networks — A Friendly Guide
 
 Let us start with a real example instead of a formula.
 

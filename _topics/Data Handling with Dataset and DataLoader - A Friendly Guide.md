@@ -1,5 +1,5 @@
 ---
-title: "Data Handling with Dataset and DataLoader - A Friendly Guide"
+title: "Part 4: Data Handling with Dataset and DataLoader - A Friendly Guide"
 category: Deep Learning
 order: 4
 tags:
@@ -15,7 +15,7 @@ tags:
 summary: Learn how to load, batch, shuffle, and iterate over spam-detection data in PyTorch using torch.utils.data.Dataset and DataLoader. Uses the same email example throughout.
 ---
 
-# Data Handling with Dataset and DataLoader — A Friendly Guide
+# Part 4: Data Handling with Dataset and DataLoader — A Friendly Guide
 
 Before a neural network can learn, it needs clean, organised batches of data. In PyTorch, `Dataset` and `DataLoader` handle this for you. We will use the same spam-detection example throughout.
 
