@@ -31,6 +31,53 @@ So far we have seen how a model predicts spam and how PyTorch can update its wei
 
 > **Memory trick:** Forward is prediction. Backward is blame. Update is correction.
 
+### What is the error?
+
+The **error** is the difference between what the model predicts and the true answer.
+
+- True label: `y = 1` (this email is spam)
+- Model prediction: `p = 0.53` (the model thinks it is 53% spam)
+- Error: the model is too uncertain. It should have predicted closer to 1.
+
+We do not measure error with simple subtraction. We use a **loss function** that turns the prediction and the label into a single number. For spam detection, the usual loss is **binary cross-entropy**. It gives a large number when the model is confidently wrong and a small number when the model is close.
+
+```
+Loss L = -[y * log(p) + (1 - y) * log(1 - p)]
+```
+
+If `y = 1` and `p = 0.53`, the loss is about `0.635`. If the model had predicted `p = 0.99`, the loss would be much smaller.
+
+### What is a gradient?
+
+A **gradient** is the answer to this question: "If I increase this weight slightly, how much does the loss change?"
+
+- If the gradient is **positive**, increasing the weight makes the loss larger. So we should decrease the weight.
+- If the gradient is **negative**, increasing the weight makes the loss smaller. So we should increase the weight.
+
+The gradient is written as `∂L/∂w`, which means "the change in loss L divided by the change in weight w."
+
+### How is the weight updated?
+
+Once we know the gradient, we update the weight in the opposite direction:
+
+```
+new_weight = old_weight - learning_rate * gradient
+```
+
+The **learning rate** is a small number like `0.1` or `0.01`. It controls the size of the step. If the learning rate is too large, the model overshoots. If it is too small, learning takes forever.
+
+### A simple example
+
+Imagine a model has only one weight and its current value is `0.5`. The gradient for that weight is `-0.3`, and the learning rate is `0.1`.
+
+```
+new_weight = 0.5 - 0.1 * (-0.3)
+new_weight = 0.5 + 0.03
+new_weight = 0.53
+```
+
+Because the gradient was negative, increasing the weight would reduce the loss. So we increased it by a small amount. This is exactly what the optimiser does for every weight in the network.
+
 ---
 
 ## 2. The tiny model we will trace
