@@ -1,7 +1,7 @@
 ---
 title: "Deep Learning Cheat Sheet - Formulas and Memory Tricks"
 category: Deep Learning
-order: 7
+order: 8
 tags:
   - deep-learning
   - cheat-sheet
@@ -144,7 +144,19 @@ gradient = ∂loss / ∂weight
 
 ---
 
-## 7. Training loop
+## 7. Chain rule
+
+For a path from weight `w` to loss `L`:
+
+```
+∂L/∂w = ∂L/∂p × ∂p/∂z2 × ∂z2/∂a1 × ∂a1/∂z1 × ∂z1/∂w
+```
+
+> **Memory trick:** Chain rule = dominoes. Push the first one, trace the effect to the last one.
+
+---
+
+## 8. Training loop
 
 ```
 for each epoch:
@@ -160,7 +172,7 @@ for each epoch:
 
 ---
 
-## 8. Tensors and shapes
+## 9. Tensors and shapes
 
 | Object | Shape | Example |
 |--------|-------|---------|
@@ -175,7 +187,7 @@ for each epoch:
 
 ---
 
-## 9. Tensor operations
+## 10. Tensor operations
 
 | Operation | PyTorch | Rule | Spam Example |
 |-----------|---------|------|--------------|
@@ -188,7 +200,7 @@ for each epoch:
 
 ---
 
-## 10. Dataset and DataLoader
+## 11. Dataset and DataLoader
 
 ```python
 from torch.utils.data import Dataset, DataLoader
@@ -211,7 +223,7 @@ loader = DataLoader(SpamDataset(emails, labels), batch_size=32, shuffle=True)
 
 ---
 
-## 11. PyTorch parameters
+## 12. PyTorch parameters
 
 | What | Code | Shape |
 |------|------|-------|
@@ -224,7 +236,7 @@ loader = DataLoader(SpamDataset(emails, labels), batch_size=32, shuffle=True)
 
 ---
 
-## 12. Common optimisers
+## 13. Common optimisers
 
 | Optimiser | Best For | Memory trick |
 |-----------|----------|--------------|
@@ -240,7 +252,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 ---
 
-## 13. Overfitting vs underfitting
+## 14. Overfitting vs underfitting
 
 | | Underfitting | Good Fit | Overfitting |
 |--|---------------|----------|-------------|
@@ -252,7 +264,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 ---
 
-## 14. Regularisation
+## 15. Regularisation
 
 | Method | How | Memory trick |
 |--------|-----|--------------|
@@ -263,7 +275,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 ---
 
-## 15. Key PyTorch imports
+## 16. Key PyTorch imports
 
 ```python
 import torch
@@ -275,7 +287,7 @@ from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
 
 ---
 
-## 16. Twenty memory tricks
+## 17. Twenty memory tricks
 
 1. **Tensor** = lunchbox with labelled compartments.
 2. **Rows = examples, columns = features.**
@@ -300,7 +312,7 @@ from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
 
 ---
 
-## 17. Common mistakes
+## 18. Common mistakes
 
 | Mistake | Fix |
 |---------|-----|

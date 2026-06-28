@@ -1,7 +1,7 @@
 ---
 title: "Cognitive Analogies - Brain-inspired Learning"
 category: Deep Learning
-order: 6
+order: 7
 tags:
   - deep-learning
   - neural-networks

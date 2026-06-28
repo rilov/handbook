@@ -13,8 +13,9 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 3. **[Tensors and Tensor Operations]({{ site.baseurl }}/topics/tensors-and-tensor-operations)** — The same email features as tensors: shapes, batches, matrix multiplication, broadcasting, and GPU movement.
 4. **[Data Handling with Dataset and DataLoader]({{ site.baseurl }}/topics/data-handling-with-dataset-and-dataloader)** — Build a spam `Dataset`, create batches, shuffle, split train/val/test, and normalise features.
 5. **[Parameters in PyTorch]({{ site.baseurl }}/topics/parameters-in-pytorch)** — Weights, biases, `requires_grad`, parameter counting, freezing, initialisation, saving, and loading using the spam model.
-6. **[Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How spam detection mirrors neurons, synapses, memory, attention, and generalisation in the brain.
-7. **[Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
+6. **[Forward and Backward Propagation]({{ site.baseurl }}/topics/forward-and-backward-propagation)** — A worked numerical example showing exactly how forward prediction and backpropagation with the chain rule update a two-layer spam model.
+7. **[Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How spam detection mirrors neurons, synapses, memory, attention, and generalisation in the brain.
+8. **[Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
 
 **What You'll Learn:**
 
@@ -26,6 +27,7 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 - How tensors represent emails, weights, and biases in PyTorch
 - How to batch, shuffle, split, and normalise data with `Dataset` and `DataLoader`
 - How PyTorch creates, tracks, and updates parameters automatically
+- How forward and backward propagation work step by step with the chain rule
 - How deep learning mirrors brain concepts like memory, attention, and generalisation
 - Memory tricks for every formula and concept
 
