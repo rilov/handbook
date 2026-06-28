@@ -12,324 +12,618 @@ tags:
   - beginners
   - friendly
   - pytorch
-summary: Learn how biological neurons inspired artificial neurons, how a single neuron computes a weighted sum with bias and activation, and how single neurons stack into deep networks. Includes memory tricks for every formula.
+  - spam-detection
+summary: Learn how a neural network decides whether an email is spam by turning real-world information into numbers, multiplying by weights, adding a bias, and applying an activation function. Uses a single, concrete example throughout.
 ---
 
 # Understanding Neurons and Neural Networks — A Friendly Guide
 
-Deep learning starts with one simple idea: a computer can learn by imitating how brain cells work. In this guide, we will build that idea from the ground up.
+Let us start with a real example instead of a formula.
+
+Imagine a model that predicts whether an email is spam.
+
+A human can read an email and notice things like:
+
+- “This message contains too many links.”
+- “The sender is unknown.”
+- “It says WIN MONEY NOW.”
+- “This looks suspicious.”
+
+But a neural network cannot directly work with ideas such as *suspicious*, *unknown sender*, or *too many links*. A neural network performs mathematical operations: multiply, add, compare, transform. Therefore, the first job is to convert the email into numbers.
 
 ---
 
-## 1. The Big Picture
+## 1. Why must everything become numbers?
 
-A **neural network** is a stack of tiny calculators called **neurons**. Each neuron looks at some inputs, multiplies them by numbers called **weights**, adds a small shift called a **bias**, and then applies a non-linearity called an **activation function**.
+A computer stores everything as numbers internally.
 
-The magic is that the network learns the weights and biases from data.
+- An image becomes pixel values. A black pixel might be `0`, a white pixel `255`.
+- Sound becomes measurements of air-wave amplitude.
+- Words become token IDs or vectors.
 
----
+An email can become measurable features such as:
 
-## 2. The Biological Inspiration
+- Number of suspicious words
+- Number of links
+- Sender known or unknown
+- Percentage of capital letters
+- Number of attachments
+- Message length
 
-Your brain contains about 86 billion **neurons**. Each neuron has:
+The model does not receive this:
 
-- **Dendrites** — branches that receive signals from other neurons
-- **Soma** — the cell body that combines those signals
-- **Axon** — a long fibre that sends out a signal if the combined input is strong enough
+> “Congratulations! Click here to claim your prize.”
 
-A neuron fires when the incoming signals are strong enough. This "all-or-nothing" behaviour inspired the artificial neuron.
+A simple model may receive this:
 
----
+| Suspicious words | Links | Known sender | Capitals | Length |
+|------------------|-------|--------------|----------|--------|
+| 3 | 1 | no | 20% | 47 words |
 
-## 3. The Artificial Neuron
-
-Imagine a neuron that decides whether to buy a house based on three inputs:
-
-| Input | Value | Meaning |
-|-------|-------|---------|
-| `x₁` | 1200 | size in square feet |
-| `x₂` | 3 | number of bedrooms |
-| `x₃` | 2 | distance to city centre in km |
-
-Each input gets a **weight** that tells the neuron how important it is:
-
-| Weight | Value | Meaning |
-|--------|-------|---------|
-| `w₁` | 0.5 | size matters a lot |
-| `w₂` | 0.2 | bedrooms matter a little |
-| `w₃` | -0.4 | distance hurts the score |
-
-The neuron computes a **weighted sum** and then adds a **bias**.
-
----
-
-## 4. The Formula
-
-### Weighted Sum
+Converted into numbers:
 
 ```
-z = (x₁ × w₁) + (x₂ × w₂) + (x₃ × w₃) + b
+[3, 1, 0, 0.20, 47]
 ```
 
-In short form:
-
-```
-z = Σ (xᵢ × wᵢ) + b
-```
-
-> **Memory trick:** Think of `Σ` as a "shopping basket" — you throw all the `x × w` items in, then add the bias as the tip.
-
-### Worked Example
-
-Using the house example:
-
-```
-z = (1200 × 0.5) + (3 × 0.2) + (2 × -0.4) + 10
-z = 600 + 0.6 - 0.8 + 10
-z = 609.8
-```
-
-The raw score `z = 609.8` is not yet useful. We pass it through an **activation function**.
-
----
-
-## 5. Activation Functions
-
-An activation function decides whether the neuron "fires" and how strongly.
-
-### Sigmoid — The Squeezes-Everything-To-0-1 Function
-
-```
-σ(z) = 1 / (1 + e^(-z))
-```
-
-- Output is always between 0 and 1
-- Useful for probabilities
-
-**Memory trick:** The letter `S` looks like the sigmoid curve — a smooth "S" that squashes everything.
+This collection of numbers is called a **feature vector**. In PyTorch, it becomes a **tensor**:
 
 ```python
-import math
+import torch
 
-def sigmoid(z):
-    return 1 / (1 + math.exp(-z))
-
-print(sigmoid(0))    # 0.5 — exactly the middle
-print(sigmoid(10))   # close to 1.0
-print(sigmoid(-10))  # close to 0.0
+email = torch.tensor([
+    3.0,    # suspicious word count
+    1.0,    # link count
+    0.0,    # sender known: 0 = no, 1 = yes
+    0.20,   # percentage of capital letters
+    47.0    # message length
+])
 ```
 
-### ReLU — The "If Negative, Zero" Function
+A tensor is simply a structured container of numbers.
 
-```
-ReLU(z) = max(0, z)
-```
+> **Memory trick:** A tensor is a lunchbox. The numbers are the food items, but each compartment has a fixed meaning.
 
-- If input is positive, leave it alone
-- If input is negative, make it zero
-- Most popular activation in modern deep learning
+---
 
-**Memory trick:** ReLU is like a bouncer at a club — positive numbers get in, negative numbers are blocked.
+## 2. What does each number mean?
+
+The position of each number has a fixed meaning.
+
+| Position | Meaning |
+|----------|---------|
+| 0 | suspicious words |
+| 1 | links |
+| 2 | known sender |
+| 3 | capital-letter percentage |
+| 4 | message length |
+
+Therefore `[3, 1, 0, 0.20, 47]` does not mean anything by itself unless the model and the data-processing code agree on what each position represents. This is similar to a row in a table without the column headers.
+
+---
+
+## 3. Why use 0 and 1?
+
+Some information is not naturally numerical. For example, *known sender = yes* or *known sender = no*. We convert it to:
+
+- Yes = 1
+- No = 0
+
+This does not mean that “yes is greater than no” in a meaningful human sense. It is simply a convenient numerical representation.
+
+For multiple categories, we must be more careful. Suppose sender type is Personal, Business, or Unknown. Using `Personal = 1`, `Business = 2`, `Unknown = 3` could accidentally suggest that Unknown is numerically greater than Business. Instead, we use **one-hot encoding**:
+
+- Personal → `[1, 0, 0]`
+- Business → `[0, 1, 0]`
+- Unknown → `[0, 0, 1]`
+
+> **Memory trick:** One-hot encoding is like three separate light switches. Only one is on at a time.
+
+---
+
+## 4. Does someone manually choose these features?
+
+For a basic machine-learning model, yes. A developer or data scientist may decide to count suspicious words, count links, check sender reputation, measure capital letters, and measure message length. This is called **feature engineering**.
+
+But modern deep-learning models can learn many features automatically. For example, instead of manually counting suspicious words, we can provide the email text as tokens. The sentence “claim your free prize” might become `[1842, 95, 721, 4031]`. Each number identifies a token from a vocabulary. Those token IDs are later converted into learned vectors called **embeddings**.
+
+For understanding neural networks clearly, our five-feature spam example is easier.
+
+---
+
+## 5. One email versus many emails
+
+One email is one feature vector:
 
 ```python
-def relu(z):
-    return max(0, z)
-
-print(relu(5))   # 5
-print(relu(-3))  # 0
+email = torch.tensor([3.0, 1.0, 0.0, 0.20, 47.0])
+print(email.shape)  # torch.Size([5])
 ```
 
-### Tanh — The Squeezes-Everything-To-Minus-1-1 Function
-
-```
-tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z))
-```
-
-- Output is between -1 and 1
-- Useful when negative values are meaningful
-
-**Memory trick:** `tanh` is sigmoid stretched to go from -1 to 1 instead of 0 to 1.
+During training, we usually process many emails together:
 
 ```python
-import math
-
-def tanh(z):
-    return math.tanh(z)
-
-print(tanh(0))    # 0.0
-print(tanh(2))    # 0.96
-print(tanh(-2))   # -0.96
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0],
+    [5.0, 4.0, 0.0, 0.45, 31.0],
+    [1.0, 0.0, 1.0, 0.05, 120.0]
+])
+print(emails.shape)  # torch.Size([4, 5])
 ```
 
-### Activation Function Cheat Sheet
+A useful memory rule is:
 
-| Function | Formula | Output Range | When to Use |
-|----------|---------|--------------|-------------|
-| **Sigmoid** | `1 / (1 + e^(-z))` | 0 to 1 | Binary classification output |
-| **Tanh** | `(e^z - e^(-z)) / (e^z + e^(-z))` | -1 to 1 | Hidden layers in older networks |
-| **ReLU** | `max(0, z)` | 0 to ∞ | Most modern hidden layers |
-| **Softmax** | `e^(zᵢ) / Σ e^(zⱼ)` | 0 to 1 (sums to 1) | Multi-class classification output |
-
-> **Memory trick for Softmax:** It turns a list of scores into probabilities that add up to 1 — like a normalised "ranking".
+> **Rows = examples, Columns = features.**
 
 ---
 
-## 6. From One Neuron to a Network
+## 6. The model starts with weights
 
-A single neuron is just a linear model. To learn complex patterns, we connect many neurons together.
+Suppose we have a very simple model with one neuron. It stores one weight for each input feature:
 
-### Layers
+| Feature | Weight | Meaning |
+|---------|--------|---------|
+| Suspicious words | 0.8 | pushes spam score up |
+| Links | 0.6 | pushes spam score up |
+| Known sender | -1.2 | pushes spam score down |
+| Capital letters | 2.0 | pushes spam score up strongly |
+| Message length | 0.01 | barely matters |
 
-- **Input layer** — receives the raw data
-- **Hidden layer** — neurons that transform the input
-- **Output layer** — produces the final prediction
-
-```
-Input Layer    Hidden Layer    Output Layer
-
-   x₁ ───────────→ ● ───────────────→ ●
-                   ↑                   ↑
-   x₂ ───────────→ ● ───────────────→ ●
-                   ↑                   ↑
-   x₃ ───────────→ ● ───────────────→ ●
-```
-
-**Why "deep"?** Because we stack many hidden layers. A network with 3+ hidden layers is usually called "deep".
-
-### Why Depth Matters
-
-Think of recognising a face:
-
-- Layer 1: detects edges
-- Layer 2: combines edges into eyes, noses, mouths
-- Layer 3: combines features into full faces
-
-Each layer builds a slightly more complex representation. Early layers see simple patterns; deeper layers see concepts.
-
----
-
-## 7. The Forward Pass
-
-The forward pass is what happens when data flows through the network to produce a prediction.
-
-```
-Layer 1:  z₁ = x · W₁ + b₁        a₁ = activation(z₁)
-Layer 2:  z₂ = a₁ · W₂ + b₂       a₂ = activation(z₂)
-Output:   z₃ = a₂ · W₃ + b₃        y_hat = activation(z₃)
-```
-
-> **Memory trick:** `z` is the "raw score" (before activation), and `a` is the "activated" value (after activation).
-
-### Python Example with NumPy
+The weights can be written as a tensor:
 
 ```python
-import numpy as np
+weights = torch.tensor([
+    0.8,
+    0.6,
+   -1.2,
+    2.0,
+    0.01
+])
 
-# Inputs: 1 sample, 3 features
-x = np.array([1200, 3, 2])
-
-# One hidden layer with 2 neurons
-W1 = np.array([[0.5, 0.2],     # weights for hidden neuron 1
-               [-0.4, 0.1],    # weights for hidden neuron 2
-               [0.0, 0.3]])    # weights for hidden neuron 3
-b1 = np.array([10, -5])
-
-# Output layer: 1 neuron
-W2 = np.array([[0.7],
-               [-0.7]])
-b2 = np.array([2])
-
-# Forward pass
-z1 = np.dot(x, W1) + b1
-a1 = np.maximum(0, z1)   # ReLU
-
-z2 = np.dot(a1, W2) + b2
-output = 1 / (1 + np.exp(-z2))  # sigmoid
-
-print(f"Raw hidden scores: {z1}")
-print(f"Activated hidden:  {a1}")
-print(f"Final prediction:  {output}")
+bias = torch.tensor(-1.0)
 ```
 
----
+A positive weight pushes the spam score upward. A negative weight pushes it downward. A larger absolute value means the feature has a stronger effect.
 
-## 8. What the Network Learns
-
-The network learns two things:
-
-1. **Weights** — how strongly each input should influence each neuron
-2. **Biases** — the baseline tendency of each neuron to fire
-
-During training, we compare the network's prediction `ŷ` to the true answer `y`, compute an error, and use an algorithm called **backpropagation** to update every weight and bias slightly.
-
-We will cover backpropagation in a later guide. For now, remember:
-
-> **Learning = changing weights and biases to make the error smaller.**
+> **Memory trick:** Weights are volume knobs. A high positive weight turns the spam signal up; a negative weight turns it down.
 
 ---
 
-## 9. Common Mistakes
+## 7. What calculation does the neuron perform?
 
-| Mistake | Why It Happens | Fix |
+For our email:
+
+```
+x = [3, 1, 0, 0.20, 47]
+w = [0.8, 0.6, -1.2, 2.0, 0.01]
+```
+
+The neuron multiplies matching positions and adds the results:
+
+| Feature | Calculation | Result |
+|---------|-------------|--------|
+| Suspicious words | 3 × 0.8 | 2.40 |
+| Links | 1 × 0.6 | 0.60 |
+| Known sender | 0 × -1.2 | 0.00 |
+| Capital letters | 0.20 × 2.0 | 0.40 |
+| Message length | 47 × 0.01 | 0.47 |
+| Bias | | -1.00 |
+
+Total: `2.40 + 0.60 + 0.00 + 0.40 + 0.47 - 1.00 = 2.87`
+
+The result is called the **raw score**: `z = 2.87`.
+
+In PyTorch:
+
+```python
+z = email @ weights + bias
+```
+
+The `@` operation performs the matching multiplication and addition. It is equivalent to:
+
+```python
+z = (
+    email[0] * weights[0]
+    + email[1] * weights[1]
+    + email[2] * weights[2]
+    + email[3] * weights[3]
+    + email[4] * weights[4]
+    + bias
+)
+```
+
+So there is no mystery inside the neuron. It is a small calculator.
+
+---
+
+## 8. Why is 2.87 not yet the prediction?
+
+The raw score can be any number: -10, -2.3, 0, 1.8, 27. But for spam classification, we want something understandable: a probability between 0 and 1.
+
+For example:
+
+- 0.05 = 5% probability of spam
+- 0.70 = 70% probability of spam
+- 0.98 = 98% probability of spam
+
+That is where the **activation function** is used.
+
+---
+
+## 9. What does the activation function actually do?
+
+For binary classification, the final activation is usually **sigmoid**:
+
+```python
+probability = torch.sigmoid(z)
+```
+
+Sigmoid is a mathematical operation:
+
+```
+sigmoid(z) = 1 / (1 + e⁻ᶻ)
+```
+
+You do not need to mentally calculate that formula every time. Its behaviour is more important:
+
+| Raw score | Sigmoid result |
+|-----------|----------------|
+| -5 | 0.007 |
+| -2 | 0.119 |
+| 0 | 0.500 |
+| 2 | 0.881 |
+| 5 | 0.993 |
+
+Large negative → close to 0. Zero → exactly 0.5. Large positive → close to 1.
+
+For our score `z = 2.87`, sigmoid produces approximately `0.946`. So the model says: **spam probability = 94.6%**.
+
+> **Memory trick:** Sigmoid is like a thermometer that only reads between 0 and 1, no matter how hot or cold the input is.
+
+---
+
+## 10. Probability and prediction are not exactly the same
+
+The model first produces a probability:
+
+```
+0.946
+```
+
+Then the application chooses a threshold:
+
+```
+If probability ≥ 0.5 → spam
+Otherwise             → not spam
+```
+
+So `0.946 ≥ 0.5` gives the final prediction: **Spam**.
+
+There are three separate things:
+
+| Raw score | Probability | Prediction |
+|-----------|-------------|------------|
+| 2.87 | 0.946 | Spam |
+
+The model produces the score and probability. The application converts the probability into a business decision. The threshold does not always have to be 0.5. For a security system, we might use probability ≥ 0.30 because missing a dangerous email may be more costly than reviewing a safe one.
+
+---
+
+## 11. The complete simple model
+
+```python
+import torch
+
+# One email represented by five numerical features
+email = torch.tensor([
+    3.0,    # suspicious word count
+    1.0,    # link count
+    0.0,    # sender known: no
+    0.20,   # capital-letter percentage
+    47.0    # message length
+])
+
+# Numbers learned by the model during training
+weights = torch.tensor([
+    0.8,
+    0.6,
+   -1.2,
+    2.0,
+    0.01
+])
+
+bias = torch.tensor(-1.0)
+
+# Step 1: produce a raw score
+raw_score = email @ weights + bias
+
+# Step 2: turn the score into a probability
+spam_probability = torch.sigmoid(raw_score)
+
+# Step 3: turn the probability into a decision
+prediction = (
+    "spam"
+    if spam_probability >= 0.5
+    else "not spam"
+)
+
+print("Raw score:", raw_score.item())
+print("Spam probability:", spam_probability.item())
+print("Prediction:", prediction)
+```
+
+The chain is:
+
+```
+Real email
+    ↓
+Extract measurable information
+    ↓
+Convert it into numbers
+    ↓
+Store numbers in a tensor
+    ↓
+Multiply by learned weights
+    ↓
+Add bias
+    ↓
+Produce raw score
+    ↓
+Apply sigmoid
+    ↓
+Produce probability
+    ↓
+Apply decision threshold
+    ↓
+Spam or not spam
+```
+
+<img src="{{ site.baseurl }}/assets/img/NeuralNetwork.png" alt="A simple neural network: inputs flow through weights and bias to a final probability" width="60%" />
+
+---
+
+## 12. Where did the weights come from?
+
+We manually chose weights for this demonstration. A real neural network learns them from labelled examples.
+
+Training data might look like this:
+
+| Suspicious words | Links | Known sender | Capitals | Length | Correct answer |
+|------------------|-------|--------------|----------|--------|----------------|
+| 5 | 4 | 0 | 0.40 | 31 | 1 |
+| 0 | 0 | 1 | 0.02 | 85 | 0 |
+| 3 | 2 | 0 | 0.25 | 42 | 1 |
+| 0 | 1 | 1 | 0.01 | 110 | 0 |
+
+The correct answer is also converted into numbers:
+
+- Spam = 1
+- Not spam = 0
+
+In PyTorch:
+
+```python
+labels = torch.tensor([
+    [1.0],
+    [0.0],
+    [1.0],
+    [0.0]
+])
+```
+
+At first, the model's weights are random, so predictions may be poor. The model calculates the **loss** — how far the prediction is from the correct answer. Then **backpropagation** calculates how each weight contributed to the mistake. The **optimizer** changes the weights slightly:
+
+```
+Old weight → calculate blame → small adjustment → new weight
+```
+
+This process repeats across many emails until the weights become useful for distinguishing spam from normal email.
+
+> **Memory trick:** Training is like adjusting guitar strings. Each string is a weight; the loss is the out-of-tune sound; the optimizer tightens or loosens each string.
+
+---
+
+## 13. What does a hidden layer add?
+
+One neuron creates one score directly from the original features. A hidden layer contains several neurons, and each hidden neuron receives the same inputs but has different weights.
+
+- **Neuron 1** may respond strongly to: many links + unknown sender
+- **Neuron 2** may respond strongly to: many capitals + suspicious words
+- **Neuron 3** may respond strongly to: known sender + long normal message
+
+Suppose the hidden layer produces raw scores `[2.4, -0.7, 1.3]`. Applying ReLU:
+
+```python
+ReLU([2.4, -0.7, 1.3]) = [2.4, 0.0, 1.3]
+```
+
+That new tensor is passed to the output layer. The model creates a chain:
+
+```
+Original features
+    ↓
+Learned combinations
+    ↓
+More learned combinations
+    ↓
+Final spam score
+    ↓
+Probability
+```
+
+The hidden layer allows the model to learn combinations rather than considering every feature only in isolation.
+
+> **Memory trick:** A hidden layer is like a team of detectives. Each detective looks at the same clues but notices different patterns.
+
+---
+
+## 14. What is permanently stored in the model?
+
+Consider this PyTorch model:
+
+```python
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Linear(5, 3),
+    nn.ReLU(),
+    nn.Linear(3, 1)
+)
+```
+
+It has 5 input features, 3 hidden neurons, and 1 output neuron. The first layer stores 5 weights for each of 3 neurons = 15 weights, plus 3 biases. The second layer stores 3 weights and 1 bias. The ReLU layer has no learned weights; it is only an operation.
+
+You can inspect them:
+
+```python
+for name, parameter in model.named_parameters():
+    print(name, parameter.shape)
+```
+
+Possible output:
+
+```
+0.weight torch.Size([3, 5])
+0.bias   torch.Size([3])
+2.weight torch.Size([1, 3])
+2.bias   torch.Size([1])
+```
+
+> **Memory trick:** Think of the architecture as the recipe and the weights as the trained taste. The recipe is code; the taste is the learned state.
+
+---
+
+## 15. A slightly more realistic PyTorch model
+
+```python
+import torch
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Linear(5, 3),  # 5 email features → 3 hidden values
+    nn.ReLU(),        # remove negative hidden signals
+    nn.Linear(3, 1),  # 3 hidden values → 1 spam score
+    nn.Sigmoid()      # spam score → probability
+)
+
+email = torch.tensor([[
+    3.0, 1.0, 0.0, 0.20, 47.0
+]])
+
+probability = model(email)
+prediction = (
+    "spam"
+    if probability.item() >= 0.5
+    else "not spam"
+)
+
+print("Probability:", probability.item())
+print("Prediction:", prediction)
+```
+
+Notice the double brackets `[[3.0, 1.0, 0.0, 0.20, 47.0]]`. Its shape is `1 email × 5 features`:
+
+```python
+print(email.shape)  # torch.Size([1, 5])
+```
+
+PyTorch layers normally expect a batch dimension, even when predicting only one example.
+
+---
+
+## 16. What does the model really “know”?
+
+It does not store a sentence like “Unknown senders with suspicious words are probably spam.” Instead, that behaviour is distributed across numerical weights. One weight might increase the score for suspicious words; another might reduce the score for a known sender. Hidden neurons might detect combinations of features.
+
+The model’s knowledge is not a collection of readable rules. It is a numerical configuration that produces useful outputs when inputs pass through it.
+
+---
+
+## 17. Common mistakes
+
+| Mistake | Why it happens | Fix |
 |---------|----------------|-----|
-| Forgetting the bias | Bias lets the neuron shift its decision boundary | Always include `+ b` |
-| Using sigmoid in hidden layers | Sigmoid can cause vanishing gradients | Use ReLU instead |
-| Thinking one neuron is enough | A single neuron is just a linear classifier | Use hidden layers for complex tasks |
-| Using wrong activation for output | Regression needs no activation; classification needs sigmoid/softmax | Match activation to task |
+| Forgetting the batch dimension | PyTorch layers expect `(batch, features)` | Use `[[...]]` or reshape |
+| Forgetting the bias | Bias shifts the decision boundary | Always include `+ b` |
+| Using sigmoid in hidden layers | Sigmoid can cause vanishing gradients | Use ReLU in hidden layers |
+| Confusing raw score with probability | Raw score can be any number; probability is 0 to 1 | Apply sigmoid for binary output |
+| Thinking one neuron is enough | A single neuron is a linear model | Use hidden layers for combinations |
 
 ---
 
-## 10. Quick Review
+## 18. Quick review
 
-| Term | What It Is | Formula / Memory Trick |
-|------|-----------|------------------------|
-| **Neuron** | A tiny computing unit | Inputs → weights → bias → activation |
-| **Weighted sum** | Adds up the influence of all inputs | `z = Σ xᵢwᵢ + b` — "shopping basket" |
-| **Bias** | A constant shift | `+ b` — the neuron's starting mood |
-| **Activation** | Decides how strongly the neuron fires | Sigmoid = S-curve; ReLU = bouncer |
-| **Layer** | A group of neurons | Input → Hidden → Output |
-| **Deep network** | A network with many hidden layers | Each layer learns a richer feature |
-| **Forward pass** | Data flowing through the network | `z = xW + b`, then `a = activation(z)` |
+| Term | What it is | Memory trick |
+|------|-----------|--------------|
+| **Tensor** | A structured container of numbers | A lunchbox with labelled compartments |
+| **Feature vector** | One row of numbers describing one example | A single email's numbers |
+| **Weight** | How strongly a feature affects the score | A volume knob |
+| **Bias** | A starting adjustment | The neuron's default mood |
+| **Raw score** | Sum of weighted inputs plus bias | The pre-decision number |
+| **Sigmoid** | Turns any score into a 0-to-1 probability | A thermometer with a 0-to-1 scale |
+| **ReLU** | Removes negative hidden signals | A bouncer that blocks negatives |
+| **Hidden layer** | Neurons that learn feature combinations | A team of detectives |
+| **Forward pass** | Input → calculations → output | The email travelling through the machine |
+| **Parameters** | Weights and biases the model learns | The trained taste of the recipe |
 
 ---
 
-## 11. Try It Yourself
+## 19. Try it yourself
 
 ```python
-import numpy as np
+import torch
+import torch.nn as nn
 
-# A tiny network: 2 inputs, 1 hidden neuron, 1 output neuron
+# 1. Create an email tensor with shape (1, 5)
+email = torch.tensor([[
+    5.0,   # suspicious words
+    4.0,   # links
+    0.0,   # known sender
+    0.40,  # capitals
+    31.0   # length
+]])
 
-def sigmoid(z):
-    return 1 / (1 + np.exp(-z))
+# 2. Build a model with one hidden layer
+model = nn.Sequential(
+    nn.Linear(5, 3),
+    nn.ReLU(),
+    nn.Linear(3, 1),
+    nn.Sigmoid()
+)
 
-def relu(z):
-    return np.maximum(0, z)
+# 3. Predict
+probability = model(email)
+print("Spam probability:", probability.item())
 
-# Inputs: temperature (°C) and humidity (%)
-x = np.array([25.0, 60.0])
-
-# Hidden neuron: weights + bias
-W1 = np.array([0.3, -0.2])
-b1 = 5.0
-
-# Output neuron: weight + bias
-W2 = np.array([0.8])
-b2 = -3.0
-
-# Forward pass
-hidden = relu(np.dot(x, W1) + b1)
-output = sigmoid(np.dot(hidden, W2) + b2)
-
-print(f"Will it rain? Probability: {output[0]:.3f}")
+# 4. Inspect the learned parameters
+for name, param in model.named_parameters():
+    print(name, param.shape)
 ```
 
 ---
 
-## Summary
+## Final mental model
 
-- A neural network is a stack of artificial neurons.
-- Each neuron computes `z = Σ xᵢwᵢ + b` and then applies an activation function.
-- Sigmoid outputs probabilities between 0 and 1; ReLU is the most common hidden-layer activation.
-- Depth lets the network learn increasingly complex features.
-- During training, the network learns weights and biases to reduce prediction error.
+- **Why convert to numbers?** Because neural networks perform mathematical operations.
+- **What is a tensor?** A structured box containing those numbers.
+- **What is a neuron?** A small calculator that multiplies inputs by weights, adds them, and adds a bias.
+- **What are weights?** Learned numbers controlling how strongly each signal affects the result.
+- **What is bias?** A learned starting adjustment.
+- **What is activation?** A mathematical transformation applied to a raw result.
+- **What is a hidden layer?** Several calculators learning useful combinations of signals.
+- **What is stored permanently?** Weights and biases.
+- **What is stored temporarily?** Inputs, raw scores, activations, and predictions.
+- **What does the model predict?** A number, probability, or category.
+
+A neural network is not a mysterious digital brain. It is a structured chain of numerical transformations:
+
+```
+Meaningful real-world information
+→ numbers
+→ tensors
+→ learned calculations
+→ transformed signals
+→ probability
+→ decision
+```

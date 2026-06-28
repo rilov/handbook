@@ -8,18 +8,40 @@ tags:
   - formulas
   - memory-tricks
   - pytorch
+  - spam-detection
   - reference
-  - beginners
-summary: A one-page reference for every deep learning formula, concept, and memory trick from the tutorial series. Covers neurons, tensors, activations, training, and PyTorch code snippets.
+summary: A one-page reference for every deep learning formula and concept from the tutorial series, all using the spam-detection example. Each formula has a memory trick.
 ---
 
 # Deep Learning Cheat Sheet — Formulas and Memory Tricks
 
-A quick reference for everything in the Deep Learning series. Each formula has a memory trick to help you remember it.
+A quick reference for everything in the Deep Learning series. Every formula and concept uses the spam-detection example.
 
 ---
 
-## 1. The Artificial Neuron
+## 1. From email to tensor
+
+### Real email
+
+> "Congratulations! Click here to claim your prize."
+
+### Feature vector
+
+| Suspicious words | Links | Known sender | Capitals | Length |
+|------------------|-------|--------------|----------|--------|
+| 3 | 1 | 0 | 0.20 | 47 |
+
+### Tensor
+
+```python
+email = torch.tensor([3.0, 1.0, 0.0, 0.20, 47.0])
+```
+
+> **Memory trick:** A tensor is a lunchbox with labelled compartments. Each position has a fixed meaning.
+
+---
+
+## 2. The artificial neuron
 
 ### Formula
 
@@ -28,49 +50,89 @@ z = Σ (xᵢ × wᵢ) + b
 output = activation(z)
 ```
 
-### Memory Trick
+### Memory trick
 
-> **"Shopping basket + bouncer"** — throw all `x × w` items into a basket, add the bias as the tip, then the activation function decides who gets in.
+> **"Shopping basket + bouncer."** Throw all `x × w` items into a basket, add the bias as the tip, then the activation function decides who gets in.
+
+### Worked example
+
+```
+x = [3, 1, 0, 0.20, 47]
+w = [0.8, 0.6, -1.2, 2.0, 0.01]
+b = -1.0
+
+z = (3×0.8) + (1×0.6) + (0×-1.2) + (0.20×2.0) + (47×0.01) - 1.0
+z = 2.4 + 0.6 + 0 + 0.4 + 0.47 - 1.0
+z = 2.87
+```
 
 ---
 
-## 2. Activation Functions
+## 3. Activation functions
 
-| Function | Formula | Output Range | Use | Memory Trick |
+| Function | Formula | Output Range | Use | Memory trick |
 |----------|---------|--------------|-----|--------------|
-| **Sigmoid** | `σ(z) = 1 / (1 + e^(-z))` | 0 to 1 | Binary output | Letter `S` looks like the curve |
-| **Tanh** | `(e^z - e^(-z)) / (e^z + e^(-z))` | -1 to 1 | Symmetric hidden | Sigmoid stretched to -1..1 |
-| **ReLU** | `max(0, z)` | 0 to ∞ | Hidden layers | Bouncer: positive in, negative out |
-| **Leaky ReLU** | `max(0.01z, z)` | -∞ to ∞ | ReLU fix | Let a little negative through |
+| **Sigmoid** | `1 / (1 + e^(-z))` | 0 to 1 | Binary output | Thermometer with a 0-to-1 scale |
+| **Tanh** | `(e^z - e^(-z)) / (e^z + e^(-z))` | -1 to 1 | Older hidden layers | Sigmoid stretched to -1..1 |
+| **ReLU** | `max(0, z)` | 0 to ∞ | Most hidden layers | Bouncer that blocks negatives |
 | **Softmax** | `e^(zᵢ) / Σ e^(zⱼ)` | 0 to 1, sum = 1 | Multi-class output | Normalised ranking |
 
----
+For spam detection, the final output uses sigmoid:
 
-## 3. Forward Pass
-
+```python
+probability = torch.sigmoid(z)
+# z = 2.87 -> probability ≈ 0.946
 ```
-Layer 1: z₁ = x · W₁ + b₁      a₁ = activation(z₁)
-Layer 2: z₂ = a₁ · W₂ + b₂     a₂ = activation(z₂)
-Output:  z₃ = a₂ · W₃ + b₃     ŷ = activation(z₃)
-```
-
-### Memory Trick
-
-> **z = raw score, a = activated score.** z is "before", a is "after".
 
 ---
 
-## 4. Loss Functions
+## 4. Forward pass
 
-| Task | Loss | Formula | Memory Trick |
+```
+Input features
+    ↓
+Hidden layer: z = x @ W + b, then ReLU
+    ↓
+Output layer: z = h @ W + b, then sigmoid
+    ↓
+Spam probability
+```
+
+### PyTorch version
+
+```python
+model = nn.Sequential(
+    nn.Linear(5, 4),
+    nn.ReLU(),
+    nn.Linear(4, 1),
+    nn.Sigmoid()
+)
+
+email = torch.tensor([[3.0, 1.0, 0.0, 0.20, 47.0]])
+probability = model(email)
+```
+
+> **Memory trick:** `z` = raw score, `a` = activated score, `p` = probability.
+
+---
+
+## 5. Loss functions
+
+| Task | Loss | Formula | Memory trick |
 |------|------|---------|--------------|
 | **Regression** | MSE | `mean((y - ŷ)²)` | Average squared mistake |
 | **Binary classification** | Binary Cross-Entropy | `-mean(y log(ŷ) + (1-y) log(1-ŷ))` | Punish confident wrong answers |
-| **Multi-class classification** | Cross-Entropy | `-mean(log(ŷ[correct class]))` | Only penalise the true class probability |
+
+For spam detection, use binary cross-entropy:
+
+```python
+criterion = nn.BCELoss()
+loss = criterion(prediction, label)
+```
 
 ---
 
-## 5. Gradient Descent
+## 6. Gradient descent
 
 ```
 new_weight = old_weight - learning_rate × gradient
@@ -78,67 +140,51 @@ new_weight = old_weight - learning_rate × gradient
 gradient = ∂loss / ∂weight
 ```
 
-### Memory Trick
-
-> **Gradient = direction of downhill. Learning rate = step size.** Walk down the hill one step at a time.
+> **Memory trick:** Gradient = direction of downhill. Learning rate = step size.
 
 ---
 
-## 6. Training Loop
+## 7. Training loop
 
 ```
 for each epoch:
-    for each batch:
-        1. Forward pass      → ŷ
-        2. Compute loss      → loss(y, ŷ)
-        3. Zero gradients    → optimizer.zero_grad()
-        4. Backward pass     → loss.backward()
-        5. Update weights    → optimizer.step()
+    for each batch of emails:
+        1. Forward pass      -> spam probabilities
+        2. Compute loss      -> how far from true labels?
+        3. Zero gradients    -> optimizer.zero_grad()
+        4. Backward pass     -> loss.backward()
+        5. Update weights    -> optimizer.step()
 ```
 
-### Memory Trick
-
-> **Predict → Measure → Clear → Calculate → Move.** Repeat.
+> **Memory trick:** Predict -> Measure -> Clear -> Calculate -> Move. Repeat.
 
 ---
 
-## 7. Tensors
+## 8. Tensors and shapes
 
-| Object | Dimensions | PyTorch Code |
-|--------|------------|--------------|
-| Scalar | 0D | `torch.tensor(5.0)` |
-| Vector | 1D | `torch.tensor([1, 2, 3])` |
-| Matrix | 2D | `torch.tensor([[1, 2], [3, 4]])` |
-| 3D tensor | 3D | `torch.tensor([[[1, 2]]])` |
+| Object | Shape | Example |
+|--------|-------|---------|
+| One email | `[5]` | `torch.tensor([3, 1, 0, 0.20, 47])` |
+| Batch of 4 emails | `[4, 5]` | 4 rows × 5 columns |
+| Weights for 5 -> 1 | `[1, 5]` | `nn.Linear(5, 1).weight` |
+| Hidden layer 5 -> 3 | `[3, 5]` | `nn.Linear(5, 3).weight` |
+| Bias for output | `[1]` | `nn.Linear(5, 1).bias` |
+| Scalar | `[]` | `torch.tensor(-1.0)` |
 
-### Memory Trick
-
-> **Shape = address.** Read from biggest container to smallest detail.
-
----
-
-## 8. Tensor Operations
-
-| Operation | PyTorch | Rule |
-|-----------|---------|------|
-| Addition | `a + b` | Shapes broadcast |
-| Element-wise mult | `a * b` | Same shape |
-| Matrix multiply | `a @ b` or `torch.matmul(a, b)` | `(a, b) @ (b, c) → (a, c)` |
-| Transpose | `a.T` | Flip rows and columns |
-| Reshape | `a.reshape(m, n)` | Total elements must match |
-| Sum | `a.sum()` | Reduces all dims |
-| Mean | `a.mean(dim=0)` | Reduce along dim |
+> **Memory trick:** Shape = address. Rows = examples, columns = features.
 
 ---
 
-## 9. Broadcasting Rule
+## 9. Tensor operations
 
-> **Dimensions must match or one of them must be 1.** A 1 "stretches" to match the larger size.
-
-```
-(3, 3) + (3,) → (3, 3) + (3, 3) → (3, 3)
-(2, 1) + (1, 3) → (2, 3)
-```
+| Operation | PyTorch | Rule | Spam Example |
+|-----------|---------|------|--------------|
+| Matrix multiply | `a @ b` | Inner dims match | `(4, 5) @ (5, 1) -> (4, 1)` |
+| Transpose | `a.T` | Flip rows/columns | `layer.weight.T` |
+| Reshape | `a.reshape(m, n)` | Total elements same | `emails.reshape(-1)` |
+| Slice | `a[:, 0]` | All rows, column 0 | All suspicious-word counts |
+| Mean | `a.mean(dim=0)` | Collapse rows | Average feature values |
+| Sum | `a.sum()` | All elements | Total across all emails |
 
 ---
 
@@ -147,28 +193,25 @@ for each epoch:
 ```python
 from torch.utils.data import Dataset, DataLoader
 
-class MyDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = torch.tensor(X, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.float32)
+class SpamDataset(Dataset):
+    def __init__(self, emails, labels):
+        self.emails = torch.tensor(emails, dtype=torch.float32)
+        self.labels = torch.tensor(labels, dtype=torch.float32)
 
     def __len__(self):
-        return len(self.X)
+        return len(self.emails)
 
     def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
+        return self.emails[idx], self.labels[idx]
 
-dataset = MyDataset(X, y)
-loader = DataLoader(dataset, batch_size=32, shuffle=True)
+loader = DataLoader(SpamDataset(emails, labels), batch_size=32, shuffle=True)
 ```
 
-### Memory Trick
-
-> **Dataset = single apple. DataLoader = bag of apples.**
+> **Memory trick:** Dataset = single apple. DataLoader = bag of apples.
 
 ---
 
-## 11. PyTorch Parameters
+## 11. PyTorch parameters
 
 | What | Code | Shape |
 |------|------|-------|
@@ -176,23 +219,28 @@ loader = DataLoader(dataset, batch_size=32, shuffle=True)
 | Named parameters | `model.named_parameters()` | Iterator with names |
 | Number of elements | `p.numel()` | Scalar |
 | Gradient tracking | `p.requires_grad` | Boolean |
-| Save model | `torch.save(model.state_dict(), "model.pth")` | File |
-| Load model | `model.load_state_dict(torch.load("model.pth"))` | File |
+| Save model | `torch.save(model.state_dict(), "spam_model.pth")` | File |
+| Load model | `model.load_state_dict(torch.load("spam_model.pth"))` | File |
 
 ---
 
-## 12. Common Optimisers
+## 12. Common optimisers
 
-| Optimiser | Best For | Memory Trick |
+| Optimiser | Best For | Memory trick |
 |-----------|----------|--------------|
 | **SGD** | Simple convex problems | Plain vanilla gradient descent |
 | **SGD + momentum** | Faster escape from flat areas | Rolling ball keeps going |
 | **Adam** | Most deep learning | Adapts learning rate per parameter |
-| **RMSprop** | Recurrent networks | Keeps moving average of squared gradients |
+
+For spam detection, start with Adam:
+
+```python
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+```
 
 ---
 
-## 13. Overfitting vs Underfitting
+## 13. Overfitting vs underfitting
 
 | | Underfitting | Good Fit | Overfitting |
 |--|---------------|----------|-------------|
@@ -200,24 +248,22 @@ loader = DataLoader(dataset, batch_size=32, shuffle=True)
 | **Validation loss** | High | Low | High |
 | **Fix** | Bigger model, more features | Keep going | Regularisation, more data, early stopping |
 
-### Memory Trick
-
-> **Underfitting = too dumb. Overfitting = too memorised. Good fit = just right.**
+> **Memory trick:** Underfitting = too dumb. Overfitting = too memorised. Good fit = just right.
 
 ---
 
 ## 14. Regularisation
 
-| Method | How | Memory Trick |
+| Method | How | Memory trick |
 |--------|-----|--------------|
-| **Dropout** | Randomly zero some neurons during training | Make the network practise with one hand tied |
+| **Dropout** | Randomly zero some neurons during training | Practise with one hand tied |
 | **L2 (Weight decay)** | Penalise large weights | Keep weights small and humble |
 | **Early stopping** | Stop when validation loss stops improving | Quit while you are ahead |
-| **Data augmentation** | Generate modified training samples | Show the model more variations |
+| **Data augmentation** | Generate modified training samples | Show more variations |
 
 ---
 
-## 15. Key PyTorch Imports
+## 15. Key PyTorch imports
 
 ```python
 import torch
@@ -229,52 +275,55 @@ from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
 
 ---
 
-## 16. Twenty Memory Tricks
+## 16. Twenty memory tricks
 
-1. **Neuron** = basket + bouncer.
-2. **z** = raw score; **a** = activated score.
-3. **Sigmoid** = S-shaped squasher.
-4. **ReLU** = bouncer (positive in, negative out).
-5. **Softmax** = turns scores into probabilities.
-6. **Weights** = synapses.
-7. **Bias** = starting mood.
-8. **Gradient** = direction of downhill.
-9. **Learning rate** = step size.
-10. **Epoch** = one full pass through the data.
-11. **Batch** = one slice of data.
-12. **Forward pass** = prediction.
-13. **Backward pass** = blame assignment.
-14. **Loss** = how wrong you are.
-15. **Optimizer** = the thing that moves weights.
-16. **Tensor** = numbered box of data.
-17. **Shape** = address from big to small.
-18. **Broadcasting** = 1 stretches to fit.
-19. **Dataset** = one apple; **DataLoader** = bag of apples.
-20. **requires_grad=True** = still learning.
+1. **Tensor** = lunchbox with labelled compartments.
+2. **Rows = examples, columns = features.**
+3. **Weight** = volume knob.
+4. **Bias** = starting mood.
+5. **Raw score** = pre-decision number.
+6. **Sigmoid** = thermometer with 0-to-1 scale.
+7. **ReLU** = bouncer (positive in, negative out).
+8. **Softmax** = normalised ranking.
+9. **Weights** = synapses.
+10. **Gradient** = direction of downhill.
+11. **Learning rate** = step size.
+12. **Epoch** = one full pass through the dataset.
+13. **Batch** = one slice of emails.
+14. **Forward pass** = prediction.
+15. **Backward pass** = blame assignment.
+16. **Loss** = how wrong you are.
+17. **Optimiser** = the thing that moves weights.
+18. **Matrix multiply** = inner dimensions must match.
+19. **Broadcasting** = 1 stretches to fit.
+20. **Dataset** = one apple; **DataLoader** = bag of apples.
 
 ---
 
-## 17. Common Mistakes
+## 17. Common mistakes
 
 | Mistake | Fix |
 |---------|-----|
 | Shape mismatch in `matmul` | Check inner dimensions match |
 | Forgetting `zero_grad()` | Call it every training step |
-| Using `sigmoid` for multi-class output | Use `softmax` |
+| Using sigmoid for multi-class output | Use softmax |
 | Shuffling validation data | Set `shuffle=False` |
 | Not moving tensors/model to GPU | Use `.to(device)` |
-| Not normalising data | Scale inputs before training |
+| Not normalising features | Scale inputs before training |
 | Too large learning rate | Try 0.001 first |
 | Not checking train vs val loss | Plot both to spot overfitting |
+| Confusing raw score and probability | Apply sigmoid to raw score |
+| Forgetting batch dimension | Use `[[3, 1, 0, 0.20, 47]]` not `[3, 1, 0, 0.20, 47]` |
 
 ---
 
 ## Summary
 
-- The neuron formula is `z = Σ xw + b`, then activation.
-- Common activations: sigmoid (0..1), tanh (-1..1), ReLU (most popular), softmax (probabilities).
-- Training is a loop: predict → measure → clear → calculate → move.
-- Tensors are multi-dimensional arrays; shape is the most important thing to check.
-- Dataset provides one sample; DataLoader provides batches.
+- The spam-detection example is the thread that runs through every tutorial.
+- A neuron multiplies inputs by weights, adds a bias, and applies an activation.
+- Sigmoid turns raw scores into probabilities. ReLU is the most common hidden activation.
+- Training is a loop: predict, measure loss, clear gradients, calculate gradients, update weights.
+- Tensors are multi-dimensional arrays. Shape is the most important thing to check.
+- `Dataset` provides one sample; `DataLoader` provides batches.
 - Parameters have `requires_grad=True` so PyTorch can update them.
-- The brain analogy is helpful, but neural networks are mathematical tools.
+- Deep learning mirrors brain ideas but is a mathematical pattern recogniser, not a mind.

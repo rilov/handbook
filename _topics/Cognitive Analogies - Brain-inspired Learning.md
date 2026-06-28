@@ -9,59 +9,62 @@ tags:
   - learning
   - memory
   - pattern-recognition
+  - spam-detection
   - beginners
   - friendly
-summary: Learn how deep learning mirrors ideas from the brain — pattern recognition, memory, attention, and learning from mistakes. Friendly analogies and memory tricks for every concept.
+summary: Learn how deep learning mirrors ideas from the brain, using the spam-detection example throughout. Covers pattern recognition, memory, attention, generalisation, and learning from mistakes.
 ---
 
 # Cognitive Analogies — Brain-inspired Learning
 
-Neural networks are called "neural" because they borrow ideas from the brain. But they are not brains. This guide uses real brain concepts as analogies to help you understand deep learning.
+Neural networks are called "neural" because they borrow ideas from the brain. But they are not brains. In this guide, we use the spam-detection example to see how deep learning mirrors ideas from human cognition.
 
 ---
 
-## 1. The Brain as a Pattern Machine
+## 1. The brain as a pattern machine
 
 Your brain is great at recognising patterns:
 
 - You can spot a friend's face in a crowd.
 - You can understand a sentence you have never heard before.
-- You can ride a bike after falling many times.
+- You can tell when an email looks suspicious.
 
-Neural networks are designed to do the same kind of thing: learn patterns from examples.
+A spam filter does the same kind of thing. It learns patterns from many examples and then recognises those patterns in new emails.
 
-> **Memory trick:** A neural network is like a student. Show it many examples, let it make mistakes, and it slowly improves.
+> **Memory trick:** A neural network is like a student. Show it many spam and normal emails, let it make mistakes, and it slowly improves.
 
 ---
 
-## 2. Neurons and Synapses
+## 2. Neurons and synapses
 
 In the brain:
 
 - **Neurons** receive signals, process them, and send signals onward.
 - **Synapses** are the connections between neurons. Stronger synapses mean stronger influence.
 
-In a neural network:
+In our spam model:
 
-- **Artificial neurons** receive weighted inputs, add a bias, and apply an activation.
+- **Artificial neurons** receive weighted email features, add a bias, and apply an activation.
 - **Weights** are the artificial synapses. Learning means strengthening or weakening these weights.
 
+For example, if "unknown sender" is a strong spam signal, the weight from that feature to the spam neuron becomes large. If "known sender" is a strong normal signal, the weight from that feature becomes negative.
+
 ```
-Brain:         Dendrite → Soma → Axon → Synapse
-Neural Net:    Input → Weighted Sum → Activation → Output
+Brain:         Dendrite -> Soma -> Axon -> Synapse
+Neural Net:    Input -> Weighted Sum -> Activation -> Output
 ```
 
 > **Memory trick:** Weights are the brain's synapses. Training is the brain practising.
 
 ---
 
-## 3. Learning by Repetition
+## 3. Learning by repetition
 
 When you practise a skill, your brain strengthens the connections that lead to good outcomes and weakens the ones that lead to mistakes.
 
-A neural network does the same thing during training:
+A spam-filtering neural network does the same thing during training:
 
-1. **Forward pass** — try the task
+1. **Forward pass** — predict whether each email is spam
 2. **Compute loss** — measure the mistake
 3. **Backward pass** — find which weights caused the mistake
 4. **Update weights** — strengthen good paths, weaken bad paths
@@ -70,7 +73,7 @@ This is the brain's "trial and error" turned into maths.
 
 ---
 
-## 4. Hebbian Learning — Neurons That Fire Together, Wire Together
+## 4. Hebbian learning — neurons that fire together, wire together
 
 There is a famous rule in neuroscience:
 
@@ -78,18 +81,18 @@ There is a famous rule in neuroscience:
 
 It means that if two neurons are active at the same time, the connection between them becomes stronger.
 
-In deep learning, this is similar to the idea that weights update together when they both contributed to the same prediction. Backpropagation is a more advanced version of the same idea.
+In our spam model, this is similar to the idea that weights update together when they both contributed to the same prediction. If "many links" and "unknown sender" both activate for spam emails, the network learns to strengthen both connections.
 
 > **Memory trick:** "Fire together, wire together" = "train together, strengthen together".
 
 ---
 
-## 5. Memory and Weights
+## 5. Memory and weights
 
-You can think of a trained neural network as a kind of memory.
+You can think of a trained spam filter as a kind of memory.
 
-- The network's **weights** store everything it learned from the training data.
-- When you show it a new input, the weights help it recognise what it is similar to.
+- The network's **weights** store everything it learned from the training emails.
+- When you show it a new email, the weights help it recognise what the email is similar to.
 
 This is not exact memory like a hard drive. It is **distributed memory** — the knowledge is spread across all the weights, not stored in one place.
 
@@ -97,7 +100,7 @@ This is not exact memory like a hard drive. It is **distributed memory** — the
 
 ---
 
-## 6. Layered Processing in the Brain
+## 6. Layered processing in the brain
 
 Your brain processes information in layers:
 
@@ -105,57 +108,55 @@ Your brain processes information in layers:
 - **Visual cortex** — detects edges and shapes
 - **Higher cortex** — recognises faces, objects, and scenes
 
-Deep networks do something very similar:
+A deep spam filter does something similar:
 
-- **Early layers** — detect simple edges, colours, or basic word patterns
-- **Middle layers** — combine edges into shapes, or words into phrases
-- **Deep layers** — recognise full objects, meanings, or complex concepts
+- **Input layer** — raw email features or word tokens
+- **Early hidden layers** — detect simple patterns like "many links" or "all capitals"
+- **Deeper hidden layers** — detect combinations like "many links + unknown sender"
+- **Output layer** — spam probability
 
-This is why deep networks work so well for vision and language.
-
----
-
-## 7. Attention — Focus on What Matters
-
-Your brain does not process everything equally. When you read a sentence, you focus on the important words.
-
-Attention mechanisms in deep learning do the same. They let the model decide which parts of the input to focus on.
-
-For example, in machine translation:
-
-```
-English: "The cat sat on the mat."
-When translating "mat", the model pays attention to "sat on" and "the".
-```
-
-> **Memory trick:** Attention is like a spotlight. It highlights the important parts of the input.
+This is why deep networks work well for text, images, and audio.
 
 ---
 
-## 8. Generalisation — Learning the Idea, Not the Example
+## 7. Attention — focus on what matters
+
+Your brain does not process everything equally. When you read an email, you focus on the important parts.
+
+> "Congratulations! Click here to claim your prize."
+
+Your attention is drawn to words like "Congratulations", "claim", and "prize". Attention mechanisms in deep learning do the same. They let the model decide which parts of the input to focus on.
+
+For example, when classifying an email, the model might pay more attention to suspicious words and less attention to common words like "the" or "and".
+
+> **Memory trick:** Attention is like a spotlight. It highlights the important parts of the email.
+
+---
+
+## 8. Generalisation — learning the idea, not the example
 
 A good student does not memorise every question. They learn the underlying idea so they can answer new questions.
 
-A good neural network does the same. It should perform well on data it has never seen. This is called **generalisation**.
+A good spam filter does the same. It should perform well on emails it has never seen. This is called **generalisation**.
 
-If a network memorises the training data instead of learning the pattern, it is **overfitting**.
+If a spam filter memorises the training emails instead of learning the pattern, it is **overfitting**.
 
 | | Memorisation | Generalisation |
 |--|--------------|----------------|
-| **Training data** | Perfect | Good |
-| **New data** | Fails | Good |
+| **Training emails** | Perfect | Good |
+| **New emails** | Fails | Good |
 | **Analogy** | Cramming for a test | Understanding the subject |
 
 ---
 
-## 9. Learning from Mistakes — The Loss Function
+## 9. Learning from mistakes — the loss function
 
 Your brain has a kind of internal feedback loop:
 
-- Expected outcome vs actual outcome
+- Expected outcome versus actual outcome
 - If they differ, adjust future behaviour
 
-In neural networks, the **loss function** measures the difference between the expected output and the actual output. The network then uses gradients to reduce that loss.
+In neural networks, the **loss function** measures the difference between the predicted spam probability and the true label. The network then uses gradients to reduce that loss.
 
 | Brain | Neural Network |
 |-------|----------------|
@@ -163,9 +164,11 @@ In neural networks, the **loss function** measures the difference between the ex
 | Adjust behaviour | Update weights via gradient descent |
 | Repeat practice | Repeat epochs |
 
+For spam detection, a common loss is **binary cross-entropy**. It punishes confident wrong predictions more than uncertain ones.
+
 ---
 
-## 10. Plasticity and Fine-Tuning
+## 10. Plasticity and fine-tuning
 
 The brain can change its connections throughout life — this is called **neuroplasticity**.
 
@@ -175,61 +178,37 @@ In deep learning, we have a similar idea called **fine-tuning**:
 - We show it new data, and only a small part of the network changes.
 - This is much faster than training from scratch.
 
+For spam detection, you might start with a model trained on general text and then fine-tune it on your specific email data.
+
 > **Memory trick:** Pretraining = learning a language. Fine-tuning = learning to write poetry in that language.
 
 ---
 
-## 11. Receptive Fields — What Each Neuron Sees
+## 11. Receptive fields — what each neuron sees
 
 In your visual cortex, each neuron only responds to a small part of what you see. This small area is called its **receptive field**.
 
-In convolutional neural networks, each neuron also looks at only a small patch of the image. This is why CNNs are so good at vision.
-
-```
-Image
-  ┌─────────┐
-  │ ▓ ▓ ▓ ▓ │
-  │ ▓ ▓ ▓ ▓ │
-  │ ▓ ▓ ▓ ▓ │
-  └─────────┘
-
-One neuron sees only a small window:
-  ┌─────┐
-  │ ▓ ▓ │
-  │ ▓ ▓ │
-  └─────┘
-```
+In convolutional neural networks, each neuron also looks at only a small patch of the input. This is why CNNs are so good at vision. For spam detection, an early neuron might look at just one word or a small window of features.
 
 ---
 
-## 12. Hierarchical Feature Learning
+## 12. Hierarchical feature learning for spam
 
-Here is how features become more complex as you go deeper:
+Here is how features become more complex as you go deeper in a spam filter:
 
-| Layer | Vision Network | Language Network |
-|-------|----------------|------------------|
-| **Input** | Pixels | Characters or words |
-| **Layer 1** | Edges, colours | Word patterns |
-| **Layer 2** | Shapes, textures | Phrases |
-| **Layer 3** | Eyes, wheels, fur | Sentence meaning |
-| **Layer 4** | Faces, cars, animals | Full document theme |
+| Layer | Vision Network | Spam Network |
+|-------|----------------|--------------|
+| **Input** | Pixels | Words or hand features |
+| **Layer 1** | Edges, colours | Word patterns like "free" or "prize" |
+| **Layer 2** | Shapes, textures | Phrases like "claim your prize" |
+| **Layer 3** | Eyes, wheels, fur | Combinations like "unknown sender + many links" |
+| **Layer 4** | Faces, cars, animals | Full spam intent |
 
 > **Memory trick:** Deep networks build understanding like a pyramid — simple bricks at the bottom, complex ideas at the top.
 
 ---
 
-## 13. Sleep and Learning
-
-Some scientists believe sleep helps the brain consolidate what it learned during the day.
-
-In deep learning, there is no exact equivalent, but there are similar ideas:
-
-- **Validation checks** during training make sure the model is not just memorising.
-- **Early stopping** gives the model a "rest" before it starts overfitting.
-
----
-
-## 14. What Neural Networks Are NOT
+## 13. What neural networks are NOT
 
 It is important to avoid over-interpreting the brain analogy.
 
@@ -245,32 +224,43 @@ A neural network is inspired by the brain, but it is a mathematical tool — not
 
 ---
 
-## 15. Quick Review
+## 14. A spam-filter brain analogy
 
-| Brain Idea | Deep Learning Equivalent |
-|------------|--------------------------|
-| **Neurons** | Artificial neurons / units |
-| **Synapses** | Weights |
-| **Firing together, wiring together** | Weight updates through backpropagation |
-| **Memory** | Distributed weights |
-| **Receptive fields** | Small windows in CNNs |
-| **Hierarchical processing** | Deep layers learning features |
-| **Attention** | Attention mechanisms |
-| **Plasticity** | Fine-tuning and transfer learning |
-| **Learning from mistakes** | Loss function and gradient descent |
-| **Generalisation** | Performance on unseen data |
+Imagine your brain learning to detect spam:
+
+1. At first, you might just check if the email says "WIN" or "FREE".
+2. After seeing more examples, you notice that unknown senders are also suspicious.
+3. Eventually, you learn subtle combinations: "short email + many links + unknown sender" is a strong spam signal.
+
+A deep neural network goes through the same progression. Early layers learn simple checks. Deep layers learn subtle combinations. The loss function is like a teacher correcting the network after each batch.
 
 ---
 
-## 16. Try It Yourself
+## 15. Quick review
 
-Think about these questions:
+| Brain Idea | Deep Learning Equivalent | Spam Example |
+|------------|--------------------------|--------------|
+| **Neurons** | Artificial neurons / units | Nodes that process email features |
+| **Synapses** | Weights | How strongly a feature connects to spam |
+| **Firing together, wiring together** | Weight updates through backpropagation | Suspicious features strengthen together |
+| **Memory** | Distributed weights | Learned spam detection behaviour |
+| **Receptive fields** | Small windows in early layers | One word or one feature window |
+| **Hierarchical processing** | Deep layers learning features | Simple checks to complex combinations |
+| **Attention** | Attention mechanisms | Focus on suspicious words |
+| **Plasticity** | Fine-tuning and transfer learning | Adapting a pretrained model to your emails |
+| **Learning from mistakes** | Loss function and gradient descent | Binary cross-entropy updates weights |
+| **Generalisation** | Performance on unseen emails | Correctly classifying new spam |
 
-1. When you learn a new song, which parts of your brain "strengthen"? How is that like training a neural network?
-2. Why is overfitting like memorising answers instead of understanding the subject?
-3. How does a CNN's small window relate to your visual cortex's receptive field?
+---
 
-Write a one-paragraph answer for each in your own words.
+## 16. Try it yourself
+
+Think about these questions in your own words:
+
+1. When you learn to recognise spam, which "features" do you notice first? How is that like the first layer of a neural network?
+2. Why is overfitting like memorising answers instead of understanding a subject?
+3. How does a spam filter's attention to suspicious words relate to your own attention when reading an email?
+4. What is the difference between the brain's plasticity and fine-tuning a neural network?
 
 ---
 
@@ -280,6 +270,9 @@ Write a one-paragraph answer for each in your own words.
 - Weights are like synapses; training is like strengthening useful connections.
 - Deep layers learn features in a hierarchy, just like the visual cortex.
 - Attention lets the model focus on relevant parts of the input.
-- Generalisation is the goal: the model should perform well on new data.
+- Generalisation is the goal: the model should perform well on new emails.
 - Fine-tuning is like neuroplasticity — adapting a pretrained model to a new task.
-- Understanding the brain analogy helps, but remember that deep networks are mathematical pattern recognisers.
+- The brain analogy is helpful, but remember that deep networks are mathematical pattern recognisers.
+- For spam detection, the network learns to recognise patterns that humans also notice, but it stores that knowledge as numerical weights, not readable rules.
+
+<img src="{{ site.baseurl }}/assets/img/NeuralNetwork.png" alt="A neural network showing how simple inputs build into complex decisions through layers" width="60%" />

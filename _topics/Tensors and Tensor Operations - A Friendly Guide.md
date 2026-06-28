@@ -7,431 +7,498 @@ tags:
   - pytorch
   - tensors
   - tensor-operations
+  - spam-detection
   - beginners
   - friendly
-summary: Learn what tensors are, how to create them in PyTorch, and how to perform the operations that power every neural network — with memory tricks for shapes and broadcasting.
+summary: Learn tensors and tensor operations using the same spam-detection example. Covers feature vectors, batches of emails, weights, matrix multiplication, broadcasting, and reshaping.
 ---
 
 # Tensors and Tensor Operations — A Friendly Guide
 
-Everything in PyTorch is a **tensor**. Inputs, weights, biases, and gradients are all tensors. If you understand tensors, you understand half of deep learning.
+Everything in a spam-detection model is a tensor. The email features are a tensor, the weights are a tensor, the bias is a tensor, and even the final probability is a tensor. In this guide, we will see exactly how those tensors work.
 
 ---
 
-## 1. What Is a Tensor?
+## 1. What is a tensor?
 
-A tensor is just a multi-dimensional array of numbers.
+A tensor is a multi-dimensional array of numbers. The same idea appears at different scales.
 
-| Tensor Type | Dimensions | Real-Life Example |
-|-------------|------------|-------------------|
-| **Scalar** | 0D | A single number: `5.0` |
-| **Vector** | 1D | A list of numbers: `[2, 3, 5]` |
-| **Matrix** | 2D | A table of numbers: spreadsheet rows and columns |
-| **Tensor** | 3D+ | A stack of matrices, like a video (frames × height × width) |
+| Tensor Type | Dimensions | Spam Example |
+|-------------|------------|--------------|
+| **Scalar** | 0D | One number, such as the bias `-1.0` |
+| **Vector** | 1D | One email's features: `[3, 1, 0, 0.20, 47]` |
+| **Matrix** | 2D | A batch of emails: 4 rows × 5 columns |
+| **3D tensor** | 3D+ | A collection of email batches over several training steps |
 
-> **Memory trick:** A tensor is a "numbered box" — 0D is a point, 1D is a line, 2D is a flat grid, 3D is a cube, and 4D+ is a cube of cubes.
+> **Memory trick:** A tensor is a numbered box. 0D is a single number, 1D is a list, 2D is a table, 3D is a stack of tables.
 
 ---
 
-## 2. Creating Tensors in PyTorch
+## 2. One email as a tensor
+
+Recall our spam email features:
+
+| Suspicious words | Links | Known sender | Capitals | Length |
+|------------------|-------|--------------|----------|--------|
+| 3 | 1 | 0 | 0.20 | 47 |
+
+In PyTorch:
 
 ```python
 import torch
 
-# Scalar
-scalar = torch.tensor(5.0)
-print(scalar, scalar.shape)
-
-# Vector
-vector = torch.tensor([1, 2, 3, 4])
-print(vector, vector.shape)
-
-# Matrix
-matrix = torch.tensor([
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 9]
+email = torch.tensor([
+    3.0,    # suspicious words
+    1.0,    # links
+    0.0,    # known sender
+    0.20,   # capitals
+    47.0    # length
 ])
-print(matrix, matrix.shape)
 
-# 3D tensor
-tensor_3d = torch.tensor([
-    [[1, 2], [3, 4]],
-    [[5, 6], [7, 8]]
-])
-print(tensor_3d, tensor_3d.shape)
+print(email)
+print(email.shape)  # torch.Size([5])
 ```
 
-### Output
+Output:
 
 ```
-tensor(5.) torch.Size([])
-tensor([1, 2, 3, 4]) torch.Size([4])
-tensor([[1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 9]]) torch.Size([3, 3])
-tensor([[[1, 2],
-         [3, 4]],
-        [[5, 6],
-         [7, 8]]]) torch.Size([2, 2, 2])
+tensor([ 3.0000,  1.0000,  0.0000,  0.2000, 47.0000])
+torch.Size([5])
 ```
+
+This tensor has **one dimension** and **five elements**. The shape tells us how many numbers live along each dimension.
+
+> **Memory trick:** Shape is like a mailing address. It answers "how many?" at each level.
 
 ---
 
-## 3. Tensor Shapes and What They Mean
+## 3. Many emails as a 2D tensor
 
-The shape of a tensor tells you how many dimensions it has and how big each one is.
+During training, we do not process one email at a time. We process a **batch** of emails. Each row is one email, and each column is one feature.
+
+```python
+emails = torch.tensor([
+    # susp, link, known, caps, len
+    [3.0,  1.0,  0.0,  0.20, 47.0],  # spammy
+    [0.0,  0.0,  1.0,  0.02, 82.0],  # normal
+    [5.0,  4.0,  0.0,  0.45, 31.0],  # very spammy
+    [1.0,  0.0,  1.0,  0.05, 120.0]  # normal
+])
+
+print(emails.shape)  # torch.Size([4, 5])
+```
+
+The shape `[4, 5]` means:
 
 ```
-shape = torch.Size([batch_size, channels, height, width])
-
-For one colour image:
-  [1, 3, 224, 224]
-   │  │   │    └─ width in pixels
-   │  │   └──── height in pixels
-   │  └───────── RGB channels (3 for red, green, blue)
-   └──────────── one image in this batch
+4 emails (rows)
+5 features (columns)
 ```
 
-> **Memory trick:** Read shape like a mailing address — biggest container first, smallest detail last.
+> **Memory rule:** Rows = examples, columns = features.
 
 ---
 
-## 4. Common Tensor Creation Helpers
+## 4. Weights and bias as tensors
+
+The weights for our single-neuron spam model are also a tensor:
+
+```python
+weights = torch.tensor([
+    0.8,    # suspicious words
+    0.6,    # links
+   -1.2,    # known sender
+    2.0,    # capitals
+    0.01    # length
+])
+
+print(weights.shape)  # torch.Size([5])
+
+bias = torch.tensor(-1.0)
+print(bias.shape)  # torch.Size([])
+```
+
+The weights are a 1D tensor with five elements. The bias is a scalar tensor with an empty shape, meaning it has no dimensions.
+
+---
+
+## 5. Common tensor creation helpers
+
+PyTorch provides helpers to create common tensors. These are useful when building models or initialising data.
 
 ```python
 import torch
 
-# Zeros
-torch.zeros(3, 3)
-# tensor([[0., 0., 0.],
-#         [0., 0., 0.],
-#         [0., 0., 0.]])
+# Zeros: sometimes used for initialising bias
+zeros = torch.zeros(5)
 
 # Ones
-torch.ones(2, 4)
+ones = torch.ones(4, 5)
 
 # Random values between 0 and 1
-torch.rand(3, 3)
+random_values = torch.rand(4, 5)
 
-# Random values from a normal distribution (mean=0, std=1)
-torch.randn(3, 3)
+# Random values from a normal distribution (bell curve)
+# Most weights in a new model start like this
+weights = torch.randn(5, 3)
 
-# A range of numbers (like Python range)
-torch.arange(0, 10)
-# tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+# Numbers from 0 to 9
+steps = torch.arange(10)
 
-# Linearly spaced values
-torch.linspace(0, 1, 5)
+# Numbers evenly spaced between 0 and 1
+levels = torch.linspace(0, 1, 5)
 # tensor([0.00, 0.25, 0.50, 0.75, 1.00])
 ```
 
 ---
 
-## 5. Basic Tensor Operations
+## 6. Matrix multiplication: one email at a time
 
-### Arithmetic
-
-```python
-import torch
-
-a = torch.tensor([1, 2, 3])
-b = torch.tensor([4, 5, 6])
-
-print(a + b)       # tensor([5, 7, 9])
-print(a - b)       # tensor([-3, -3, -3])
-print(a * b)       # element-wise multiplication: tensor([4, 10, 18])
-print(a / b)       # tensor([0.25, 0.40, 0.50])
-
-# Scalar operations
-print(a + 10)      # tensor([11, 12, 13])
-print(a * 2)       # tensor([2, 4, 6])
-```
-
-### Matrix Multiplication
-
-Matrix multiplication is the heart of neural networks.
-
-```
-For a layer:  output = input @ W + b
-
-If input has shape (batch_size, in_features)
-And W has shape (in_features, out_features)
-Then output has shape (batch_size, out_features)
-```
-
-**Memory trick:** The inner dimensions must match, and the outer dimensions become the result.
-
-```
-(a, b) @ (b, c) → (a, c)
-    ^     ^       ^
-    └─────┘       └────── inner dimensions cancel
-```
+When we compute the raw spam score for one email, we multiply the email vector by the weight vector and add the bias:
 
 ```python
-A = torch.tensor([[1, 2, 3],
-                  [4, 5, 6]])      # shape (2, 3)
+email = torch.tensor([3.0, 1.0, 0.0, 0.20, 47.0])
+weights = torch.tensor([0.8, 0.6, -1.2, 2.0, 0.01])
+bias = torch.tensor(-1.0)
 
-B = torch.tensor([[1, 2],
-                  [3, 4],
-                  [5, 6]])          # shape (3, 2)
-
-C = A @ B  # or torch.matmul(A, B)
-print(C)
-# tensor([[22, 28],
-#         [49, 64]])
-
-# Check: (2, 3) @ (3, 2) → (2, 2)
-print(C.shape)  # torch.Size([2, 2])
+raw_score = email @ weights + bias
+print(raw_score)  # tensor(2.8700)
 ```
 
-### Transpose
+The `@` operator performs **matrix multiplication**. For two 1D tensors of the same length, it is the same as a dot product: multiply matching positions and add the results.
 
-Transpose flips a matrix over its diagonal.
+| Position | email | weights | product |
+|----------|-------|---------|---------|
+| 0 | 3.0 | 0.8 | 2.4 |
+| 1 | 1.0 | 0.6 | 0.6 |
+| 2 | 0.0 | -1.2 | 0.0 |
+| 3 | 0.20 | 2.0 | 0.4 |
+| 4 | 47.0 | 0.01 | 0.47 |
 
-```python
-A = torch.tensor([[1, 2, 3],
-                  [4, 5, 6]])
+Sum of products: `2.4 + 0.6 + 0.0 + 0.4 + 0.47 = 3.87`
 
-print(A.T)
-# tensor([[1, 4],
-#         [2, 5],
-#         [3, 6]])
-```
+Add bias: `3.87 - 1.0 = 2.87`
+
+> **Memory trick:** Matrix multiplication is a row of waiters each carrying one plate. Each plate is a feature multiplied by its weight. The total bill is the sum.
 
 ---
 
-## 6. Reshaping Tensors
+## 7. Matrix multiplication: a batch of emails at once
 
-```python
-import torch
+The real power comes from processing many emails at once. If the emails tensor has shape `(4, 5)` and the weights tensor has shape `(5,)`, then:
 
-x = torch.arange(12)
-print(x)        # tensor([0, 1, 2, ..., 11])
-print(x.shape)  # torch.Size([12])
-
-# Reshape to 3 rows × 4 columns
-x = x.reshape(3, 4)
-print(x)
-# tensor([[ 0,  1,  2,  3],
-#         [ 4,  5,  6,  7],
-#         [ 8,  9, 10, 11]])
-
-# Reshape to 2 batches × 2 channels × 3 values
-x = x.reshape(2, 2, 3)
-print(x.shape)  # torch.Size([2, 2, 3])
-
-# -1 means "infer this dimension"
-x = torch.arange(12).reshape(3, -1)
-print(x.shape)  # torch.Size([3, 4])
+```
+(4, 5) @ (5,) -> (4,)
 ```
 
-> **Memory trick:** Reshaping is like repacking the same marbles into a different box — the number of marbles stays the same.
+PyTorch multiplies each of the four rows by the weight vector, producing four raw scores.
+
+```python
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0],
+    [5.0, 4.0, 0.0, 0.45, 31.0],
+    [1.0, 0.0, 1.0, 0.05, 120.0]
+])
+
+weights = torch.tensor([0.8, 0.6, -1.2, 2.0, 0.01])
+bias = torch.tensor(-1.0)
+
+raw_scores = emails @ weights + bias
+print(raw_scores)
+# tensor([ 2.8700, -2.1800,  6.5600, -2.9500])
+
+print(raw_scores.shape)  # torch.Size([4])
+```
+
+Each number is the raw score for one email. The first email scored `2.87`, the second scored `-2.18`, and so on.
+
+> **Memory trick:** The inner dimensions must match. Here the inner dimension is `5` (features), so `(4, 5) @ (5,)` becomes `(4,)`.
 
 ---
 
-## 7. Slicing and Indexing
+## 8. Why PyTorch layers use a 2D weight tensor
+
+In practice, PyTorch stores weights for a layer in a 2D tensor. For a layer with 5 inputs and 1 output, the weight tensor has shape `(1, 5)`:
 
 ```python
-import torch
+import torch.nn as nn
 
-x = torch.tensor([[1, 2, 3],
-                  [4, 5, 6],
-                  [7, 8, 9]])
-
-# First row
-print(x[0])       # tensor([1, 2, 3])
-
-# First column
-print(x[:, 0])    # tensor([1, 4, 7])
-
-# Element at row 1, column 2
-print(x[1, 2])    # tensor(6)
-
-# Last row
-print(x[-1])      # tensor([7, 8, 9])
-
-# Sub-matrix: rows 0-1, columns 1-2
-print(x[0:2, 1:3])
-# tensor([[2, 3],
-#         [5, 6]])
+layer = nn.Linear(5, 1)
+print(layer.weight.shape)  # torch.Size([1, 5])
+print(layer.bias.shape)    # torch.Size([1])
 ```
+
+To compute the output, PyTorch effectively does:
+
+```python
+output = emails @ layer.weight.T + layer.bias
+```
+
+The transpose `.T` flips the weight tensor from `(1, 5)` to `(5, 1)`, so the multiplication works:
+
+```
+(4, 5) @ (5, 1) -> (4, 1)
+```
+
+This is why the output shape is `(4, 1)` instead of `(4,)`.
+
+> **Memory trick:** PyTorch stores weights as rows. To multiply, we turn the rows into columns with `.T`.
 
 ---
 
-## 8. Broadcasting
+## 9. The shape of a hidden layer
 
-Broadcasting lets PyTorch work with tensors of different shapes without copying data.
-
-**Simple rule:** If dimensions match, great. If one is 1, PyTorch "stretches" it to match.
+Suppose we add a hidden layer with 3 neurons to our spam model. The first layer turns 5 features into 3 hidden values. The weight tensor has shape `(3, 5)`:
 
 ```python
-import torch
+hidden_layer = nn.Linear(5, 3)
+print(hidden_layer.weight.shape)  # torch.Size([3, 5])
+print(hidden_layer.bias.shape)    # torch.Size([3])
 
-A = torch.tensor([[1, 2, 3],
-                  [4, 5, 6]])    # shape (2, 3)
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0]
+])
 
-b = torch.tensor([10, 20, 30])   # shape (3,) → broadcasted to (2, 3)
-
-print(A + b)
-# tensor([[11, 22, 33],
-#         [14, 25, 36]])
+hidden_scores = hidden_layer(emails)
+print(hidden_scores.shape)  # torch.Size([2, 3])
 ```
 
-> **Memory trick:** A shape of `1` is like an elastic band — it stretches to fit the larger shape.
+The input shape is `(2, 5)`. The layer computes `(2, 5) @ (5, 3) -> (2, 3)`. Each of the two emails now has three hidden scores.
+
+> **Memory trick:** A linear layer is a shape transformer. The number of columns going in becomes the number of columns coming out.
 
 ---
 
-## 9. Reduction Operations
+## 10. Broadcasting with the bias
 
-Reductions collapse a dimension into a single number.
+Notice that the bias tensor has shape `(1,)`, but PyTorch adds it to every row of the output. This is **broadcasting**. PyTorch automatically stretches the small tensor to match the big one.
 
 ```python
-import torch
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0],
+    [5.0, 4.0, 0.0, 0.45, 31.0],
+    [1.0, 0.0, 1.0, 0.05, 120.0]
+])
 
-x = torch.tensor([[1, 2, 3],
-                  [4, 5, 6]])
+weights = torch.tensor([
+    [0.8],
+    [0.6],
+    [-1.2],
+    [2.0],
+    [0.01]
+])
 
-print(x.sum())      # tensor(21)
-print(x.mean())     # tensor(3.5)
-print(x.max())      # tensor(6)
-print(x.min())      # tensor(1)
+bias = torch.tensor([[-1.0]])
 
-# Reduce along a specific dimension
-print(x.sum(dim=0))   # sum each column: tensor([5, 7, 9])
-print(x.sum(dim=1))   # sum each row:   tensor([ 6, 15])
-
-# Keep the dimension for later broadcasting
-print(x.sum(dim=1, keepdim=True))
-# tensor([[ 6],
-#         [15]])
+scores = emails @ weights + bias
+print(scores)
+# tensor([[ 2.8700],
+#         [-2.1800],
+#         [ 6.5600],
+#         [-2.9500]])
 ```
+
+The bias `[[-1.0]]` was broadcast to all four rows. This is a common pattern in neural networks: the same bias is added to every example.
+
+> **Memory trick:** A shape of `1` is an elastic band. It stretches to fit the larger shape.
 
 ---
 
-## 10. Tensors in a Neural Network
+## 11. Reshaping tensors
 
-Here is how tensors flow through a model:
+Sometimes the shape of a tensor is not what a layer expects. For example, a spam model might need the input in a different format. We can reshape without changing the data.
 
+```python
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0]
+])
+
+print(emails.shape)  # torch.Size([2, 5])
+
+# Flatten into one long vector
+flat = emails.reshape(-1)
+print(flat.shape)    # torch.Size([10])
+print(flat)
+# tensor([3.0, 1.0, 0.0, 0.20, 47.0, 0.0, 0.0, 1.0, 0.02, 82.0])
+
+# Reshape back, but with one batch dimension and one feature dimension
+back = flat.reshape(2, 5)
+print(back.shape)    # torch.Size([2, 5])
 ```
-Input tensor:      shape (batch_size, in_features)
-Weight tensor:     shape (in_features, out_features)
-Bias tensor:       shape (out_features,)
-Output tensor:     shape (batch_size, out_features)
+
+The `-1` tells PyTorch to infer the size of that dimension. The total number of elements must stay the same.
+
+> **Memory trick:** Reshaping is like repacking the same marbles into a different box. The marbles do not change; only the box changes.
+
+---
+
+## 12. Slicing and indexing emails
+
+We often need to look at a subset of the data. Slicing lets us do that.
+
+```python
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],  # email 0
+    [0.0, 0.0, 1.0, 0.02, 82.0],  # email 1
+    [5.0, 4.0, 0.0, 0.45, 31.0],  # email 2
+    [1.0, 0.0, 1.0, 0.05, 120.0]  # email 3
+])
+
+# Get the first email
+print(emails[0])
+# tensor([3.0, 1.0, 0.0, 0.20, 47.0])
+
+# Get the suspicious-word count for all emails
+print(emails[:, 0])
+# tensor([3.0, 0.0, 5.0, 1.0])
+
+# Get the first two emails and the first two features
+print(emails[0:2, 0:2])
+# tensor([[3.0, 1.0],
+#         [0.0, 0.0]])
+
+# Get the last email
+print(emails[-1])
+# tensor([1.0, 0.0, 1.0, 0.05, 120.0])
 ```
+
+> **Memory trick:** `emails[:, 0]` means "all rows, column 0." The colon is like a wildcard.
+
+---
+
+## 13. Reduction operations
+
+Reductions collapse a dimension into a single number. For example, we might want the average number of suspicious words across all emails.
+
+```python
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0],
+    [5.0, 4.0, 0.0, 0.45, 31.0],
+    [1.0, 0.0, 1.0, 0.05, 120.0]
+])
+
+# Average across all emails and all features
+print(emails.mean())  # tensor(1.3680)
+
+# Average number of suspicious words (column 0)
+print(emails[:, 0].mean())  # tensor(2.25)
+
+# Average of each feature across all emails
+print(emails.mean(dim=0))
+# tensor([2.2500, 1.2500, 0.5000, 0.1800, 70.0000])
+```
+
+`dim=0` means "collapse the rows" — in other words, compute the average feature value across all emails.
+
+> **Memory trick:** `dim=0` means vertical collapse. `dim=1` means horizontal collapse.
+
+---
+
+## 14. Moving tensors to GPU
+
+If you have a GPU, you can move tensors there for faster computation. This is especially useful for large batches of emails or big models.
+
+```python
+# Check if GPU is available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+
+# Move emails to GPU
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0]
+]).to(device)
+
+# Create a model on GPU
+model = nn.Linear(5, 1).to(device)
+
+# Forward pass happens on GPU
+probabilities = torch.sigmoid(model(emails))
+print(probabilities)
+```
+
+> **Memory trick:** GPU is like a fast factory. CPU is like a hand workshop. For big jobs, use the factory.
+
+---
+
+## 15. Common mistakes
+
+| Mistake | Why it happens | Fix |
+|---------|----------------|-----|
+| Shape mismatch in matrix multiplication | Inner dimensions do not match | Check shapes with `.shape` before multiplying |
+| Forgetting the batch dimension | `nn.Linear` expects `(batch, features)` | Add a leading dimension: `[[...]]` |
+| Confusing `*` and `@` | `*` is element-wise; `@` is matrix multiplication | Use `@` for neural network layers |
+| Wrong `dim` in reduction | `dim=0` collapses rows; `dim=1` collapses columns | Think about which dimension you want to remove |
+| Reshaping into incompatible sizes | Total number of elements must stay the same | Use `-1` to let PyTorch infer one dimension |
+| Mixing CPU and GPU tensors | Operations need both tensors on the same device | Move both to the same device with `.to(device)` |
+
+---
+
+## 16. Quick review
+
+| Term | Meaning | Spam Example |
+|------|---------|--------------|
+| **Tensor** | A container of numbers | Email features, weights, probabilities |
+| **Shape** | Size of each dimension | `(4, 5)` means 4 emails, 5 features |
+| **Scalar** | 0D tensor | The bias `-1.0` |
+| **Vector** | 1D tensor | One email: `[3, 1, 0, 0.20, 47]` |
+| **Matrix** | 2D tensor | A batch of emails |
+| **Matrix multiplication** | Multiply rows by columns and sum | `(4, 5) @ (5, 1) -> (4, 1)` |
+| **Transpose** | Flip rows and columns | `layer.weight.T` |
+| **Broadcasting** | Stretch a small tensor to match a bigger one | Adding a bias to every row |
+| **Reshape** | Change dimensions without changing data | `emails.reshape(-1)` |
+| **Slicing** | Select a subset | `emails[:, 0]` for all suspicious-word counts |
+| **Reduction** | Collapse a dimension | `emails.mean(dim=0)` for average feature values |
+
+---
+
+## 17. Try it yourself
 
 ```python
 import torch
 import torch.nn as nn
 
-# One batch of 4 samples, each with 3 features
-x = torch.randn(4, 3)
+# 1. Create a batch of 4 emails with 5 features
+emails = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0],
+    [5.0, 4.0, 0.0, 0.45, 31.0],
+    [1.0, 0.0, 1.0, 0.05, 120.0]
+])
 
-# Linear layer: 3 inputs, 5 outputs
-layer = nn.Linear(3, 5)
+# 2. Create a linear layer: 5 inputs -> 1 output
+layer = nn.Linear(5, 1)
 
-# Forward pass
-output = layer(x)
-print(output.shape)  # torch.Size([4, 5])
+# 3. Compute raw scores for all emails at once
+scores = layer(emails)
+print("Scores shape:", scores.shape)
+print(scores)
 
-# Access the weights and biases
-print(layer.weight.shape)  # torch.Size([5, 3])
-print(layer.bias.shape)    # torch.Size([5])
-```
+# 4. Apply sigmoid to get probabilities
+probabilities = torch.sigmoid(scores)
+print("Probabilities:")
+print(probabilities)
 
-Notice that `layer.weight` has shape `(5, 3)` even though the output is `(4, 5)` and the input is `(4, 3)`. PyTorch stores the weight transposed internally, so the math works out as:
+# 5. Average probability across all emails
+print("Average probability:", probabilities.mean().item())
 
-```
-output = x @ W^T + b
-```
-
----
-
-## 11. Moving Tensors to GPU
-
-If you have a GPU, you can move tensors there for faster computation.
-
-```python
-import torch
-
-# Check if GPU is available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
-
-# Create tensor on GPU
-x = torch.randn(3, 3).to(device)
-
-# Or create directly on GPU
-y = torch.randn(3, 3, device=device)
-
-# Model on GPU
-model = nn.Linear(10, 1).to(device)
-```
-
----
-
-## 12. Common Mistakes
-
-| Mistake | Why It Happens | Fix |
-|---------|----------------|-----|
-| Shape mismatch in matrix multiplication | Inner dimensions do not match | Use `.T` or reshape to align shapes |
-| Forgetting `.item()` on a scalar tensor | PyTorch tensors do not print as plain numbers | Call `scalar.item()` |
-| In-place operations break gradients | PyTorch cannot track in-place changes | Use out-of-place ops like `x = x + 1` |
-| Mixing CPU and GPU tensors | Operations need both tensors on the same device | Move both to same device with `.to(device)` |
-| Wrong `dim` for reduction | PyTorch `dim` is the dimension to *collapse* | Read `dim=0` as "collapse rows" |
-
----
-
-## 13. Quick Review
-
-| Term | Meaning | Example |
-|------|---------|---------|
-| **Scalar** | 0D tensor | `torch.tensor(5.0)` |
-| **Vector** | 1D tensor | `torch.tensor([1, 2, 3])` |
-| **Matrix** | 2D tensor | `torch.tensor([[1, 2], [3, 4]])` |
-| **Shape** | Size of each dimension | `torch.Size([2, 3, 4])` |
-| **Reshape** | Change dimensions without changing data | `x.reshape(2, -1)` |
-| **Transpose** | Flip rows and columns | `A.T` |
-| **Matrix multiplication** | `output = input @ W` | `(2, 3) @ (3, 4) → (2, 4)` |
-| **Broadcasting** | Stretch a small tensor to match a bigger one | `[10, 20, 30]` added to a `(2, 3)` matrix |
-| **Reduction** | Collapse a dimension into one number | `x.sum()`, `x.mean(dim=0)` |
-
----
-
-## 14. Try It Yourself
-
-```python
-import torch
-
-# 1. Create a 3×4 matrix of random numbers
-A = torch.randn(3, 4)
-
-# 2. Add 5 to every element
-A = A + 5
-
-# 3. Multiply by a column vector
-b = torch.tensor([[1], [2], [3]])
-print(A * b)  # broadcasting
-
-# 4. Compute the mean of each column
-print(A.mean(dim=0))
-
-# 5. Reshape to 2×6
-print(A.reshape(2, 6))
-
-# 6. Matrix multiply with a 4×2 matrix
-B = torch.randn(4, 2)
-C = A @ B
-print(C.shape)
+# 6. Get the suspicious-word count for all emails
+print("Suspicious-word counts:", emails[:, 0])
 ```
 
 ---
 
 ## Summary
 
-- A tensor is a multi-dimensional array of numbers.
-- PyTorch tensors support GPU acceleration and automatic gradient tracking.
-- Matrix multiplication is the core operation of neural networks.
-- Broadcasting lets you combine tensors of different shapes cleanly.
-- Reductions, reshaping, and slicing are the everyday tools you need.
+- A tensor is a multi-dimensional array of numbers. Spam emails, weights, and biases are all tensors.
+- Shape tells you how many dimensions the tensor has and how big each one is.
+- Matrix multiplication is the core operation of neural networks. Inner dimensions must match.
+- PyTorch stores layer weights as `(out_features, in_features)` and transposes them during multiplication.
+- Broadcasting automatically stretches a small tensor, such as a bias, to match a larger one.
+- Reshaping, slicing, and reductions are everyday tools for working with data.
 - Always check tensor shapes before debugging anything else.

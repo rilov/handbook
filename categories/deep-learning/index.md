@@ -4,27 +4,29 @@ title: Deep Learning
 category: Deep Learning
 ---
 
-Learn deep learning from scratch — with simple explanations, real analogies, and PyTorch code you can run. Every topic teaches the *why* before the *how*, and includes memory tricks for formulas.
+Learn deep learning from scratch using one consistent, real-world example: a spam email classifier. Every tutorial below uses the same email features and the same PyTorch code style, so you can focus on the ideas without switching examples.
 
 **Recommended Learning Path:**
 
-1. **[Understanding Neurons and Neural Networks]({{ site.baseurl }}/topics/understanding-neurons-and-neural-networks)** — Biological inspiration, the artificial neuron, activation functions, and how single neurons stack into deep networks
-2. **[From Machine Learning to Deep Learning]({{ site.baseurl }}/topics/from-machine-learning-to-deep-learning)** — What changes when we move from classic ML to neural networks, and why hidden layers matter
-3. **[Tensors and Tensor Operations]({{ site.baseurl }}/topics/tensors-and-tensor-operations)** — The building blocks of PyTorch data, shapes, and arithmetic
-4. **[Data Handling with Dataset and DataLoader]({{ site.baseurl }}/topics/data-handling-with-dataset-and-dataloader)** — Loading, batching, and shuffling your own data cleanly
-5. **[Parameters in PyTorch]({{ site.baseurl }}/topics/parameters-in-pytorch)** — Weights, biases, and how PyTorch tracks learnable numbers automatically
-6. **[Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How neural networks echo learning, memory, and pattern recognition in the brain
-7. **[Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference
+1. **[Understanding Neurons and Neural Networks]({{ site.baseurl }}/topics/understanding-neurons-and-neural-networks)** — Turn a real email into numbers, multiply by weights, add a bias, apply sigmoid, and produce a spam probability. Includes a neural network diagram.
+2. **[From Machine Learning to Deep Learning]({{ site.baseurl }}/topics/from-machine-learning-to-deep-learning)** — Compare hand-crafted spam features with learned features, and see why hidden layers and non-linearity matter.
+3. **[Tensors and Tensor Operations]({{ site.baseurl }}/topics/tensors-and-tensor-operations)** — The same email features as tensors: shapes, batches, matrix multiplication, broadcasting, and GPU movement.
+4. **[Data Handling with Dataset and DataLoader]({{ site.baseurl }}/topics/data-handling-with-dataset-and-dataloader)** — Build a spam `Dataset`, create batches, shuffle, split train/val/test, and normalise features.
+5. **[Parameters in PyTorch]({{ site.baseurl }}/topics/parameters-in-pytorch)** — Weights, biases, `requires_grad`, parameter counting, freezing, initialisation, saving, and loading using the spam model.
+6. **[Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How spam detection mirrors neurons, synapses, memory, attention, and generalisation in the brain.
+7. **[Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
 
 **What You'll Learn:**
 
-- How biological neurons inspired artificial neurons
-- The math of a neuron: weighted sum + bias + activation
-- Common activation functions (sigmoid, ReLU, tanh) and when to use them
-- Why deep networks can learn more than shallow ones
-- The difference between traditional ML and deep learning
-- How tensors represent data, weights, and computations in PyTorch
-- How to build custom `Dataset` and `DataLoader` objects
-- How PyTorch automatically creates and updates parameters
-- The brain-inspired ideas behind learning and generalisation
-- Memory tricks for every key formula
+- How a real email becomes a tensor of numbers
+- How a single neuron computes a weighted sum, adds a bias, and applies an activation
+- How sigmoid turns a raw score into a spam probability
+- Why hidden layers can learn feature combinations like "many links + unknown sender"
+- The difference between traditional ML feature engineering and deep learning feature learning
+- How tensors represent emails, weights, and biases in PyTorch
+- How to batch, shuffle, split, and normalise data with `Dataset` and `DataLoader`
+- How PyTorch creates, tracks, and updates parameters automatically
+- How deep learning mirrors brain concepts like memory, attention, and generalisation
+- Memory tricks for every formula and concept
+
+All guides use friendly explanations, real-world spam examples, and working PyTorch code you can run yourself.

@@ -7,140 +7,154 @@ tags:
   - machine-learning
   - neural-networks
   - hidden-layers
-  - perceptron
-  - activation-functions
+  - feature-engineering
+  - feature-learning
+  - spam-detection
   - beginners
   - friendly
-summary: Learn exactly what changes when you move from traditional machine learning to deep learning, why hidden layers matter, and how the perceptron algorithm connects to modern neural networks.
+summary: Learn what changes when you move from traditional machine learning to deep learning, using the same spam-detection example throughout. Covers feature engineering, feature learning, hidden layers, and why non-linearity matters.
 ---
 
 # From Machine Learning to Deep Learning — A Friendly Guide
 
-If you already know machine learning, deep learning is not a huge leap — it is a shift in *how* we represent features. In this guide, we will see what stays the same, what changes, and why adding hidden layers unlocks so much power.
+Let us continue with the spam email example. We already saw that a single neuron can take five numbers and produce a spam probability. Now we will ask: what changes if we switch from traditional machine learning to deep learning?
 
 ---
 
-## 1. What Stays the Same
+## 1. The same problem, two different approaches
 
-Traditional ML and deep learning share the same core idea:
+Imagine you work at an email company and you must build a spam detector.
+
+In **traditional machine learning**, a human might decide which features matter:
+
+| Feature | How to get it |
+|---------|---------------|
+| Number of suspicious words | Count words like “free”, “win”, “prize” |
+| Number of links | Count `http://` or `<a>` tags |
+| Sender known or unknown | Check against an address book |
+| Percentage of capital letters | Count uppercase letters ÷ total letters |
+| Message length | Count words |
+
+You then feed these features into a model like logistic regression or a decision tree. The model learns weights, but the features themselves are designed by a person. This is called **feature engineering**.
+
+In **deep learning**, you might give the model raw text instead:
+
+> “Congratulations! Click here to claim your prize.”
+
+The model learns which words, phrases, and patterns matter. It might discover that “claim your prize” is a strong spam signal without anyone telling it explicitly. This is called **feature learning**.
+
+> **Memory trick:** In traditional ML, you hand-pick the clues. In deep learning, the detective learns which clues to look for.
+
+---
+
+## 2. What stays the same
+
+Both approaches share the same high-level goal:
 
 > **Feed data into a model, measure the error, and update the model to reduce the error.**
 
 | Step | Traditional ML | Deep Learning |
 |------|----------------|---------------|
-| Input data | Features like height, age, word counts | Same — but often rawer (pixels, text) |
-| Model | Linear regression, decision tree, SVM | Neural network |
-| Loss function | MSE, cross-entropy, log loss | MSE, cross-entropy |
-| Optimisation | Gradient descent | Gradient descent / Adam |
-| Goal | Minimise error on unseen data | Same |
+| Input | Features designed by humans | Raw or lightly processed data |
+| Model | Logistic regression, SVM, decision tree | Neural network |
+| Loss function | Cross-entropy, MSE | Cross-entropy, MSE |
+| Optimisation | Gradient descent or similar | Gradient descent / Adam |
+| Goal | Generalise to unseen emails | Same |
+
+The difference is not the goal. The difference is **who decides what the model looks at**.
 
 ---
 
-## 2. What Changes
+## 3. A single neuron is just traditional ML
 
-### Feature Engineering vs Feature Learning
+Recall our simple spam model:
 
-In traditional ML, humans often hand-craft features:
+```python
+email = torch.tensor([3.0, 1.0, 0.0, 0.20, 47.0])
+weights = torch.tensor([0.8, 0.6, -1.2, 2.0, 0.01])
+bias = torch.tensor(-1.0)
 
-- For spam detection: count of spammy words, presence of links
-- For house prices: price per square foot, number of rooms
-
-In deep learning, the network learns the features itself. The hidden layers automatically discover what matters.
-
-```
-Traditional ML:   Raw Data → Human Features → Model → Prediction
-Deep Learning:    Raw Data → Neural Network → Learned Features → Prediction
+raw_score = email @ weights + bias
+probability = torch.sigmoid(raw_score)
 ```
 
-> **Memory trick:** In ML, you tell the model what to look at. In DL, you give it the raw data and it figures out what to look at.
+This is almost the same as **logistic regression**:
 
-### Linear vs Non-Linear
+- Multiply each feature by a weight.
+- Add them up.
+- Add a bias.
+- Squash with sigmoid to get a probability.
 
-Most traditional ML models are either linear or have limited non-linearity. A single neuron without activation is a **linear model**:
-
-```
-ŷ = w₁x₁ + w₂x₂ + ... + b
-```
-
-This is basically **linear regression** or **logistic regression** (if we add sigmoid).
-
-Deep learning becomes powerful when we stack multiple neurons with non-linear activations. The network can then learn curved, complex decision boundaries.
+So a single neuron with five hand-chosen features is a traditional machine-learning model wearing a neural-network costume. It is useful, but it cannot learn new combinations of features.
 
 ---
 
-## 3. The Perceptron — Where It All Started
+## 4. Why a single neuron is limited
 
-The **perceptron** is the simplest neural network: one neuron with a step function.
+A single neuron can only learn patterns that look like a straight line in feature space. For example, it can learn:
 
-### Perceptron Rule
+> If `(0.8 × suspicious_words) + (0.6 × links) + ... + bias` is large enough, it is spam.
+
+But it cannot easily learn combinations such as:
+
+> “An email is spam only if it has many links AND an unknown sender, OR if it has many suspicious words AND many capitals.”
+
+Those combinations are not simple straight-line rules. They need a way to mix features together before making the final decision.
+
+---
+
+## 5. Hidden layers add combinations
+
+A hidden layer is a group of neurons between the input and the output. Each hidden neuron looks at the same five features but learns a different combination.
+
+For spam detection, one hidden neuron might learn:
 
 ```
-ŷ = 1 if Σ (xᵢ × wᵢ) + b ≥ 0
-ŷ = 0 otherwise
+neuron_1 = links × 0.7 + unknown_sender × 1.5 + bias
 ```
 
-It is a binary classifier. The perceptron can learn things like:
+This neuron fires when an email has many links and an unknown sender.
 
-- Is an email spam or not spam?
-- Is a tumour malignant or benign?
+Another hidden neuron might learn:
 
-But it cannot solve problems that are not linearly separable, like XOR.
+```
+neuron_2 = suspicious_words × 1.1 + capitals × 0.9 + bias
+```
 
-### XOR Problem
+This neuron fires when an email has many suspicious words and many capital letters.
 
-| x₁ | x₂ | XOR |
-|----|----|-----|
-| 0 | 0 | 0 |
-| 0 | 1 | 1 |
-| 1 | 0 | 1 |
-| 1 | 1 | 0 |
+The output neuron then combines these hidden neurons:
 
-There is no single straight line that separates the two output classes. A single perceptron fails.
+```
+spam_score = neuron_1 × 0.8 + neuron_2 × 0.6 + bias
+```
 
-This is why we need **hidden layers**.
+So the model can now say: “This email is spam because it triggered both the suspicious-words neuron and the unknown-sender neuron.”
 
----
-
-## 4. Why Hidden Layers Matter
-
-A hidden layer is just a layer of neurons between the input and the output. Each hidden neuron combines the inputs, and the output neuron combines the hidden neurons.
-
-With one hidden layer, the network can learn XOR.
-
-### Why Hidden Layers Work
-
-Imagine trying to draw a circle around a group of points on a piece of paper:
-
-- A single neuron can only draw a straight line.
-- A hidden layer can draw curves by combining many straight-line decisions.
-- More hidden layers can draw more complex shapes.
-
-> **Memory trick:** A single neuron is like a straight-edge ruler. A hidden layer is like having many rulers that combine into a flexible curve.
-
-### The Universal Approximation Theorem
-
-This theorem says that a neural network with enough hidden neurons can approximate **any** continuous function.
-
-In plain English: **a big enough neural network can learn almost any pattern you give it.**
+> **Memory trick:** A single neuron is like one judge. A hidden layer is like a panel of judges, each scoring a different aspect, before the final decision.
 
 ---
 
-## 5. Deep Learning vs Shallow Learning
+## 6. Why depth matters
 
-| | Shallow Network | Deep Network |
-|--|-----------------|--------------|
-| **Hidden layers** | 0 or 1 | 3 or more |
-| **Features** | Hand-crafted or simple | Learned automatically |
-| **Data needed** | Less | More |
-| **Compute needed** | Less | More |
-| **Can learn complex patterns** | Limited | Yes |
-| **Examples** | Logistic regression, SVM | CNNs, transformers, deep MLPs |
+Each hidden layer builds on the previous one. With spam text, this might look like:
+
+| Layer | What it learns |
+|-------|----------------|
+| Input | Raw words or hand features |
+| Hidden layer 1 | Word combinations like “claim your” or “free prize” |
+| Hidden layer 2 | Phrase patterns like “click here to claim” |
+| Output | Spam probability |
+
+Early layers see simple patterns. Deeper layers see richer patterns. This is why deep networks are powerful for text, images, and audio.
+
+> **Memory trick:** Deep learning is like reading a book. First you recognise letters, then words, then sentences, then meaning.
 
 ---
 
-## 6. The Role of Non-Linearity
+## 7. The role of non-linearity
 
-Without activation functions, a deep network would just be one giant linear model.
+Without activation functions, a deep network would just be a long chain of multiplications and additions. In fact, it would collapse into one single multiplication and addition.
 
 Here is why:
 
@@ -149,214 +163,264 @@ Layer 1: z = xW₁ + b₁
 Layer 2: z = zW₂ + b₂ = (xW₁ + b₁)W₂ + b₂ = x(W₁W₂) + (b₁W₂ + b₂)
 ```
 
-If we remove the activation, two layers collapse into one. The activation function stops this from happening.
+If there is no activation between the layers, the two layers are mathematically the same as one layer. The activation function breaks the linearity.
 
-> **Memory trick:** Activation functions are the "wrinkles" that stop the network from being a flat piece of paper.
+ReLU, for example, simply turns negative values to zero:
+
+```python
+ReLU([2.4, -0.7, 1.3]) = [2.4, 0.0, 1.3]
+```
+
+This small change is what allows the network to learn complex shapes and combinations. It is like adding a small switch between layers.
+
+> **Memory trick:** Activation functions are the wrinkles that stop the network from being a flat piece of paper.
 
 ---
 
-## 7. Common Activation Functions in Detail
+## 8. Common activation functions in detail
 
-### Sigmoid
+| Function | What it does | Where it is used | Memory trick |
+|----------|--------------|------------------|--------------|
+| **Sigmoid** | Squishes any number to 0..1 | Output layer for binary classification | Thermometer with a 0-to-1 scale |
+| **Tanh** | Squishes any number to -1..1 | Older hidden layers | Sigmoid stretched to -1..1 |
+| **ReLU** | Turns negatives to zero | Most modern hidden layers | Bouncer that blocks negatives |
+| **Leaky ReLU** | Lets a small negative through | ReLU replacement | Slightly open door for negatives |
+| **Softmax** | Turns scores into probabilities that sum to 1 | Output layer for multi-class classification | Normalised ranking |
 
-```
-σ(z) = 1 / (1 + e^(-z))
-```
-
-- Smooth, differentiable
-- Output between 0 and 1
-- Problem: gradients become very small for extreme inputs (vanishing gradient)
-
-### Tanh
-
-```
-tanh(z) = 2σ(2z) - 1
-```
-
-- Output between -1 and 1
-- Stronger gradients than sigmoid
-- Still has vanishing gradient problem
-
-### ReLU
-
-```
-ReLU(z) = max(0, z)
-```
-
-- No vanishing gradient for positive inputs
-- Very fast
-- Problem: neurons can "die" if they always get negative input
-
-### Leaky ReLU
-
-```
-LeakyReLU(z) = max(0.01z, z)
-```
-
-- Small slope for negative inputs
-- Prevents dying neurons
-
-### Softmax
-
-```
-softmax(zᵢ) = e^(zᵢ) / Σ e^(zⱼ)
-```
-
-- Turns scores into probabilities
-- Used for multi-class classification
+For spam detection, the final output is one probability, so sigmoid is the right choice. The hidden layers use ReLU because it is fast and avoids the vanishing gradient problem.
 
 ---
 
-## 8. Python: Build a Simple Deep Network
+## 9. Feature engineering vs feature learning for spam
+
+### Traditional ML spam detector
+
+```
+Raw email
+    ↓
+Human writes rules to extract 5 features
+    ↓
+Logistic regression learns 5 weights + bias
+    ↓
+Spam probability
+```
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+# Features designed by a human
+features = [
+    [3, 1, 0, 0.20, 47],
+    [0, 0, 1, 0.02, 82],
+    [5, 4, 0, 0.40, 31]
+]
+labels = [1, 0, 1]
+
+model = LogisticRegression()
+model.fit(features, labels)
+```
+
+### Deep learning spam detector
+
+```
+Raw email
+    ↓
+Convert words to token IDs
+    ↓
+Embedding layer learns vectors
+    ↓
+Hidden layers learn word and phrase patterns
+    ↓
+Output layer produces spam probability
+```
+
+```python
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Embedding(num_embeddings=10000, embedding_dim=32),
+    nn.Linear(32, 16),
+    nn.ReLU(),
+    nn.Linear(16, 1),
+    nn.Sigmoid()
+)
+```
+
+In this simple example, the embedding layer learns a vector for each word. The hidden layers learn to combine those vectors into a spam score.
+
+> **Memory trick:** Traditional ML is a recipe with ingredients you choose. Deep learning is a kitchen that discovers its own ingredients.
+
+---
+
+## 10. When to use which approach for spam
+
+| Situation | Use Traditional ML | Use Deep Learning |
+|-----------|-------------------|-------------------|
+| Small dataset of 1,000 emails | Yes | No — not enough data |
+| Dataset has clear, measurable features | Yes | Maybe overkill |
+| Need to explain why an email was flagged | Yes | Harder |
+| Dataset has 1,000,000 emails | No | Yes |
+| Need to understand subtle language | No | Yes |
+| Need to handle many languages and typos | No | Yes |
+
+---
+
+## 11. A deep learning spam model with hand features
+
+Even if we keep the same five hand features, adding a hidden layer can improve the model because it learns combinations.
 
 ```python
 import torch
 import torch.nn as nn
 
-class TinyNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        # Input: 2 features, Hidden: 4 neurons, Output: 1 neuron
-        self.layer1 = nn.Linear(2, 4)
-        self.activation = nn.ReLU()
-        self.layer2 = nn.Linear(4, 1)
-        self.output = nn.Sigmoid()
+# One email: suspicious_words, links, known_sender, capitals, length
+email = torch.tensor([[3.0, 1.0, 0.0, 0.20, 47.0]])
 
-    def forward(self, x):
-        x = self.layer1(x)
-        x = self.activation(x)
-        x = self.layer2(x)
-        x = self.output(x)
-        return x
+model = nn.Sequential(
+    nn.Linear(5, 4),   # 5 features → 4 hidden combinations
+    nn.ReLU(),          # remove negative hidden signals
+    nn.Linear(4, 1),    # 4 hidden combinations → 1 spam score
+    nn.Sigmoid()        # spam score → probability
+)
 
-# Create the model
-model = TinyNetwork()
-
-# Sample input: temperature and humidity
-sample = torch.tensor([[25.0, 60.0]])
-prediction = model(sample)
-
-print(f"Prediction: {prediction.item():.4f}")
-print("\nModel architecture:")
-print(model)
+probability = model(email)
+print("Spam probability:", probability.item())
 ```
 
-### What `nn.Linear` Does
-
-`nn.Linear(in_features, out_features)` creates a layer that computes:
-
-```
-output = input · W^T + b
-```
-
-PyTorch automatically creates the weight matrix `W` and the bias vector `b` for you.
+The first layer creates four hidden combinations. ReLU removes the negative ones. The second layer combines the remaining positive signals into a final score. Sigmoid turns that score into a probability.
 
 ---
 
-## 9. The Learning Loop
+## 12. What the hidden neurons might learn
 
-All deep learning training follows the same loop:
+We do not get to read the neurons' minds, but we can imagine what they might represent:
+
+| Hidden neuron | Might learn |
+|---------------|-------------|
+| 1 | High links + unknown sender = suspicious |
+| 2 | High capitals + suspicious words = suspicious |
+| 3 | Known sender + long message = normal |
+| 4 | Short message + no links = normal |
+
+These are not programmed. They emerge during training as the network tries to reduce its mistakes.
+
+---
+
+## 13. The training loop is the same in both worlds
+
+Whether you use traditional ML or deep learning, the training process is similar:
 
 ```
-1. Forward pass:   predict ŷ
-2. Compute loss:    how far is ŷ from y?
-3. Backward pass:   compute gradients
+1. Forward pass:   predict spam probability for each email
+2. Compute loss:    how far is the prediction from the true label?
+3. Backward pass:   find which weights caused the mistake
 4. Update weights:  move a small step in the direction that reduces loss
 5. Repeat
 ```
 
-We will cover the loss function and backpropagation in later guides.
+The only difference is that deep learning has more weights to update, including weights inside the hidden layers.
+
+```python
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Linear(5, 4),
+    nn.ReLU(),
+    nn.Linear(4, 1),
+    nn.Sigmoid()
+)
+
+criterion = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+# Training loop
+for batch_x, batch_y in train_loader:
+    prediction = model(batch_x)
+    loss = criterion(prediction, batch_y)
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+```
 
 ---
 
-## 10. Quick Comparison: ML vs DL
+## 14. From shallow to deep
 
-| Question | Traditional ML | Deep Learning |
-|----------|----------------|---------------|
-| **Who designs features?** | Human | Network |
-| **Best for small data?** | Yes | No |
-| **Best for images/text/audio?** | Often needs preprocessing | Works well on raw data |
-| **Interpretability?** | Higher | Lower (black box) |
-| **Training time?** | Faster | Slower |
-| **Hardware?** | CPU | GPU recommended |
-| **When to use?** | Structured data, small datasets | Unstructured data, large datasets |
+| Network | Hidden layers | What it can learn |
+|---------|---------------|-------------------|
+| **No hidden layer** | 0 | Linear spam rule (like logistic regression) |
+| **Shallow network** | 1 | Simple feature combinations |
+| **Deep network** | 3 or more | Rich patterns in text, images, or audio |
+
+Most modern spam filters use deep learning because spam evolves. Spammers change wording, use images, and add noise. A deep model can adapt to new patterns if it is retrained on fresh data.
 
 ---
 
-## 11. When to Use Deep Learning
+## 15. Summary
 
-Use deep learning when:
-
-- You have a lot of data
-- The data is unstructured (images, audio, text, video)
-- You do not know exactly which features matter
-- You have enough compute power
-
-Use traditional ML when:
-
-- Data is small or structured
-- You need to understand why the model made a decision
-- Training time and compute are limited
+- Traditional ML asks a human to design features. Deep learning asks the network to learn features.
+- A single neuron with hand features is basically logistic regression.
+- Hidden layers let the model learn combinations of features, such as “many links + unknown sender.”
+- Activation functions like ReLU add non-linearity, which is why deep networks can learn complex patterns.
+- Deep learning needs more data and compute, but it can handle raw text, images, and audio better than traditional ML.
+- For spam detection, deep learning shines when the dataset is large and the language is subtle.
 
 ---
 
-## 12. Summary
-
-- Deep learning is a type of machine learning that uses many-layered neural networks.
-- The key difference is that deep learning learns features automatically.
-- A single neuron is a linear model; hidden layers add non-linearity and power.
-- The perceptron can solve linearly separable problems but fails on XOR.
-- Activation functions like ReLU, sigmoid, and softmax let the network learn complex patterns.
-- More layers = more capacity, but also more data and compute needed.
-
----
-
-## Try It Yourself
+## 16. Try it yourself
 
 ```python
 import torch
 import torch.nn as nn
 
-# Build a network that can solve XOR
-class XORNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.layer1 = nn.Linear(2, 4)
-        self.relu = nn.ReLU()
-        self.layer2 = nn.Linear(4, 1)
-        self.sigmoid = nn.Sigmoid()
+# Two simple hand-crafted features for four emails
+emails = torch.tensor([
+    [3.0, 1.0],   # 3 suspicious words, 1 link
+    [0.0, 0.0],   # clean email
+    [5.0, 4.0],   # very spammy
+    [1.0, 0.0]    # slightly suspicious
+])
 
-    def forward(self, x):
-        x = self.relu(self.layer1(x))
-        x = self.sigmoid(self.layer2(x))
-        return x
+labels = torch.tensor([[1.0], [0.0], [1.0], [0.0]])
 
-model = XORNetwork()
+# Build a model with one hidden layer
+model = nn.Sequential(
+    nn.Linear(2, 3),
+    nn.ReLU(),
+    nn.Linear(3, 1),
+    nn.Sigmoid()
+)
 
-# Test on all four XOR inputs
-X = torch.tensor([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]])
-with torch.no_grad():
-    predictions = model(X)
-    print("Before training:")
-    for i, pred in enumerate(predictions):
-        print(f"  {X[i].tolist()} → {pred.item():.4f}")
+loss_fn = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
 
-# Training loop
-loss_fn = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-y = torch.tensor([[0.0], [1.0], [1.0], [0.0]])
-
-for epoch in range(1000):
-    pred = model(X)
-    loss = loss_fn(pred, y)
+# Train for a few epochs
+for epoch in range(200):
+    pred = model(emails)
+    loss = loss_fn(pred, labels)
 
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
+# Check predictions
 with torch.no_grad():
-    final_predictions = model(X)
-    print("\nAfter training:")
-    for i, pred in enumerate(final_predictions):
-        print(f"  {X[i].tolist()} → {pred.item():.4f}")
+    final = model(emails)
+    for i, prob in enumerate(final):
+        label = "spam" if prob.item() >= 0.5 else "not spam"
+        print(f"Email {i}: probability {prob.item():.3f} → {label}")
 ```
+
+---
+
+## Final mental model
+
+```
+Traditional ML:   Email → human features → simple model → spam probability
+Deep learning:    Email → raw tokens → learned embeddings → hidden layers → spam probability
+```
+
+The real shift is from **hand-written features** to **learned representations**. Everything else — loss, optimisation, and evaluation — stays largely the same.
+
+<img src="{{ site.baseurl }}/assets/img/NeuralNetwork.png" alt="A neural network showing how input features pass through hidden layers to an output probability" width="60%" />
