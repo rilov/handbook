@@ -1,10 +1,52 @@
 <h1 id="deep-learning-cheat-sheet--formulas-and-memory-tricks">Deep Learning Cheat Sheet — Formulas and Memory Tricks</h1>
 
-<p>A quick reference for everything in the Deep Learning series. Each formula has a memory trick to help you remember it.</p>
+<p>A quick reference for everything in the Deep Learning series. Every formula and concept uses the spam-detection example.</p>
 
 <hr />
 
-<h2 id="1-the-artificial-neuron">1. The Artificial Neuron</h2>
+<h2 id="1-from-email-to-tensor">1. From email to tensor</h2>
+
+<h3 id="real-email">Real email</h3>
+
+<blockquote>
+  <p>“Congratulations! Click here to claim your prize.”</p>
+</blockquote>
+
+<h3 id="feature-vector">Feature vector</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Suspicious words</th>
+      <th>Links</th>
+      <th>Known sender</th>
+      <th>Capitals</th>
+      <th>Length</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>3</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0.20</td>
+      <td>47</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="tensor">Tensor</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">])</span>
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> A tensor is a lunchbox with labelled compartments. Each position has a fixed meaning.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-the-artificial-neuron">2. The artificial neuron</h2>
 
 <h3 id="formula">Formula</h3>
 
@@ -12,15 +54,26 @@
 output = activation(z)
 </code></pre></div></div>
 
-<h3 id="memory-trick">Memory Trick</h3>
+<h3 id="memory-trick">Memory trick</h3>
 
 <blockquote>
-  <p><strong>“Shopping basket + bouncer”</strong> — throw all <code class="language-plaintext highlighter-rouge">x × w</code> items into a basket, add the bias as the tip, then the activation function decides who gets in.</p>
+  <p><strong>“Shopping basket + bouncer.”</strong> Throw all <code class="language-plaintext highlighter-rouge">x × w</code> items into a basket, add the bias as the tip, then the activation function decides who gets in.</p>
 </blockquote>
+
+<h3 id="worked-example">Worked example</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x = [3, 1, 0, 0.20, 47]
+w = [0.8, 0.6, -1.2, 2.0, 0.01]
+b = -1.0
+
+z = (3×0.8) + (1×0.6) + (0×-1.2) + (0.20×2.0) + (47×0.01) - 1.0
+z = 2.4 + 0.6 + 0 + 0.4 + 0.47 - 1.0
+z = 2.87
+</code></pre></div></div>
 
 <hr />
 
-<h2 id="2-activation-functions">2. Activation Functions</h2>
+<h2 id="3-activation-functions">3. Activation functions</h2>
 
 <table>
   <thead>
@@ -29,37 +82,30 @@ output = activation(z)
       <th>Formula</th>
       <th>Output Range</th>
       <th>Use</th>
-      <th>Memory Trick</th>
+      <th>Memory trick</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Sigmoid</strong></td>
-      <td><code class="language-plaintext highlighter-rouge">σ(z) = 1 / (1 + e^(-z))</code></td>
+      <td><code class="language-plaintext highlighter-rouge">1 / (1 + e^(-z))</code></td>
       <td>0 to 1</td>
       <td>Binary output</td>
-      <td>Letter <code class="language-plaintext highlighter-rouge">S</code> looks like the curve</td>
+      <td>Thermometer with a 0-to-1 scale</td>
     </tr>
     <tr>
       <td><strong>Tanh</strong></td>
       <td><code class="language-plaintext highlighter-rouge">(e^z - e^(-z)) / (e^z + e^(-z))</code></td>
       <td>-1 to 1</td>
-      <td>Symmetric hidden</td>
+      <td>Older hidden layers</td>
       <td>Sigmoid stretched to -1..1</td>
     </tr>
     <tr>
       <td><strong>ReLU</strong></td>
       <td><code class="language-plaintext highlighter-rouge">max(0, z)</code></td>
       <td>0 to ∞</td>
-      <td>Hidden layers</td>
-      <td>Bouncer: positive in, negative out</td>
-    </tr>
-    <tr>
-      <td><strong>Leaky ReLU</strong></td>
-      <td><code class="language-plaintext highlighter-rouge">max(0.01z, z)</code></td>
-      <td>-∞ to ∞</td>
-      <td>ReLU fix</td>
-      <td>Let a little negative through</td>
+      <td>Most hidden layers</td>
+      <td>Bouncer that blocks negatives</td>
     </tr>
     <tr>
       <td><strong>Softmax</strong></td>
@@ -71,24 +117,45 @@ output = activation(z)
   </tbody>
 </table>
 
+<p>For spam detection, the final output uses sigmoid:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">probability</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+<span class="c1"># z = 2.87 -&gt; probability ≈ 0.946
+</span></code></pre></div></div>
+
 <hr />
 
-<h2 id="3-forward-pass">3. Forward Pass</h2>
+<h2 id="4-forward-pass">4. Forward pass</h2>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Layer 1: z₁ = x · W₁ + b₁      a₁ = activation(z₁)
-Layer 2: z₂ = a₁ · W₂ + b₂     a₂ = activation(z₂)
-Output:  z₃ = a₂ · W₃ + b₃     ŷ = activation(z₃)
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input features
+    ↓
+Hidden layer: z = x @ W + b, then ReLU
+    ↓
+Output layer: z = h @ W + b, then sigmoid
+    ↓
+Spam probability
 </code></pre></div></div>
 
-<h3 id="memory-trick-1">Memory Trick</h3>
+<h3 id="pytorch-version">PyTorch version</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">]])</span>
+<span class="n">probability</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+</code></pre></div></div>
 
 <blockquote>
-  <p><strong>z = raw score, a = activated score.</strong> z is “before”, a is “after”.</p>
+  <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">z</code> = raw score, <code class="language-plaintext highlighter-rouge">a</code> = activated score, <code class="language-plaintext highlighter-rouge">p</code> = probability.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="4-loss-functions">4. Loss Functions</h2>
+<h2 id="5-loss-functions">5. Loss functions</h2>
 
 <table>
   <thead>
@@ -96,7 +163,7 @@ Output:  z₃ = a₂ · W₃ + b₃     ŷ = activation(z₃)
       <th>Task</th>
       <th>Loss</th>
       <th>Formula</th>
-      <th>Memory Trick</th>
+      <th>Memory trick</th>
     </tr>
   </thead>
   <tbody>
@@ -112,94 +179,98 @@ Output:  z₃ = a₂ · W₃ + b₃     ŷ = activation(z₃)
       <td><code class="language-plaintext highlighter-rouge">-mean(y log(ŷ) + (1-y) log(1-ŷ))</code></td>
       <td>Punish confident wrong answers</td>
     </tr>
-    <tr>
-      <td><strong>Multi-class classification</strong></td>
-      <td>Cross-Entropy</td>
-      <td><code class="language-plaintext highlighter-rouge">-mean(log(ŷ[correct class]))</code></td>
-      <td>Only penalise the true class probability</td>
-    </tr>
   </tbody>
 </table>
 
+<p>For spam detection, use binary cross-entropy:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+</code></pre></div></div>
+
 <hr />
 
-<h2 id="5-gradient-descent">5. Gradient Descent</h2>
+<h2 id="6-gradient-descent">6. Gradient descent</h2>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new_weight = old_weight - learning_rate × gradient
 
 gradient = ∂loss / ∂weight
 </code></pre></div></div>
 
-<h3 id="memory-trick-2">Memory Trick</h3>
-
 <blockquote>
-  <p><strong>Gradient = direction of downhill. Learning rate = step size.</strong> Walk down the hill one step at a time.</p>
+  <p><strong>Memory trick:</strong> Gradient = direction of downhill. Learning rate = step size.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="6-training-loop">6. Training Loop</h2>
+<h2 id="7-training-loop">7. Training loop</h2>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>for each epoch:
-    for each batch:
-        1. Forward pass      → ŷ
-        2. Compute loss      → loss(y, ŷ)
-        3. Zero gradients    → optimizer.zero_grad()
-        4. Backward pass     → loss.backward()
-        5. Update weights    → optimizer.step()
+    for each batch of emails:
+        1. Forward pass      -&gt; spam probabilities
+        2. Compute loss      -&gt; how far from true labels?
+        3. Zero gradients    -&gt; optimizer.zero_grad()
+        4. Backward pass     -&gt; loss.backward()
+        5. Update weights    -&gt; optimizer.step()
 </code></pre></div></div>
 
-<h3 id="memory-trick-3">Memory Trick</h3>
-
 <blockquote>
-  <p><strong>Predict → Measure → Clear → Calculate → Move.</strong> Repeat.</p>
+  <p><strong>Memory trick:</strong> Predict -&gt; Measure -&gt; Clear -&gt; Calculate -&gt; Move. Repeat.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="7-tensors">7. Tensors</h2>
+<h2 id="8-tensors-and-shapes">8. Tensors and shapes</h2>
 
 <table>
   <thead>
     <tr>
       <th>Object</th>
-      <th>Dimensions</th>
-      <th>PyTorch Code</th>
+      <th>Shape</th>
+      <th>Example</th>
     </tr>
   </thead>
   <tbody>
     <tr>
+      <td>One email</td>
+      <td><code class="language-plaintext highlighter-rouge">[5]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">torch.tensor([3, 1, 0, 0.20, 47])</code></td>
+    </tr>
+    <tr>
+      <td>Batch of 4 emails</td>
+      <td><code class="language-plaintext highlighter-rouge">[4, 5]</code></td>
+      <td>4 rows × 5 columns</td>
+    </tr>
+    <tr>
+      <td>Weights for 5 -&gt; 1</td>
+      <td><code class="language-plaintext highlighter-rouge">[1, 5]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Linear(5, 1).weight</code></td>
+    </tr>
+    <tr>
+      <td>Hidden layer 5 -&gt; 3</td>
+      <td><code class="language-plaintext highlighter-rouge">[3, 5]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Linear(5, 3).weight</code></td>
+    </tr>
+    <tr>
+      <td>Bias for output</td>
+      <td><code class="language-plaintext highlighter-rouge">[1]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Linear(5, 1).bias</code></td>
+    </tr>
+    <tr>
       <td>Scalar</td>
-      <td>0D</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.tensor(5.0)</code></td>
-    </tr>
-    <tr>
-      <td>Vector</td>
-      <td>1D</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.tensor([1, 2, 3])</code></td>
-    </tr>
-    <tr>
-      <td>Matrix</td>
-      <td>2D</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.tensor([[1, 2], [3, 4]])</code></td>
-    </tr>
-    <tr>
-      <td>3D tensor</td>
-      <td>3D</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.tensor([[[1, 2]]])</code></td>
+      <td><code class="language-plaintext highlighter-rouge">[]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">torch.tensor(-1.0)</code></td>
     </tr>
   </tbody>
 </table>
 
-<h3 id="memory-trick-4">Memory Trick</h3>
-
 <blockquote>
-  <p><strong>Shape = address.</strong> Read from biggest container to smallest detail.</p>
+  <p><strong>Memory trick:</strong> Shape = address. Rows = examples, columns = features.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="8-tensor-operations">8. Tensor Operations</h2>
+<h2 id="9-tensor-operations">9. Tensor operations</h2>
 
 <table>
   <thead>
@@ -207,58 +278,48 @@ gradient = ∂loss / ∂weight
       <th>Operation</th>
       <th>PyTorch</th>
       <th>Rule</th>
+      <th>Spam Example</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Addition</td>
-      <td><code class="language-plaintext highlighter-rouge">a + b</code></td>
-      <td>Shapes broadcast</td>
-    </tr>
-    <tr>
-      <td>Element-wise mult</td>
-      <td><code class="language-plaintext highlighter-rouge">a * b</code></td>
-      <td>Same shape</td>
-    </tr>
-    <tr>
       <td>Matrix multiply</td>
-      <td><code class="language-plaintext highlighter-rouge">a @ b</code> or <code class="language-plaintext highlighter-rouge">torch.matmul(a, b)</code></td>
-      <td><code class="language-plaintext highlighter-rouge">(a, b) @ (b, c) → (a, c)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">a @ b</code></td>
+      <td>Inner dims match</td>
+      <td><code class="language-plaintext highlighter-rouge">(4, 5) @ (5, 1) -&gt; (4, 1)</code></td>
     </tr>
     <tr>
       <td>Transpose</td>
       <td><code class="language-plaintext highlighter-rouge">a.T</code></td>
-      <td>Flip rows and columns</td>
+      <td>Flip rows/columns</td>
+      <td><code class="language-plaintext highlighter-rouge">layer.weight.T</code></td>
     </tr>
     <tr>
       <td>Reshape</td>
       <td><code class="language-plaintext highlighter-rouge">a.reshape(m, n)</code></td>
-      <td>Total elements must match</td>
+      <td>Total elements same</td>
+      <td><code class="language-plaintext highlighter-rouge">emails.reshape(-1)</code></td>
     </tr>
     <tr>
-      <td>Sum</td>
-      <td><code class="language-plaintext highlighter-rouge">a.sum()</code></td>
-      <td>Reduces all dims</td>
+      <td>Slice</td>
+      <td><code class="language-plaintext highlighter-rouge">a[:, 0]</code></td>
+      <td>All rows, column 0</td>
+      <td>All suspicious-word counts</td>
     </tr>
     <tr>
       <td>Mean</td>
       <td><code class="language-plaintext highlighter-rouge">a.mean(dim=0)</code></td>
-      <td>Reduce along dim</td>
+      <td>Collapse rows</td>
+      <td>Average feature values</td>
+    </tr>
+    <tr>
+      <td>Sum</td>
+      <td><code class="language-plaintext highlighter-rouge">a.sum()</code></td>
+      <td>All elements</td>
+      <td>Total across all emails</td>
     </tr>
   </tbody>
 </table>
-
-<hr />
-
-<h2 id="9-broadcasting-rule">9. Broadcasting Rule</h2>
-
-<blockquote>
-  <p><strong>Dimensions must match or one of them must be 1.</strong> A 1 “stretches” to match the larger size.</p>
-</blockquote>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(3, 3) + (3,) → (3, 3) + (3, 3) → (3, 3)
-(2, 1) + (1, 3) → (2, 3)
-</code></pre></div></div>
 
 <hr />
 
@@ -266,30 +327,27 @@ gradient = ∂loss / ∂weight
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DataLoader</span>
 
-<span class="k">class</span> <span class="nc">MyDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">SpamDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">emails</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">emails</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
 
-<span class="n">dataset</span> <span class="o">=</span> <span class="nc">MyDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-<span class="n">loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="nc">SpamDataset</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 </code></pre></div></div>
 
-<h3 id="memory-trick-5">Memory Trick</h3>
-
 <blockquote>
-  <p><strong>Dataset = single apple. DataLoader = bag of apples.</strong></p>
+  <p><strong>Memory trick:</strong> Dataset = single apple. DataLoader = bag of apples.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="11-pytorch-parameters">11. PyTorch Parameters</h2>
+<h2 id="11-pytorch-parameters">11. PyTorch parameters</h2>
 
 <table>
   <thead>
@@ -322,12 +380,12 @@ gradient = ∂loss / ∂weight
     </tr>
     <tr>
       <td>Save model</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.save(model.state_dict(), "model.pth")</code></td>
+      <td><code class="language-plaintext highlighter-rouge">torch.save(model.state_dict(), "spam_model.pth")</code></td>
       <td>File</td>
     </tr>
     <tr>
       <td>Load model</td>
-      <td><code class="language-plaintext highlighter-rouge">model.load_state_dict(torch.load("model.pth"))</code></td>
+      <td><code class="language-plaintext highlighter-rouge">model.load_state_dict(torch.load("spam_model.pth"))</code></td>
       <td>File</td>
     </tr>
   </tbody>
@@ -335,14 +393,14 @@ gradient = ∂loss / ∂weight
 
 <hr />
 
-<h2 id="12-common-optimisers">12. Common Optimisers</h2>
+<h2 id="12-common-optimisers">12. Common optimisers</h2>
 
 <table>
   <thead>
     <tr>
       <th>Optimiser</th>
       <th>Best For</th>
-      <th>Memory Trick</th>
+      <th>Memory trick</th>
     </tr>
   </thead>
   <tbody>
@@ -361,17 +419,17 @@ gradient = ∂loss / ∂weight
       <td>Most deep learning</td>
       <td>Adapts learning rate per parameter</td>
     </tr>
-    <tr>
-      <td><strong>RMSprop</strong></td>
-      <td>Recurrent networks</td>
-      <td>Keeps moving average of squared gradients</td>
-    </tr>
   </tbody>
 </table>
 
+<p>For spam detection, start with Adam:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+</code></pre></div></div>
+
 <hr />
 
-<h2 id="13-overfitting-vs-underfitting">13. Overfitting vs Underfitting</h2>
+<h2 id="13-overfitting-vs-underfitting">13. Overfitting vs underfitting</h2>
 
 <table>
   <thead>
@@ -404,10 +462,8 @@ gradient = ∂loss / ∂weight
   </tbody>
 </table>
 
-<h3 id="memory-trick-6">Memory Trick</h3>
-
 <blockquote>
-  <p><strong>Underfitting = too dumb. Overfitting = too memorised. Good fit = just right.</strong></p>
+  <p><strong>Memory trick:</strong> Underfitting = too dumb. Overfitting = too memorised. Good fit = just right.</p>
 </blockquote>
 
 <hr />
@@ -419,14 +475,14 @@ gradient = ∂loss / ∂weight
     <tr>
       <th>Method</th>
       <th>How</th>
-      <th>Memory Trick</th>
+      <th>Memory trick</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Dropout</strong></td>
       <td>Randomly zero some neurons during training</td>
-      <td>Make the network practise with one hand tied</td>
+      <td>Practise with one hand tied</td>
     </tr>
     <tr>
       <td><strong>L2 (Weight decay)</strong></td>
@@ -441,14 +497,14 @@ gradient = ∂loss / ∂weight
     <tr>
       <td><strong>Data augmentation</strong></td>
       <td>Generate modified training samples</td>
-      <td>Show the model more variations</td>
+      <td>Show more variations</td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="15-key-pytorch-imports">15. Key PyTorch Imports</h2>
+<h2 id="15-key-pytorch-imports">15. Key PyTorch imports</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
@@ -459,34 +515,34 @@ gradient = ∂loss / ∂weight
 
 <hr />
 
-<h2 id="16-twenty-memory-tricks">16. Twenty Memory Tricks</h2>
+<h2 id="16-twenty-memory-tricks">16. Twenty memory tricks</h2>
 
 <ol>
-  <li><strong>Neuron</strong> = basket + bouncer.</li>
-  <li><strong>z</strong> = raw score; <strong>a</strong> = activated score.</li>
-  <li><strong>Sigmoid</strong> = S-shaped squasher.</li>
-  <li><strong>ReLU</strong> = bouncer (positive in, negative out).</li>
-  <li><strong>Softmax</strong> = turns scores into probabilities.</li>
-  <li><strong>Weights</strong> = synapses.</li>
+  <li><strong>Tensor</strong> = lunchbox with labelled compartments.</li>
+  <li><strong>Rows = examples, columns = features.</strong></li>
+  <li><strong>Weight</strong> = volume knob.</li>
   <li><strong>Bias</strong> = starting mood.</li>
+  <li><strong>Raw score</strong> = pre-decision number.</li>
+  <li><strong>Sigmoid</strong> = thermometer with 0-to-1 scale.</li>
+  <li><strong>ReLU</strong> = bouncer (positive in, negative out).</li>
+  <li><strong>Softmax</strong> = normalised ranking.</li>
+  <li><strong>Weights</strong> = synapses.</li>
   <li><strong>Gradient</strong> = direction of downhill.</li>
   <li><strong>Learning rate</strong> = step size.</li>
-  <li><strong>Epoch</strong> = one full pass through the data.</li>
-  <li><strong>Batch</strong> = one slice of data.</li>
+  <li><strong>Epoch</strong> = one full pass through the dataset.</li>
+  <li><strong>Batch</strong> = one slice of emails.</li>
   <li><strong>Forward pass</strong> = prediction.</li>
   <li><strong>Backward pass</strong> = blame assignment.</li>
   <li><strong>Loss</strong> = how wrong you are.</li>
-  <li><strong>Optimizer</strong> = the thing that moves weights.</li>
-  <li><strong>Tensor</strong> = numbered box of data.</li>
-  <li><strong>Shape</strong> = address from big to small.</li>
+  <li><strong>Optimiser</strong> = the thing that moves weights.</li>
+  <li><strong>Matrix multiply</strong> = inner dimensions must match.</li>
   <li><strong>Broadcasting</strong> = 1 stretches to fit.</li>
   <li><strong>Dataset</strong> = one apple; <strong>DataLoader</strong> = bag of apples.</li>
-  <li><strong>requires_grad=True</strong> = still learning.</li>
 </ol>
 
 <hr />
 
-<h2 id="17-common-mistakes">17. Common Mistakes</h2>
+<h2 id="17-common-mistakes">17. Common mistakes</h2>
 
 <table>
   <thead>
@@ -505,8 +561,8 @@ gradient = ∂loss / ∂weight
       <td>Call it every training step</td>
     </tr>
     <tr>
-      <td>Using <code class="language-plaintext highlighter-rouge">sigmoid</code> for multi-class output</td>
-      <td>Use <code class="language-plaintext highlighter-rouge">softmax</code></td>
+      <td>Using sigmoid for multi-class output</td>
+      <td>Use softmax</td>
     </tr>
     <tr>
       <td>Shuffling validation data</td>
@@ -517,7 +573,7 @@ gradient = ∂loss / ∂weight
       <td>Use <code class="language-plaintext highlighter-rouge">.to(device)</code></td>
     </tr>
     <tr>
-      <td>Not normalising data</td>
+      <td>Not normalising features</td>
       <td>Scale inputs before training</td>
     </tr>
     <tr>
@@ -528,6 +584,14 @@ gradient = ∂loss / ∂weight
       <td>Not checking train vs val loss</td>
       <td>Plot both to spot overfitting</td>
     </tr>
+    <tr>
+      <td>Confusing raw score and probability</td>
+      <td>Apply sigmoid to raw score</td>
+    </tr>
+    <tr>
+      <td>Forgetting batch dimension</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">[[3, 1, 0, 0.20, 47]]</code> not <code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
+    </tr>
   </tbody>
 </table>
 
@@ -536,11 +600,12 @@ gradient = ∂loss / ∂weight
 <h2 id="summary">Summary</h2>
 
 <ul>
-  <li>The neuron formula is <code class="language-plaintext highlighter-rouge">z = Σ xw + b</code>, then activation.</li>
-  <li>Common activations: sigmoid (0..1), tanh (-1..1), ReLU (most popular), softmax (probabilities).</li>
-  <li>Training is a loop: predict → measure → clear → calculate → move.</li>
-  <li>Tensors are multi-dimensional arrays; shape is the most important thing to check.</li>
-  <li>Dataset provides one sample; DataLoader provides batches.</li>
+  <li>The spam-detection example is the thread that runs through every tutorial.</li>
+  <li>A neuron multiplies inputs by weights, adds a bias, and applies an activation.</li>
+  <li>Sigmoid turns raw scores into probabilities. ReLU is the most common hidden activation.</li>
+  <li>Training is a loop: predict, measure loss, clear gradients, calculate gradients, update weights.</li>
+  <li>Tensors are multi-dimensional arrays. Shape is the most important thing to check.</li>
+  <li><code class="language-plaintext highlighter-rouge">Dataset</code> provides one sample; <code class="language-plaintext highlighter-rouge">DataLoader</code> provides batches.</li>
   <li>Parameters have <code class="language-plaintext highlighter-rouge">requires_grad=True</code> so PyTorch can update them.</li>
-  <li>The brain analogy is helpful, but neural networks are mathematical tools.</li>
+  <li>Deep learning mirrors brain ideas but is a mathematical pattern recogniser, not a mind.</li>
 </ul>

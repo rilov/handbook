@@ -47,24 +47,32 @@
   <section class="topic-body">
     <h1 id="data-handling-with-dataset-and-dataloader--a-friendly-guide">Data Handling with Dataset and DataLoader — A Friendly Guide</h1>
 
-<p>Before a neural network can learn, it needs clean, organised batches of data. In PyTorch, <code class="language-plaintext highlighter-rouge">Dataset</code> and <code class="language-plaintext highlighter-rouge">DataLoader</code> handle this for you.</p>
+<p>Before a neural network can learn, it needs clean, organised batches of data. In PyTorch, <code class="language-plaintext highlighter-rouge">Dataset</code> and <code class="language-plaintext highlighter-rouge">DataLoader</code> handle this for you. We will use the same spam-detection example throughout.</p>
 
 <hr />
 
-<h2 id="1-the-big-idea">1. The Big Idea</h2>
+<h2 id="1-why-not-feed-the-whole-dataset-at-once">1. Why not feed the whole dataset at once?</h2>
 
 <p>A neural network rarely trains on the entire dataset at once. Instead, it sees <strong>mini-batches</strong> — small chunks of data, shuffled, fed one at a time.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Full Dataset
-  ├── Mini-batch 1 (32 samples)
-  ├── Mini-batch 2 (32 samples)
-  ├── Mini-batch 3 (32 samples)
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Full spam dataset
+  ├── Mini-batch 1 (32 emails)
+  ├── Mini-batch 2 (32 emails)
+  ├── Mini-batch 3 (32 emails)
   └── ...
 </code></pre></div></div>
 
 <blockquote>
   <p><strong>Memory trick:</strong> Training on the whole dataset at once is like trying to eat a whole cake. Mini-batches are like sensible slices.</p>
 </blockquote>
+
+<p>There are three good reasons for mini-batches:</p>
+
+<ol>
+  <li><strong>Memory:</strong> A large dataset may not fit in RAM or GPU memory.</li>
+  <li><strong>Speed:</strong> Matrix operations are faster when done on many examples at once.</li>
+  <li><strong>Learning:</strong> Seeing many small random samples helps the model generalise better.</li>
+</ol>
 
 <hr />
 
@@ -75,14 +83,14 @@
     <tr>
       <th>Class</th>
       <th>Job</th>
-      <th>What You Provide</th>
+      <th>What you provide</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Dataset</strong></td>
-      <td>Knows how to fetch one sample</td>
-      <td>File paths, labels, transforms</td>
+      <td>Knows how to fetch one email and its label</td>
+      <td>Features, labels, transforms</td>
     </tr>
     <tr>
       <td><strong>DataLoader</strong></td>
@@ -92,42 +100,60 @@
   </tbody>
 </table>
 
+<blockquote>
+  <p><strong>Memory trick:</strong> Dataset = one apple. DataLoader = bag of apples.</p>
+</blockquote>
+
 <hr />
 
-<h2 id="3-built-in-tensordataset">3. Built-in TensorDataset</h2>
+<h2 id="3-a-simple-spam-dataset-with-tensordataset">3. A simple spam dataset with TensorDataset</h2>
 
-<p>If your data is already in tensors, use <code class="language-plaintext highlighter-rouge">TensorDataset</code>.</p>
+<p>If your email features and labels are already in tensors, use <code class="language-plaintext highlighter-rouge">TensorDataset</code>.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">TensorDataset</span><span class="p">,</span> <span class="n">DataLoader</span>
 
-<span class="c1"># Features and labels
-</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>      <span class="c1"># 100 samples, 3 features each
-</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">100</span><span class="p">,))</span>  <span class="c1"># 100 binary labels
-</span>
+<span class="c1"># Features: 100 emails, 5 features each
+</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>   <span class="c1"># spammy
+</span>    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>   <span class="c1"># normal
+</span>    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>   <span class="c1"># spammy
+</span>    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">],</span>  <span class="c1"># normal
+</span>    <span class="c1"># ... many more emails
+</span><span class="p">])</span>
+
+<span class="c1"># Labels: 1 = spam, 0 = not spam
+</span><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span>
+<span class="p">])</span>
+
 <span class="c1"># Wrap in a Dataset
-</span><span class="n">dataset</span> <span class="o">=</span> <span class="nc">TensorDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class="n">dataset</span> <span class="o">=</span> <span class="nc">TensorDataset</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
 
 <span class="c1"># Wrap in a DataLoader
-</span><span class="n">loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</span><span class="n">loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 
 <span class="c1"># Iterate through batches
-</span><span class="k">for</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">loader</span><span class="p">):</span>
-    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Batch </span><span class="si">{</span><span class="n">batch_idx</span><span class="si">}</span><span class="s">: features shape = </span><span class="si">{</span><span class="n">features</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="s">, labels shape = </span><span class="si">{</span><span class="n">labels</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">batch_idx</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="k">break</span>
+</span><span class="k">for</span> <span class="n">batch_emails</span><span class="p">,</span> <span class="n">batch_labels</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Batch emails shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">batch_emails</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Batch labels shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">batch_labels</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">break</span>
 </code></pre></div></div>
 
-<h3 id="output">Output</h3>
+<p>Output:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batch 0: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
-Batch 1: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
-Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batch emails shape: torch.Size([2, 5])
+Batch labels shape: torch.Size([2, 1])
 </code></pre></div></div>
+
+<p>Each batch contains 2 emails, each with 5 features, and 2 matching labels.</p>
 
 <hr />
 
-<h2 id="4-writing-a-custom-dataset">4. Writing a Custom Dataset</h2>
+<h2 id="4-writing-a-custom-dataset-for-spam-emails">4. Writing a custom Dataset for spam emails</h2>
 
 <p>Most real projects need a custom <code class="language-plaintext highlighter-rouge">Dataset</code>. You must implement three methods:</p>
 
@@ -141,15 +167,15 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
   <tbody>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">__init__</code></td>
-      <td>Set up paths, labels, transforms</td>
+      <td>Set up features, labels, transforms</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">__len__</code></td>
-      <td>Return the total number of samples</td>
+      <td>Return the total number of emails</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">__getitem__</code></td>
-      <td>Return one sample and its label by index</td>
+      <td>Return one email and its label by index</td>
     </tr>
   </tbody>
 </table>
@@ -157,32 +183,41 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
 
-<span class="k">class</span> <span class="nc">HousePriceDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">sizes</span><span class="p">,</span> <span class="n">bedrooms</span><span class="p">,</span> <span class="n">prices</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">SpamDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
         <span class="c1"># Store data as tensors
-</span>        <span class="n">self</span><span class="p">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">sizes</span><span class="p">,</span> <span class="n">bedrooms</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+</span>        <span class="n">self</span><span class="p">.</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">emails</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">emails</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
 
-<span class="c1"># Sample data
-</span><span class="n">sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="mi">950</span><span class="p">]</span>
-<span class="n">bedrooms</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<span class="n">prices</span> <span class="o">=</span> <span class="p">[</span><span class="mi">250000</span><span class="p">,</span> <span class="mi">320000</span><span class="p">,</span> <span class="mi">180000</span><span class="p">,</span> <span class="mi">410000</span><span class="p">,</span> <span class="mi">210000</span><span class="p">]</span>
+<span class="c1"># Example data
+</span><span class="n">emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>
 
-<span class="n">dataset</span> <span class="o">=</span> <span class="nc">HousePriceDataset</span><span class="p">(</span><span class="n">sizes</span><span class="p">,</span> <span class="n">bedrooms</span><span class="p">,</span> <span class="n">prices</span><span class="p">)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="nc">SpamDataset</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Dataset size:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Email 0:</span><span class="sh">"</span><span class="p">,</span> <span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</code></pre></div></div>
 
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Dataset size: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sample 0: </span><span class="si">{</span><span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<p>Output:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Dataset size: 4
+Email 0: (tensor([3.0, 1.0, 0.0, 0.20, 47.0]), tensor(1.0))
 </code></pre></div></div>
 
 <hr />
 
-<h2 id="5-loading-data-from-csv">5. Loading Data from CSV</h2>
+<h2 id="5-loading-spam-data-from-a-csv-file">5. Loading spam data from a CSV file</h2>
 
 <p>Real datasets usually live in CSV files. Here is how to load one.</p>
 
@@ -190,78 +225,96 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 <span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
 
-<span class="k">class</span> <span class="nc">CSVDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">,</span> <span class="n">feature_columns</span><span class="p">,</span> <span class="n">target_column</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">SpamCSVDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">):</span>
         <span class="c1"># Load the CSV
 </span>        <span class="n">self</span><span class="p">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
 
         <span class="c1"># Extract features and target
-</span>        <span class="n">self</span><span class="p">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">df</span><span class="p">[</span><span class="n">feature_columns</span><span class="p">].</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">df</span><span class="p">[</span><span class="n">target_column</span><span class="p">].</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+</span>        <span class="n">feature_columns</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sh">'</span><span class="s">suspicious_words</span><span class="sh">'</span><span class="p">,</span>
+            <span class="sh">'</span><span class="s">links</span><span class="sh">'</span><span class="p">,</span>
+            <span class="sh">'</span><span class="s">known_sender</span><span class="sh">'</span><span class="p">,</span>
+            <span class="sh">'</span><span class="s">capitals</span><span class="sh">'</span><span class="p">,</span>
+            <span class="sh">'</span><span class="s">length</span><span class="sh">'</span>
+        <span class="p">]</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span>
+            <span class="n">self</span><span class="p">.</span><span class="n">df</span><span class="p">[</span><span class="n">feature_columns</span><span class="p">].</span><span class="n">values</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span>
+        <span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span>
+            <span class="n">self</span><span class="p">.</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">is_spam</span><span class="sh">'</span><span class="p">].</span><span class="n">values</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span>
+        <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">df</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">emails</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
 
 <span class="c1"># Use it
-</span><span class="n">dataset</span> <span class="o">=</span> <span class="nc">CSVDataset</span><span class="p">(</span>
-    <span class="n">csv_path</span><span class="o">=</span><span class="sh">"</span><span class="s">houses.csv</span><span class="sh">"</span><span class="p">,</span>
-    <span class="n">feature_columns</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">size</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bedrooms</span><span class="sh">"</span><span class="p">],</span>
-    <span class="n">target_column</span><span class="o">=</span><span class="sh">"</span><span class="s">price</span><span class="sh">"</span>
-<span class="p">)</span>
+</span><span class="n">dataset</span> <span class="o">=</span> <span class="nc">SpamCSVDataset</span><span class="p">(</span><span class="sh">"</span><span class="s">emails.csv</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
+
+<p>Example <code class="language-plaintext highlighter-rouge">emails.csv</code>:</p>
+
+<pre><code class="language-csv">suspicious_words,links,known_sender,capitals,length,is_spam
+5,4,0,0.40,31,1
+0,0,1,0.02,85,0
+3,2,0,0.25,42,1
+0,1,1,0.01,110,0
+</code></pre>
 
 <hr />
 
-<h2 id="6-transforms-in-a-dataset">6. Transforms in a Dataset</h2>
+<h2 id="6-transforms-normalising-email-features">6. Transforms: normalising email features</h2>
 
-<p>A transform is a function that modifies the data before returning it. Common transforms include:</p>
+<p>A transform is a function that modifies the data before returning it. For spam emails, we often normalise the features so that no single feature dominates.</p>
 
-<ul>
-  <li>Normalising values</li>
-  <li>Converting to tensors</li>
-  <li>Augmenting images</li>
-</ul>
+<p>For example, message length might be 120 while capital percentage is 0.20. If we do not normalise, the length value could overwhelm the other features.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
 
-<span class="k">class</span> <span class="nc">NormalisedDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">NormalisedSpamDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+        <span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
 
-        <span class="c1"># Compute mean and std if not provided
-</span>        <span class="k">if</span> <span class="n">mean</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="n">mean</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">std</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="n">std</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">.</span><span class="nf">std</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Compute mean and standard deviation for each feature
+</span>        <span class="n">self</span><span class="p">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">emails</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">emails</span><span class="p">.</span><span class="nf">std</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
-        <span class="n">self</span><span class="p">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">std</span>
-
-        <span class="c1"># Apply normalisation
-</span>        <span class="n">self</span><span class="p">.</span><span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">X</span> <span class="o">-</span> <span class="n">self</span><span class="p">.</span><span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">self</span><span class="p">.</span><span class="n">std</span>
+        <span class="c1"># Normalise: (value - mean) / std
+</span>        <span class="n">self</span><span class="p">.</span><span class="n">emails</span> <span class="o">=</span> <span class="p">(</span><span class="n">emails</span> <span class="o">-</span> <span class="n">self</span><span class="p">.</span><span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">self</span><span class="p">.</span><span class="n">std</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">emails</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">emails</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
 
-<span class="c1"># Example
-</span><span class="n">X</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">1500</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">800</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2000</span><span class="p">,</span> <span class="mi">5</span><span class="p">]]</span>
-<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">250</span><span class="p">,</span> <span class="mi">320</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span> <span class="mi">410</span><span class="p">]</span>
+<span class="n">emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>
 
-<span class="n">dataset</span> <span class="o">=</span> <span class="nc">NormalisedDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="nc">NormalisedSpamDataset</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 </code></pre></div></div>
 
+<blockquote>
+  <p><strong>Memory trick:</strong> Normalisation is like giving every feature the same size ruler. Without it, the model listens mostly to the loudest feature.</p>
+</blockquote>
+
 <hr />
 
-<h2 id="7-dataloader-options">7. DataLoader Options</h2>
+<h2 id="7-dataloader-options">7. DataLoader options</h2>
 
 <p>The <code class="language-plaintext highlighter-rouge">DataLoader</code> has many useful options.</p>
 
@@ -269,7 +322,7 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 
 <span class="n">loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span>
     <span class="n">dataset</span><span class="p">,</span>
-    <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>       <span class="c1"># samples per batch
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>       <span class="c1"># emails per batch
 </span>    <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>        <span class="c1"># randomise order each epoch
 </span>    <span class="n">num_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>       <span class="c1"># load data in parallel processes
 </span>    <span class="n">drop_last</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>      <span class="c1"># drop last incomplete batch
@@ -281,14 +334,14 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
   <thead>
     <tr>
       <th>Option</th>
-      <th>What It Does</th>
-      <th>When to Use</th>
+      <th>What it does</th>
+      <th>When to use</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">batch_size</code></td>
-      <td>Number of samples per batch</td>
+      <td>Number of emails per batch</td>
       <td>Larger = faster training, more memory</td>
     </tr>
     <tr>
@@ -316,11 +369,11 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 
 <hr />
 
-<h2 id="8-train--validation--test-split">8. Train / Validation / Test Split</h2>
+<h2 id="8-train--validation--test-split">8. Train / validation / test split</h2>
 
 <p>Never evaluate on training data. Split into three parts:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Dataset
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Spam dataset
   ├── Training set (70%) — used to learn weights
   ├── Validation set (15%) — used to tune hyperparameters
   └── Test set (15%) — used once at the end
@@ -329,15 +382,20 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">random_split</span><span class="p">,</span> <span class="n">DataLoader</span>
 
-<span class="c1"># Create a dataset
-</span><span class="n">full_dataset</span> <span class="o">=</span> <span class="nc">TensorDataset</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1000</span><span class="p">,)))</span>
+<span class="c1"># Full dataset
+</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># 1000 emails, 5 features
+</span><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">full_dataset</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">utils</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="nc">TensorDataset</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
 
 <span class="c1"># Split sizes
 </span><span class="n">train_size</span> <span class="o">=</span> <span class="nf">int</span><span class="p">(</span><span class="mf">0.7</span> <span class="o">*</span> <span class="nf">len</span><span class="p">(</span><span class="n">full_dataset</span><span class="p">))</span>
 <span class="n">val_size</span> <span class="o">=</span> <span class="nf">int</span><span class="p">(</span><span class="mf">0.15</span> <span class="o">*</span> <span class="nf">len</span><span class="p">(</span><span class="n">full_dataset</span><span class="p">))</span>
 <span class="n">test_size</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">full_dataset</span><span class="p">)</span> <span class="o">-</span> <span class="n">train_size</span> <span class="o">-</span> <span class="n">val_size</span>
 
-<span class="n">train_set</span><span class="p">,</span> <span class="n">val_set</span><span class="p">,</span> <span class="n">test_set</span> <span class="o">=</span> <span class="nf">random_split</span><span class="p">(</span><span class="n">full_dataset</span><span class="p">,</span> <span class="p">[</span><span class="n">train_size</span><span class="p">,</span> <span class="n">val_size</span><span class="p">,</span> <span class="n">test_size</span><span class="p">])</span>
+<span class="n">train_set</span><span class="p">,</span> <span class="n">val_set</span><span class="p">,</span> <span class="n">test_set</span> <span class="o">=</span> <span class="nf">random_split</span><span class="p">(</span>
+    <span class="n">full_dataset</span><span class="p">,</span>
+    <span class="p">[</span><span class="n">train_size</span><span class="p">,</span> <span class="n">val_size</span><span class="p">,</span> <span class="n">test_size</span><span class="p">]</span>
+<span class="p">)</span>
 
 <span class="c1"># Create loaders
 </span><span class="n">train_loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
@@ -347,27 +405,33 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Train: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">train_set</span><span class="p">)</span><span class="si">}</span><span class="s">, Val: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">val_set</span><span class="p">)</span><span class="si">}</span><span class="s">, Test: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">test_set</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
 
+<blockquote>
+  <p><strong>Memory trick:</strong> Training set is the textbook. Validation set is the practice exam. Test set is the final exam.</p>
+</blockquote>
+
 <hr />
 
-<h2 id="9-a-complete-training-loop-with-dataloader">9. A Complete Training Loop with DataLoader</h2>
+<h2 id="9-a-complete-training-loop-with-spam-data">9. A complete training loop with spam data</h2>
+
+<p>Here is how a full training loop looks with <code class="language-plaintext highlighter-rouge">Dataset</code> and <code class="language-plaintext highlighter-rouge">DataLoader</code>.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 <span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">TensorDataset</span><span class="p">,</span> <span class="n">DataLoader</span>
 
-<span class="c1"># Fake data
-</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="c1"># Fake spam data: 1000 emails, 5 features each
+</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
 
 <span class="c1"># Dataset and loader
-</span><span class="n">dataset</span> <span class="o">=</span> <span class="nc">TensorDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class="n">dataset</span> <span class="o">=</span> <span class="nc">TensorDataset</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
 <span class="n">train_loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 
-<span class="c1"># Model
+<span class="c1"># Model: 5 features -&gt; 4 hidden -&gt; 1 output
 </span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
 <span class="p">)</span>
 
@@ -378,10 +442,10 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 <span class="c1"># Training loop
 </span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
     <span class="n">total_loss</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">train_loader</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">batch_emails</span><span class="p">,</span> <span class="n">batch_labels</span> <span class="ow">in</span> <span class="n">train_loader</span><span class="p">:</span>
         <span class="c1"># Forward pass
-</span>        <span class="n">predictions</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">batch_x</span><span class="p">)</span>
-        <span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">batch_y</span><span class="p">)</span>
+</span>        <span class="n">predictions</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">batch_emails</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">batch_labels</span><span class="p">)</span>
 
         <span class="c1"># Backward pass
 </span>        <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
@@ -393,53 +457,17 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
     <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="si">}</span><span class="s">, Average Loss: </span><span class="si">{</span><span class="n">total_loss</span> <span class="o">/</span> <span class="nf">len</span><span class="p">(</span><span class="n">train_loader</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
 
-<hr />
-
-<h2 id="10-image-dataset-example">10. Image Dataset Example</h2>
-
-<p>Here is a custom dataset for images:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">os</span>
-<span class="kn">from</span> <span class="n">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">import</span> <span class="n">torch</span>
-<span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
-
-<span class="k">class</span> <span class="nc">ImageDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">image_dir</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">image_dir</span> <span class="o">=</span> <span class="n">image_dir</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">image_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">listdir</span><span class="p">(</span><span class="n">image_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">f</span><span class="p">.</span><span class="nf">endswith</span><span class="p">((</span><span class="sh">'</span><span class="s">.png</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">.jpg</span><span class="sh">'</span><span class="p">))]</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
-
-        <span class="c1"># Labels from filenames: cat_01.jpg → label "cat"
-</span>        <span class="n">self</span><span class="p">.</span><span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="s">_</span><span class="sh">'</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">self</span><span class="p">.</span><span class="n">image_files</span><span class="p">]</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">label_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">idx</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="nf">set</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">))}</span>
-
-    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">image_files</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="n">filename</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">image_files</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">image_path</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">image_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
-        <span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="p">.</span><span class="nf">open</span><span class="p">(</span><span class="n">image_path</span><span class="p">).</span><span class="nf">convert</span><span class="p">(</span><span class="sh">"</span><span class="s">RGB</span><span class="sh">"</span><span class="p">)</span>
-
-        <span class="n">label</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">label_map</span><span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
-        <span class="n">label</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="nb">long</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">self</span><span class="p">.</span><span class="n">transform</span><span class="p">:</span>
-            <span class="n">image</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">image</span><span class="p">,</span> <span class="n">label</span>
-</code></pre></div></div>
+<p>The loop runs through the entire dataset five times. Each time, the emails are shuffled and split into batches of 32.</p>
 
 <hr />
 
-<h2 id="11-common-mistakes">11. Common Mistakes</h2>
+<h2 id="10-common-mistakes">10. Common mistakes</h2>
 
 <table>
   <thead>
     <tr>
       <th>Mistake</th>
-      <th>Why It Happens</th>
+      <th>Why it happens</th>
       <th>Fix</th>
     </tr>
   </thead>
@@ -471,28 +499,33 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
     </tr>
     <tr>
       <td>Data leakage between splits</td>
-      <td>Samples overlap between train and test</td>
+      <td>Emails overlap between train and test</td>
       <td>Split before any preprocessing</td>
+    </tr>
+    <tr>
+      <td>Not normalising features</td>
+      <td>One feature dominates the others</td>
+      <td>Normalise to zero mean and unit variance</td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="12-quick-review">12. Quick Review</h2>
+<h2 id="11-quick-review">11. Quick review</h2>
 
 <table>
   <thead>
     <tr>
       <th>Class</th>
       <th>Job</th>
-      <th>Must Implement</th>
+      <th>Must implement</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Dataset</strong></td>
-      <td>Fetch one sample</td>
+      <td>Fetch one email and its label</td>
       <td><code class="language-plaintext highlighter-rouge">__init__</code>, <code class="language-plaintext highlighter-rouge">__len__</code>, <code class="language-plaintext highlighter-rouge">__getitem__</code></td>
     </tr>
     <tr>
@@ -515,7 +548,7 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 
 <hr />
 
-<h2 id="13-try-it-yourself">13. Try It Yourself</h2>
+<h2 id="12-try-it-yourself">12. Try it yourself</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DataLoader</span>
@@ -533,13 +566,28 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
         <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">numbers</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">squares</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
 
 <span class="c1"># 2. Create DataLoader
-</span> <span class="n">dataset</span> <span class="o">=</span> <span class="nc">SquareDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+</span><span class="n">dataset</span> <span class="o">=</span> <span class="nc">SquareDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
 <span class="n">loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 
 <span class="c1"># 3. Print one batch
 </span><span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
     <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Inputs: </span><span class="si">{</span><span class="n">x</span><span class="p">[</span><span class="si">:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
     <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Squares: </span><span class="si">{</span><span class="n">y</span><span class="p">[</span><span class="si">:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">break</span>
+
+<span class="c1"># 4. Try with a spam-style dataset
+</span><span class="n">spam_emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">]</span>
+<span class="p">]</span>
+<span class="n">spam_labels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+
+<span class="n">spam_dataset</span> <span class="o">=</span> <span class="nc">SpamDataset</span><span class="p">(</span><span class="n">spam_emails</span><span class="p">,</span> <span class="n">spam_labels</span><span class="p">)</span>
+<span class="n">spam_loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">spam_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">spam_loader</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">batch_x</span><span class="p">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">batch_y</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
     <span class="k">break</span>
 </code></pre></div></div>
 
@@ -548,11 +596,12 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 <h2 id="summary">Summary</h2>
 
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">Dataset</code> defines how to access one sample.</li>
+  <li><code class="language-plaintext highlighter-rouge">Dataset</code> defines how to access one email and its label.</li>
   <li><code class="language-plaintext highlighter-rouge">DataLoader</code> creates batches and can shuffle, parallel-load, and drop partial batches.</li>
   <li>Always split data into train/validation/test sets.</li>
   <li>Use <code class="language-plaintext highlighter-rouge">TensorDataset</code> for simple tensor data and write custom <code class="language-plaintext highlighter-rouge">Dataset</code> classes for real files.</li>
   <li>Transforms are applied inside <code class="language-plaintext highlighter-rouge">__getitem__</code> to prepare data for the model.</li>
+  <li>Normalisation helps prevent one feature from dominating the others.</li>
   <li>Data handling is the foundation of every training pipeline — get it right early.</li>
 </ul>
 
@@ -560,7 +609,7 @@ Batch 2: features shape = torch.Size([8, 3]), labels shape = torch.Size([8])
 
   
   <footer class="topic-footer">
-    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">pytorch</span>, <span class="tag">dataset</span>, <span class="tag">dataloader</span>, <span class="tag">batching</span>, <span class="tag">data-pipeline</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">pytorch</span>, <span class="tag">dataset</span>, <span class="tag">dataloader</span>, <span class="tag">batching</span>, <span class="tag">data-pipeline</span>, <span class="tag">spam-detection</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
   </footer>
   
 </article>

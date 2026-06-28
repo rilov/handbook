@@ -47,16 +47,16 @@
   <section class="topic-body">
     <h1 id="parameters-in-pytorch--a-friendly-guide">Parameters in PyTorch — A Friendly Guide</h1>
 
-<p>When you build a neural network, the things that learn are called <strong>parameters</strong>. In PyTorch, parameters are automatically created, tracked, and updated. This guide explains how that works.</p>
+<p>When you build a spam-detection model, the things that learn are called <strong>parameters</strong>. In PyTorch, parameters are automatically created, tracked, and updated. This guide explains how that works using the same email example.</p>
 
 <hr />
 
-<h2 id="1-what-are-parameters">1. What Are Parameters?</h2>
+<h2 id="1-what-are-parameters">1. What are parameters?</h2>
 
 <p>A <strong>parameter</strong> is a number that the model learns during training. In a neural network, the main parameters are:</p>
 
 <ul>
-  <li><strong>Weights</strong> — how strongly each input connects to each neuron</li>
+  <li><strong>Weights</strong> — how strongly each email feature connects to each neuron</li>
   <li><strong>Biases</strong> — the baseline tendency of each neuron to fire</li>
 </ul>
 
@@ -66,7 +66,7 @@
 
 <hr />
 
-<h2 id="2-parameters-vs-inputs">2. Parameters vs Inputs</h2>
+<h2 id="2-parameters-versus-inputs">2. Parameters versus inputs</h2>
 
 <table>
   <thead>
@@ -100,121 +100,88 @@
   </tbody>
 </table>
 
+<p>For spam detection, the inputs are the email features. The parameters are the weights and biases that turn those features into a spam score.</p>
+
 <hr />
 
-<h2 id="3-how-pytorch-creates-parameters">3. How PyTorch Creates Parameters</h2>
+<h2 id="3-how-pytorch-creates-parameters-for-spam-detection">3. How PyTorch creates parameters for spam detection</h2>
 
 <p>When you define a layer, PyTorch automatically creates the weight and bias tensors.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="c1"># 5 email features -&gt; 1 spam probability
+</span><span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
 <span class="nf">print</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">weight</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">bias</span><span class="p">)</span>
 </code></pre></div></div>
 
-<h3 id="output">Output</h3>
+<p>Output (values will be random):</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Parameter containing:
-tensor([[ 0.1234, -0.5678,  0.9012],
-        [-0.3456,  0.7890, -0.2345]], requires_grad=True)
+tensor([[ 0.1234, -0.5678,  0.9012, -0.3456,  0.7890]], requires_grad=True)
 Parameter containing:
-tensor([-0.1234,  0.5678], requires_grad=True)
+tensor([-0.1234], requires_grad=True)
 </code></pre></div></div>
 
-<p>Notice the <code class="language-plaintext highlighter-rouge">requires_grad=True</code>. That tells PyTorch to track gradients for these tensors.</p>
-
-<hr />
-
-<h2 id="4-the-requires_grad-flag">4. The <code class="language-plaintext highlighter-rouge">requires_grad</code> Flag</h2>
-
-<p><code class="language-plaintext highlighter-rouge">requires_grad</code> is the switch that says “this tensor should be updated during training”.</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
-
-<span class="c1"># A normal tensor
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">])</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">)</span>  <span class="c1"># False
-</span>
-<span class="c1"># A parameter
-</span><span class="n">w</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">w</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">)</span>  <span class="c1"># True
-</span>
-<span class="c1"># You can turn it on later
-</span><span class="n">x</span><span class="p">.</span><span class="nf">requires_grad_</span><span class="p">()</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">)</span>  <span class="c1"># True
-</span></code></pre></div></div>
+<p>Notice the <code class="language-plaintext highlighter-rouge">requires_grad=True</code>. That tells PyTorch to track gradients for these tensors so they can be updated during training.</p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">requires_grad=True</code> means “this number is still being decided”.</p>
+  <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">requires_grad=True</code> means “this number is still being decided.”</p>
 </blockquote>
 
 <hr />
 
-<h2 id="5-parameters-in-a-custom-model">5. Parameters in a Custom Model</h2>
+<h2 id="4-the-requires_grad-flag">4. The <code class="language-plaintext highlighter-rouge">requires_grad</code> flag</h2>
 
-<p>Here is a custom model with manually defined parameters.</p>
+<p><code class="language-plaintext highlighter-rouge">requires_grad</code> is the switch that says “this tensor should be updated during training.”</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
-<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="k">class</span> <span class="nc">ManualModel</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
-        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
-        <span class="c1"># Manually create a parameter
-</span>        <span class="n">self</span><span class="p">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+<span class="c1"># A normal input tensor
+</span><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">email</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">)</span>  <span class="c1"># False
+</span>
+<span class="c1"># A parameter tensor
+</span><span class="n">weight</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">weight</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">)</span>  <span class="c1"># True
+</span>
+<span class="c1"># You can turn it on later
+</span><span class="n">email</span><span class="p">.</span><span class="nf">requires_grad_</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">email</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">)</span>  <span class="c1"># True
+</span></code></pre></div></div>
 
-    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">x</span> <span class="o">@</span> <span class="n">self</span><span class="p">.</span><span class="n">weight</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="n">bias</span>
-
-<span class="n">model</span> <span class="o">=</span> <span class="nc">ManualModel</span><span class="p">()</span>
-<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
-    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s">: shape </span><span class="si">{</span><span class="n">param</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-</code></pre></div></div>
-
-<h3 id="output-1">Output</h3>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>weight: shape torch.Size([3, 1])
-bias: shape torch.Size([1])
-</code></pre></div></div>
-
-<p><code class="language-plaintext highlighter-rouge">nn.Parameter</code> wraps a tensor so PyTorch knows it is a learnable parameter.</p>
+<p>By default, inputs do not need gradients. Weights do.</p>
 
 <hr />
 
-<h2 id="6-listing-all-parameters">6. Listing All Parameters</h2>
+<h2 id="5-building-a-spam-model-with-parameters">5. Building a spam model with parameters</h2>
 
-<p>Every <code class="language-plaintext highlighter-rouge">nn.Module</code> has a <code class="language-plaintext highlighter-rouge">parameters()</code> method that returns all parameters.</p>
+<p>Here is a small spam model with one hidden layer:</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="p">)</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">All parameters:</span><span class="sh">"</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
-    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">param</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-
-<span class="c1"># Count total parameters
-</span><span class="n">total</span> <span class="o">=</span> <span class="nf">sum</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="nf">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">())</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Total parameters: </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>  <span class="c1"># 5 features -&gt; 4 hidden neurons
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>         <span class="c1"># remove negative hidden signals
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># 4 hidden values -&gt; 1 spam score
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>       <span class="c1"># spam score -&gt; probability
+</span><span class="p">)</span>
 </code></pre></div></div>
 
-<h3 id="output-2">Output</h3>
+<p>Let’s count the parameters:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>All parameters:
-  0.weight: torch.Size([5, 3])
-  0.bias: torch.Size([5])
-  2.weight: torch.Size([1, 5])
-  2.bias: torch.Size([1])
+<ul>
+  <li>First layer: 5 features × 4 neurons = 20 weights, plus 4 biases</li>
+  <li>Second layer: 4 hidden values × 1 output = 4 weights, plus 1 bias</li>
+  <li>Total: 24 weights + 5 biases = 29 parameters</li>
+</ul>
 
-Total parameters: 21
-</code></pre></div></div>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">total</span> <span class="o">=</span> <span class="nf">sum</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="nf">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Total parameters: </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Output: 29
+</span></code></pre></div></div>
 
 <blockquote>
   <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">numel()</code> = “number of elements” = how many numbers are in the tensor.</p>
@@ -222,13 +189,43 @@ Total parameters: 21
 
 <hr />
 
-<h2 id="7-weight-initialisation">7. Weight Initialisation</h2>
+<h2 id="6-listing-all-parameters">6. Listing all parameters</h2>
+
+<p>Every <code class="language-plaintext highlighter-rouge">nn.Module</code> has a <code class="language-plaintext highlighter-rouge">parameters()</code> method that returns all parameters.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">All parameters:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">param</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Output:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>All parameters:
+  0.weight: torch.Size([4, 5])
+  0.bias: torch.Size([4])
+  2.weight: torch.Size([1, 4])
+  2.bias: torch.Size([1])
+</code></pre></div></div>
+
+<p>The numbers <code class="language-plaintext highlighter-rouge">0</code> and <code class="language-plaintext highlighter-rouge">2</code> refer to the positions in <code class="language-plaintext highlighter-rouge">nn.Sequential</code>. Position <code class="language-plaintext highlighter-rouge">1</code> is <code class="language-plaintext highlighter-rouge">ReLU</code>, which has no parameters.</p>
+
+<hr />
+
+<h2 id="7-weight-initialisation">7. Weight initialisation</h2>
 
 <p>The starting values of weights matter. PyTorch has several common initialisation methods.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
 <span class="c1"># Reset weights from a normal distribution
 </span><span class="n">nn</span><span class="p">.</span><span class="n">init</span><span class="p">.</span><span class="nf">normal_</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
@@ -242,14 +239,14 @@ Total parameters: 21
 <span class="nf">print</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">weight</span><span class="p">)</span>
 </code></pre></div></div>
 
-<h3 id="common-initialisation-methods">Common Initialisation Methods</h3>
+<h3 id="common-initialisation-methods">Common initialisation methods</h3>
 
 <table>
   <thead>
     <tr>
       <th>Method</th>
-      <th>Use Case</th>
-      <th>Memory Trick</th>
+      <th>Use case</th>
+      <th>Memory trick</th>
     </tr>
   </thead>
   <tbody>
@@ -276,18 +273,20 @@ Total parameters: 21
   </tbody>
 </table>
 
+<p>For our spam model with ReLU hidden layers, <strong>He initialisation</strong> is the most common choice.</p>
+
 <hr />
 
-<h2 id="8-freezing-and-unfreezing-parameters">8. Freezing and Unfreezing Parameters</h2>
+<h2 id="8-freezing-and-unfreezing-parameters">8. Freezing and unfreezing parameters</h2>
 
 <p>Sometimes you do not want to update certain parameters. You can freeze them by setting <code class="language-plaintext highlighter-rouge">requires_grad=False</code>.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 <span class="p">)</span>
 
 <span class="c1"># Freeze the first layer
@@ -301,24 +300,26 @@ Total parameters: 21
 
 <p>This is useful for <strong>transfer learning</strong>, where you reuse a pretrained model and only train the last layer.</p>
 
+<p>For spam detection, you might freeze the first layer if you believe it already extracts good features, and only fine-tune the output layer.</p>
+
 <hr />
 
-<h2 id="9-gradients-and-the-optimiser">9. Gradients and the Optimiser</h2>
+<h2 id="9-gradients-and-the-optimiser">9. Gradients and the optimiser</h2>
 
 <p>The optimiser is the thing that updates parameters. You tell it which parameters to manage.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">SGD</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
 
 <span class="c1"># One training step
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]])</span>
-<span class="n">y_true</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]])</span>
+</span><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">]])</span>
+<span class="n">label</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]])</span>
 
-<span class="n">y_pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<span class="n">loss</span> <span class="o">=</span> <span class="p">((</span><span class="n">y_pred</span> <span class="o">-</span> <span class="n">y_true</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">).</span><span class="nf">mean</span><span class="p">()</span>
+<span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="p">((</span><span class="n">prediction</span> <span class="o">-</span> <span class="n">label</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">).</span><span class="nf">mean</span><span class="p">()</span>
 
 <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
 <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
@@ -338,7 +339,7 @@ Total parameters: 21
 
 <hr />
 
-<h2 id="10-the-learning-rate">10. The Learning Rate</h2>
+<h2 id="10-the-learning-rate">10. The learning rate</h2>
 
 <p>The learning rate controls how big each update is.</p>
 
@@ -348,7 +349,7 @@ Total parameters: 21
 <table>
   <thead>
     <tr>
-      <th>Learning Rate</th>
+      <th>Learning rate</th>
       <th>Effect</th>
       <th>Risk</th>
     </tr>
@@ -374,51 +375,58 @@ Total parameters: 21
 
 <p><strong>Common starting values:</strong> 0.01, 0.001, 0.0001</p>
 
-<hr />
-
-<h2 id="11-inspecting-parameter-values">11. Inspecting Parameter Values</h2>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
-
-<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-
-<span class="c1"># Before training
-</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Before:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">weight</span><span class="p">)</span>
-
-<span class="c1"># After a fake training step
-</span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
-    <span class="n">model</span><span class="p">.</span><span class="n">weight</span> <span class="o">+=</span> <span class="mf">0.01</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">After:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">weight</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>Better: use an optimiser. But if you ever need to manually change values, wrap it in <code class="language-plaintext highlighter-rouge">torch.no_grad()</code> so you do not mess up the gradient tracking.</p>
+<p>For spam detection, a good starting point is usually <code class="language-plaintext highlighter-rouge">lr=0.001</code> with the Adam optimiser.</p>
 
 <hr />
 
-<h2 id="12-saving-and-loading-parameters">12. Saving and Loading Parameters</h2>
+<h2 id="11-saving-and-loading-a-spam-model">11. Saving and loading a spam model</h2>
+
+<p>A trained spam model has two parts:</p>
+
+<ol>
+  <li><strong>Architecture</strong> — the code that defines the layers</li>
+  <li><strong>Learned state</strong> — the weights and biases</li>
+</ol>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="c1"># Save model parameters
-</span><span class="n">torch</span><span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">state_dict</span><span class="p">(),</span> <span class="sh">"</span><span class="s">model.pth</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Build the model
+</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Save the learned parameters
+</span><span class="n">torch</span><span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">state_dict</span><span class="p">(),</span> <span class="sh">"</span><span class="s">spam_model.pth</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="c1"># Load into a new model with the same architecture
-</span><span class="n">new_model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="n">new_model</span><span class="p">.</span><span class="nf">load_state_dict</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">model.pth</span><span class="sh">"</span><span class="p">))</span>
+</span><span class="n">new_model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="n">new_model</span><span class="p">.</span><span class="nf">load_state_dict</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">"</span><span class="s">spam_model.pth</span><span class="sh">"</span><span class="p">))</span>
 </code></pre></div></div>
 
-<p><code class="language-plaintext highlighter-rouge">state_dict()</code> is a dictionary that maps parameter names to their tensors.</p>
+<p><code class="language-plaintext highlighter-rouge">state_dict()</code> is a dictionary that maps parameter names to their tensors. It is the standard way to save a trained model.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Think of the architecture as the recipe and the weights as the trained taste. The recipe is code; the taste is the learned state.</p>
+</blockquote>
 
 <hr />
 
-<h2 id="13-common-mistakes">13. Common Mistakes</h2>
+<h2 id="12-common-mistakes">12. Common mistakes</h2>
 
 <table>
   <thead>
     <tr>
       <th>Mistake</th>
-      <th>Why It Happens</th>
+      <th>Why it happens</th>
       <th>Fix</th>
     </tr>
   </thead>
@@ -448,36 +456,41 @@ Total parameters: 21
       <td>Gradients accumulate across batches</td>
       <td>Call <code class="language-plaintext highlighter-rouge">optimizer.zero_grad()</code> every step</td>
     </tr>
+    <tr>
+      <td>Saving the whole model instead of <code class="language-plaintext highlighter-rouge">state_dict()</code></td>
+      <td>Can break if code changes</td>
+      <td>Save <code class="language-plaintext highlighter-rouge">state_dict()</code> separately</td>
+    </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="14-quick-review">14. Quick Review</h2>
+<h2 id="13-quick-review">13. Quick review</h2>
 
 <table>
   <thead>
     <tr>
       <th>Term</th>
-      <th>Meaning</th>
-      <th>Example</th>
+      <th>What it is</th>
+      <th>Example for spam detection</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Weight</strong></td>
       <td>Connects inputs to neurons</td>
-      <td><code class="language-plaintext highlighter-rouge">nn.Linear(3, 5).weight</code></td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Linear(5, 4).weight</code></td>
     </tr>
     <tr>
       <td><strong>Bias</strong></td>
       <td>Shifts the neuron’s output</td>
-      <td><code class="language-plaintext highlighter-rouge">nn.Linear(3, 5).bias</code></td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Linear(5, 4).bias</code></td>
     </tr>
     <tr>
       <td><strong>Parameter</strong></td>
       <td>A tensor that PyTorch learns</td>
-      <td><code class="language-plaintext highlighter-rouge">nn.Parameter(torch.randn(3, 1))</code></td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Parameter(torch.randn(5, 1))</code></td>
     </tr>
     <tr>
       <td><strong><code class="language-plaintext highlighter-rouge">requires_grad</code></strong></td>
@@ -497,12 +510,12 @@ Total parameters: 21
     <tr>
       <td><strong><code class="language-plaintext highlighter-rouge">state_dict()</code></strong></td>
       <td>Dictionary of all parameters</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.save(model.state_dict(), "model.pth")</code></td>
+      <td><code class="language-plaintext highlighter-rouge">torch.save(model.state_dict(), "spam_model.pth")</code></td>
     </tr>
     <tr>
       <td><strong>Learning rate</strong></td>
       <td>Step size during gradient descent</td>
-      <td><code class="language-plaintext highlighter-rouge">0.01</code></td>
+      <td><code class="language-plaintext highlighter-rouge">0.001</code></td>
     </tr>
     <tr>
       <td><strong>Gradient</strong></td>
@@ -519,36 +532,52 @@ Total parameters: 21
 
 <hr />
 
-<h2 id="15-try-it-yourself">15. Try It Yourself</h2>
+<h2 id="14-try-it-yourself">14. Try it yourself</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="c1"># Build a model
+<span class="c1"># 1. Build a spam model
 </span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 <span class="p">)</span>
 
-<span class="c1"># 1. Count trainable parameters
+<span class="c1"># 2. Count trainable parameters
 </span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Total parameters:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">sum</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="nf">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">()</span> <span class="k">if</span> <span class="n">p</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">))</span>
 
-<span class="c1"># 2. Print parameter names
+<span class="c1"># 3. Print parameter names
 </span><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
     <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">param</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
-<span class="c1"># 3. Freeze the first layer
+<span class="c1"># 4. Freeze the first layer
 </span><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">parameters</span><span class="p">():</span>
     <span class="n">param</span><span class="p">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="bp">False</span>
 
-<span class="c1"># 4. Verify only the second layer trains
+<span class="c1"># 5. Verify only the second layer trains
 </span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">After freezing:</span><span class="sh">"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
     <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s">: trainable = </span><span class="si">{</span><span class="n">param</span><span class="p">.</span><span class="n">requires_grad</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
-<span class="c1"># 5. Use an optimiser on only trainable parameters
-</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="nf">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">()),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+<span class="c1"># 6. Use an optimiser on only trainable parameters
+</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span>
+    <span class="nf">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">()),</span>
+    <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span>
+<span class="p">)</span>
+
+<span class="c1"># 7. One fake training step
+</span><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">]])</span>
+<span class="n">label</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]])</span>
+
+<span class="n">prediction</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">))</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+
+<span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+<span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+<span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Loss:</span><span class="sh">"</span><span class="p">,</span> <span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>
 </code></pre></div></div>
 
 <hr />
@@ -559,17 +588,17 @@ Total parameters: 21
   <li>Parameters are the learnable numbers in a neural network: weights and biases.</li>
   <li>PyTorch creates them automatically when you use <code class="language-plaintext highlighter-rouge">nn.Linear</code> and other layers.</li>
   <li><code class="language-plaintext highlighter-rouge">requires_grad=True</code> tells PyTorch to track gradients for a tensor.</li>
-  <li><code class="language-plaintext highlighter-rouge">nn.Parameter</code> wraps tensors so PyTorch treats them as model parameters.</li>
   <li>The optimiser updates parameters using gradients from backpropagation.</li>
   <li>You can freeze parameters by setting <code class="language-plaintext highlighter-rouge">requires_grad=False</code>.</li>
   <li>Saving <code class="language-plaintext highlighter-rouge">state_dict()</code> is the standard way to store a model’s learned weights.</li>
+  <li>For spam detection, the model learns weights that make suspicious features increase the spam score and trusted features decrease it.</li>
 </ul>
 
   </section>
 
   
   <footer class="topic-footer">
-    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">pytorch</span>, <span class="tag">parameters</span>, <span class="tag">weights</span>, <span class="tag">biases</span>, <span class="tag">nn-module</span>, <span class="tag">autograd</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">pytorch</span>, <span class="tag">parameters</span>, <span class="tag">weights</span>, <span class="tag">biases</span>, <span class="tag">nn-module</span>, <span class="tag">autograd</span>, <span class="tag">spam-detection</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
   </footer>
   
 </article>

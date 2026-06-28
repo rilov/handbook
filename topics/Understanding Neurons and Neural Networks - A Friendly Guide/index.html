@@ -47,473 +47,888 @@
   <section class="topic-body">
     <h1 id="understanding-neurons-and-neural-networks--a-friendly-guide">Understanding Neurons and Neural Networks — A Friendly Guide</h1>
 
-<p>Deep learning starts with one simple idea: a computer can learn by imitating how brain cells work. In this guide, we will build that idea from the ground up.</p>
+<p>Let us start with a real example instead of a formula.</p>
 
-<hr />
+<p>Imagine a model that predicts whether an email is spam.</p>
 
-<h2 id="1-the-big-picture">1. The Big Picture</h2>
-
-<p>A <strong>neural network</strong> is a stack of tiny calculators called <strong>neurons</strong>. Each neuron looks at some inputs, multiplies them by numbers called <strong>weights</strong>, adds a small shift called a <strong>bias</strong>, and then applies a non-linearity called an <strong>activation function</strong>.</p>
-
-<p>The magic is that the network learns the weights and biases from data.</p>
-
-<hr />
-
-<h2 id="2-the-biological-inspiration">2. The Biological Inspiration</h2>
-
-<p>Your brain contains about 86 billion <strong>neurons</strong>. Each neuron has:</p>
+<p>A human can read an email and notice things like:</p>
 
 <ul>
-  <li><strong>Dendrites</strong> — branches that receive signals from other neurons</li>
-  <li><strong>Soma</strong> — the cell body that combines those signals</li>
-  <li><strong>Axon</strong> — a long fibre that sends out a signal if the combined input is strong enough</li>
+  <li>“This message contains too many links.”</li>
+  <li>“The sender is unknown.”</li>
+  <li>“It says WIN MONEY NOW.”</li>
+  <li>“This looks suspicious.”</li>
 </ul>
 
-<p>A neuron fires when the incoming signals are strong enough. This “all-or-nothing” behaviour inspired the artificial neuron.</p>
+<p>But a neural network cannot directly work with ideas such as <em>suspicious</em>, <em>unknown sender</em>, or <em>too many links</em>. A neural network performs mathematical operations: multiply, add, compare, transform. Therefore, the first job is to convert the email into numbers.</p>
 
 <hr />
 
-<h2 id="3-the-artificial-neuron">3. The Artificial Neuron</h2>
+<h2 id="1-why-must-everything-become-numbers">1. Why must everything become numbers?</h2>
 
-<p>Imagine a neuron that decides whether to buy a house based on three inputs:</p>
+<p>A computer stores everything as numbers internally.</p>
+
+<ul>
+  <li>An image becomes pixel values. A black pixel might be <code class="language-plaintext highlighter-rouge">0</code>, a white pixel <code class="language-plaintext highlighter-rouge">255</code>.</li>
+  <li>Sound becomes measurements of air-wave amplitude.</li>
+  <li>Words become token IDs or vectors.</li>
+</ul>
+
+<p>An email can become measurable features such as:</p>
+
+<ul>
+  <li>Number of suspicious words</li>
+  <li>Number of links</li>
+  <li>Sender known or unknown</li>
+  <li>Percentage of capital letters</li>
+  <li>Number of attachments</li>
+  <li>Message length</li>
+</ul>
+
+<p>The model does not receive this:</p>
+
+<blockquote>
+  <p>“Congratulations! Click here to claim your prize.”</p>
+</blockquote>
+
+<p>A simple model may receive this:</p>
 
 <table>
   <thead>
     <tr>
-      <th>Input</th>
-      <th>Value</th>
-      <th>Meaning</th>
+      <th>Suspicious words</th>
+      <th>Links</th>
+      <th>Known sender</th>
+      <th>Capitals</th>
+      <th>Length</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><code class="language-plaintext highlighter-rouge">x₁</code></td>
-      <td>1200</td>
-      <td>size in square feet</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">x₂</code></td>
       <td>3</td>
-      <td>number of bedrooms</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">x₃</code></td>
-      <td>2</td>
-      <td>distance to city centre in km</td>
+      <td>1</td>
+      <td>no</td>
+      <td>20%</td>
+      <td>47 words</td>
     </tr>
   </tbody>
 </table>
 
-<p>Each input gets a <strong>weight</strong> that tells the neuron how important it is:</p>
+<p>Converted into numbers:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[3, 1, 0, 0.20, 47]
+</code></pre></div></div>
+
+<p>This collection of numbers is called a <strong>feature vector</strong>. In PyTorch, it becomes a <strong>tensor</strong>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+
+<span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="mf">3.0</span><span class="p">,</span>    <span class="c1"># suspicious word count
+</span>    <span class="mf">1.0</span><span class="p">,</span>    <span class="c1"># link count
+</span>    <span class="mf">0.0</span><span class="p">,</span>    <span class="c1"># sender known: 0 = no, 1 = yes
+</span>    <span class="mf">0.20</span><span class="p">,</span>   <span class="c1"># percentage of capital letters
+</span>    <span class="mf">47.0</span>    <span class="c1"># message length
+</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>A tensor is simply a structured container of numbers.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> A tensor is a lunchbox. The numbers are the food items, but each compartment has a fixed meaning.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-what-does-each-number-mean">2. What does each number mean?</h2>
+
+<p>The position of each number has a fixed meaning.</p>
 
 <table>
   <thead>
     <tr>
-      <th>Weight</th>
-      <th>Value</th>
+      <th>Position</th>
       <th>Meaning</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><code class="language-plaintext highlighter-rouge">w₁</code></td>
-      <td>0.5</td>
-      <td>size matters a lot</td>
+      <td>0</td>
+      <td>suspicious words</td>
     </tr>
     <tr>
-      <td><code class="language-plaintext highlighter-rouge">w₂</code></td>
-      <td>0.2</td>
-      <td>bedrooms matter a little</td>
+      <td>1</td>
+      <td>links</td>
     </tr>
     <tr>
-      <td><code class="language-plaintext highlighter-rouge">w₃</code></td>
-      <td>-0.4</td>
-      <td>distance hurts the score</td>
+      <td>2</td>
+      <td>known sender</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>capital-letter percentage</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>message length</td>
     </tr>
   </tbody>
 </table>
 
-<p>The neuron computes a <strong>weighted sum</strong> and then adds a <strong>bias</strong>.</p>
+<p>Therefore <code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code> does not mean anything by itself unless the model and the data-processing code agree on what each position represents. This is similar to a row in a table without the column headers.</p>
 
 <hr />
 
-<h2 id="4-the-formula">4. The Formula</h2>
+<h2 id="3-why-use-0-and-1">3. Why use 0 and 1?</h2>
 
-<h3 id="weighted-sum">Weighted Sum</h3>
+<p>Some information is not naturally numerical. For example, <em>known sender = yes</em> or <em>known sender = no</em>. We convert it to:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = (x₁ × w₁) + (x₂ × w₂) + (x₃ × w₃) + b
-</code></pre></div></div>
+<ul>
+  <li>Yes = 1</li>
+  <li>No = 0</li>
+</ul>
 
-<p>In short form:</p>
+<p>This does not mean that “yes is greater than no” in a meaningful human sense. It is simply a convenient numerical representation.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = Σ (xᵢ × wᵢ) + b
-</code></pre></div></div>
+<p>For multiple categories, we must be more careful. Suppose sender type is Personal, Business, or Unknown. Using <code class="language-plaintext highlighter-rouge">Personal = 1</code>, <code class="language-plaintext highlighter-rouge">Business = 2</code>, <code class="language-plaintext highlighter-rouge">Unknown = 3</code> could accidentally suggest that Unknown is numerically greater than Business. Instead, we use <strong>one-hot encoding</strong>:</p>
+
+<ul>
+  <li>Personal → <code class="language-plaintext highlighter-rouge">[1, 0, 0]</code></li>
+  <li>Business → <code class="language-plaintext highlighter-rouge">[0, 1, 0]</code></li>
+  <li>Unknown → <code class="language-plaintext highlighter-rouge">[0, 0, 1]</code></li>
+</ul>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> Think of <code class="language-plaintext highlighter-rouge">Σ</code> as a “shopping basket” — you throw all the <code class="language-plaintext highlighter-rouge">x × w</code> items in, then add the bias as the tip.</p>
+  <p><strong>Memory trick:</strong> One-hot encoding is like three separate light switches. Only one is on at a time.</p>
 </blockquote>
-
-<h3 id="worked-example">Worked Example</h3>
-
-<p>Using the house example:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z = (1200 × 0.5) + (3 × 0.2) + (2 × -0.4) + 10
-z = 600 + 0.6 - 0.8 + 10
-z = 609.8
-</code></pre></div></div>
-
-<p>The raw score <code class="language-plaintext highlighter-rouge">z = 609.8</code> is not yet useful. We pass it through an <strong>activation function</strong>.</p>
 
 <hr />
 
-<h2 id="5-activation-functions">5. Activation Functions</h2>
+<h2 id="4-does-someone-manually-choose-these-features">4. Does someone manually choose these features?</h2>
 
-<p>An activation function decides whether the neuron “fires” and how strongly.</p>
+<p>For a basic machine-learning model, yes. A developer or data scientist may decide to count suspicious words, count links, check sender reputation, measure capital letters, and measure message length. This is called <strong>feature engineering</strong>.</p>
 
-<h3 id="sigmoid--the-squeezes-everything-to-0-1-function">Sigmoid — The Squeezes-Everything-To-0-1 Function</h3>
+<p>But modern deep-learning models can learn many features automatically. For example, instead of manually counting suspicious words, we can provide the email text as tokens. The sentence “claim your free prize” might become <code class="language-plaintext highlighter-rouge">[1842, 95, 721, 4031]</code>. Each number identifies a token from a vocabulary. Those token IDs are later converted into learned vectors called <strong>embeddings</strong>.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>σ(z) = 1 / (1 + e^(-z))
-</code></pre></div></div>
+<p>For understanding neural networks clearly, our five-feature spam example is easier.</p>
 
-<ul>
-  <li>Output is always between 0 and 1</li>
-  <li>Useful for probabilities</li>
-</ul>
+<hr />
 
-<p><strong>Memory trick:</strong> The letter <code class="language-plaintext highlighter-rouge">S</code> looks like the sigmoid curve — a smooth “S” that squashes everything.</p>
+<h2 id="5-one-email-versus-many-emails">5. One email versus many emails</h2>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">math</span>
+<p>One email is one feature vector:</p>
 
-<span class="k">def</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
-    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">math</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z</span><span class="p">))</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="nf">sigmoid</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>    <span class="c1"># 0.5 — exactly the middle
-</span><span class="nf">print</span><span class="p">(</span><span class="nf">sigmoid</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>   <span class="c1"># close to 1.0
-</span><span class="nf">print</span><span class="p">(</span><span class="nf">sigmoid</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">))</span>  <span class="c1"># close to 0.0
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">email</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([5])
 </span></code></pre></div></div>
 
-<h3 id="relu--the-if-negative-zero-function">ReLU — The “If Negative, Zero” Function</h3>
+<p>During training, we usually process many emails together:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ReLU(z) = max(0, z)
-</code></pre></div></div>
-
-<ul>
-  <li>If input is positive, leave it alone</li>
-  <li>If input is negative, make it zero</li>
-  <li>Most popular activation in modern deep learning</li>
-</ul>
-
-<p><strong>Memory trick:</strong> ReLU is like a bouncer at a club — positive numbers get in, negative numbers are blocked.</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">relu</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
-    <span class="k">return</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="nf">relu</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>   <span class="c1"># 5
-</span><span class="nf">print</span><span class="p">(</span><span class="nf">relu</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">))</span>  <span class="c1"># 0
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([4, 5])
 </span></code></pre></div></div>
 
-<h3 id="tanh--the-squeezes-everything-to-minus-1-1-function">Tanh — The Squeezes-Everything-To-Minus-1-1 Function</h3>
+<p>A useful memory rule is:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z))
-</code></pre></div></div>
+<blockquote>
+  <p><strong>Rows = examples, Columns = features.</strong></p>
+</blockquote>
 
-<ul>
-  <li>Output is between -1 and 1</li>
-  <li>Useful when negative values are meaningful</li>
-</ul>
+<hr />
 
-<p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">tanh</code> is sigmoid stretched to go from -1 to 1 instead of 0 to 1.</p>
+<h2 id="6-the-model-starts-with-weights">6. The model starts with weights</h2>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">math</span>
-
-<span class="k">def</span> <span class="nf">tanh</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">math</span><span class="p">.</span><span class="nf">tanh</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="nf">tanh</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>    <span class="c1"># 0.0
-</span><span class="nf">print</span><span class="p">(</span><span class="nf">tanh</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>    <span class="c1"># 0.96
-</span><span class="nf">print</span><span class="p">(</span><span class="nf">tanh</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">))</span>   <span class="c1"># -0.96
-</span></code></pre></div></div>
-
-<h3 id="activation-function-cheat-sheet">Activation Function Cheat Sheet</h3>
+<p>Suppose we have a very simple model with one neuron. It stores one weight for each input feature:</p>
 
 <table>
   <thead>
     <tr>
-      <th>Function</th>
-      <th>Formula</th>
-      <th>Output Range</th>
-      <th>When to Use</th>
+      <th>Feature</th>
+      <th>Weight</th>
+      <th>Meaning</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Sigmoid</strong></td>
-      <td><code class="language-plaintext highlighter-rouge">1 / (1 + e^(-z))</code></td>
-      <td>0 to 1</td>
-      <td>Binary classification output</td>
+      <td>Suspicious words</td>
+      <td>0.8</td>
+      <td>pushes spam score up</td>
     </tr>
     <tr>
-      <td><strong>Tanh</strong></td>
-      <td><code class="language-plaintext highlighter-rouge">(e^z - e^(-z)) / (e^z + e^(-z))</code></td>
-      <td>-1 to 1</td>
-      <td>Hidden layers in older networks</td>
+      <td>Links</td>
+      <td>0.6</td>
+      <td>pushes spam score up</td>
     </tr>
     <tr>
-      <td><strong>ReLU</strong></td>
-      <td><code class="language-plaintext highlighter-rouge">max(0, z)</code></td>
-      <td>0 to ∞</td>
-      <td>Most modern hidden layers</td>
+      <td>Known sender</td>
+      <td>-1.2</td>
+      <td>pushes spam score down</td>
     </tr>
     <tr>
-      <td><strong>Softmax</strong></td>
-      <td><code class="language-plaintext highlighter-rouge">e^(zᵢ) / Σ e^(zⱼ)</code></td>
-      <td>0 to 1 (sums to 1)</td>
-      <td>Multi-class classification output</td>
+      <td>Capital letters</td>
+      <td>2.0</td>
+      <td>pushes spam score up strongly</td>
+    </tr>
+    <tr>
+      <td>Message length</td>
+      <td>0.01</td>
+      <td>barely matters</td>
     </tr>
   </tbody>
 </table>
 
+<p>The weights can be written as a tensor:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="mf">0.8</span><span class="p">,</span>
+    <span class="mf">0.6</span><span class="p">,</span>
+   <span class="o">-</span><span class="mf">1.2</span><span class="p">,</span>
+    <span class="mf">2.0</span><span class="p">,</span>
+    <span class="mf">0.01</span>
+<span class="p">])</span>
+
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>A positive weight pushes the spam score upward. A negative weight pushes it downward. A larger absolute value means the feature has a stronger effect.</p>
+
 <blockquote>
-  <p><strong>Memory trick for Softmax:</strong> It turns a list of scores into probabilities that add up to 1 — like a normalised “ranking”.</p>
+  <p><strong>Memory trick:</strong> Weights are volume knobs. A high positive weight turns the spam signal up; a negative weight turns it down.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="6-from-one-neuron-to-a-network">6. From One Neuron to a Network</h2>
+<h2 id="7-what-calculation-does-the-neuron-perform">7. What calculation does the neuron perform?</h2>
 
-<p>A single neuron is just a linear model. To learn complex patterns, we connect many neurons together.</p>
+<p>For our email:</p>
 
-<h3 id="layers">Layers</h3>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x = [3, 1, 0, 0.20, 47]
+w = [0.8, 0.6, -1.2, 2.0, 0.01]
+</code></pre></div></div>
+
+<p>The neuron multiplies matching positions and adds the results:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Calculation</th>
+      <th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Suspicious words</td>
+      <td>3 × 0.8</td>
+      <td>2.40</td>
+    </tr>
+    <tr>
+      <td>Links</td>
+      <td>1 × 0.6</td>
+      <td>0.60</td>
+    </tr>
+    <tr>
+      <td>Known sender</td>
+      <td>0 × -1.2</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Capital letters</td>
+      <td>0.20 × 2.0</td>
+      <td>0.40</td>
+    </tr>
+    <tr>
+      <td>Message length</td>
+      <td>47 × 0.01</td>
+      <td>0.47</td>
+    </tr>
+    <tr>
+      <td>Bias</td>
+      <td> </td>
+      <td>-1.00</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Total: <code class="language-plaintext highlighter-rouge">2.40 + 0.60 + 0.00 + 0.40 + 0.47 - 1.00 = 2.87</code></p>
+
+<p>The result is called the <strong>raw score</strong>: <code class="language-plaintext highlighter-rouge">z = 2.87</code>.</p>
+
+<p>In PyTorch:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">z</span> <span class="o">=</span> <span class="n">email</span> <span class="o">@</span> <span class="n">weights</span> <span class="o">+</span> <span class="n">bias</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">@</code> operation performs the matching multiplication and addition. It is equivalent to:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">z</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">email</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="o">+</span> <span class="n">email</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="o">+</span> <span class="n">email</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="o">+</span> <span class="n">email</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="o">+</span> <span class="n">email</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+    <span class="o">+</span> <span class="n">bias</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<p>So there is no mystery inside the neuron. It is a small calculator.</p>
+
+<hr />
+
+<h2 id="8-why-is-287-not-yet-the-prediction">8. Why is 2.87 not yet the prediction?</h2>
+
+<p>The raw score can be any number: -10, -2.3, 0, 1.8, 27. But for spam classification, we want something understandable: a probability between 0 and 1.</p>
+
+<p>For example:</p>
 
 <ul>
-  <li><strong>Input layer</strong> — receives the raw data</li>
-  <li><strong>Hidden layer</strong> — neurons that transform the input</li>
-  <li><strong>Output layer</strong> — produces the final prediction</li>
+  <li>0.05 = 5% probability of spam</li>
+  <li>0.70 = 70% probability of spam</li>
+  <li>0.98 = 98% probability of spam</li>
 </ul>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input Layer    Hidden Layer    Output Layer
+<p>That is where the <strong>activation function</strong> is used.</p>
 
-   x₁ ───────────→ ● ───────────────→ ●
-                   ↑                   ↑
-   x₂ ───────────→ ● ───────────────→ ●
-                   ↑                   ↑
-   x₃ ───────────→ ● ───────────────→ ●
+<hr />
+
+<h2 id="9-what-does-the-activation-function-actually-do">9. What does the activation function actually do?</h2>
+
+<p>For binary classification, the final activation is usually <strong>sigmoid</strong>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">probability</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
 </code></pre></div></div>
 
-<p><strong>Why “deep”?</strong> Because we stack many hidden layers. A network with 3+ hidden layers is usually called “deep”.</p>
+<p>Sigmoid is a mathematical operation:</p>
 
-<h3 id="why-depth-matters">Why Depth Matters</h3>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sigmoid(z) = 1 / (1 + e⁻ᶻ)
+</code></pre></div></div>
 
-<p>Think of recognising a face:</p>
+<p>You do not need to mentally calculate that formula every time. Its behaviour is more important:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Raw score</th>
+      <th>Sigmoid result</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>-5</td>
+      <td>0.007</td>
+    </tr>
+    <tr>
+      <td>-2</td>
+      <td>0.119</td>
+    </tr>
+    <tr>
+      <td>0</td>
+      <td>0.500</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>0.881</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>0.993</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Large negative → close to 0. Zero → exactly 0.5. Large positive → close to 1.</p>
+
+<p>For our score <code class="language-plaintext highlighter-rouge">z = 2.87</code>, sigmoid produces approximately <code class="language-plaintext highlighter-rouge">0.946</code>. So the model says: <strong>spam probability = 94.6%</strong>.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Sigmoid is like a thermometer that only reads between 0 and 1, no matter how hot or cold the input is.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="10-probability-and-prediction-are-not-exactly-the-same">10. Probability and prediction are not exactly the same</h2>
+
+<p>The model first produces a probability:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.946
+</code></pre></div></div>
+
+<p>Then the application chooses a threshold:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>If probability ≥ 0.5 → spam
+Otherwise             → not spam
+</code></pre></div></div>
+
+<p>So <code class="language-plaintext highlighter-rouge">0.946 ≥ 0.5</code> gives the final prediction: <strong>Spam</strong>.</p>
+
+<p>There are three separate things:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Raw score</th>
+      <th>Probability</th>
+      <th>Prediction</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2.87</td>
+      <td>0.946</td>
+      <td>Spam</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The model produces the score and probability. The application converts the probability into a business decision. The threshold does not always have to be 0.5. For a security system, we might use probability ≥ 0.30 because missing a dangerous email may be more costly than reviewing a safe one.</p>
+
+<hr />
+
+<h2 id="11-the-complete-simple-model">11. The complete simple model</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+
+<span class="c1"># One email represented by five numerical features
+</span><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="mf">3.0</span><span class="p">,</span>    <span class="c1"># suspicious word count
+</span>    <span class="mf">1.0</span><span class="p">,</span>    <span class="c1"># link count
+</span>    <span class="mf">0.0</span><span class="p">,</span>    <span class="c1"># sender known: no
+</span>    <span class="mf">0.20</span><span class="p">,</span>   <span class="c1"># capital-letter percentage
+</span>    <span class="mf">47.0</span>    <span class="c1"># message length
+</span><span class="p">])</span>
+
+<span class="c1"># Numbers learned by the model during training
+</span><span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="mf">0.8</span><span class="p">,</span>
+    <span class="mf">0.6</span><span class="p">,</span>
+   <span class="o">-</span><span class="mf">1.2</span><span class="p">,</span>
+    <span class="mf">2.0</span><span class="p">,</span>
+    <span class="mf">0.01</span>
+<span class="p">])</span>
+
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+
+<span class="c1"># Step 1: produce a raw score
+</span><span class="n">raw_score</span> <span class="o">=</span> <span class="n">email</span> <span class="o">@</span> <span class="n">weights</span> <span class="o">+</span> <span class="n">bias</span>
+
+<span class="c1"># Step 2: turn the score into a probability
+</span><span class="n">spam_probability</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="n">raw_score</span><span class="p">)</span>
+
+<span class="c1"># Step 3: turn the probability into a decision
+</span><span class="n">prediction</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span>
+    <span class="k">if</span> <span class="n">spam_probability</span> <span class="o">&gt;=</span> <span class="mf">0.5</span>
+    <span class="k">else</span> <span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Raw score:</span><span class="sh">"</span><span class="p">,</span> <span class="n">raw_score</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Spam probability:</span><span class="sh">"</span><span class="p">,</span> <span class="n">spam_probability</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Prediction:</span><span class="sh">"</span><span class="p">,</span> <span class="n">prediction</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The chain is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Real email
+    ↓
+Extract measurable information
+    ↓
+Convert it into numbers
+    ↓
+Store numbers in a tensor
+    ↓
+Multiply by learned weights
+    ↓
+Add bias
+    ↓
+Produce raw score
+    ↓
+Apply sigmoid
+    ↓
+Produce probability
+    ↓
+Apply decision threshold
+    ↓
+Spam or not spam
+</code></pre></div></div>
+
+<p><img src="/handbook/assets/img/NeuralNetwork.png" alt="A simple neural network: inputs flow through weights and bias to a final probability" width="60%" /></p>
+
+<hr />
+
+<h2 id="12-where-did-the-weights-come-from">12. Where did the weights come from?</h2>
+
+<p>We manually chose weights for this demonstration. A real neural network learns them from labelled examples.</p>
+
+<p>Training data might look like this:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Suspicious words</th>
+      <th>Links</th>
+      <th>Known sender</th>
+      <th>Capitals</th>
+      <th>Length</th>
+      <th>Correct answer</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>5</td>
+      <td>4</td>
+      <td>0</td>
+      <td>0.40</td>
+      <td>31</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0.02</td>
+      <td>85</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>2</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>42</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0.01</td>
+      <td>110</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The correct answer is also converted into numbers:</p>
 
 <ul>
-  <li>Layer 1: detects edges</li>
-  <li>Layer 2: combines edges into eyes, noses, mouths</li>
-  <li>Layer 3: combines features into full faces</li>
+  <li>Spam = 1</li>
+  <li>Not spam = 0</li>
 </ul>
 
-<p>Each layer builds a slightly more complex representation. Early layers see simple patterns; deeper layers see concepts.</p>
+<p>In PyTorch:</p>
 
-<hr />
-
-<h2 id="7-the-forward-pass">7. The Forward Pass</h2>
-
-<p>The forward pass is what happens when data flows through the network to produce a prediction.</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Layer 1:  z₁ = x · W₁ + b₁        a₁ = activation(z₁)
-Layer 2:  z₂ = a₁ · W₂ + b₂       a₂ = activation(z₂)
-Output:   z₃ = a₂ · W₃ + b₃        y_hat = activation(z₃)
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span>
+<span class="p">])</span>
 </code></pre></div></div>
 
-<blockquote>
-  <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">z</code> is the “raw score” (before activation), and <code class="language-plaintext highlighter-rouge">a</code> is the “activated” value (after activation).</p>
-</blockquote>
+<p>At first, the model’s weights are random, so predictions may be poor. The model calculates the <strong>loss</strong> — how far the prediction is from the correct answer. Then <strong>backpropagation</strong> calculates how each weight contributed to the mistake. The <strong>optimizer</strong> changes the weights slightly:</p>
 
-<h3 id="python-example-with-numpy">Python Example with NumPy</h3>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
-
-<span class="c1"># Inputs: 1 sample, 3 features
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
-
-<span class="c1"># One hidden layer with 2 neurons
-</span><span class="n">W1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span>     <span class="c1"># weights for hidden neuron 1
-</span>               <span class="p">[</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>    <span class="c1"># weights for hidden neuron 2
-</span>               <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">]])</span>    <span class="c1"># weights for hidden neuron 3
-</span><span class="n">b1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">])</span>
-
-<span class="c1"># Output layer: 1 neuron
-</span><span class="n">W2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mf">0.7</span><span class="p">],</span>
-               <span class="p">[</span><span class="o">-</span><span class="mf">0.7</span><span class="p">]])</span>
-<span class="n">b2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">2</span><span class="p">])</span>
-
-<span class="c1"># Forward pass
-</span><span class="n">z1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">W1</span><span class="p">)</span> <span class="o">+</span> <span class="n">b1</span>
-<span class="n">a1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">z1</span><span class="p">)</span>   <span class="c1"># ReLU
-</span>
-<span class="n">z2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">W2</span><span class="p">)</span> <span class="o">+</span> <span class="n">b2</span>
-<span class="n">output</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z2</span><span class="p">))</span>  <span class="c1"># sigmoid
-</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Raw hidden scores: </span><span class="si">{</span><span class="n">z1</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Activated hidden:  </span><span class="si">{</span><span class="n">a1</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Final prediction:  </span><span class="si">{</span><span class="n">output</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Old weight → calculate blame → small adjustment → new weight
 </code></pre></div></div>
 
-<hr />
-
-<h2 id="8-what-the-network-learns">8. What the Network Learns</h2>
-
-<p>The network learns two things:</p>
-
-<ol>
-  <li><strong>Weights</strong> — how strongly each input should influence each neuron</li>
-  <li><strong>Biases</strong> — the baseline tendency of each neuron to fire</li>
-</ol>
-
-<p>During training, we compare the network’s prediction <code class="language-plaintext highlighter-rouge">ŷ</code> to the true answer <code class="language-plaintext highlighter-rouge">y</code>, compute an error, and use an algorithm called <strong>backpropagation</strong> to update every weight and bias slightly.</p>
-
-<p>We will cover backpropagation in a later guide. For now, remember:</p>
+<p>This process repeats across many emails until the weights become useful for distinguishing spam from normal email.</p>
 
 <blockquote>
-  <p><strong>Learning = changing weights and biases to make the error smaller.</strong></p>
+  <p><strong>Memory trick:</strong> Training is like adjusting guitar strings. Each string is a weight; the loss is the out-of-tune sound; the optimizer tightens or loosens each string.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="9-common-mistakes">9. Common Mistakes</h2>
+<h2 id="13-what-does-a-hidden-layer-add">13. What does a hidden layer add?</h2>
+
+<p>One neuron creates one score directly from the original features. A hidden layer contains several neurons, and each hidden neuron receives the same inputs but has different weights.</p>
+
+<ul>
+  <li><strong>Neuron 1</strong> may respond strongly to: many links + unknown sender</li>
+  <li><strong>Neuron 2</strong> may respond strongly to: many capitals + suspicious words</li>
+  <li><strong>Neuron 3</strong> may respond strongly to: known sender + long normal message</li>
+</ul>
+
+<p>Suppose the hidden layer produces raw scores <code class="language-plaintext highlighter-rouge">[2.4, -0.7, 1.3]</code>. Applying ReLU:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">ReLU</span><span class="p">([</span><span class="mf">2.4</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">])</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p>That new tensor is passed to the output layer. The model creates a chain:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original features
+    ↓
+Learned combinations
+    ↓
+More learned combinations
+    ↓
+Final spam score
+    ↓
+Probability
+</code></pre></div></div>
+
+<p>The hidden layer allows the model to learn combinations rather than considering every feature only in isolation.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> A hidden layer is like a team of detectives. Each detective looks at the same clues but notices different patterns.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="14-what-is-permanently-stored-in-the-model">14. What is permanently stored in the model?</h2>
+
+<p>Consider this PyTorch model:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<p>It has 5 input features, 3 hidden neurons, and 1 output neuron. The first layer stores 5 weights for each of 3 neurons = 15 weights, plus 3 biases. The second layer stores 3 weights and 1 bias. The ReLU layer has no learned weights; it is only an operation.</p>
+
+<p>You can inspect them:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">parameter</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">parameter</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Possible output:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.weight torch.Size([3, 5])
+0.bias   torch.Size([3])
+2.weight torch.Size([1, 3])
+2.bias   torch.Size([1])
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Think of the architecture as the recipe and the weights as the trained taste. The recipe is code; the taste is the learned state.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="15-a-slightly-more-realistic-pytorch-model">15. A slightly more realistic PyTorch model</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>  <span class="c1"># 5 email features → 3 hidden values
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>        <span class="c1"># remove negative hidden signals
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># 3 hidden values → 1 spam score
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>      <span class="c1"># spam score → probability
+</span><span class="p">)</span>
+
+<span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span>
+    <span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span>
+<span class="p">]])</span>
+
+<span class="n">probability</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+<span class="n">prediction</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span>
+    <span class="k">if</span> <span class="n">probability</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mf">0.5</span>
+    <span class="k">else</span> <span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Probability:</span><span class="sh">"</span><span class="p">,</span> <span class="n">probability</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Prediction:</span><span class="sh">"</span><span class="p">,</span> <span class="n">prediction</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Notice the double brackets <code class="language-plaintext highlighter-rouge">[[3.0, 1.0, 0.0, 0.20, 47.0]]</code>. Its shape is <code class="language-plaintext highlighter-rouge">1 email × 5 features</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="n">email</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([1, 5])
+</span></code></pre></div></div>
+
+<p>PyTorch layers normally expect a batch dimension, even when predicting only one example.</p>
+
+<hr />
+
+<h2 id="16-what-does-the-model-really-know">16. What does the model really “know”?</h2>
+
+<p>It does not store a sentence like “Unknown senders with suspicious words are probably spam.” Instead, that behaviour is distributed across numerical weights. One weight might increase the score for suspicious words; another might reduce the score for a known sender. Hidden neurons might detect combinations of features.</p>
+
+<p>The model’s knowledge is not a collection of readable rules. It is a numerical configuration that produces useful outputs when inputs pass through it.</p>
+
+<hr />
+
+<h2 id="17-common-mistakes">17. Common mistakes</h2>
 
 <table>
   <thead>
     <tr>
       <th>Mistake</th>
-      <th>Why It Happens</th>
+      <th>Why it happens</th>
       <th>Fix</th>
     </tr>
   </thead>
   <tbody>
     <tr>
+      <td>Forgetting the batch dimension</td>
+      <td>PyTorch layers expect <code class="language-plaintext highlighter-rouge">(batch, features)</code></td>
+      <td>Use <code class="language-plaintext highlighter-rouge">[[...]]</code> or reshape</td>
+    </tr>
+    <tr>
       <td>Forgetting the bias</td>
-      <td>Bias lets the neuron shift its decision boundary</td>
+      <td>Bias shifts the decision boundary</td>
       <td>Always include <code class="language-plaintext highlighter-rouge">+ b</code></td>
     </tr>
     <tr>
       <td>Using sigmoid in hidden layers</td>
       <td>Sigmoid can cause vanishing gradients</td>
-      <td>Use ReLU instead</td>
+      <td>Use ReLU in hidden layers</td>
+    </tr>
+    <tr>
+      <td>Confusing raw score with probability</td>
+      <td>Raw score can be any number; probability is 0 to 1</td>
+      <td>Apply sigmoid for binary output</td>
     </tr>
     <tr>
       <td>Thinking one neuron is enough</td>
-      <td>A single neuron is just a linear classifier</td>
-      <td>Use hidden layers for complex tasks</td>
-    </tr>
-    <tr>
-      <td>Using wrong activation for output</td>
-      <td>Regression needs no activation; classification needs sigmoid/softmax</td>
-      <td>Match activation to task</td>
+      <td>A single neuron is a linear model</td>
+      <td>Use hidden layers for combinations</td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="10-quick-review">10. Quick Review</h2>
+<h2 id="18-quick-review">18. Quick review</h2>
 
 <table>
   <thead>
     <tr>
       <th>Term</th>
-      <th>What It Is</th>
-      <th>Formula / Memory Trick</th>
+      <th>What it is</th>
+      <th>Memory trick</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Neuron</strong></td>
-      <td>A tiny computing unit</td>
-      <td>Inputs → weights → bias → activation</td>
+      <td><strong>Tensor</strong></td>
+      <td>A structured container of numbers</td>
+      <td>A lunchbox with labelled compartments</td>
     </tr>
     <tr>
-      <td><strong>Weighted sum</strong></td>
-      <td>Adds up the influence of all inputs</td>
-      <td><code class="language-plaintext highlighter-rouge">z = Σ xᵢwᵢ + b</code> — “shopping basket”</td>
+      <td><strong>Feature vector</strong></td>
+      <td>One row of numbers describing one example</td>
+      <td>A single email’s numbers</td>
+    </tr>
+    <tr>
+      <td><strong>Weight</strong></td>
+      <td>How strongly a feature affects the score</td>
+      <td>A volume knob</td>
     </tr>
     <tr>
       <td><strong>Bias</strong></td>
-      <td>A constant shift</td>
-      <td><code class="language-plaintext highlighter-rouge">+ b</code> — the neuron’s starting mood</td>
+      <td>A starting adjustment</td>
+      <td>The neuron’s default mood</td>
     </tr>
     <tr>
-      <td><strong>Activation</strong></td>
-      <td>Decides how strongly the neuron fires</td>
-      <td>Sigmoid = S-curve; ReLU = bouncer</td>
+      <td><strong>Raw score</strong></td>
+      <td>Sum of weighted inputs plus bias</td>
+      <td>The pre-decision number</td>
     </tr>
     <tr>
-      <td><strong>Layer</strong></td>
-      <td>A group of neurons</td>
-      <td>Input → Hidden → Output</td>
+      <td><strong>Sigmoid</strong></td>
+      <td>Turns any score into a 0-to-1 probability</td>
+      <td>A thermometer with a 0-to-1 scale</td>
     </tr>
     <tr>
-      <td><strong>Deep network</strong></td>
-      <td>A network with many hidden layers</td>
-      <td>Each layer learns a richer feature</td>
+      <td><strong>ReLU</strong></td>
+      <td>Removes negative hidden signals</td>
+      <td>A bouncer that blocks negatives</td>
+    </tr>
+    <tr>
+      <td><strong>Hidden layer</strong></td>
+      <td>Neurons that learn feature combinations</td>
+      <td>A team of detectives</td>
     </tr>
     <tr>
       <td><strong>Forward pass</strong></td>
-      <td>Data flowing through the network</td>
-      <td><code class="language-plaintext highlighter-rouge">z = xW + b</code>, then <code class="language-plaintext highlighter-rouge">a = activation(z)</code></td>
+      <td>Input → calculations → output</td>
+      <td>The email travelling through the machine</td>
+    </tr>
+    <tr>
+      <td><strong>Parameters</strong></td>
+      <td>Weights and biases the model learns</td>
+      <td>The trained taste of the recipe</td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="11-try-it-yourself">11. Try It Yourself</h2>
+<h2 id="19-try-it-yourself">19. Try it yourself</h2>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="c1"># A tiny network: 2 inputs, 1 hidden neuron, 1 output neuron
-</span>
-<span class="k">def</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
-    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z</span><span class="p">))</span>
+<span class="c1"># 1. Create an email tensor with shape (1, 5)
+</span><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span>
+    <span class="mf">5.0</span><span class="p">,</span>   <span class="c1"># suspicious words
+</span>    <span class="mf">4.0</span><span class="p">,</span>   <span class="c1"># links
+</span>    <span class="mf">0.0</span><span class="p">,</span>   <span class="c1"># known sender
+</span>    <span class="mf">0.40</span><span class="p">,</span>  <span class="c1"># capitals
+</span>    <span class="mf">31.0</span>   <span class="c1"># length
+</span><span class="p">]])</span>
 
-<span class="k">def</span> <span class="nf">relu</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">np</span><span class="p">.</span><span class="nf">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+<span class="c1"># 2. Build a model with one hidden layer
+</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
 
-<span class="c1"># Inputs: temperature (°C) and humidity (%)
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">25.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">])</span>
+<span class="c1"># 3. Predict
+</span><span class="n">probability</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Spam probability:</span><span class="sh">"</span><span class="p">,</span> <span class="n">probability</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>
 
-<span class="c1"># Hidden neuron: weights + bias
-</span><span class="n">W1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">0.3</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">])</span>
-<span class="n">b1</span> <span class="o">=</span> <span class="mf">5.0</span>
-
-<span class="c1"># Output neuron: weight + bias
-</span><span class="n">W2</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">0.8</span><span class="p">])</span>
-<span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">3.0</span>
-
-<span class="c1"># Forward pass
-</span><span class="n">hidden</span> <span class="o">=</span> <span class="nf">relu</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">W1</span><span class="p">)</span> <span class="o">+</span> <span class="n">b1</span><span class="p">)</span>
-<span class="n">output</span> <span class="o">=</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">hidden</span><span class="p">,</span> <span class="n">W2</span><span class="p">)</span> <span class="o">+</span> <span class="n">b2</span><span class="p">)</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Will it rain? Probability: </span><span class="si">{</span><span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># 4. Inspect the learned parameters
+</span><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">named_parameters</span><span class="p">():</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">param</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
 </code></pre></div></div>
 
 <hr />
 
-<h2 id="summary">Summary</h2>
+<h2 id="final-mental-model">Final mental model</h2>
 
 <ul>
-  <li>A neural network is a stack of artificial neurons.</li>
-  <li>Each neuron computes <code class="language-plaintext highlighter-rouge">z = Σ xᵢwᵢ + b</code> and then applies an activation function.</li>
-  <li>Sigmoid outputs probabilities between 0 and 1; ReLU is the most common hidden-layer activation.</li>
-  <li>Depth lets the network learn increasingly complex features.</li>
-  <li>During training, the network learns weights and biases to reduce prediction error.</li>
+  <li><strong>Why convert to numbers?</strong> Because neural networks perform mathematical operations.</li>
+  <li><strong>What is a tensor?</strong> A structured box containing those numbers.</li>
+  <li><strong>What is a neuron?</strong> A small calculator that multiplies inputs by weights, adds them, and adds a bias.</li>
+  <li><strong>What are weights?</strong> Learned numbers controlling how strongly each signal affects the result.</li>
+  <li><strong>What is bias?</strong> A learned starting adjustment.</li>
+  <li><strong>What is activation?</strong> A mathematical transformation applied to a raw result.</li>
+  <li><strong>What is a hidden layer?</strong> Several calculators learning useful combinations of signals.</li>
+  <li><strong>What is stored permanently?</strong> Weights and biases.</li>
+  <li><strong>What is stored temporarily?</strong> Inputs, raw scores, activations, and predictions.</li>
+  <li><strong>What does the model predict?</strong> A number, probability, or category.</li>
 </ul>
+
+<p>A neural network is not a mysterious digital brain. It is a structured chain of numerical transformations:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Meaningful real-world information
+→ numbers
+→ tensors
+→ learned calculations
+→ transformed signals
+→ probability
+→ decision
+</code></pre></div></div>
 
   </section>
 
   
   <footer class="topic-footer">
-    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">neural-networks</span>, <span class="tag">neurons</span>, <span class="tag">activation-functions</span>, <span class="tag">sigmoid</span>, <span class="tag">relu</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span>, <span class="tag">pytorch</span></p>
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">neural-networks</span>, <span class="tag">neurons</span>, <span class="tag">activation-functions</span>, <span class="tag">sigmoid</span>, <span class="tag">relu</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span>, <span class="tag">pytorch</span>, <span class="tag">spam-detection</span></p>
   </footer>
   
 </article>

@@ -47,385 +47,507 @@
   <section class="topic-body">
     <h1 id="tensors-and-tensor-operations--a-friendly-guide">Tensors and Tensor Operations — A Friendly Guide</h1>
 
-<p>Everything in PyTorch is a <strong>tensor</strong>. Inputs, weights, biases, and gradients are all tensors. If you understand tensors, you understand half of deep learning.</p>
+<p>Everything in a spam-detection model is a tensor. The email features are a tensor, the weights are a tensor, the bias is a tensor, and even the final probability is a tensor. In this guide, we will see exactly how those tensors work.</p>
 
 <hr />
 
-<h2 id="1-what-is-a-tensor">1. What Is a Tensor?</h2>
+<h2 id="1-what-is-a-tensor">1. What is a tensor?</h2>
 
-<p>A tensor is just a multi-dimensional array of numbers.</p>
+<p>A tensor is a multi-dimensional array of numbers. The same idea appears at different scales.</p>
 
 <table>
   <thead>
     <tr>
       <th>Tensor Type</th>
       <th>Dimensions</th>
-      <th>Real-Life Example</th>
+      <th>Spam Example</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Scalar</strong></td>
       <td>0D</td>
-      <td>A single number: <code class="language-plaintext highlighter-rouge">5.0</code></td>
+      <td>One number, such as the bias <code class="language-plaintext highlighter-rouge">-1.0</code></td>
     </tr>
     <tr>
       <td><strong>Vector</strong></td>
       <td>1D</td>
-      <td>A list of numbers: <code class="language-plaintext highlighter-rouge">[2, 3, 5]</code></td>
+      <td>One email’s features: <code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
     </tr>
     <tr>
       <td><strong>Matrix</strong></td>
       <td>2D</td>
-      <td>A table of numbers: spreadsheet rows and columns</td>
+      <td>A batch of emails: 4 rows × 5 columns</td>
     </tr>
     <tr>
-      <td><strong>Tensor</strong></td>
+      <td><strong>3D tensor</strong></td>
       <td>3D+</td>
-      <td>A stack of matrices, like a video (frames × height × width)</td>
+      <td>A collection of email batches over several training steps</td>
     </tr>
   </tbody>
 </table>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> A tensor is a “numbered box” — 0D is a point, 1D is a line, 2D is a flat grid, 3D is a cube, and 4D+ is a cube of cubes.</p>
+  <p><strong>Memory trick:</strong> A tensor is a numbered box. 0D is a single number, 1D is a list, 2D is a table, 3D is a stack of tables.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="2-creating-tensors-in-pytorch">2. Creating Tensors in PyTorch</h2>
+<h2 id="2-one-email-as-a-tensor">2. One email as a tensor</h2>
+
+<p>Recall our spam email features:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Suspicious words</th>
+      <th>Links</th>
+      <th>Known sender</th>
+      <th>Capitals</th>
+      <th>Length</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>3</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0.20</td>
+      <td>47</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In PyTorch:</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 
-<span class="c1"># Scalar
-</span><span class="n">scalar</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">scalar</span><span class="p">,</span> <span class="n">scalar</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="mf">3.0</span><span class="p">,</span>    <span class="c1"># suspicious words
+</span>    <span class="mf">1.0</span><span class="p">,</span>    <span class="c1"># links
+</span>    <span class="mf">0.0</span><span class="p">,</span>    <span class="c1"># known sender
+</span>    <span class="mf">0.20</span><span class="p">,</span>   <span class="c1"># capitals
+</span>    <span class="mf">47.0</span>    <span class="c1"># length
+</span><span class="p">])</span>
 
-<span class="c1"># Vector
-</span><span class="n">vector</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">vector</span><span class="p">,</span> <span class="n">vector</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">email</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([5])
+</span></code></pre></div></div>
 
-<span class="c1"># Matrix
-</span><span class="n">matrix</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
-    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
-    <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
-    <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">]</span>
-<span class="p">])</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">matrix</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<p>Output:</p>
 
-<span class="c1"># 3D tensor
-</span><span class="n">tensor_3d</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
-    <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span>
-    <span class="p">[[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">]]</span>
-<span class="p">])</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">tensor_3d</span><span class="p">,</span> <span class="n">tensor_3d</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tensor([ 3.0000,  1.0000,  0.0000,  0.2000, 47.0000])
+torch.Size([5])
 </code></pre></div></div>
 
-<h3 id="output">Output</h3>
+<p>This tensor has <strong>one dimension</strong> and <strong>five elements</strong>. The shape tells us how many numbers live along each dimension.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tensor(5.) torch.Size([])
-tensor([1, 2, 3, 4]) torch.Size([4])
-tensor([[1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 9]]) torch.Size([3, 3])
-tensor([[[1, 2],
-         [3, 4]],
-        [[5, 6],
-         [7, 8]]]) torch.Size([2, 2, 2])
-</code></pre></div></div>
+<blockquote>
+  <p><strong>Memory trick:</strong> Shape is like a mailing address. It answers “how many?” at each level.</p>
+</blockquote>
 
 <hr />
 
-<h2 id="3-tensor-shapes-and-what-they-mean">3. Tensor Shapes and What They Mean</h2>
+<h2 id="3-many-emails-as-a-2d-tensor">3. Many emails as a 2D tensor</h2>
 
-<p>The shape of a tensor tells you how many dimensions it has and how big each one is.</p>
+<p>During training, we do not process one email at a time. We process a <strong>batch</strong> of emails. Each row is one email, and each column is one feature.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>shape = torch.Size([batch_size, channels, height, width])
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="c1"># susp, link, known, caps, len
+</span>    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span>  <span class="mf">1.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">,</span>  <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>  <span class="c1"># spammy
+</span>    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">,</span>  <span class="mf">1.0</span><span class="p">,</span>  <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>  <span class="c1"># normal
+</span>    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span>  <span class="mf">4.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">,</span>  <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>  <span class="c1"># very spammy
+</span>    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">,</span>  <span class="mf">1.0</span><span class="p">,</span>  <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>  <span class="c1"># normal
+</span><span class="p">])</span>
 
-For one colour image:
-  [1, 3, 224, 224]
-   │  │   │    └─ width in pixels
-   │  │   └──── height in pixels
-   │  └───────── RGB channels (3 for red, green, blue)
-   └──────────── one image in this batch
+<span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([4, 5])
+</span></code></pre></div></div>
+
+<p>The shape <code class="language-plaintext highlighter-rouge">[4, 5]</code> means:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>4 emails (rows)
+5 features (columns)
 </code></pre></div></div>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> Read shape like a mailing address — biggest container first, smallest detail last.</p>
+  <p><strong>Memory rule:</strong> Rows = examples, columns = features.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="4-common-tensor-creation-helpers">4. Common Tensor Creation Helpers</h2>
+<h2 id="4-weights-and-bias-as-tensors">4. Weights and bias as tensors</h2>
+
+<p>The weights for our single-neuron spam model are also a tensor:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="mf">0.8</span><span class="p">,</span>    <span class="c1"># suspicious words
+</span>    <span class="mf">0.6</span><span class="p">,</span>    <span class="c1"># links
+</span>   <span class="o">-</span><span class="mf">1.2</span><span class="p">,</span>    <span class="c1"># known sender
+</span>    <span class="mf">2.0</span><span class="p">,</span>    <span class="c1"># capitals
+</span>    <span class="mf">0.01</span>    <span class="c1"># length
+</span><span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">weights</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([5])
+</span>
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">bias</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([])
+</span></code></pre></div></div>
+
+<p>The weights are a 1D tensor with five elements. The bias is a scalar tensor with an empty shape, meaning it has no dimensions.</p>
+
+<hr />
+
+<h2 id="5-common-tensor-creation-helpers">5. Common tensor creation helpers</h2>
+
+<p>PyTorch provides helpers to create common tensors. These are useful when building models or initialising data.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 
-<span class="c1"># Zeros
-</span><span class="n">torch</span><span class="p">.</span><span class="nf">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-<span class="c1"># tensor([[0., 0., 0.],
-#         [0., 0., 0.],
-#         [0., 0., 0.]])
-</span>
+<span class="c1"># Zeros: sometimes used for initialising bias
+</span><span class="n">zeros</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">zeros</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
 <span class="c1"># Ones
-</span><span class="n">torch</span><span class="p">.</span><span class="nf">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</span><span class="n">ones</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">ones</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
 
 <span class="c1"># Random values between 0 and 1
-</span><span class="n">torch</span><span class="p">.</span><span class="nf">rand</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</span><span class="n">random_values</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">rand</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
 
-<span class="c1"># Random values from a normal distribution (mean=0, std=1)
-</span><span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="c1"># Random values from a normal distribution (bell curve)
+# Most weights in a new model start like this
+</span><span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
 
-<span class="c1"># A range of numbers (like Python range)
-</span><span class="n">torch</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-<span class="c1"># tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-</span>
-<span class="c1"># Linearly spaced values
-</span><span class="n">torch</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="c1"># Numbers from 0 to 9
+</span><span class="n">steps</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c1"># Numbers evenly spaced between 0 and 1
+</span><span class="n">levels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
 <span class="c1"># tensor([0.00, 0.25, 0.50, 0.75, 1.00])
 </span></code></pre></div></div>
 
 <hr />
 
-<h2 id="5-basic-tensor-operations">5. Basic Tensor Operations</h2>
+<h2 id="6-matrix-multiplication-one-email-at-a-time">6. Matrix multiplication: one email at a time</h2>
 
-<h3 id="arithmetic">Arithmetic</h3>
+<p>When we compute the raw spam score for one email, we multiply the email vector by the weight vector and add the bias:</p>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">])</span>
+<span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">])</span>
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
 
-<span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>       <span class="c1"># tensor([5, 7, 9])
-</span><span class="nf">print</span><span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span>       <span class="c1"># tensor([-3, -3, -3])
-</span><span class="nf">print</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span>       <span class="c1"># element-wise multiplication: tensor([4, 10, 18])
-</span><span class="nf">print</span><span class="p">(</span><span class="n">a</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span>       <span class="c1"># tensor([0.25, 0.40, 0.50])
-</span>
-<span class="c1"># Scalar operations
-</span><span class="nf">print</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">10</span><span class="p">)</span>      <span class="c1"># tensor([11, 12, 13])
-</span><span class="nf">print</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>       <span class="c1"># tensor([2, 4, 6])
+<span class="n">raw_score</span> <span class="o">=</span> <span class="n">email</span> <span class="o">@</span> <span class="n">weights</span> <span class="o">+</span> <span class="n">bias</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">raw_score</span><span class="p">)</span>  <span class="c1"># tensor(2.8700)
 </span></code></pre></div></div>
 
-<h3 id="matrix-multiplication">Matrix Multiplication</h3>
+<p>The <code class="language-plaintext highlighter-rouge">@</code> operator performs <strong>matrix multiplication</strong>. For two 1D tensors of the same length, it is the same as a dot product: multiply matching positions and add the results.</p>
 
-<p>Matrix multiplication is the heart of neural networks.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Position</th>
+      <th>email</th>
+      <th>weights</th>
+      <th>product</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>3.0</td>
+      <td>0.8</td>
+      <td>2.4</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>1.0</td>
+      <td>0.6</td>
+      <td>0.6</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>0.0</td>
+      <td>-1.2</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>0.20</td>
+      <td>2.0</td>
+      <td>0.4</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>47.0</td>
+      <td>0.01</td>
+      <td>0.47</td>
+    </tr>
+  </tbody>
+</table>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>For a layer:  output = input @ W + b
+<p>Sum of products: <code class="language-plaintext highlighter-rouge">2.4 + 0.6 + 0.0 + 0.4 + 0.47 = 3.87</code></p>
 
-If input has shape (batch_size, in_features)
-And W has shape (in_features, out_features)
-Then output has shape (batch_size, out_features)
-</code></pre></div></div>
-
-<p><strong>Memory trick:</strong> The inner dimensions must match, and the outer dimensions become the result.</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(a, b) @ (b, c) → (a, c)
-    ^     ^       ^
-    └─────┘       └────── inner dimensions cancel
-</code></pre></div></div>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">A</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]])</span>      <span class="c1"># shape (2, 3)
-</span>
-<span class="n">B</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]])</span>          <span class="c1"># shape (3, 2)
-</span>
-<span class="n">C</span> <span class="o">=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">B</span>  <span class="c1"># or torch.matmul(A, B)
-</span><span class="nf">print</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
-<span class="c1"># tensor([[22, 28],
-#         [49, 64]])
-</span>
-<span class="c1"># Check: (2, 3) @ (3, 2) → (2, 2)
-</span><span class="nf">print</span><span class="p">(</span><span class="n">C</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([2, 2])
-</span></code></pre></div></div>
-
-<h3 id="transpose">Transpose</h3>
-
-<p>Transpose flips a matrix over its diagonal.</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">A</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]])</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="n">A</span><span class="p">.</span><span class="n">T</span><span class="p">)</span>
-<span class="c1"># tensor([[1, 4],
-#         [2, 5],
-#         [3, 6]])
-</span></code></pre></div></div>
-
-<hr />
-
-<h2 id="6-reshaping-tensors">6. Reshaping Tensors</h2>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
-
-<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>        <span class="c1"># tensor([0, 1, 2, ..., 11])
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([12])
-</span>
-<span class="c1"># Reshape to 3 rows × 4 columns
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<span class="c1"># tensor([[ 0,  1,  2,  3],
-#         [ 4,  5,  6,  7],
-#         [ 8,  9, 10, 11]])
-</span>
-<span class="c1"># Reshape to 2 batches × 2 channels × 3 values
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([2, 2, 3])
-</span>
-<span class="c1"># -1 means "infer this dimension"
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">12</span><span class="p">).</span><span class="nf">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([3, 4])
-</span></code></pre></div></div>
+<p>Add bias: <code class="language-plaintext highlighter-rouge">3.87 - 1.0 = 2.87</code></p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> Reshaping is like repacking the same marbles into a different box — the number of marbles stays the same.</p>
+  <p><strong>Memory trick:</strong> Matrix multiplication is a row of waiters each carrying one plate. Each plate is a feature multiplied by its weight. The total bill is the sum.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="7-slicing-and-indexing">7. Slicing and Indexing</h2>
+<h2 id="7-matrix-multiplication-a-batch-of-emails-at-once">7. Matrix multiplication: a batch of emails at once</h2>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<p>The real power comes from processing many emails at once. If the emails tensor has shape <code class="language-plaintext highlighter-rouge">(4, 5)</code> and the weights tensor has shape <code class="language-plaintext highlighter-rouge">(5,)</code>, then:</p>
 
-<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">]])</span>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(4, 5) @ (5,) -&gt; (4,)
+</code></pre></div></div>
 
-<span class="c1"># First row
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>       <span class="c1"># tensor([1, 2, 3])
+<p>PyTorch multiplies each of the four rows by the weight vector, producing four raw scores.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">])</span>
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+
+<span class="n">raw_scores</span> <span class="o">=</span> <span class="n">emails</span> <span class="o">@</span> <span class="n">weights</span> <span class="o">+</span> <span class="n">bias</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">raw_scores</span><span class="p">)</span>
+<span class="c1"># tensor([ 2.8700, -2.1800,  6.5600, -2.9500])
 </span>
-<span class="c1"># First column
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>    <span class="c1"># tensor([1, 4, 7])
-</span>
-<span class="c1"># Element at row 1, column 2
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>    <span class="c1"># tensor(6)
-</span>
-<span class="c1"># Last row
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>      <span class="c1"># tensor([7, 8, 9])
-</span>
-<span class="c1"># Sub-matrix: rows 0-1, columns 1-2
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span>
-<span class="c1"># tensor([[2, 3],
-#         [5, 6]])
+<span class="nf">print</span><span class="p">(</span><span class="n">raw_scores</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([4])
 </span></code></pre></div></div>
 
-<hr />
-
-<h2 id="8-broadcasting">8. Broadcasting</h2>
-
-<p>Broadcasting lets PyTorch work with tensors of different shapes without copying data.</p>
-
-<p><strong>Simple rule:</strong> If dimensions match, great. If one is 1, PyTorch “stretches” it to match.</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
-
-<span class="n">A</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]])</span>    <span class="c1"># shape (2, 3)
-</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">])</span>   <span class="c1"># shape (3,) → broadcasted to (2, 3)
-</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">A</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>
-<span class="c1"># tensor([[11, 22, 33],
-#         [14, 25, 36]])
-</span></code></pre></div></div>
+<p>Each number is the raw score for one email. The first email scored <code class="language-plaintext highlighter-rouge">2.87</code>, the second scored <code class="language-plaintext highlighter-rouge">-2.18</code>, and so on.</p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> A shape of <code class="language-plaintext highlighter-rouge">1</code> is like an elastic band — it stretches to fit the larger shape.</p>
+  <p><strong>Memory trick:</strong> The inner dimensions must match. Here the inner dimension is <code class="language-plaintext highlighter-rouge">5</code> (features), so <code class="language-plaintext highlighter-rouge">(4, 5) @ (5,)</code> becomes <code class="language-plaintext highlighter-rouge">(4,)</code>.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="9-reduction-operations">9. Reduction Operations</h2>
+<h2 id="8-why-pytorch-layers-use-a-2d-weight-tensor">8. Why PyTorch layers use a 2D weight tensor</h2>
 
-<p>Reductions collapse a dimension into a single number.</p>
+<p>In practice, PyTorch stores weights for a layer in a 2D tensor. For a layer with 5 inputs and 1 output, the weight tensor has shape <code class="language-plaintext highlighter-rouge">(1, 5)</code>:</p>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
-                  <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]])</span>
-
-<span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">sum</span><span class="p">())</span>      <span class="c1"># tensor(21)
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">mean</span><span class="p">())</span>     <span class="c1"># tensor(3.5)
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">max</span><span class="p">())</span>      <span class="c1"># tensor(6)
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">min</span><span class="p">())</span>      <span class="c1"># tensor(1)
-</span>
-<span class="c1"># Reduce along a specific dimension
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>   <span class="c1"># sum each column: tensor([5, 7, 9])
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>   <span class="c1"># sum each row:   tensor([ 6, 15])
-</span>
-<span class="c1"># Keep the dimension for later broadcasting
-</span><span class="nf">print</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="bp">True</span><span class="p">))</span>
-<span class="c1"># tensor([[ 6],
-#         [15]])
+<span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([1, 5])
+</span><span class="nf">print</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">bias</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>    <span class="c1"># torch.Size([1])
 </span></code></pre></div></div>
+
+<p>To compute the output, PyTorch effectively does:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">output</span> <span class="o">=</span> <span class="n">emails</span> <span class="o">@</span> <span class="n">layer</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="n">T</span> <span class="o">+</span> <span class="n">layer</span><span class="p">.</span><span class="n">bias</span>
+</code></pre></div></div>
+
+<p>The transpose <code class="language-plaintext highlighter-rouge">.T</code> flips the weight tensor from <code class="language-plaintext highlighter-rouge">(1, 5)</code> to <code class="language-plaintext highlighter-rouge">(5, 1)</code>, so the multiplication works:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(4, 5) @ (5, 1) -&gt; (4, 1)
+</code></pre></div></div>
+
+<p>This is why the output shape is <code class="language-plaintext highlighter-rouge">(4, 1)</code> instead of <code class="language-plaintext highlighter-rouge">(4,)</code>.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> PyTorch stores weights as rows. To multiply, we turn the rows into columns with <code class="language-plaintext highlighter-rouge">.T</code>.</p>
+</blockquote>
 
 <hr />
 
-<h2 id="10-tensors-in-a-neural-network">10. Tensors in a Neural Network</h2>
+<h2 id="9-the-shape-of-a-hidden-layer">9. The shape of a hidden layer</h2>
 
-<p>Here is how tensors flow through a model:</p>
+<p>Suppose we add a hidden layer with 3 neurons to our spam model. The first layer turns 5 features into 3 hidden values. The weight tensor has shape <code class="language-plaintext highlighter-rouge">(3, 5)</code>:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input tensor:      shape (batch_size, in_features)
-Weight tensor:     shape (in_features, out_features)
-Bias tensor:       shape (out_features,)
-Output tensor:     shape (batch_size, out_features)
-</code></pre></div></div>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
-<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
-
-<span class="c1"># One batch of 4 samples, each with 3 features
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-
-<span class="c1"># Linear layer: 3 inputs, 5 outputs
-</span><span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
-
-<span class="c1"># Forward pass
-</span><span class="n">output</span> <span class="o">=</span> <span class="nf">layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([4, 5])
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">hidden_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">hidden_layer</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([3, 5])
+</span><span class="nf">print</span><span class="p">(</span><span class="n">hidden_layer</span><span class="p">.</span><span class="n">bias</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>    <span class="c1"># torch.Size([3])
 </span>
-<span class="c1"># Access the weights and biases
-</span><span class="nf">print</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([5, 3])
-</span><span class="nf">print</span><span class="p">(</span><span class="n">layer</span><span class="p">.</span><span class="n">bias</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>    <span class="c1"># torch.Size([5])
+<span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="n">hidden_scores</span> <span class="o">=</span> <span class="nf">hidden_layer</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">hidden_scores</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([2, 3])
 </span></code></pre></div></div>
 
-<p>Notice that <code class="language-plaintext highlighter-rouge">layer.weight</code> has shape <code class="language-plaintext highlighter-rouge">(5, 3)</code> even though the output is <code class="language-plaintext highlighter-rouge">(4, 5)</code> and the input is <code class="language-plaintext highlighter-rouge">(4, 3)</code>. PyTorch stores the weight transposed internally, so the math works out as:</p>
+<p>The input shape is <code class="language-plaintext highlighter-rouge">(2, 5)</code>. The layer computes <code class="language-plaintext highlighter-rouge">(2, 5) @ (5, 3) -&gt; (2, 3)</code>. Each of the two emails now has three hidden scores.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>output = x @ W^T + b
-</code></pre></div></div>
+<blockquote>
+  <p><strong>Memory trick:</strong> A linear layer is a shape transformer. The number of columns going in becomes the number of columns coming out.</p>
+</blockquote>
 
 <hr />
 
-<h2 id="11-moving-tensors-to-gpu">11. Moving Tensors to GPU</h2>
+<h2 id="10-broadcasting-with-the-bias">10. Broadcasting with the bias</h2>
 
-<p>If you have a GPU, you can move tensors there for faster computation.</p>
+<p>Notice that the bias tensor has shape <code class="language-plaintext highlighter-rouge">(1,)</code>, but PyTorch adds it to every row of the output. This is <strong>broadcasting</strong>. PyTorch automatically stretches the small tensor to match the big one.</p>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">])</span>
 
-<span class="c1"># Check if GPU is available
+<span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.8</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.6</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">-</span><span class="mf">1.2</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.01</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">]])</span>
+
+<span class="n">scores</span> <span class="o">=</span> <span class="n">emails</span> <span class="o">@</span> <span class="n">weights</span> <span class="o">+</span> <span class="n">bias</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+<span class="c1"># tensor([[ 2.8700],
+#         [-2.1800],
+#         [ 6.5600],
+#         [-2.9500]])
+</span></code></pre></div></div>
+
+<p>The bias <code class="language-plaintext highlighter-rouge">[[-1.0]]</code> was broadcast to all four rows. This is a common pattern in neural networks: the same bias is added to every example.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> A shape of <code class="language-plaintext highlighter-rouge">1</code> is an elastic band. It stretches to fit the larger shape.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="11-reshaping-tensors">11. Reshaping tensors</h2>
+
+<p>Sometimes the shape of a tensor is not what a layer expects. For example, a spam model might need the input in a different format. We can reshape without changing the data.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([2, 5])
+</span>
+<span class="c1"># Flatten into one long vector
+</span><span class="n">flat</span> <span class="o">=</span> <span class="n">emails</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">flat</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>    <span class="c1"># torch.Size([10])
+</span><span class="nf">print</span><span class="p">(</span><span class="n">flat</span><span class="p">)</span>
+<span class="c1"># tensor([3.0, 1.0, 0.0, 0.20, 47.0, 0.0, 0.0, 1.0, 0.02, 82.0])
+</span>
+<span class="c1"># Reshape back, but with one batch dimension and one feature dimension
+</span><span class="n">back</span> <span class="o">=</span> <span class="n">flat</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">back</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>    <span class="c1"># torch.Size([2, 5])
+</span></code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">-1</code> tells PyTorch to infer the size of that dimension. The total number of elements must stay the same.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Reshaping is like repacking the same marbles into a different box. The marbles do not change; only the box changes.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="12-slicing-and-indexing-emails">12. Slicing and indexing emails</h2>
+
+<p>We often need to look at a subset of the data. Slicing lets us do that.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>  <span class="c1"># email 0
+</span>    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>  <span class="c1"># email 1
+</span>    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>  <span class="c1"># email 2
+</span>    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>  <span class="c1"># email 3
+</span><span class="p">])</span>
+
+<span class="c1"># Get the first email
+</span><span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="c1"># tensor([3.0, 1.0, 0.0, 0.20, 47.0])
+</span>
+<span class="c1"># Get the suspicious-word count for all emails
+</span><span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="c1"># tensor([3.0, 0.0, 5.0, 1.0])
+</span>
+<span class="c1"># Get the first two emails and the first two features
+</span><span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">])</span>
+<span class="c1"># tensor([[3.0, 1.0],
+#         [0.0, 0.0]])
+</span>
+<span class="c1"># Get the last email
+</span><span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<span class="c1"># tensor([1.0, 0.0, 1.0, 0.05, 120.0])
+</span></code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">emails[:, 0]</code> means “all rows, column 0.” The colon is like a wildcard.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="13-reduction-operations">13. Reduction operations</h2>
+
+<p>Reductions collapse a dimension into a single number. For example, we might want the average number of suspicious words across all emails.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="c1"># Average across all emails and all features
+</span><span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">.</span><span class="nf">mean</span><span class="p">())</span>  <span class="c1"># tensor(1.3680)
+</span>
+<span class="c1"># Average number of suspicious words (column 0)
+</span><span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">].</span><span class="nf">mean</span><span class="p">())</span>  <span class="c1"># tensor(2.25)
+</span>
+<span class="c1"># Average of each feature across all emails
+</span><span class="nf">print</span><span class="p">(</span><span class="n">emails</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+<span class="c1"># tensor([2.2500, 1.2500, 0.5000, 0.1800, 70.0000])
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">dim=0</code> means “collapse the rows” — in other words, compute the average feature value across all emails.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> <code class="language-plaintext highlighter-rouge">dim=0</code> means vertical collapse. <code class="language-plaintext highlighter-rouge">dim=1</code> means horizontal collapse.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="14-moving-tensors-to-gpu">14. Moving tensors to GPU</h2>
+
+<p>If you have a GPU, you can move tensors there for faster computation. This is especially useful for large batches of emails or big models.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Check if GPU is available
 </span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">device</span><span class="p">(</span><span class="sh">"</span><span class="s">cuda</span><span class="sh">"</span> <span class="k">if</span> <span class="n">torch</span><span class="p">.</span><span class="n">cuda</span><span class="p">.</span><span class="nf">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="sh">"</span><span class="s">cpu</span><span class="sh">"</span><span class="p">)</span>
 <span class="nf">print</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
-<span class="c1"># Create tensor on GPU
-</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="c1"># Move emails to GPU
+</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">]</span>
+<span class="p">]).</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
-<span class="c1"># Or create directly on GPU
-</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="c1"># Create a model on GPU
+</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
-<span class="c1"># Model on GPU
-</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="c1"># Forward pass happens on GPU
+</span><span class="n">probabilities</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="nf">model</span><span class="p">(</span><span class="n">emails</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">probabilities</span><span class="p">)</span>
 </code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> GPU is like a fast factory. CPU is like a hand workshop. For big jobs, use the factory.</p>
+</blockquote>
 
 <hr />
 
-<h2 id="12-common-mistakes">12. Common Mistakes</h2>
+<h2 id="15-common-mistakes">15. Common mistakes</h2>
 
 <table>
   <thead>
     <tr>
       <th>Mistake</th>
-      <th>Why It Happens</th>
+      <th>Why it happens</th>
       <th>Fix</th>
     </tr>
   </thead>
@@ -433,118 +555,140 @@ Output tensor:     shape (batch_size, out_features)
     <tr>
       <td>Shape mismatch in matrix multiplication</td>
       <td>Inner dimensions do not match</td>
-      <td>Use <code class="language-plaintext highlighter-rouge">.T</code> or reshape to align shapes</td>
+      <td>Check shapes with <code class="language-plaintext highlighter-rouge">.shape</code> before multiplying</td>
     </tr>
     <tr>
-      <td>Forgetting <code class="language-plaintext highlighter-rouge">.item()</code> on a scalar tensor</td>
-      <td>PyTorch tensors do not print as plain numbers</td>
-      <td>Call <code class="language-plaintext highlighter-rouge">scalar.item()</code></td>
+      <td>Forgetting the batch dimension</td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Linear</code> expects <code class="language-plaintext highlighter-rouge">(batch, features)</code></td>
+      <td>Add a leading dimension: <code class="language-plaintext highlighter-rouge">[[...]]</code></td>
     </tr>
     <tr>
-      <td>In-place operations break gradients</td>
-      <td>PyTorch cannot track in-place changes</td>
-      <td>Use out-of-place ops like <code class="language-plaintext highlighter-rouge">x = x + 1</code></td>
+      <td>Confusing <code class="language-plaintext highlighter-rouge">*</code> and <code class="language-plaintext highlighter-rouge">@</code></td>
+      <td><code class="language-plaintext highlighter-rouge">*</code> is element-wise; <code class="language-plaintext highlighter-rouge">@</code> is matrix multiplication</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">@</code> for neural network layers</td>
+    </tr>
+    <tr>
+      <td>Wrong <code class="language-plaintext highlighter-rouge">dim</code> in reduction</td>
+      <td><code class="language-plaintext highlighter-rouge">dim=0</code> collapses rows; <code class="language-plaintext highlighter-rouge">dim=1</code> collapses columns</td>
+      <td>Think about which dimension you want to remove</td>
+    </tr>
+    <tr>
+      <td>Reshaping into incompatible sizes</td>
+      <td>Total number of elements must stay the same</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">-1</code> to let PyTorch infer one dimension</td>
     </tr>
     <tr>
       <td>Mixing CPU and GPU tensors</td>
       <td>Operations need both tensors on the same device</td>
-      <td>Move both to same device with <code class="language-plaintext highlighter-rouge">.to(device)</code></td>
-    </tr>
-    <tr>
-      <td>Wrong <code class="language-plaintext highlighter-rouge">dim</code> for reduction</td>
-      <td>PyTorch <code class="language-plaintext highlighter-rouge">dim</code> is the dimension to <em>collapse</em></td>
-      <td>Read <code class="language-plaintext highlighter-rouge">dim=0</code> as “collapse rows”</td>
+      <td>Move both to the same device with <code class="language-plaintext highlighter-rouge">.to(device)</code></td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="13-quick-review">13. Quick Review</h2>
+<h2 id="16-quick-review">16. Quick review</h2>
 
 <table>
   <thead>
     <tr>
       <th>Term</th>
       <th>Meaning</th>
-      <th>Example</th>
+      <th>Spam Example</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Scalar</strong></td>
-      <td>0D tensor</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.tensor(5.0)</code></td>
-    </tr>
-    <tr>
-      <td><strong>Vector</strong></td>
-      <td>1D tensor</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.tensor([1, 2, 3])</code></td>
-    </tr>
-    <tr>
-      <td><strong>Matrix</strong></td>
-      <td>2D tensor</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.tensor([[1, 2], [3, 4]])</code></td>
+      <td><strong>Tensor</strong></td>
+      <td>A container of numbers</td>
+      <td>Email features, weights, probabilities</td>
     </tr>
     <tr>
       <td><strong>Shape</strong></td>
       <td>Size of each dimension</td>
-      <td><code class="language-plaintext highlighter-rouge">torch.Size([2, 3, 4])</code></td>
+      <td><code class="language-plaintext highlighter-rouge">(4, 5)</code> means 4 emails, 5 features</td>
     </tr>
     <tr>
-      <td><strong>Reshape</strong></td>
-      <td>Change dimensions without changing data</td>
-      <td><code class="language-plaintext highlighter-rouge">x.reshape(2, -1)</code></td>
+      <td><strong>Scalar</strong></td>
+      <td>0D tensor</td>
+      <td>The bias <code class="language-plaintext highlighter-rouge">-1.0</code></td>
+    </tr>
+    <tr>
+      <td><strong>Vector</strong></td>
+      <td>1D tensor</td>
+      <td>One email: <code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
+    </tr>
+    <tr>
+      <td><strong>Matrix</strong></td>
+      <td>2D tensor</td>
+      <td>A batch of emails</td>
+    </tr>
+    <tr>
+      <td><strong>Matrix multiplication</strong></td>
+      <td>Multiply rows by columns and sum</td>
+      <td><code class="language-plaintext highlighter-rouge">(4, 5) @ (5, 1) -&gt; (4, 1)</code></td>
     </tr>
     <tr>
       <td><strong>Transpose</strong></td>
       <td>Flip rows and columns</td>
-      <td><code class="language-plaintext highlighter-rouge">A.T</code></td>
-    </tr>
-    <tr>
-      <td><strong>Matrix multiplication</strong></td>
-      <td><code class="language-plaintext highlighter-rouge">output = input @ W</code></td>
-      <td><code class="language-plaintext highlighter-rouge">(2, 3) @ (3, 4) → (2, 4)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">layer.weight.T</code></td>
     </tr>
     <tr>
       <td><strong>Broadcasting</strong></td>
       <td>Stretch a small tensor to match a bigger one</td>
-      <td><code class="language-plaintext highlighter-rouge">[10, 20, 30]</code> added to a <code class="language-plaintext highlighter-rouge">(2, 3)</code> matrix</td>
+      <td>Adding a bias to every row</td>
+    </tr>
+    <tr>
+      <td><strong>Reshape</strong></td>
+      <td>Change dimensions without changing data</td>
+      <td><code class="language-plaintext highlighter-rouge">emails.reshape(-1)</code></td>
+    </tr>
+    <tr>
+      <td><strong>Slicing</strong></td>
+      <td>Select a subset</td>
+      <td><code class="language-plaintext highlighter-rouge">emails[:, 0]</code> for all suspicious-word counts</td>
     </tr>
     <tr>
       <td><strong>Reduction</strong></td>
-      <td>Collapse a dimension into one number</td>
-      <td><code class="language-plaintext highlighter-rouge">x.sum()</code>, <code class="language-plaintext highlighter-rouge">x.mean(dim=0)</code></td>
+      <td>Collapse a dimension</td>
+      <td><code class="language-plaintext highlighter-rouge">emails.mean(dim=0)</code> for average feature values</td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="14-try-it-yourself">14. Try It Yourself</h2>
+<h2 id="17-try-it-yourself">17. Try it yourself</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="c1"># 1. Create a 3×4 matrix of random numbers
-</span><span class="n">A</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="c1"># 1. Create a batch of 4 emails with 5 features
+</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">])</span>
 
-<span class="c1"># 2. Add 5 to every element
-</span><span class="n">A</span> <span class="o">=</span> <span class="n">A</span> <span class="o">+</span> <span class="mi">5</span>
+<span class="c1"># 2. Create a linear layer: 5 inputs -&gt; 1 output
+</span><span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
-<span class="c1"># 3. Multiply by a column vector
-</span><span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">A</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span>  <span class="c1"># broadcasting
-</span>
-<span class="c1"># 4. Compute the mean of each column
-</span><span class="nf">print</span><span class="p">(</span><span class="n">A</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+<span class="c1"># 3. Compute raw scores for all emails at once
+</span><span class="n">scores</span> <span class="o">=</span> <span class="nf">layer</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Scores shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">scores</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
 
-<span class="c1"># 5. Reshape to 2×6
-</span><span class="nf">print</span><span class="p">(</span><span class="n">A</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="c1"># 4. Apply sigmoid to get probabilities
+</span><span class="n">probabilities</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Probabilities:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">probabilities</span><span class="p">)</span>
 
-<span class="c1"># 6. Matrix multiply with a 4×2 matrix
-</span><span class="n">B</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-<span class="n">C</span> <span class="o">=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">B</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">C</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="c1"># 5. Average probability across all emails
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Average probability:</span><span class="sh">"</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">.</span><span class="nf">mean</span><span class="p">().</span><span class="nf">item</span><span class="p">())</span>
+
+<span class="c1"># 6. Get the suspicious-word count for all emails
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Suspicious-word counts:</span><span class="sh">"</span><span class="p">,</span> <span class="n">emails</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
 </code></pre></div></div>
 
 <hr />
@@ -552,11 +696,12 @@ Output tensor:     shape (batch_size, out_features)
 <h2 id="summary">Summary</h2>
 
 <ul>
-  <li>A tensor is a multi-dimensional array of numbers.</li>
-  <li>PyTorch tensors support GPU acceleration and automatic gradient tracking.</li>
-  <li>Matrix multiplication is the core operation of neural networks.</li>
-  <li>Broadcasting lets you combine tensors of different shapes cleanly.</li>
-  <li>Reductions, reshaping, and slicing are the everyday tools you need.</li>
+  <li>A tensor is a multi-dimensional array of numbers. Spam emails, weights, and biases are all tensors.</li>
+  <li>Shape tells you how many dimensions the tensor has and how big each one is.</li>
+  <li>Matrix multiplication is the core operation of neural networks. Inner dimensions must match.</li>
+  <li>PyTorch stores layer weights as <code class="language-plaintext highlighter-rouge">(out_features, in_features)</code> and transposes them during multiplication.</li>
+  <li>Broadcasting automatically stretches a small tensor, such as a bias, to match a larger one.</li>
+  <li>Reshaping, slicing, and reductions are everyday tools for working with data.</li>
   <li>Always check tensor shapes before debugging anything else.</li>
 </ul>
 
@@ -564,7 +709,7 @@ Output tensor:     shape (batch_size, out_features)
 
   
   <footer class="topic-footer">
-    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">pytorch</span>, <span class="tag">tensors</span>, <span class="tag">tensor-operations</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">pytorch</span>, <span class="tag">tensors</span>, <span class="tag">tensor-operations</span>, <span class="tag">spam-detection</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
   </footer>
   
 </article>
