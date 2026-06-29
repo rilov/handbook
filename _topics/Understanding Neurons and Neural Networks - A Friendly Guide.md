@@ -31,6 +31,8 @@ A human can read an email and notice things like:
 
 But a neural network cannot directly work with ideas such as *suspicious*, *unknown sender*, or *too many links*. A neural network performs mathematical operations: multiply, add, compare, transform. Therefore, the first job is to convert the email into numbers.
 
+<img src="{{ site.baseurl }}/assets/img/email-to-features.svg" alt="Diagram showing how an email is converted into a numerical feature vector" width="100%" />
+
 ---
 
 ## 1. Why must everything become numbers?
@@ -120,6 +122,8 @@ For multiple categories, we must be more careful. Suppose sender type is Persona
 - Unknown → `[0, 0, 1]`
 
 > **Memory trick:** One-hot encoding is like three separate light switches. Only one is on at a time.
+
+<img src="{{ site.baseurl }}/assets/img/one-hot-encoding.svg" alt="One-hot encoding illustrated as light switches: only one category is ON at a time" width="90%" />
 
 ---
 
@@ -237,6 +241,8 @@ z = (
 
 So there is no mystery inside the neuron. It is a small calculator.
 
+<img src="{{ site.baseurl }}/assets/img/neuron-calculation.svg" alt="Diagram of a neuron: inputs multiplied by weights, summed with bias, passed through sigmoid to produce a probability" width="100%" />
+
 ---
 
 ## 8. Why is 2.87 not yet the prediction?
@@ -282,6 +288,8 @@ Large negative → close to 0. Zero → exactly 0.5. Large positive → close to
 For our score `z = 2.87`, sigmoid produces approximately `0.946`. So the model says: **spam probability = 94.6%**.
 
 > **Memory trick:** Sigmoid is like a thermometer that only reads between 0 and 1, no matter how hot or cold the input is.
+
+<img src="{{ site.baseurl }}/assets/img/sigmoid-curve.svg" alt="Graph of the sigmoid S-curve showing how raw scores map to probabilities between 0 and 1" width="90%" />
 
 ---
 
@@ -381,7 +389,7 @@ Apply decision threshold
 Spam or not spam
 ```
 
-<img src="{{ site.baseurl }}/assets/img/NeuralNetwork.png" alt="A simple neural network: inputs flow through weights and bias to a final probability" width="60%" />
+<img src="{{ site.baseurl }}/assets/img/neural-network-layers.svg" alt="A simple neural network: inputs flow through weights and bias to a final probability" width="100%" />
 
 ---
 
@@ -457,6 +465,8 @@ Probability
 The hidden layer allows the model to learn combinations rather than considering every feature only in isolation.
 
 > **Memory trick:** A hidden layer is like a team of detectives. Each detective looks at the same clues but notices different patterns.
+
+<img src="{{ site.baseurl }}/assets/img/neural-network-layers.svg" alt="Multi-layer neural network showing input layer, hidden layer with ReLU, and output layer with sigmoid" width="100%" />
 
 ---
 
