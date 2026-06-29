@@ -1,0 +1,444 @@
+<h1 id="ltap-the-irc-catalog-and-the-hidden-layers-of-apache-iceberg">LTAP, the IRC Catalog, and the Hidden Layers of Apache Iceberg</h1>
+
+<blockquote>
+  <p><em>You write <code class="language-plaintext highlighter-rouge">SELECT * FROM orders</code>. Three letters later, rows appear on your screen. But between those two moments, something remarkable happens — metadata files, catalog API calls, file pruning, and snapshot isolation all coordinate silently underneath. This guide shows you exactly what’s going on.</em></p>
+</blockquote>
+
+<hr />
+
+<h2 id="the-iceberg-you-cant-see">The Iceberg You Can’t See</h2>
+
+<p>Imagine an actual iceberg floating in the ocean. What you see above the waterline is a small, clean tip. But 90% of the mass is hidden below.</p>
+
+<p>Apache Iceberg works the same way.</p>
+
+<p>Above the water: table names, SQL queries, schemas you can browse. The comfortable, familiar surface that analysts interact with every day.</p>
+
+<p>Below the water: an entire hidden machinery — metadata files, snapshots, manifest lists, manifest files, and thousands of Parquet data files. None of this is visible when you run a query. But it’s all doing work.</p>
+
+<p><img src="/handbook/assets/img/iceberg-metaphor.svg" alt="Iceberg metaphor: SQL tables above the water, hidden metadata layers below" width="100%" /></p>
+
+<p>The reason this matters is simple: <strong>the hidden machinery is exactly what makes LTAP possible.</strong></p>
+
+<hr />
+
+<h2 id="1-what-is-ltap">1. What Is LTAP?</h2>
+
+<p>LTAP stands for <strong>Lake Transactional/Analytical Processing</strong>.</p>
+
+<p>Before we explain what it <em>is</em>, let’s understand the problem it solves.</p>
+
+<h3 id="the-old-world-had-two-separate-systems">The old world had two separate systems</h3>
+
+<p>In the traditional data architecture, you had a hard split:</p>
+
+<ul>
+  <li><strong>Transactional systems</strong> (OLTP): databases like PostgreSQL or MySQL that handle writes — inserts, updates, deletes. Fast for individual row operations. Bad for large analytical scans.</li>
+  <li><strong>Analytical systems</strong> (OLAP): warehouses like Redshift or Snowflake that handle reporting and aggregations. Fast for large scans. Not designed for constant writes.</li>
+</ul>
+
+<p>To get data from one world to the other, teams built ETL pipelines — nightly batch jobs that copied data across. The result: your analytics were always hours or days behind reality. And you were paying to store the same data twice.</p>
+
+<p><img src="/handbook/assets/img/ltap-vs-traditional.svg" alt="LTAP vs Traditional: before shows two siloed systems with ETL lag; after shows one Iceberg lakehouse handling both" width="100%" /></p>
+
+<h3 id="ltap-collapses-that-split">LTAP collapses that split</h3>
+
+<p>LTAP means doing both transactional and analytical work on the <strong>same</strong> table, on the <strong>same</strong> lake, at the <strong>same</strong> time — with no ETL lag, no data duplication, and full ACID guarantees.</p>
+
+<p>You can run:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- A transactional write</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">orders</span> <span class="k">VALUES</span> <span class="p">(</span><span class="mi">1234</span><span class="p">,</span> <span class="s1">'Alice'</span><span class="p">,</span> <span class="mi">99</span><span class="p">.</span><span class="mi">99</span><span class="p">,</span> <span class="n">NOW</span><span class="p">());</span>
+
+<span class="c1">-- And immediately after, an analytical query on the same table</span>
+<span class="k">SELECT</span> <span class="n">region</span><span class="p">,</span> <span class="k">SUM</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">orders</span> <span class="k">GROUP</span> <span class="k">BY</span> <span class="n">region</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>Both operations hit the same Iceberg table. There is no pipeline in between. The write and the read are isolated from each other by snapshot versioning — the analytical query sees a consistent view even while a write is in progress.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> LTAP is like a live spreadsheet that everyone edits and reads at the same time, but nobody ever sees a half-saved row.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-what-makes-ltap-possible-on-a-data-lake">2. What Makes LTAP Possible on a Data Lake?</h2>
+
+<p>Traditional data lakes (raw files on S3) had none of the properties needed for LTAP:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Property</th>
+      <th>Raw S3 Files</th>
+      <th>Apache Iceberg</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ACID transactions</td>
+      <td>❌ No</td>
+      <td>✅ Atomic commits</td>
+    </tr>
+    <tr>
+      <td>Read isolation during writes</td>
+      <td>❌ No</td>
+      <td>✅ Snapshot isolation</td>
+    </tr>
+    <tr>
+      <td>Row-level deletes and updates</td>
+      <td>❌ Rewrite entire files</td>
+      <td>✅ Delete files</td>
+    </tr>
+    <tr>
+      <td>Schema evolution</td>
+      <td>❌ Manual, fragile</td>
+      <td>✅ Tracked in metadata</td>
+    </tr>
+    <tr>
+      <td>Time travel</td>
+      <td>❌ No history</td>
+      <td>✅ Any past snapshot</td>
+    </tr>
+    <tr>
+      <td>Multi-engine access</td>
+      <td>❌ Format-specific</td>
+      <td>✅ Any engine via IRC</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Iceberg adds a metadata layer between the engine and the raw files. That metadata layer is what turns a dumb file store into a database-quality table.</p>
+
+<p>And the entry point to all of it is the <strong>IRC</strong>.</p>
+
+<hr />
+
+<h2 id="3-the-irc--iceberg-rest-catalog">3. The IRC — Iceberg REST Catalog</h2>
+
+<h3 id="what-a-catalog-does">What a catalog does</h3>
+
+<p>Before any query engine can read an Iceberg table, it needs to answer one question:</p>
+
+<blockquote>
+  <p><em>Where is the metadata for this table?</em></p>
+</blockquote>
+
+<p>A table called <code class="language-plaintext highlighter-rouge">db.orders</code> is just a name. The catalog maps that name to the physical location of a <code class="language-plaintext highlighter-rouge">metadata.json</code> file on S3 — something like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s3://my-bucket/warehouse/db/orders/metadata/v3.metadata.json
+</code></pre></div></div>
+
+<p>That’s the catalog’s core job: <strong>it’s a phone book for tables.</strong></p>
+
+<h3 id="what-makes-the-irc-special">What makes the IRC special</h3>
+
+<p>Before the Iceberg REST Catalog specification existed, every engine used a different catalog: Spark used the Hive Metastore, Trino had its own connectors, and so on. Sharing a table between Spark and Trino was painful.</p>
+
+<p>The <strong>IRC (Iceberg REST Catalog)</strong> is a standardized HTTP API specification. Any engine that implements the client side of this spec can read any Iceberg table from any server that implements the server side.</p>
+
+<p>This means:</p>
+<ul>
+  <li>Spark, Trino, DuckDB, Flink, Snowflake, and Dremio all speak the same language when looking up tables.</li>
+  <li>You can swap your catalog backend (Polaris, Nessie, Gravitino, Unity Catalog) without changing your engine configuration.</li>
+  <li>Teams can share tables across completely different tools with zero data copying.</li>
+</ul>
+
+<p><img src="/handbook/assets/img/irc-architecture.svg" alt="IRC Architecture: multiple engines connect to one REST catalog which maps table names to S3 metadata paths" width="100%" /></p>
+
+<h3 id="what-the-irc-api-looks-like">What the IRC API looks like</h3>
+
+<p>The catalog exposes simple HTTP endpoints:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET  /v1/namespaces                        → list all schemas
+GET  /v1/namespaces/{ns}/tables            → list tables in a schema
+GET  /v1/namespaces/{ns}/tables/{table}    → get table metadata location
+POST /v1/namespaces/{ns}/tables            → create a new table
+POST /v1/transactions/commit               → commit an ACID transaction
+</code></pre></div></div>
+
+<p>When an engine looks up a table, the catalog responds with something like this:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"metadata-location"</span><span class="p">:</span><span class="w"> </span><span class="s2">"s3://my-bucket/warehouse/orders/metadata/v3.metadata.json"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"table-uuid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"abc-123"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"format-version"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"schema"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span><span class="w">
+    </span><span class="nl">"current-snapshot-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">8749201</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>That <code class="language-plaintext highlighter-rouge">metadata-location</code> is everything the engine needs. It goes directly to S3 and reads the rest itself — the catalog is not in the hot path for data reading.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> The catalog is the receptionist who tells you which room your meeting is in. After that, you walk there yourself — the receptionist isn’t carrying you.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="4-the-metadata-chain-what-lives-below-the-waterline">4. The Metadata Chain: What Lives Below the Waterline</h2>
+
+<p>Once an engine has the <code class="language-plaintext highlighter-rouge">metadata-location</code>, it follows a chain of files. Each file points to the next. Understanding this chain is the key to understanding why Iceberg queries are so fast.</p>
+
+<h3 id="level-1--metadatajson">Level 1 — metadata.json</h3>
+
+<p>The root of everything. Contains:</p>
+
+<ul>
+  <li>The table schema (column names and types)</li>
+  <li>The partition spec (how data is physically split)</li>
+  <li>The current snapshot ID</li>
+  <li>A list of all past snapshots (for time travel)</li>
+</ul>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"current-snapshot-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">8749201</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"snapshots"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w"> </span><span class="nl">"snapshot-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">8749201</span><span class="p">,</span><span class="w"> </span><span class="nl">"manifest-list"</span><span class="p">:</span><span class="w"> </span><span class="s2">"s3://…/snap-8749201.avro"</span><span class="w"> </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w"> </span><span class="nl">"snapshot-id"</span><span class="p">:</span><span class="w"> </span><span class="mi">8749200</span><span class="p">,</span><span class="w"> </span><span class="nl">"manifest-list"</span><span class="p">:</span><span class="w"> </span><span class="s2">"s3://…/snap-8749200.avro"</span><span class="w"> </span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="level-2--snapshot">Level 2 — Snapshot</h3>
+
+<p>A snapshot is a complete, immutable picture of the table at one point in time. When you insert 1,000 rows, Iceberg creates a new snapshot — it does <strong>not</strong> modify the old one. The old snapshot remains valid and readable. This is how time travel works:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Read the table as it was yesterday</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">orders</span> <span class="k">FOR</span> <span class="n">SYSTEM_TIME</span> <span class="k">AS</span> <span class="k">OF</span> <span class="s1">'2026-06-28'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="level-3--manifest-list">Level 3 — Manifest List</h3>
+
+<p>Each snapshot points to a manifest list — an Avro file listing all the manifest files that belong to this snapshot. It’s a lightweight index.</p>
+
+<h3 id="level-4--manifest-files">Level 4 — Manifest Files</h3>
+
+<p>Each manifest file is an Avro file containing one entry per data file. Crucially, each entry includes <strong>column-level statistics</strong>:</p>
+
+<ul>
+  <li>Minimum value of each column</li>
+  <li>Maximum value of each column</li>
+  <li>Row count</li>
+  <li>Null count</li>
+</ul>
+
+<p>This is where the magic happens.</p>
+
+<h3 id="level-5--parquet-data-files">Level 5 — Parquet Data Files</h3>
+
+<p>The actual rows. Each file typically contains millions of rows stored in columnar Parquet format on S3.</p>
+
+<hr />
+
+<h2 id="5-ltap-in-action-tracing-a-query-end-to-end">5. LTAP in Action: Tracing a Query End to End</h2>
+
+<p>Let’s trace exactly what happens when you run:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="n">region</span><span class="p">,</span> <span class="k">SUM</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span>
+<span class="k">FROM</span> <span class="n">orders</span>
+<span class="k">WHERE</span> <span class="n">order_date</span> <span class="o">=</span> <span class="s1">'2026-06-29'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> <span class="n">region</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><img src="/handbook/assets/img/ltap-flow.svg" alt="LTAP query flow: 5 steps from SQL to Parquet rows, with file pruning reducing 10,000 files to 60" width="100%" /></p>
+
+<p><strong>Step 1 — Parse the query.</strong> Spark or Trino receives the SQL and identifies that it needs the <code class="language-plaintext highlighter-rouge">orders</code> table.</p>
+
+<p><strong>Step 2 — Ask the IRC.</strong> The engine calls:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET /v1/namespaces/db/tables/orders
+</code></pre></div></div>
+
+<p>The catalog responds with the S3 path to <code class="language-plaintext highlighter-rouge">metadata.json</code>.</p>
+
+<p><strong>Step 3 — Read metadata.json.</strong> The engine fetches the metadata file directly from S3. It finds the current snapshot ID and the path to the manifest list.</p>
+
+<p><strong>Step 4 — Prune files.</strong> The engine reads the manifest list, then reads the manifest files. For each data file entry, it checks the statistics:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>File: part-00042.parquet
+  order_date min: 2026-06-29
+  order_date max: 2026-06-29  ← matches filter → INCLUDE
+
+File: part-00001.parquet
+  order_date min: 2026-01-01
+  order_date max: 2026-03-31  ← doesn't match → SKIP
+</code></pre></div></div>
+
+<p>If the table has 10,000 data files but only 60 contain data for June 29, only 60 files are read. The other 9,940 are skipped without a single I/O operation.</p>
+
+<p><strong>Step 5 — Read data.</strong> The engine reads only the matching Parquet files, applying any remaining filters at the column level (Parquet also stores per-row-group statistics). Rows are returned to the user.</p>
+
+<p>The entire process — catalog lookup, metadata reads, pruning, data reads — is what LTAP relies on. The transactional guarantees (ACID) are enforced at the snapshot layer: a write either produces a new committed snapshot or it doesn’t. Readers always see a consistent snapshot and are never affected by an in-progress write.</p>
+
+<hr />
+
+<h2 id="6-a-concrete-ltap-example-order-processing">6. A Concrete LTAP Example: Order Processing</h2>
+
+<p>Here is a realistic scenario showing transactions and analytics on the same Iceberg table simultaneously.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">pyspark.sql</span> <span class="kn">import</span> <span class="n">SparkSession</span>
+
+<span class="n">spark</span> <span class="o">=</span> <span class="p">(</span><span class="n">SparkSession</span><span class="p">.</span><span class="n">builder</span>
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">org.apache.iceberg.spark.SparkCatalog</span><span class="sh">"</span><span class="p">)</span>
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.type</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">rest</span><span class="sh">"</span><span class="p">)</span>
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.uri</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">https://my-catalog.company.com</span><span class="sh">"</span><span class="p">)</span>
+    <span class="p">.</span><span class="nf">getOrCreate</span><span class="p">())</span>
+
+<span class="c1"># ── Transactional: write new orders ──────────────────────────────────────────
+</span><span class="n">new_orders</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([</span>
+    <span class="p">(</span><span class="mi">1001</span><span class="p">,</span> <span class="sh">"</span><span class="s">Alice</span><span class="sh">"</span><span class="p">,</span>   <span class="sh">"</span><span class="s">EU</span><span class="sh">"</span><span class="p">,</span>  <span class="mf">149.99</span><span class="p">,</span> <span class="sh">"</span><span class="s">2026-06-29</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1002</span><span class="p">,</span> <span class="sh">"</span><span class="s">Bob</span><span class="sh">"</span><span class="p">,</span>     <span class="sh">"</span><span class="s">US</span><span class="sh">"</span><span class="p">,</span>   <span class="mf">89.50</span><span class="p">,</span> <span class="sh">"</span><span class="s">2026-06-29</span><span class="sh">"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1003</span><span class="p">,</span> <span class="sh">"</span><span class="s">Carla</span><span class="sh">"</span><span class="p">,</span>   <span class="sh">"</span><span class="s">APAC</span><span class="sh">"</span><span class="p">,</span> <span class="mf">210.00</span><span class="p">,</span> <span class="sh">"</span><span class="s">2026-06-29</span><span class="sh">"</span><span class="p">),</span>
+<span class="p">],</span> <span class="p">[</span><span class="sh">"</span><span class="s">order_id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">customer</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">region</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">amount</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">order_date</span><span class="sh">"</span><span class="p">])</span>
+
+<span class="n">new_orders</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">my_catalog.db.orders</span><span class="sh">"</span><span class="p">).</span><span class="nf">append</span><span class="p">()</span>
+<span class="c1"># ↑ Creates a new snapshot atomically. Readers see the old snapshot until commit.
+</span>
+<span class="c1"># ── Analytical: immediately query — no ETL needed ─────────────────────────────
+</span><span class="n">result</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+    SELECT
+        region,
+        COUNT(*)          AS num_orders,
+        SUM(amount)       AS total_revenue,
+        AVG(amount)       AS avg_order_value
+    FROM my_catalog.db.orders
+    WHERE order_date = </span><span class="sh">'</span><span class="s">2026-06-29</span><span class="sh">'</span><span class="s">
+    GROUP BY region
+    ORDER BY total_revenue DESC
+</span><span class="sh">"""</span><span class="p">)</span>
+
+<span class="n">result</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>Both operations complete on the same table. No copy. No pipeline. No lag.</p>
+
+<hr />
+
+<h2 id="7-time-travel--the-hidden-superpower">7. Time Travel — The Hidden Superpower</h2>
+
+<p>Because every write creates a new snapshot rather than modifying data in place, you can read the table at any past point in time:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- What did our orders table look like before the last write?</span>
+<span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">orders</span>
+<span class="k">FOR</span> <span class="n">SYSTEM_TIME</span> <span class="k">AS</span> <span class="k">OF</span> <span class="s1">'2026-06-28 23:59:59'</span><span class="p">;</span>
+
+<span class="c1">-- Roll back a bad write by restoring a previous snapshot</span>
+<span class="k">CALL</span> <span class="k">catalog</span><span class="p">.</span><span class="k">system</span><span class="p">.</span><span class="n">rollback_to_snapshot</span><span class="p">(</span><span class="s1">'db.orders'</span><span class="p">,</span> <span class="mi">8749200</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>This also means you can audit: who changed what, and when? Every snapshot has a parent, forming an immutable history.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Iceberg’s snapshots are like Git commits for your data. You can always check out an old commit.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="8-multi-engine-access-via-irc">8. Multi-Engine Access via IRC</h2>
+
+<p>One of the most powerful properties of the IRC + Iceberg combination is that <strong>any engine can read and write the same table</strong>. The catalog is the shared source of truth:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Spark writes new data
+</span><span class="n">new_orders</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">my_catalog.db.orders</span><span class="sh">"</span><span class="p">).</span><span class="nf">append</span><span class="p">()</span>
+
+<span class="c1"># Trino reads it immediately
+</span><span class="n">trino_query</span> <span class="o">=</span> <span class="sh">"</span><span class="s">SELECT * FROM orders WHERE order_date = </span><span class="sh">'</span><span class="s">2026-06-29</span><span class="sh">'"</span>
+
+<span class="c1"># DuckDB reads it for a quick local analysis
+</span><span class="kn">import</span> <span class="n">duckdb</span>
+<span class="n">duckdb</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">ATTACH </span><span class="sh">'</span><span class="s">https://my-catalog.company.com</span><span class="sh">'</span><span class="s"> AS cat (TYPE ICEBERG)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">duckdb</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">SELECT * FROM cat.db.orders LIMIT 10</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>No data is copied between engines. They all point at the same Parquet files on S3. The IRC ensures everyone agrees on which snapshot is current.</p>
+
+<hr />
+
+<h2 id="9-quick-reference">9. Quick Reference</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>What it is</th>
+      <th>One-line memory trick</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>LTAP</strong></td>
+      <td>Lake Transactional/Analytical Processing</td>
+      <td>Do transactions AND analytics on the same lake</td>
+    </tr>
+    <tr>
+      <td><strong>IRC</strong></td>
+      <td>Iceberg REST Catalog</td>
+      <td>A phone book mapping table names to S3 metadata paths</td>
+    </tr>
+    <tr>
+      <td><strong>metadata.json</strong></td>
+      <td>Root metadata file</td>
+      <td>The table of contents for a table</td>
+    </tr>
+    <tr>
+      <td><strong>Snapshot</strong></td>
+      <td>Immutable point-in-time version of the table</td>
+      <td>A Git commit for your data</td>
+    </tr>
+    <tr>
+      <td><strong>Manifest List</strong></td>
+      <td>Index of manifest files per snapshot</td>
+      <td>The chapter index in a book</td>
+    </tr>
+    <tr>
+      <td><strong>Manifest File</strong></td>
+      <td>List of data files with column statistics</td>
+      <td>A smart file directory</td>
+    </tr>
+    <tr>
+      <td><strong>File Pruning</strong></td>
+      <td>Skipping irrelevant files using column stats</td>
+      <td>Reading the chapter titles before reading the chapter</td>
+    </tr>
+    <tr>
+      <td><strong>Time Travel</strong></td>
+      <td>Querying past snapshots</td>
+      <td><code class="language-plaintext highlighter-rouge">git checkout</code> for data</td>
+    </tr>
+    <tr>
+      <td><strong>ACID</strong></td>
+      <td>Atomicity, Consistency, Isolation, Durability</td>
+      <td>All-or-nothing, always-consistent, always-safe</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="final-mental-model">Final Mental Model</h2>
+
+<p>Before Iceberg and LTAP, the data world looked like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Transactions:  [Operational DB]  ──ETL──►  [Data Warehouse]  :Analytics
+               (fresh data)       (hours)   (stale data)
+</code></pre></div></div>
+
+<p>With LTAP on Apache Iceberg:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            ┌─────────────────────────────────┐
+            │     Apache Iceberg Table        │
+            │  (S3 + metadata chain + IRC)    │
+            └────────────┬────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+   Transactions      Analytics       Time Travel
+   (INSERT/UPDATE)  (SELECT/AGG)   (past snapshots)
+   
+   Any engine:  Spark · Trino · DuckDB · Flink · Snowflake
+</code></pre></div></div>
+
+<p>The IRC is the front door. The metadata chain is the map. The snapshots are the safety net. And LTAP is the outcome: one lake that handles it all.</p>
