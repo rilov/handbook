@@ -45,6 +45,8 @@ The model learns which words, phrases, and patterns matter. It might discover th
 
 > **Memory trick:** In traditional ML, you hand-pick the clues. In deep learning, the detective learns which clues to look for.
 
+<img src="{{ site.baseurl }}/assets/img/ml-vs-dl-pipeline.svg" alt="Side-by-side comparison of Traditional ML pipeline vs Deep Learning pipeline for spam detection" width="100%" />
+
 ---
 
 ## 2. What stays the same
@@ -101,6 +103,8 @@ But it cannot easily learn combinations such as:
 
 Those combinations are not simple straight-line rules. They need a way to mix features together before making the final decision.
 
+<img src="{{ site.baseurl }}/assets/img/linear-limit.svg" alt="Scatter plot showing a single neuron can only draw a straight decision boundary, while a hidden layer learns a curved one" width="100%" />
+
 ---
 
 ## 5. Hidden layers add combinations
@@ -133,6 +137,8 @@ So the model can now say: “This email is spam because it triggered both the su
 
 > **Memory trick:** A single neuron is like one judge. A hidden layer is like a panel of judges, each scoring a different aspect, before the final decision.
 
+<img src="{{ site.baseurl }}/assets/img/hidden-combinations.svg" alt="Diagram showing three hidden neurons each detecting a different combination of features before combining into a final spam score" width="100%" />
+
 ---
 
 ## 6. Why depth matters
@@ -149,6 +155,8 @@ Each hidden layer builds on the previous one. With spam text, this might look li
 Early layers see simple patterns. Deeper layers see richer patterns. This is why deep networks are powerful for text, images, and audio.
 
 > **Memory trick:** Deep learning is like reading a book. First you recognise letters, then words, then sentences, then meaning.
+
+<img src="{{ site.baseurl }}/assets/img/depth-layers.svg" alt="Layer-by-layer diagram showing how each layer builds richer understanding: raw email → word signals → combinations → phrase patterns → spam decision" width="100%" />
 
 ---
 
@@ -174,6 +182,8 @@ ReLU([2.4, -0.7, 1.3]) = [2.4, 0.0, 1.3]
 This small change is what allows the network to learn complex shapes and combinations. It is like adding a small switch between layers.
 
 > **Memory trick:** Activation functions are the wrinkles that stop the network from being a flat piece of paper.
+
+<img src="{{ site.baseurl }}/assets/img/activation-functions.svg" alt="Four activation function curves side by side: Sigmoid, Tanh, ReLU, and Leaky ReLU — showing how each transforms values differently" width="100%" />
 
 ---
 
@@ -423,4 +433,4 @@ Deep learning:    Email → raw tokens → learned embeddings → hidden layers 
 
 The real shift is from **hand-written features** to **learned representations**. Everything else — loss, optimisation, and evaluation — stays largely the same.
 
-<img src="{{ site.baseurl }}/assets/img/NeuralNetwork.png" alt="A neural network showing how input features pass through hidden layers to an output probability" width="60%" />
+<img src="{{ site.baseurl }}/assets/img/training-loop.svg" alt="The training loop: forward pass → compute loss → backward pass → update weights → repeat, with a loss curve dropping over epochs" width="100%" />
