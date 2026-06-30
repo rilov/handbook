@@ -455,7 +455,25 @@ This process repeats across many emails until the weights become useful for dist
 
 ## 13. What does a hidden layer add?
 
-One neuron creates one score directly from the original features. A hidden layer contains several neurons, and each hidden neuron receives the same inputs but has different weights.
+### One input, many neurons
+
+So far we have used one neuron. It received all five features and produced one spam score. But what if we use several neurons at the same time?
+
+Every neuron receives the same five input features. The difference is that each neuron has its own set of weights and its own bias. Think of it as asking several judges the same question, but each judge cares about different evidence.
+
+For example, with three neurons:
+
+```
+Neuron 1 weights: [0.8, 0.6, -1.2, 2.0, 0.01]   → responds to spam signals
+Neuron 2 weights: [-0.5, 0.2, 1.5, 0.1, 0.05]   → responds to safe-sender signals
+Neuron 3 weights: [0.3, 1.2, -0.4, 0.8, 0.00]   → responds to many links
+```
+
+All three neurons see the same email `[3, 1, 0, 0.20, 47]`, but because their weights are different, they produce three different scores. The first neuron might say "likely spam," the second "looks safe," and the third "too many links." Together they capture more nuance than a single neuron can.
+
+### Hidden layer + ReLU
+
+A hidden layer is just a group of such neurons placed between the input and the final decision. Each hidden neuron receives the same inputs but has different weights:
 
 - **Neuron 1** may respond strongly to: many links + unknown sender
 - **Neuron 2** may respond strongly to: many capitals + suspicious words
