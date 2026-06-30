@@ -461,6 +461,14 @@ One neuron creates one score directly from the original features. A hidden layer
 - **Neuron 2** may respond strongly to: many capitals + suspicious words
 - **Neuron 3** may respond strongly to: known sender + long normal message
 
+After each hidden neuron computes its weighted sum, we apply an **activation function** called **ReLU** (Rectified Linear Unit). ReLU is a simple rule: keep positive numbers as they are, and turn negative numbers into zero.
+
+```python
+ReLU(x) = max(0, x)
+```
+
+Why do we need this? Without an activation function, the hidden layer would just be another weighted sum, and the whole network would still behave like a single neuron. ReLU introduces a non-linear "switch" that lets the model learn richer patterns. It is one of the most common activation functions in deep learning.
+
 Suppose the hidden layer produces raw scores `[2.4, -0.7, 1.3]`. Applying ReLU:
 
 ```python
