@@ -164,7 +164,7 @@ A useful memory rule is:
 
 ---
 
-## 6. The model starts with weights
+## 6. How does the model decide which features matter?
 
 We have turned the email into five numbers. Now the model must decide: *is this spam or not spam?*
 
@@ -204,6 +204,8 @@ bias = torch.tensor(-1.0)
 A positive weight pushes the spam score upward. A negative weight pushes it downward. A larger absolute value means the feature has a stronger effect.
 
 > **Memory trick:** Weights are volume knobs. A high positive weight turns the spam signal up; a negative weight turns it down.
+
+Now that we have the importance score for every feature, we can apply them to a real email and see what score the neuron produces.
 
 ---
 
