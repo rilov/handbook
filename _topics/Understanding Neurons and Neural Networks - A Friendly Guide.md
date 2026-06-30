@@ -461,6 +461,18 @@ So far we have used one neuron. It received all five features and produced one s
 
 Every neuron receives the same five input features. The difference is that each neuron has its own set of weights and its own bias. Think of it as asking several judges the same question, but each judge cares about different evidence.
 
+Each neuron is completely independent:
+
+- **Weights:** Each neuron has its own five weights. They start random and are learned during training.
+- **Bias:** Each neuron also has its own bias. It is learned independently too.
+- **Why different?** Because we want each neuron to detect a different pattern. If every neuron had the same weights and bias, they would all compute the same score and the hidden layer would be useless.
+
+### Who decides how many neurons there are?
+
+The number of neurons in a layer is chosen by the person designing the model. It is part of the **architecture**, not something the model learns automatically. Common choices are 8, 16, 32, 64, or 128 neurons per hidden layer. A larger number means the model can learn more complex patterns, but it also needs more data and more computation.
+
+For our small spam example, 3 neurons is enough to show the idea. For a real spam classifier with hundreds of input features, you might use 64 or 128 neurons in a hidden layer.
+
 For example, with three neurons:
 
 ```
