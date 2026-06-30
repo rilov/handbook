@@ -166,6 +166,17 @@ A useful memory rule is:
 
 ## 6. The model starts with weights
 
+We have turned the email into five numbers. Now the model must decide: *is this spam or not spam?*
+
+To make that decision, the model needs to know how important each feature is. Should three suspicious words count the same as three links? Should a known sender override everything else? The model answers these questions by assigning a **weight** to each feature.
+
+A weight is simply an importance score:
+
+- **Positive weight** → this feature pushes the email toward spam
+- **Negative weight** → this feature pushes the email away from spam
+- **Large absolute value** → this feature matters a lot
+- **Small absolute value** → this feature barely matters
+
 Suppose we have a very simple model with one neuron. It stores one weight for each input feature:
 
 | Feature | Weight | Meaning |
