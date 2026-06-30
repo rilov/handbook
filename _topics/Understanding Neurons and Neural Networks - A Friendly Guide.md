@@ -499,21 +499,36 @@ The hidden layer allows the model to learn combinations rather than considering 
 
 ## 14. What is permanently stored in the model?
 
-Consider this PyTorch model:
+In PyTorch, the same model we just described can be written in a few lines:
 
 ```python
 import torch.nn as nn
 
 model = nn.Sequential(
-    nn.Linear(5, 3),
-    nn.ReLU(),
-    nn.Linear(3, 1)
+    nn.Linear(5, 3),   # 5 input features → 3 hidden neurons
+    nn.ReLU(),         # activation: keep positives, zero negatives
+    nn.Linear(3, 1)    # 3 hidden neurons → 1 output neuron
 )
 ```
 
-It has 5 input features, 3 hidden neurons, and 1 output neuron. The first layer stores 5 weights for each of 3 neurons = 15 weights, plus 3 biases. The second layer stores 3 weights and 1 bias. The ReLU layer has no learned weights; it is only an operation.
+### What does `nn.Linear(5, 3)` mean?
 
-You can inspect them:
+`nn.Linear` creates a layer where every input is connected to every output by a weight.
+
+- The first number is how many inputs arrive at the layer.
+- The second number is how many neurons live in the layer.
+
+So `nn.Linear(5, 3)` means: take 5 input numbers and produce 3 output numbers. Each of the 3 neurons receives all 5 inputs, so each neuron has 5 weights. With 3 neurons, that is `3 × 5 = 15` weights. Each neuron also has 1 bias, giving 3 biases.
+
+The second layer `nn.Linear(3, 1)` takes the 3 hidden values and produces 1 final spam score. It has `1 × 3 = 3` weights and 1 bias.
+
+### Why does ReLU have no weights?
+
+ReLU is not a learning layer. It is an operation that runs on the output of the first layer: it keeps positive numbers and turns negative numbers into zero. There is nothing for the model to memorise there, so it has no `weight` or `bias`.
+
+### Inspecting what the model stores
+
+PyTorch keeps every learnable number in `model.parameters()`. You can print their names and shapes:
 
 ```python
 for name, parameter in model.named_parameters():
@@ -528,6 +543,17 @@ Possible output:
 2.weight torch.Size([1, 3])
 2.bias   torch.Size([1])
 ```
+
+The names `0` and `2` come from the position in `nn.Sequential`. Layer 0 is the first `nn.Linear`, layer 1 is `nn.ReLU` (no parameters, so it is skipped), and layer 2 is the second `nn.Linear`. The shapes show how many numbers are stored in each tensor.
+
+| Name | Shape | Meaning |
+|------|-------|---------|
+| `0.weight` | `[3, 5]` | 3 hidden neurons, each with 5 weights |
+| `0.bias` | `[3]` | 1 bias for each of the 3 hidden neurons |
+| `2.weight` | `[1, 3]` | 1 output neuron with 3 weights |
+| `2.bias` | `[1]` | 1 bias for the output neuron |
+
+These weights and biases are the only things the model learns and keeps after training. They are the model's memory.
 
 > **Memory trick:** Think of the architecture as the recipe and the weights as the trained taste. The recipe is code; the taste is the learned state.
 
