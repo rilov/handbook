@@ -197,9 +197,15 @@ weights = torch.tensor([
     2.0,
     0.01
 ])
+```
 
+There is also a **bias**:
+
+```python
 bias = torch.tensor(-1.0)
 ```
+
+Think of the bias as the neuron's default starting mood. Before the model looks at any email features, it starts with a small score. A negative bias means the model begins slightly sceptical of spam; a positive bias means it begins slightly suspicious. The bias is another number the model learns during training, just like the weights.
 
 A positive weight pushes the spam score upward. A negative weight pushes it downward. A larger absolute value means the feature has a stronger effect.
 
