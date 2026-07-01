@@ -85,59 +85,71 @@ A CNN is built around these two facts.
 
 ## 2. Why not use a normal fully connected network?
 
-A normal fully connected layer is the kind of layer we used earlier with simple number lists.
+Before CNNs, let us first understand the simpler option: a **fully connected layer**.
 
-The phrase **fully connected** means:
+A fully connected layer means:
 
-> Every input number gets its own connection to every neuron in the next layer.
+> Every input number is connected to every neuron in the next layer.
 
-A **connection** means a learned weight.
+A connection is just a **weight** the model must learn.
 
-For example, suppose we have 5 input numbers and 3 neurons:
+### Simple example: 5 numbers
 
-```text
-5 input numbers × 3 neurons = 15 connections / weights
-```
-
-Each neuron looks at all 5 input numbers, but each neuron has its own 5 weights.
-
-That was easy to understand in the spam example:
+In the spam example, one email had only 5 input numbers:
 
 ```text
-5 input features → a few neurons
+[ suspicious words, links, known sender, capitals, length ]
 ```
 
-Only five numbers came in, so the model did not need many connections.
-
-Images are different. A `224 × 224` color image has:
+If the next layer has 3 neurons, then each neuron looks at all 5 numbers:
 
 ```text
-224 × 224 × 3 = 150,528 input numbers
+Neuron 1 uses 5 weights
+Neuron 2 uses 5 weights
+Neuron 3 uses 5 weights
 ```
 
-That means one image is not 5 numbers. It is 150,528 numbers.
+So the total is:
 
-If we use a fully connected layer, every one of those input numbers connects to every neuron in the next layer.
+```text
+5 inputs × 3 neurons = 15 weights
+```
+
+That is small and manageable.
+
+### Now compare that with an image
+
+A `224 × 224` color image has:
+
+```text
+224 × 224 × 3 = 150,528 numbers
+```
+
+So an image is not 5 numbers. It is **150,528 numbers**.
+
+If we use a fully connected layer, each neuron must look at all 150,528 numbers.
 
 ### Problem 1: too many weights
 
 Suppose the next layer has 1,000 neurons.
 
-One neuron needs one weight for every input number:
+One neuron needs:
 
 ```text
-150,528 input numbers → 150,528 weights for one neuron
+150,528 weights
 ```
 
-But we do not have one neuron. We have 1,000 neurons:
+Because it looks at all 150,528 input numbers.
+
+Now multiply that by 1,000 neurons:
 
 ```text
-150,528 weights per neuron × 1,000 neurons = 150,528,000 weights
+150,528 × 1,000 = 150,528,000 weights
 ```
 
-So the first layer alone needs more than **150 million weights**.
+So just the first layer needs more than **150 million weights**.
 
-That is a lot of memory and computation, and the model has not even started learning useful image patterns like edges, textures, eyes, or ears.
+That is too large for a beginner-friendly image model. It uses a lot of memory, takes more computation, and can easily memorize training images instead of learning useful visual patterns.
 
 ### Problem 2: no understanding of nearby pixels
 
