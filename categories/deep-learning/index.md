@@ -19,6 +19,8 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 9. **[Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/convolutional-neural-networks)** — Moves from email features to images: convolution, activation, feature maps, padding, and pooling, explained from zero with diagrams, then a full layer-by-layer walkthrough of the real VGG16 architecture.
 10. **[Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/advanced-convolutional-neural-networks)** — A simple second CNN topic covering the degradation problem, data augmentation, dropout, batch normalization, residual connections, 1x1 bottleneck convolutions, global average pooling, CNN backpropagation through filters, feature maps, ReLU, and pooling, transfer learning, and freezing layers — with diagrams throughout.
 11. **[Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/cnn-training-pipeline-transfer-learning-and-visualization)** — The full CNN model design workflow: problem exploration, data collection and annotation, preprocessing (noise removal, resizing, normalization), augmentation, train/validation/test splits, training from scratch versus transfer learning versus fine-tuning, and CNN visualization with Grad-CAM to understand what the model actually learned.
+12. **[Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch]({{ site.baseurl }}/topics/building-a-cnn-end-to-end-cifar-10-with-pytorch)** — A complete hands-on walkthrough: load and preprocess CIFAR-10, define a CNN with batch normalization and dropout, write the training and validation loop, plot learning curves, and evaluate with accuracy, confusion matrix, and classification report.
+13. **[Part 13: CNN Applications]({{ site.baseurl }}/topics/cnn-applications-image-classification-object-detection-segmentation)** — Overview of the five main CNN application areas: image classification, object detection (YOLO, Faster R-CNN), image segmentation (U-Net, Mask R-CNN), facial recognition (FaceNet, ArcFace), and optical character recognition (OCR/CRNN) — with real-world examples and key architectures for each.
 
 **What You'll Learn:**
 
@@ -39,5 +41,7 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 - How to build the full CNN training pipeline: data collection, annotation, preprocessing, normalization, augmentation, and splitting
 - When to train from scratch, when to use transfer learning, and when to fine-tune
 - How Grad-CAM visualizes where a CNN looks and why this matters for catching shortcut learning
+- How to build and train a complete CNN on CIFAR-10 in PyTorch from data loading to evaluation
+- The five main CNN application areas: classification, detection, segmentation, facial recognition, and OCR — what each task is, how CNNs solve it, and key architectures
 
 All guides use friendly explanations, real-world examples, and working PyTorch code you can run yourself.
