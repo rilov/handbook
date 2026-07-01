@@ -149,33 +149,133 @@ not just the exact training photos.
 
 ## 4. Data augmentation: create more variety
 
-**Data augmentation** means changing training images slightly so the model sees more variety.
+**Data augmentation** means creating modified copies of training images so the model sees more variety without collecting new data.
 
-For example:
+### Why augmentation is needed
 
-| Augmentation | What it teaches |
+Imagine you have imbalanced training data:
+
+```text
+1000 cat images
+1000 dog images
+  50 truck images
+```
+
+The model will see cats and dogs very often, but trucks barely at all.
+
+It may learn cats and dogs well, but fail on trucks.
+
+Augmentation helps:
+
+```text
+50 original truck images
+→ each image is transformed multiple ways
+→ now you have many effective truck examples
+```
+
+Augmentation is also useful when you simply do not have enough total data.
+
+### Why copy-paste is not augmentation
+
+Just copying and pasting images does not help.
+
+```text
+copy + paste = same information, just repeated
+```
+
+The model sees the same pixels repeated and learns nothing new.
+
+Real augmentation applies small changes that make the image look slightly different:
+
+```text
+original image
+→ rotate 15 degrees
+→ now a slightly different sample with new angle information
+```
+
+The model has to generalize to that variation, which makes it stronger.
+
+### Three categories of augmentation
+
+#### 1. Geometric transformations
+
+These change the shape, position, or orientation of the image.
+
+| Example | What the model learns |
 |---|---|
-| Flip image | Object can face left or right |
-| Rotate slightly | Object may be tilted |
-| Crop image | Object may appear in different positions |
-| Change brightness | Lighting can change |
-| Add small noise | Image may not be perfect |
+| Rotation | Object can appear tilted |
+| Crop | Object may appear at different positions |
+| Flip | Object can face left or right |
+| Zoom in or out | Object can appear larger or smaller |
+| Elastic distortion | Object can look slightly warped |
 
-The label stays the same.
+#### 2. Color space transformations
 
-A cat image is still a cat after a small rotation or brightness change.
+These change the colors or brightness of the image.
+
+| Example | What the model learns |
+|---|---|
+| Brightness change | Lighting conditions vary |
+| Contrast change | Image can look washed out or sharp |
+| Hue or saturation shift | Colors can shift slightly |
+| RGB channel adjustment | Color balance can change |
+
+#### 3. Filtering
+
+These apply visual effects to the image.
+
+| Example | What the model learns |
+|---|---|
+| Blur | Images may not always be sharp |
+| Add noise | Images may have small random variations |
+
+### Advanced: GAN-based augmentation
+
+Generative adversarial networks can create entirely new synthetic images.
+
+```text
+GAN generates new, realistic-looking images
+→ add those images to the training set
+→ model sees more variety
+```
+
+This is more complex and usually not needed for beginners, but useful for very small datasets.
+
+### The label stays the same
+
+For all augmentation types, the label does not change.
+
+```text
+original truck image      → label: truck
+rotated truck image       → label: truck
+cropped truck image       → label: truck
+color-shifted truck image → label: truck
+```
 
 <img src="{{ site.baseurl }}/assets/img/data-augmentation-examples.svg" alt="One cat photo transformed into several augmented versions: horizontal flip, small rotation, random crop/zoom, color/brightness shift, and added noise, all keeping the same label" width="100%" />
 
-Simple mental model:
+### In PyTorch
 
-```text
-One training image
-→ many slightly different versions
-→ model learns the object, not the exact photo
+Augmentation is done with `torchvision.transforms` and applied only during training.
+
+```python
+from torchvision import transforms
+
+train_transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.ToTensor(),
+])
+
+val_transform = transforms.Compose([
+    transforms.ToTensor(),
+])
 ```
 
-In PyTorch, augmentation is usually done with `torchvision.transforms`.
+The validation and test sets use no random changes.
+
+> **Memory trick:** Augmentation tells the model: the same object can look many different ways. Learn the object, not the photo.
 
 ---
 
@@ -927,3 +1027,5 @@ Basic CNN
 ---
 
 Previous: **[Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/convolutional-neural-networks)**
+
+Next: **[Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/cnn-training-pipeline-transfer-learning-and-visualization)**

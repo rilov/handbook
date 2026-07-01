@@ -18,6 +18,7 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 8. **[Part 8: Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
 9. **[Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/convolutional-neural-networks)** — Moves from email features to images: convolution, activation, feature maps, padding, and pooling, explained from zero with diagrams, then a full layer-by-layer walkthrough of the real VGG16 architecture.
 10. **[Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/advanced-convolutional-neural-networks)** — A simple second CNN topic covering the degradation problem, data augmentation, dropout, batch normalization, residual connections, 1x1 bottleneck convolutions, global average pooling, CNN backpropagation through filters, feature maps, ReLU, and pooling, transfer learning, and freezing layers — with diagrams throughout.
+11. **[Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/cnn-training-pipeline-transfer-learning-and-visualization)** — The full CNN model design workflow: problem exploration, data collection and annotation, preprocessing (noise removal, resizing, normalization), augmentation, train/validation/test splits, training from scratch versus transfer learning versus fine-tuning, and CNN visualization with Grad-CAM to understand what the model actually learned.
 
 **What You'll Learn:**
 
@@ -35,5 +36,8 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 - Why images need convolution instead of fully connected layers, and how kernels, feature maps, padding, and pooling work
 - The exact output-size and parameter-count formulas for convolutional layers, plus a full walkthrough of VGG16's 16 weight layers and ~138 million parameters
 - How advanced CNNs improve training with augmentation, dropout, batch normalization, residual connections, global average pooling, 1x1 bottleneck convolutions, CNN backpropagation, and transfer learning
+- How to build the full CNN training pipeline: data collection, annotation, preprocessing, normalization, augmentation, and splitting
+- When to train from scratch, when to use transfer learning, and when to fine-tune
+- How Grad-CAM visualizes where a CNN looks and why this matters for catching shortcut learning
 
 All guides use friendly explanations, real-world examples, and working PyTorch code you can run yourself.
