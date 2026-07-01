@@ -539,97 +539,199 @@ class 1 = dog
 
 <h2 id="11-exact-formulas-explained-gently">11. Exact formulas, explained gently</h2>
 
-<p>You do not need to memorize formulas on the first read. But formulas help when you want to understand why shapes change.</p>
+<p>This section is optional on the first read. The main idea is simple: formulas help answer two practical questions:</p>
 
-<h3 id="output-size-formula">Output size formula</h3>
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. What will the output shape be?
+2. How many learnable numbers does this layer store?
+</code></pre></div></div>
 
-<p>For one side of the image:</p>
+<p>If you understand those two questions, the formulas become less scary.</p>
+
+<h3 id="formula-1-output-size">Formula 1: output size</h3>
+
+<p>When a kernel slides across an image, it creates a new grid of numbers.</p>
+
+<p>That new grid is the <strong>output feature map</strong>.</p>
+
+<p>The size of this new grid depends on how the kernel moves:</p>
+
+<ul>
+  <li><strong>No padding:</strong> the kernel cannot fully cover the border pixels, so the output usually becomes smaller.</li>
+  <li><strong>With padding:</strong> we add a border around the image, so the output can stay the same size.</li>
+  <li><strong>Bigger stride:</strong> the kernel jumps more pixels at a time, so the output becomes smaller faster.</li>
+</ul>
+
+<p>So this formula answers one simple question:</p>
+
+<blockquote>
+  <p>If my input image is this size, what size will the output feature map be?</p>
+</blockquote>
+
+<p>For one side of the image, such as height or width:</p>
 
 \[\text{Output size} = \left\lfloor \frac{N - F + 2P}{S} \right\rfloor + 1\]
 
-<p>Where:</p>
+<p>Read the formula like this:</p>
 
 <table>
   <thead>
     <tr>
       <th>Symbol</th>
-      <th>Meaning</th>
+      <th>Simple meaning</th>
+      <th>Example</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">N</code></td>
-      <td>Input size, such as 224</td>
+      <td>Original input size</td>
+      <td><code class="language-plaintext highlighter-rouge">224</code> pixels wide</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">F</code></td>
-      <td>Filter/kernel size, such as 3</td>
+      <td>Filter/kernel size</td>
+      <td><code class="language-plaintext highlighter-rouge">3 × 3</code> kernel means <code class="language-plaintext highlighter-rouge">F = 3</code></td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">P</code></td>
-      <td>Padding, such as 1</td>
+      <td>Padding added on each side</td>
+      <td><code class="language-plaintext highlighter-rouge">1</code> pixel border</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">S</code></td>
-      <td>Stride, how far the kernel moves each step</td>
+      <td>Stride, how far the kernel moves</td>
+      <td><code class="language-plaintext highlighter-rouge">1</code> pixel at a time</td>
     </tr>
   </tbody>
 </table>
 
+<p>Why <code class="language-plaintext highlighter-rouge">+ 2P</code>? Padding is added to both sides. If <code class="language-plaintext highlighter-rouge">P = 1</code>, we add 1 pixel on the left and 1 pixel on the right, so the total added width is <code class="language-plaintext highlighter-rouge">2</code>.</p>
+
 <p>For VGG16’s common convolution:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>N = 224, F = 3, P = 1, S = 1
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>N = 224
+F = 3
+P = 1
+S = 1
 </code></pre></div></div>
 
-\[\frac{224 - 3 + 2(1)}{1} + 1 = 224\]
+<p>Step by step:</p>
 
-<p>So the output stays <code class="language-plaintext highlighter-rouge">224 × 224</code>.</p>
-
-<h3 id="parameter-count-formula">Parameter count formula</h3>
-
-<p>A convolution layer has weights and biases.</p>
-
-\[\text{Parameters} = (\text{filters}) \times (F \times F \times \text{channels}) + \text{filters}\]
-
-<p>The final <code class="language-plaintext highlighter-rouge">+ filters</code> is the bias: one bias per filter.</p>
-
-<p>Example: first VGG16 convolution:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>64 filters, 3 × 3 kernel, 3 input channels
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Output size = ((224 - 3 + 2×1) / 1) + 1
+            = ((224 - 3 + 2) / 1) + 1
+            = (223 / 1) + 1
+            = 224
 </code></pre></div></div>
 
-\[64 \times (3 \times 3 \times 3) + 64 = 1{,}792\]
+<p>So a <code class="language-plaintext highlighter-rouge">224 × 224</code> image stays <code class="language-plaintext highlighter-rouge">224 × 224</code> after this convolution.</p>
 
-<p>A deeper layer might have 512 filters over 512 input channels:</p>
+<p>That is why VGG16 can apply convolution without shrinking the image. The shrinking happens later during max pooling.</p>
 
-\[512 \times (3 \times 3 \times 512) + 512 = 2{,}359{,}808\]
+<h3 id="formula-2-convolution-parameter-count">Formula 2: convolution parameter count</h3>
 
-<p>The deeper layer has many more parameters because it sees many more input channels.</p>
+<p>A convolution layer stores learned numbers. These are the model’s memory.</p>
+
+<p>Each filter has:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kernel height × kernel width × input channels
+</code></pre></div></div>
+
+<p>For example, one <code class="language-plaintext highlighter-rouge">3 × 3</code> filter looking at an RGB image has:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3 × 3 × 3 = 27 weights
+</code></pre></div></div>
+
+<p>Each filter also has one bias.</p>
+
+<p>So the formula is:</p>
+
+\[\text{Parameters} = (\text{number of filters}) \times (F \times F \times \text{input channels}) + \text{number of filters}\]
+
+<p>The final <code class="language-plaintext highlighter-rouge">+ number of filters</code> means one bias per filter.</p>
+
+<h3 id="example-first-vgg16-convolution">Example: first VGG16 convolution</h3>
+
+<p>The first VGG16 convolution uses:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>64 filters
+3 × 3 kernel
+3 input channels: red, green, blue
+</code></pre></div></div>
+
+<p>One filter has:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3 × 3 × 3 = 27 weights
+</code></pre></div></div>
+
+<p>Sixty-four filters have:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>64 × 27 = 1,728 weights
+</code></pre></div></div>
+
+<p>Each filter has one bias:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>64 biases
+</code></pre></div></div>
+
+<p>Total:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1,728 weights + 64 biases = 1,792 parameters
+</code></pre></div></div>
+
+<h3 id="example-deeper-vgg16-convolution">Example: deeper VGG16 convolution</h3>
+
+<p>A deeper VGG16 layer may use:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>512 filters
+3 × 3 kernel
+512 input channels
+</code></pre></div></div>
+
+<p>One filter has:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3 × 3 × 512 = 4,608 weights
+</code></pre></div></div>
+
+<p>All filters together have:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>512 × 4,608 = 2,359,296 weights
+</code></pre></div></div>
+
+<p>Add one bias for each of the 512 filters:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2,359,296 + 512 = 2,359,808 parameters
+</code></pre></div></div>
+
+<p>This is much larger because the layer receives 512 input channels instead of 3.</p>
 
 <h3 id="recap-1">Recap</h3>
 
 <table>
   <thead>
     <tr>
-      <th>Concept</th>
+      <th>Question</th>
       <th>Formula</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Output size</td>
+      <td>What is the output size?</td>
       <td>$\left\lfloor \dfrac{N-F+2P}{S} \right\rfloor + 1$</td>
     </tr>
     <tr>
-      <td>Conv parameters</td>
-      <td>(filters) x (F x F x channels) + filters</td>
+      <td>How many conv parameters?</td>
+      <td>filters × (F × F × input channels) + filters</td>
     </tr>
     <tr>
-      <td>Dense parameters</td>
-      <td>(inputs) x (outputs) + outputs</td>
+      <td>How many dense parameters?</td>
+      <td>inputs × outputs + outputs</td>
     </tr>
   </tbody>
 </table>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Output-size formula tells you the new image size. Parameter-count formula tells you how much the layer remembers.</p>
+</blockquote>
 
 <hr />
 
@@ -663,13 +765,29 @@ class 1 = dog
 
 <p>VGG16 starts with a <code class="language-plaintext highlighter-rouge">224 × 224 × 3</code> image.</p>
 
+<p>Read this shape as:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>224 = height
+224 = width
+3   = color channels: red, green, blue
+</code></pre></div></div>
+
 <p>As the image moves through the network:</p>
 
 <ul>
-  <li>Width and height get smaller after pooling.</li>
-  <li>The number of channels gets larger after convolution blocks.</li>
-  <li>The model moves from simple visual details to richer object clues.</li>
+  <li><strong>Convolution layers change the number of channels.</strong> For example, 64 filters produce 64 output channels.</li>
+  <li><strong>Pooling layers shrink height and width.</strong> For example, <code class="language-plaintext highlighter-rouge">224 × 224</code> becomes <code class="language-plaintext highlighter-rouge">112 × 112</code>.</li>
+  <li><strong>Deeper layers keep more pattern maps.</strong> The network remembers many kinds of clues while the spatial size becomes smaller.</li>
 </ul>
+
+<p>A shape like <code class="language-plaintext highlighter-rouge">112 × 112 × 128</code> means:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>112 pixels high
+112 pixels wide
+128 feature maps / channels
+</code></pre></div></div>
+
+<p>The table below follows the image as it travels through VGG16. You do not need to memorize the whole table. Read it as a story: size goes down, channels go up, and parameters are stored only in convolution and dense layers.</p>
 
 <table>
   <thead>
@@ -826,10 +944,23 @@ class 1 = dog
 
 <ul>
   <li><strong>Pooling shrinks width and height.</strong> <code class="language-plaintext highlighter-rouge">224 → 112 → 56 → 28 → 14 → 7</code>.</li>
+  <li><strong>Convolution increases channels.</strong> The network moves from 64 feature maps to 128, then 256, then 512.</li>
   <li><strong>Dense layers contain most parameters.</strong> The first dense layer alone has over 102 million parameters.</li>
 </ul>
 
-<p>So VGG16 teaches an important lesson: convolution layers are good at sharing small kernels across the image, while dense layers become expensive when they connect everything to everything.</p>
+<p>Why is the first dense layer so large?</p>
+
+<p>Before the dense layer, VGG16 has:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>7 × 7 × 512 = 25,088 numbers
+</code></pre></div></div>
+
+<p>The first dense layer connects those 25,088 numbers to 4,096 neurons:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>25,088 × 4,096 + 4,096 = 102,764,544 parameters
+</code></pre></div></div>
+
+<p>So VGG16 teaches an important lesson: convolution layers are efficient because they reuse small filters across the image, while dense layers become expensive because every input connects to every output.</p>
 
 <hr />
 
@@ -846,22 +977,41 @@ class 1 = dog
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div></div>
 
-<p>This means:</p>
+<p>Read it as:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>input has 3 channels
-layer learns 64 filters
-layer produces 64 feature maps
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3  input channels come in
+64 filters are created
+64 feature maps come out
 </code></pre></div></div>
 
-<p>The model does not automatically decide to use 64 filters. The human designer chooses it, then training learns the actual filter values.</p>
+<p>The model does not automatically decide to use 64 filters. The human designer chooses <code class="language-plaintext highlighter-rouge">64</code>. Then training learns the values inside those 64 filters.</p>
 
-<p>Common choices are 16, 32, 64, 128, 256, and 512 filters. More filters allow the model to learn more patterns, but they also require more memory, more computation, and more training data.</p>
+<p>Why choose more filters?</p>
+
+<p>More filters mean the layer can look for more kinds of patterns.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>16 filters  → small/simple model
+64 filters  → more pattern detectors
+512 filters → many pattern detectors, but expensive
+</code></pre></div></div>
+
+<p>Common choices are 16, 32, 64, 128, 256, and 512 filters. More filters can make the model stronger, but they also require more memory, more computation, and more training data.</p>
 
 <h3 id="deep-dive-2-what-does-a-filter-learn">Deep dive 2: What does a filter learn?</h3>
 
 <p>At the beginning of training, filter values are random. They do not yet detect anything useful.</p>
 
-<p>During training, backpropagation adjusts the filter weights. After seeing many images, some filters may become useful detectors:</p>
+<p>During training, the model makes predictions, measures mistakes with a loss function, and backpropagation adjusts the filter weights. After seeing many images, some filters become useful detectors.</p>
+
+<p>A simple mental model:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>random filter
+→ many training examples
+→ many small weight updates
+→ useful pattern detector
+</code></pre></div></div>
+
+<p>Different layers tend to learn different levels of patterns:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>early filters → edges, colors, corners
 middle filters → textures, curves, simple shapes
@@ -888,14 +1038,30 @@ number of channels goes up
 7 × 7 × 512
 </code></pre></div></div>
 
-<p>Why?</p>
+<p>This can feel strange at first: why make the image smaller but increase channels?</p>
 
-<p>Early layers keep large image size because they need location detail. Later layers shrink the image because exact pixel position matters less. At the same time, the model uses more channels so it can remember more types of patterns.</p>
+<p>Think of the network as moving from <strong>location detail</strong> to <strong>meaning detail</strong>.</p>
+
+<p>Early layers need large width and height because they are asking:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Where are the edges?
+Where are the corners?
+Where are the color changes?
+</code></pre></div></div>
+
+<p>Later layers do not need exact pixel-level location as much. They are asking:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Is there an eye-like pattern?
+Is there a wheel-like pattern?
+Is there a face-like pattern?
+</code></pre></div></div>
+
+<p>So the network keeps fewer positions but stores more types of clues at each position.</p>
 
 <p>Simple way to think about it:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>early layers: where are the small details?
-later layers: what important object clues exist?
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>early layers: many locations, simple clues
+later layers: fewer locations, richer clues
 </code></pre></div></div>
 
 <h3 id="deep-dive-4-what-is-learned-and-what-is-not-learned">Deep dive 4: What is learned and what is not learned?</h3>
