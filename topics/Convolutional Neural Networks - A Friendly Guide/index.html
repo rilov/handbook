@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Part 9: Convolutional Neural Networks (CNNs) - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/deep-learning">Deep Learning</a> &mdash;
+    </nav>
+    <h2>Part 9: Convolutional Neural Networks (CNNs) - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/deep-learning">Deep Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="part-9-convolutional-neural-networks-cnns--a-friendly-guide">Part 9: Convolutional Neural Networks (CNNs) — A Friendly Guide</h1>
+
+<p>Every earlier part of this series worked with a spam email turned into a short list of numbers — five features, one row. Images break that assumption. A single small photo is tens of thousands of numbers arranged in a grid, and <em>where</em> each number sits matters just as much as its value. This part starts from zero and builds up, one small idea at a time, to a real, working architecture: <strong>VGG16</strong>.</p>
+
+<hr />
+
+<h2 id="1-the-problem-teaching-a-computer-to-recognize-photos">1. The problem: teaching a computer to recognize photos</h2>
+
+<p>Say you want to build something that looks at a photo and decides: “cat” or “dog.” Easy for a person. Hard for a computer, because a computer never actually sees a cat — it sees a grid of numbers, one per pixel (or three per pixel for a color photo: one each for red, green, and blue brightness).</p>
+
+<p>Your own visual system doesn’t process a whole scene in one instant either. It works in stages:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Stage</th>
+      <th>What it notices</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Early</td>
+      <td>Simple edges, corners, contrast</td>
+    </tr>
+    <tr>
+      <td>Middle</td>
+      <td>Shapes and textures — curves, fur patterns</td>
+    </tr>
+    <tr>
+      <td>Later</td>
+      <td>Whole parts and objects — an ear, a whisker, a face</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A CNN is a computer program that copies this same layered idea: simple patterns first, combined into richer patterns, layer after layer, until the last layer can confidently say “cat.”</p>
+
+<p><img src="/handbook/assets/img/cnn-pipeline-overview.svg" alt="The CNN pipeline: photo, convolution, feature maps, pooling, flatten and dense, output" width="100%" /></p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> A CNN reads an image the way you read a page — letters first, then words, then sentences, then meaning.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-why-a-plain-fully-connected-network-struggles-with-images">2. Why a plain (fully connected) network struggles with images</h2>
+
+<p>Earlier in this series, a plain neural network worked fine on five hand-picked spam features. Why not just feed a photo’s raw pixels into the same kind of network?</p>
+
+<p>Two reasons that breaks down:</p>
+
+<ul>
+  <li><strong>Parameter explosion.</strong> A modest 224x224 color photo already has over 150,000 individual numbers. A fully connected layer would connect every single one of them to every neuron in the next layer — millions of weights before the network has learned anything at all.</li>
+  <li><strong>No sense of “nearby.”</strong> A fully connected layer treats every pixel as a stranger to every other pixel. It has no built-in idea that the pixel at position (50, 50) and the pixel right next to it at (50, 51) are neighbors that jointly form part of an edge or a texture. It would have to rediscover that from scratch, purely from data — slow and wasteful.</li>
+</ul>
+
+<p><img src="/handbook/assets/img/fc-vs-conv-connections.svg" alt="Side by side comparison: fully connected layer with dense mesh of connections versus a convolutional layer with a small local receptive field and shared weights" width="100%" /></p>
+
+<p>A CNN’s answer to both problems is the same trick: instead of connecting to the whole image, look at a small patch at a time, and reuse the same small set of weights everywhere in the picture. That trick is called <strong>convolution</strong>.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Fully connected is “everyone talks to everyone.” Convolutional is “a small window slides around, and the window’s rules never change.”</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-the-convolution-operation-step-by-step">3. The convolution operation, step by step</h2>
+
+<p>Imagine standing in a dark room with a photo and a small flashlight. Instead of turning on the lights and seeing everything at once, you shine your flashlight on one small patch, note what you see, then slide it over, patch by patch, until you’ve covered the whole photo. That’s a convolution: a small <strong>kernel</strong> (or <strong>filter</strong>) sliding across the image, checking each small <strong>receptive field</strong> for a specific pattern.</p>
+
+<p>At every position, the kernel computes a <strong>sum of products</strong>: multiply each kernel weight by the pixel value underneath it, and add all the results into a single number.</p>
+
+<p><img src="/handbook/assets/img/convolution-kernel-sliding.svg" alt="A 3x3 kernel scanning a 5x5 image, multiplying and summing values in the receptive field to produce one scalar in the feature map" width="100%" /></p>
+
+<p>In the example above, a 3x3 kernel tuned to detect “dark on the left, light on the right” lines up with a patch of the image and produces a single scalar: <code class="language-plaintext highlighter-rouge">3</code>, a strong match. Slide the same kernel one step over, repeat the same multiply-and-add, and you get the next scalar — and so on, across the whole image, building up a full grid of output values called an <strong>activation map</strong> (or feature map).</p>
+
+<p>In PyTorch, a single convolutional layer looks like this:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># 1 input image, 3 color channels (RGB), 224x224 pixels
+</span><span class="n">image</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">224</span><span class="p">,</span> <span class="mi">224</span><span class="p">)</span>
+
+<span class="n">conv_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span>
+    <span class="n">in_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>    <span class="c1"># RGB input
+</span>    <span class="n">out_channels</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>  <span class="c1"># 64 different filters/kernels
+</span>    <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>    <span class="c1"># each filter is 3x3
+</span>    <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>        <span class="c1"># zero padding, explained in section 6
+</span>    <span class="n">stride</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+
+<span class="n">feature_maps</span> <span class="o">=</span> <span class="nf">conv_layer</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">feature_maps</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([1, 64, 224, 224])
+</span></code></pre></div></div>
+
+<p><strong>One important detail:</strong> for a color (RGB) image, a kernel isn’t really 2D — it’s 3D, matching the input’s channel depth. A “3x3 kernel” over an RGB image is actually a 3x3x3 block of weights, and the sum-of-products at each position adds up all 27 multiplications into one scalar. No matter how many channels the input has, one kernel always produces one 2D feature map — if a layer uses many kernels (64 in the example above), you get one feature map per kernel, stacked together.</p>
+
+<h3 id="recap">Recap</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>Plain-English meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Kernel / Filter</td>
+      <td>A small pattern-detector, like a mini stencil</td>
+    </tr>
+    <tr>
+      <td>Receptive field</td>
+      <td>The small patch of the image the kernel is currently looking at</td>
+    </tr>
+    <tr>
+      <td>Sliding</td>
+      <td>Moving the kernel step by step across the whole image</td>
+    </tr>
+    <tr>
+      <td>Activation map / feature map</td>
+      <td>The full grid of output scalars produced by one kernel</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="4-activation-functions-why-we-need-relu">4. Activation functions: why we need ReLU</h2>
+
+<p>A convolution on its own is just a weighted sum — a linear operation. Stack any number of linear operations on top of each other and, mathematically, it’s still just one big linear operation. That’s not enough to learn genuinely complex patterns (edges combining into curves, curves into shapes, and so on).</p>
+
+<p>So immediately after every convolution, an <strong>activation function</strong> is applied to every value in the feature map. The standard choice, used in VGG16 and almost every modern CNN, is <strong>ReLU</strong> (Rectified Linear Unit):</p>
+
+\[\text{ReLU}(x) = \max(0, x)\]
+
+<p>In words: keep positive values as they are, and clamp any negative value to zero.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">relu</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">relu</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">2.4</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">])))</span>
+<span class="c1"># tensor([2.4, 0.0, 1.3])
+</span></code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> ReLU is a bouncer at a club door — positive numbers walk straight through, negative numbers get turned away at zero.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="5-feature-maps-what-the-computer-remembers">5. Feature maps: what the computer “remembers”</h2>
+
+<p>Picture reading a long report with a yellow highlighter, marking every sentence about “budget.” You don’t memorize the whole report — you get a version showing exactly <em>where</em> the budget mentions are. A <strong>feature map</strong> is the CNN’s version of that highlighted report: bright where a specific pattern was found, dark where it wasn’t.</p>
+
+<p>A real convolutional layer doesn’t use just one kernel — it uses many (64 in the code example above, often hundreds in deeper layers), each hunting a different tiny pattern:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>This kernel hunts for…</th>
+      <th>Its feature map lights up where…</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Vertical edges</td>
+      <td>Vertical lines appear in the photo</td>
+    </tr>
+    <tr>
+      <td>Horizontal edges</td>
+      <td>Horizontal lines appear</td>
+    </tr>
+    <tr>
+      <td>Orange blobs</td>
+      <td>Orange-colored regions appear (useful for, say, a cat’s fur)</td>
+    </tr>
+    <tr>
+      <td>Rounded curves</td>
+      <td>Curved shapes appear (an ear, an eye)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The <em>next</em> convolutional layer doesn’t look at the raw photo anymore — it slides its own kernels across this whole stack of feature maps. This is how a CNN builds up from simple patterns (edges) to increasingly complex ones (fur texture, an ear shape, eventually a whole face), one layer at a time.</p>
+
+<hr />
+
+<h2 id="6-padding-keeping-control-of-the-output-size">6. Padding: keeping control of the output size</h2>
+
+<p>Sliding a kernel across an image without any special handling shrinks the output slightly every time (the kernel can’t center itself on the outermost pixels). <strong>Padding</strong> adds extra pixels around the border before convolving, to control that.</p>
+
+<ul>
+  <li><strong>Zero padding</strong> (the standard choice): surround the image with a border of zeros. This preserves the spatial size without inventing any real content — the padding carries no information.</li>
+  <li><strong>Identity / replication padding</strong>: repeats the edge pixels outward instead. Used less often, since it subtly introduces a duplicated pattern that wasn’t really there.</li>
+</ul>
+
+<p>VGG16 uses 1-pixel zero padding on every 3x3 convolution, specifically so the convolutions themselves never shrink the feature map — all of the shrinking in VGG16 comes from pooling (next section), not from convolution.</p>
+
+<hr />
+
+<h2 id="7-pooling-layers-shrinking-while-keeping-the-signal">7. Pooling layers: shrinking while keeping the signal</h2>
+
+<p>Imagine condensing a detailed 500-word paragraph down to one punchy headline — you keep the single most important idea and drop the rest. That’s what a <strong>pooling layer</strong> does to a feature map.</p>
+
+<p>The most common version, <strong>max pooling</strong>, looks at small neighborhoods (2x2 is standard) and keeps only the highest number in each, discarding the rest:</p>
+
+<p><img src="/handbook/assets/img/max-pooling-demo.svg" alt="A 4x4 feature map reduced to a 2x2 pooled map by taking the maximum value from each 2x2 block" width="100%" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">pool_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">pooled</span> <span class="o">=</span> <span class="nf">pool_layer</span><span class="p">(</span><span class="n">feature_maps</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">pooled</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([1, 64, 112, 112]) — half the width and height
+</span></code></pre></div></div>
+
+<p>Why shrink things on purpose?</p>
+
+<ul>
+  <li><strong>Speed.</strong> Fewer numbers to process in every layer that follows.</li>
+  <li><strong>Tolerance to small shifts.</strong> If a detected feature (an eye, an edge) moves slightly left or right in the photo, pooling makes it likely the same maximum value still gets picked up — the network cares that the feature was <em>roughly there</em>, not at one exact pixel.</li>
+  <li><strong>Less memorizing.</strong> Fewer numbers to track means the network is less likely to just memorize exact training photos instead of learning general patterns.</li>
+</ul>
+
+<p>Pooling layers have no learnable weights and no bias term — they don’t add anything to a CNN’s parameter count.</p>
+
+<hr />
+
+<h2 id="8-from-features-to-a-decision-flatten--dense-classifier">8. From features to a decision: flatten + dense classifier</h2>
+
+<p>After several rounds of convolution, activation, and pooling, the CNN is holding a small stack of feature maps — think of it as a compact set of notes: “strong pointy-ear signal here,” “strong whisker texture there.” These notes are still shaped like small 2D grids. To make a final decision, the network needs all of this evidence side by side in one simple list.</p>
+
+<p><strong>Flatten</strong> unrolls every remaining feature map into one long 1D vector, with nothing lost — just rearranged:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">flatten</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Flatten</span><span class="p">()</span>
+<span class="n">flat_vector</span> <span class="o">=</span> <span class="nf">flatten</span><span class="p">(</span><span class="n">pooled</span><span class="p">)</span>  <span class="c1"># shape: [1, 64*112*112]
+</span></code></pre></div></div>
+
+<p>A <strong>dense (fully connected) layer</strong> then acts like a detective laying every clue on the table and weighing them together — “strong ear signal, strong whisker signal, no snout signal… almost certainly a cat”:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">classifier</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">64</span> <span class="o">*</span> <span class="mi">112</span> <span class="o">*</span> <span class="mi">112</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>      <span class="c1"># 2 classes: cat, dog
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="nf">classifier</span><span class="p">(</span><span class="n">flat_vector</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>  <span class="c1"># e.g. tensor([[0.92, 0.08]]) → 92% cat, 8% dog
+</span></code></pre></div></div>
+
+<p><strong>Softmax</strong> turns the final raw scores into probabilities that sum to 1, and the highest-probability class becomes the network’s answer.</p>
+
+<hr />
+
+<h2 id="9-going-further-the-exact-formulas">9. Going further: the exact formulas</h2>
+
+<p>Everything so far has been intuition and worked examples. Now for the precise math behind every convolutional layer — useful once you start designing your own networks or reading someone else’s architecture.</p>
+
+<h3 id="output-size-formula">Output size formula</h3>
+
+<p>Given an input of size $N \times N$, a kernel of size $F \times F$, padding $P$, and stride $S$ (how many pixels the kernel moves per step):</p>
+
+\[\text{Output size} = \left\lfloor \frac{N - F + 2P}{S} \right\rfloor + 1\]
+
+<p><strong>Worked example</strong> — VGG16’s standard conv layer: input $N=224$, kernel $F=3$, padding $P=1$, stride $S=1$:</p>
+
+\[\frac{224 - 3 + 2(1)}{1} + 1 = \frac{223}{1} + 1 = 224\]
+
+<p>Output stays 224x224 — exactly why VGG’s convolutions never shrink the feature map on their own.</p>
+
+<h3 id="parameter-count-formula">Parameter count formula</h3>
+
+\[\text{Parameters} = (\text{filters}) \times (F \times F \times \text{channels}) + \text{filters}\]
+
+<p>The final <code class="language-plaintext highlighter-rouge">+ filters</code> term is one learned bias value per filter.</p>
+
+<p><strong>Worked example</strong> — VGG16’s first conv layer: 64 filters, 3x3, over a 3-channel input:</p>
+
+\[64 \times (3 \times 3 \times 3) + 64 = 64 \times 27 + 64 = 1{,}728 + 64 = 1{,}792\]
+
+<p><strong>A deeper layer</strong> — 512 filters, 3x3, over a 512-channel input:</p>
+
+\[512 \times (3 \times 3 \times 512) + 512 = 512 \times 4{,}608 + 512 = 2{,}359{,}808\]
+
+<p>Notice how quickly this grows: the number of input channels directly multiplies the parameter count, which is why deep layers with many channels are far more expensive than shallow, early ones.</p>
+
+<h3 id="recap-1">Recap</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Formula</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Output size</td>
+      <td>$\left\lfloor \dfrac{N-F+2P}{S} \right\rfloor + 1$</td>
+    </tr>
+    <tr>
+      <td>Conv parameters</td>
+      <td>(filters) x (F x F x channels) + filters</td>
+    </tr>
+    <tr>
+      <td>Dense parameters</td>
+      <td>(inputs) x (outputs) + outputs</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-a-real-architecture-the-full-vgg16-walkthrough">10. A real architecture: the full VGG16 walkthrough</h2>
+
+<p><strong>VGG16</strong> is one of the best-known CNNs, and a clean illustration of every idea above working together. It repeats the same building block — a few 3x3/stride-1/pad-1 convolutions, then one 2x2/stride-2 max-pool — five times, then finishes with three dense layers. Its 13 convolutional layers plus 3 dense layers give 16 learnable weight layers in total (hence “VGG16”); the 5 pooling layers have no weights and aren’t counted.</p>
+
+<p><img src="/handbook/assets/img/vgg16-architecture.svg" alt="VGG16 architecture diagram showing five convolutional blocks shrinking the spatial size from 224x224 down to 7x7 while growing channel depth, followed by flatten and three dense layers ending in a 1000-way softmax" width="100%" /></p>
+
+<p>Every convolution below is 3x3/stride-1/pad-1 (so it never changes spatial size on its own); every pooling layer is 2x2/stride-2 (so it exactly halves width and height):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Layer</th>
+      <th>Output shape</th>
+      <th>Parameters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Conv 3x3, 64 filters</td>
+      <td>224 x 224 x 64</td>
+      <td>1,792</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Conv 3x3, 64 filters</td>
+      <td>224 x 224 x 64</td>
+      <td>36,928</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>MaxPool 2x2</td>
+      <td>112 x 112 x 64</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Conv 3x3, 128 filters</td>
+      <td>112 x 112 x 128</td>
+      <td>73,856</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Conv 3x3, 128 filters</td>
+      <td>112 x 112 x 128</td>
+      <td>147,584</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>MaxPool 2x2</td>
+      <td>56 x 56 x 128</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Conv 3x3, 256 filters</td>
+      <td>56 x 56 x 256</td>
+      <td>295,168</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Conv 3x3, 256 filters</td>
+      <td>56 x 56 x 256</td>
+      <td>590,080</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Conv 3x3, 256 filters</td>
+      <td>56 x 56 x 256</td>
+      <td>590,080</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>MaxPool 2x2</td>
+      <td>28 x 28 x 256</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Conv 3x3, 512 filters</td>
+      <td>28 x 28 x 512</td>
+      <td>1,180,160</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Conv 3x3, 512 filters</td>
+      <td>28 x 28 x 512</td>
+      <td>2,359,808</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Conv 3x3, 512 filters</td>
+      <td>28 x 28 x 512</td>
+      <td>2,359,808</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>MaxPool 2x2</td>
+      <td>14 x 14 x 512</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Conv 3x3, 512 filters</td>
+      <td>14 x 14 x 512</td>
+      <td>2,359,808</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>Conv 3x3, 512 filters</td>
+      <td>14 x 14 x 512</td>
+      <td>2,359,808</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>Conv 3x3, 512 filters</td>
+      <td>14 x 14 x 512</td>
+      <td>2,359,808</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>MaxPool 2x2</td>
+      <td>7 x 7 x 512</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>Flatten</td>
+      <td>25,088</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Dense</td>
+      <td>4,096</td>
+      <td>102,764,544</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>Dense</td>
+      <td>4,096</td>
+      <td>16,781,312</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>Dense + Softmax</td>
+      <td>1,000</td>
+      <td>4,097,000</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><strong>Total</strong></td>
+      <td> </td>
+      <td><strong>138,357,544</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Two things stand out:</p>
+
+<ul>
+  <li><strong>Convolutions are cheap, dense layers are expensive.</strong> All 13 convolutional layers together account for roughly 14.7 million parameters — about 10% of the network. The 3 dense layers hold the remaining ~90%, because dense layers connect <em>every</em> input to <em>every</em> output with no weight sharing, unlike convolutions, which reuse the same small kernel everywhere.</li>
+  <li><strong>Spatial size only changes at pooling layers.</strong> Every convolution preserves width and height exactly, thanks to its zero padding; only the five max-pool layers actually shrink the feature map, each time cutting both dimensions in half.</li>
+</ul>
+
+<hr />
+
+<h2 id="11-try-it-yourself-a-mini-cnn-in-pytorch">11. Try it yourself: a mini CNN in PyTorch</h2>
+
+<p>Here’s a small, runnable CNN that follows the exact same pattern as VGG16 — just far smaller — to classify tiny 32x32 images into 2 classes:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="k">class</span> <span class="nc">MiniCNN</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">features</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>                          <span class="c1"># 32x32 → 16x16
+</span>            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>                          <span class="c1"># 16x16 → 8x8
+</span>        <span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">classifier</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Flatten</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span> <span class="o">*</span> <span class="mi">8</span> <span class="o">*</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">features</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">classifier</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">MiniCNN</span><span class="p">()</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>   <span class="c1"># 1 fake RGB image
+</span><span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span>  <span class="c1"># e.g. tensor([[0.63, 0.37]])
+</span></code></pre></div></div>
+
+<p>Swap in real cat and dog photos, train it with a loss function and optimizer exactly like the earlier parts in this series, and this same skeleton scales all the way up to VGG16.</p>
+
+<hr />
+
+<h2 id="12-summary">12. Summary</h2>
+
+<ul>
+  <li>A CNN exists because plain fully connected networks don’t scale to images: too many parameters, and no built-in sense that nearby pixels are related.</li>
+  <li><strong>Convolution</strong> slides a small kernel across the image, computing a sum-of-products at each receptive field to build a feature map.</li>
+  <li><strong>ReLU</strong> adds non-linearity right after each convolution, so the network can learn genuinely complex patterns, not just one big linear function.</li>
+  <li><strong>Feature maps</strong> show where a specific pattern was detected; stacking many filters, and stacking layers, lets a CNN build from simple edges up to whole objects.</li>
+  <li><strong>Zero padding</strong> keeps spatial size under control without inventing fake content.</li>
+  <li><strong>Pooling</strong> periodically shrinks the feature maps, adding speed and tolerance to small shifts, with zero learnable parameters.</li>
+  <li><strong>Flatten + dense layers</strong> turn the final features into a decision, with softmax converting raw scores into class probabilities.</li>
+  <li>The output-size and parameter-count formulas let you calculate exactly how any convolutional layer behaves.</li>
+  <li><strong>VGG16</strong> ties all of this together: 13 conv layers + 3 dense layers = 16 weight layers, about 138 million parameters, going from a 224x224x3 photo to a 1,000-way classification.</li>
+</ul>
+
+<h2 id="13-memory-tricks-recap">13. Memory tricks recap</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Memory trick</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Convolution</td>
+      <td>A flashlight scanning one small patch at a time</td>
+    </tr>
+    <tr>
+      <td>Kernel / filter</td>
+      <td>A mini stencil hunting for one pattern</td>
+    </tr>
+    <tr>
+      <td>ReLU</td>
+      <td>A bouncer that blocks negative numbers at the door</td>
+    </tr>
+    <tr>
+      <td>Feature map</td>
+      <td>A highlighted report showing where a pattern was found</td>
+    </tr>
+    <tr>
+      <td>Padding (zero)</td>
+      <td>A blank picture frame border, adds no fake content</td>
+    </tr>
+    <tr>
+      <td>Pooling</td>
+      <td>Turning a paragraph into a headline — keep the loudest point</td>
+    </tr>
+    <tr>
+      <td>Flatten</td>
+      <td>Unrolling a folded map into one straight strip</td>
+    </tr>
+    <tr>
+      <td>Dense layer</td>
+      <td>A detective weighing every clue before the verdict</td>
+    </tr>
+    <tr>
+      <td>Softmax</td>
+      <td>Turning raw scores into a normalized ranking that sums to 1</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+<p>Previous: <strong><a href="/handbook/topics/deep-learning-cheat-sheet">Part 8: Deep Learning Cheat Sheet</a></strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">cnn</span>, <span class="tag">computer-vision</span>, <span class="tag">convolution</span>, <span class="tag">pooling</span>, <span class="tag">feature-maps</span>, <span class="tag">image-classification</span>, <span class="tag">vgg16</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
