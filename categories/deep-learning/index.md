@@ -17,6 +17,7 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 7. **[Part 7: Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How spam detection mirrors neurons, synapses, memory, attention, and generalisation in the brain.
 8. **[Part 8: Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
 9. **[Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/convolutional-neural-networks)** — Moves from email features to images: convolution, activation, feature maps, padding, and pooling, explained from zero with diagrams, then a full layer-by-layer walkthrough of the real VGG16 architecture.
+10. **[Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/advanced-convolutional-neural-networks)** — A simple second CNN topic covering the degradation problem, data augmentation, dropout, batch normalization, residual connections, 1x1 bottleneck convolutions, global average pooling, CNN backpropagation through filters, feature maps, ReLU, and pooling, transfer learning, and freezing layers — with diagrams throughout.
 
 **What You'll Learn:**
 
@@ -33,5 +34,6 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 - Memory tricks for every formula and concept
 - Why images need convolution instead of fully connected layers, and how kernels, feature maps, padding, and pooling work
 - The exact output-size and parameter-count formulas for convolutional layers, plus a full walkthrough of VGG16's 16 weight layers and ~138 million parameters
+- How advanced CNNs improve training with augmentation, dropout, batch normalization, residual connections, global average pooling, 1x1 bottleneck convolutions, CNN backpropagation, and transfer learning
 
 All guides use friendly explanations, real-world examples, and working PyTorch code you can run yourself.
