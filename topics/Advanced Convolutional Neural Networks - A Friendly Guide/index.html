@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Part 10: Advanced Convolutional Neural Networks - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/deep-learning">Deep Learning</a> &mdash;
+    </nav>
+    <h2>Part 10: Advanced Convolutional Neural Networks - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/deep-learning">Deep Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="part-10-advanced-convolutional-neural-networks--a-friendly-guide">Part 10: Advanced Convolutional Neural Networks — A Friendly Guide</h1>
+
+<p>In Part 9, we learned the basic CNN flow:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image
+→ Convolution
+→ ReLU
+→ Pooling
+→ Feature maps
+→ Flatten
+→ Dense layers
+→ Prediction
+</code></pre></div></div>
+
+<p>That is enough to understand the foundation.</p>
+
+<p>But real-world CNNs often need a few extra ideas to work well:</p>
+
+<ul>
+  <li>How do we make CNNs deeper without making training fail?</li>
+  <li>How do we stop a CNN from memorizing training images?</li>
+  <li>How do we reuse a model that was already trained on millions of images?</li>
+  <li>Why do modern CNNs often avoid huge dense layers?</li>
+</ul>
+
+<p>This guide answers those questions in simple English.</p>
+
+<hr />
+
+<h2 id="1-why-do-we-need-advanced-cnn-ideas">1. Why do we need advanced CNN ideas?</h2>
+
+<p>A small CNN can learn simple images.</p>
+
+<p>But real images are messy:</p>
+
+<ul>
+  <li>Different lighting</li>
+  <li>Different backgrounds</li>
+  <li>Different object sizes</li>
+  <li>Object partly hidden</li>
+  <li>Camera angle changes</li>
+  <li>Noise and blur</li>
+</ul>
+
+<p>A cat may appear close, far away, sideways, bright, dark, or partly behind a chair.</p>
+
+<p>A basic CNN may struggle with that.</p>
+
+<p>Advanced CNN ideas help the model become:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Helpful idea</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Model memorizes training images</td>
+      <td>Dropout, data augmentation</td>
+    </tr>
+    <tr>
+      <td>Training becomes unstable</td>
+      <td>Batch normalization</td>
+    </tr>
+    <tr>
+      <td>Deep network becomes hard to train</td>
+      <td>Residual connections</td>
+    </tr>
+    <tr>
+      <td>Dense layers become too large</td>
+      <td>Global average pooling</td>
+    </tr>
+    <tr>
+      <td>Not enough training data</td>
+      <td>Transfer learning</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>We will go one by one.</p>
+
+<hr />
+
+<h2 id="2-deeper-cnns-why-not-just-add-more-layers">2. Deeper CNNs: why not just add more layers?</h2>
+
+<p>A deeper CNN can learn richer patterns.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Early layers  → edges and colors
+Middle layers → textures and shapes
+Later layers  → object parts
+Very deep layers → whole object concepts
+</code></pre></div></div>
+
+<p>So it sounds like we should just add more convolution layers.</p>
+
+<p>But deeper networks create new problems.</p>
+
+<h3 id="problem-1-harder-training">Problem 1: harder training</h3>
+
+<p>When a network becomes very deep, the learning signal must travel through many layers during backpropagation.</p>
+
+<p>Sometimes the early layers receive weak or confusing updates.</p>
+
+<p>This can make the model train slowly or poorly.</p>
+
+<p>Researchers saw this happen directly: when they compared a 20-layer plain network to a 56-layer plain network, the 56-layer network ended up with <strong>higher training error</strong> — not just worse results on new images, but worse results even on the images it was trained on. This is called the <strong>degradation problem</strong>, and it’s the main reason later architectures added the residual connections covered in section 7.</p>
+
+<p><img src="/handbook/assets/img/depth-degradation-plot.svg" alt="Line chart comparing training error for a 20-layer versus 56-layer plain network, showing the deeper plain network performing worse, versus a 20-layer versus 56-layer residual network where the deeper one performs better" width="100%" /></p>
+
+<h3 id="problem-2-overfitting">Problem 2: overfitting</h3>
+
+<p>A bigger model has more learnable weights.</p>
+
+<p>If the dataset is small, the model may memorize the training images instead of learning general patterns.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Memorizing = works well on training images, fails on new images
+Learning   = works well on new images too
+</code></pre></div></div>
+
+<p>Advanced CNN techniques exist mainly to fix these two problems.</p>
+
+<hr />
+
+<h2 id="3-overfitting-the-model-memorizes-instead-of-learning">3. Overfitting: the model memorizes instead of learning</h2>
+
+<p>Imagine training a CNN with 100 cat images and 100 dog images.</p>
+
+<p>If the model is too powerful, it may memorize details like:</p>
+
+<ul>
+  <li>This exact cat photo has a blue sofa</li>
+  <li>This dog photo has grass in the background</li>
+  <li>This cat image has a specific shadow</li>
+</ul>
+
+<p>Then it may fail on a new cat photo with a different background.</p>
+
+<p>That is overfitting.</p>
+
+<p>A good model should learn reusable patterns:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cat-like ears
+cat-like eyes
+fur texture
+face shape
+body shape
+</code></pre></div></div>
+
+<p>not just the exact training photos.</p>
+
+<hr />
+
+<h2 id="4-data-augmentation-create-more-variety">4. Data augmentation: create more variety</h2>
+
+<p><strong>Data augmentation</strong> means changing training images slightly so the model sees more variety.</p>
+
+<p>For example:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Augmentation</th>
+      <th>What it teaches</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Flip image</td>
+      <td>Object can face left or right</td>
+    </tr>
+    <tr>
+      <td>Rotate slightly</td>
+      <td>Object may be tilted</td>
+    </tr>
+    <tr>
+      <td>Crop image</td>
+      <td>Object may appear in different positions</td>
+    </tr>
+    <tr>
+      <td>Change brightness</td>
+      <td>Lighting can change</td>
+    </tr>
+    <tr>
+      <td>Add small noise</td>
+      <td>Image may not be perfect</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The label stays the same.</p>
+
+<p>A cat image is still a cat after a small rotation or brightness change.</p>
+
+<p><img src="/handbook/assets/img/data-augmentation-examples.svg" alt="One cat photo transformed into several augmented versions: horizontal flip, small rotation, random crop/zoom, color/brightness shift, and added noise, all keeping the same label" width="100%" /></p>
+
+<p>Simple mental model:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>One training image
+→ many slightly different versions
+→ model learns the object, not the exact photo
+</code></pre></div></div>
+
+<p>In PyTorch, augmentation is usually done with <code class="language-plaintext highlighter-rouge">torchvision.transforms</code>.</p>
+
+<hr />
+
+<h2 id="5-dropout-randomly-hide-some-clues-during-training">5. Dropout: randomly hide some clues during training</h2>
+
+<p><strong>Dropout</strong> is another way to reduce overfitting.</p>
+
+<p>During training, dropout randomly turns off some neuron outputs.</p>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before dropout: [0.8, 0.4, 0.9, 0.2]
+After dropout:  [0.8, 0.0, 0.9, 0.0]
+</code></pre></div></div>
+
+<p>Why is that useful?</p>
+
+<p>It prevents the model from depending too much on one specific signal.</p>
+
+<p>Instead, the model must learn several useful signals.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Dropout is like training a team where some members are randomly absent. The whole team becomes stronger because nobody can depend on only one person.</p>
+</blockquote>
+
+<p>In PyTorch:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">nn</span><span class="p">.</span><span class="nc">Dropout</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">p=0.5</code> means 50% of selected values are turned off during training.</p>
+
+<p>Dropout is usually used in dense layers or classifier heads. It is not always used inside modern convolution blocks.</p>
+
+<hr />
+
+<h2 id="6-batch-normalization-keep-values-stable">6. Batch normalization: keep values stable</h2>
+
+<p>As data moves through many layers, the numbers can become too large, too small, or unstable.</p>
+
+<p>That makes training harder.</p>
+
+<p><strong>Batch normalization</strong> helps keep layer outputs in a more stable range.</p>
+
+<p>Simple idea:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Layer output values
+→ normalize them
+→ then continue to the next layer
+</code></pre></div></div>
+
+<p>This often makes training faster and more stable.</p>
+
+<p>In PyTorch:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">64</code> means the feature map has 64 channels.</p>
+
+<p>A common block becomes:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Conv → BatchNorm → ReLU
+</code></pre></div></div>
+
+<p>instead of only:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Conv → ReLU
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Batch normalization is like keeping the volume level steady so the next layer does not receive signals that are too loud or too quiet.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="7-residual-connections-let-information-skip-layers">7. Residual connections: let information skip layers</h2>
+
+<p>Very deep networks can be hard to train.</p>
+
+<p>A <strong>residual connection</strong> helps by allowing information to skip over some layers.</p>
+
+<p>Basic idea:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input
+ ├───────────────┐
+ ↓               │
+Conv → ReLU → Conv
+ ↓               │
+Add original input back
+ ↓
+Output
+</code></pre></div></div>
+
+<p><img src="/handbook/assets/img/residual-block.svg" alt="Diagram of a residual block: input x passes through Conv+BatchNorm, ReLU, Conv+BatchNorm, and is added back to the original x via a shortcut connection, followed by a final ReLU" width="100%" /></p>
+
+<p>Instead of forcing layers to learn everything from scratch, the block learns a change to the input.</p>
+
+<p>This is the key idea behind <strong>ResNet</strong>.</p>
+
+<p>Why does this help?</p>
+
+<p>If extra layers are useful, the model can use them.</p>
+
+<p>If they are not useful, the model can pass information through the skip connection more easily.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> A residual connection is like a shortcut road. The signal can go through the full path, but it also has a direct route if needed.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="8-global-average-pooling-avoid-huge-dense-layers">8. Global average pooling: avoid huge dense layers</h2>
+
+<p>In VGG16, the first dense layer is very large because it receives:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>7 × 7 × 512 = 25,088 numbers
+</code></pre></div></div>
+
+<p>Then it connects those numbers to 4,096 neurons.</p>
+
+<p>That creates more than 102 million parameters.</p>
+
+<p>Modern CNNs often avoid this by using <strong>global average pooling</strong>.</p>
+
+<p>Instead of flattening all values, global average pooling takes the average of each channel.</p>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>7 × 7 × 512 feature maps
+→ average each 7 × 7 map
+→ 512 numbers
+</code></pre></div></div>
+
+<p>So the classifier receives 512 numbers instead of 25,088.</p>
+
+<p>This greatly reduces parameters.</p>
+
+<p>Simple comparison:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th>Output to classifier</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Flatten</td>
+      <td><code class="language-plaintext highlighter-rouge">7 × 7 × 512 = 25,088</code> numbers</td>
+    </tr>
+    <tr>
+      <td>Global average pooling</td>
+      <td><code class="language-plaintext highlighter-rouge">512</code> numbers</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Flatten keeps every location. Global average pooling summarizes each feature map into one score.</p>
+</blockquote>
+
+<h3 id="a-related-trick-1x1-bottleneck-convolutions">A related trick: 1x1 bottleneck convolutions</h3>
+
+<p>Global average pooling saves parameters at the very end of a network. A <strong>1x1 convolution</strong> saves parameters <em>throughout</em> a deep network, using a different trick.</p>
+
+<p>A 1x1 kernel doesn’t look at any neighboring pixels — its receptive field is a single position. At every position, it just mixes the channels together into a new, smaller (or larger) set of channels. That gives a cheap way to shrink the channel count right before an expensive 3x3 convolution, then expand it back afterward:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1x1 conv: squeeze 256 channels down to 64   (cheap)
+3x3 conv: do the expensive work on just 64  (cheap, because fewer channels)
+1x1 conv: expand 64 channels back to 256    (cheap)
+</code></pre></div></div>
+
+<p><img src="/handbook/assets/img/bottleneck-1x1-conv.svg" alt="Diagram showing a bottleneck block: a 1x1 convolution squeezes 256 channels down to 64, a 3x3 convolution does the main work on the smaller 64-channel representation, and a final 1x1 convolution expands back to 256 channels, with a cost comparison table" width="100%" /></p>
+
+<p>The saving is large. A plain 3x3 convolution from 256 to 256 channels costs:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>256 x (3x3x256) + 256 = 590,080 parameters
+</code></pre></div></div>
+
+<p>The bottleneck version — 1x1 (256→64), 3x3 (64→64), 1x1 (64→256) — costs:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>16,448 + 36,928 + 16,640 = 70,016 parameters
+</code></pre></div></div>
+
+<p>Roughly eight times fewer parameters, for the same 256-channel output shape. This is one of the main tricks that let architectures deeper than VGG16 avoid VGG16’s biggest cost: enormous parameter counts.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">bottleneck</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">256</span><span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> A 1x1 convolution is a tiny accountant standing at one pixel, re-summarizing that pixel’s channels into a cheaper set of numbers — no neighbors involved.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="9-transfer-learning-reuse-a-trained-cnn">9. Transfer learning: reuse a trained CNN</h2>
+
+<p>Training a large CNN from scratch needs many images and lots of compute.</p>
+
+<p>But many CNNs have already been trained on huge datasets like ImageNet.</p>
+
+<p><strong>Transfer learning</strong> means reusing one of those trained models.</p>
+
+<p>The idea:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Use pretrained CNN feature extractor
+→ replace the final classifier
+→ train for your own classes
+</code></pre></div></div>
+
+<p><img src="/handbook/assets/img/transfer-learning-diagram.svg" alt="Diagram showing a new photo passing through a frozen pretrained feature extractor, producing learned features, then a new trainable classifier head producing the final prediction" width="100%" /></p>
+
+<p>For example, a pretrained model already knows many visual basics:</p>
+
+<ul>
+  <li>edges</li>
+  <li>textures</li>
+  <li>shapes</li>
+  <li>object parts</li>
+</ul>
+
+<p>You can reuse that knowledge for a new task.</p>
+
+<p>Example tasks:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pretrained model learned</th>
+      <th>Your new task</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>General image patterns</td>
+      <td>Cat vs dog classifier</td>
+    </tr>
+    <tr>
+      <td>Object parts and textures</td>
+      <td>Medical image classifier</td>
+    </tr>
+    <tr>
+      <td>Shapes and colors</td>
+      <td>Product image classifier</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Transfer learning is useful when your dataset is not huge.</p>
+
+<hr />
+
+<h2 id="10-freezing-layers-train-only-part-of-the-model">10. Freezing layers: train only part of the model</h2>
+
+<p>When using transfer learning, we often freeze earlier layers.</p>
+
+<p><strong>Freeze</strong> means:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Do not update these weights during training
+</code></pre></div></div>
+
+<p>Why freeze early layers?</p>
+
+<p>Early CNN layers learn general patterns like edges and corners. Those are useful for many image tasks.</p>
+
+<p>So we can keep them and train only the final classifier.</p>
+
+<p>Simple flow:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pretrained CNN feature extractor → frozen
+New classifier head              → trainable
+</code></pre></div></div>
+
+<p>Later, if needed, we can unfreeze some deeper layers and fine-tune them gently.</p>
+
+<hr />
+
+<h2 id="11-backpropagation-in-cnns-how-filters-learn">11. Backpropagation in CNNs: how filters learn</h2>
+
+<p>Now let us connect CNN architecture with CNN learning.</p>
+
+<p>A CNN has two main phases during training:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Forward pass  → make a prediction
+2. Backward pass → learn from the mistake
+</code></pre></div></div>
+
+<p>The whole goal is simple:</p>
+
+<blockquote>
+  <p>Change the CNN’s weights and biases so the next prediction becomes better.</p>
+</blockquote>
+
+<h3 id="where-are-the-learnable-parameters-in-a-cnn">Where are the learnable parameters in a CNN?</h3>
+
+<p>Not every CNN layer learns weights.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Has learnable weights and biases?</th>
+      <th>What happens during training?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Convolution layer</td>
+      <td>Yes</td>
+      <td>Kernels/filters are updated</td>
+    </tr>
+    <tr>
+      <td>Pooling layer</td>
+      <td>No</td>
+      <td>Only passes information forward/backward</td>
+    </tr>
+    <tr>
+      <td>Flatten layer</td>
+      <td>No</td>
+      <td>Only reshapes data</td>
+    </tr>
+    <tr>
+      <td>Dense layer</td>
+      <td>Yes</td>
+      <td>Dense weights and biases are updated</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>So when we say <strong>CNN training</strong>, we mainly mean:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>update convolution filters
+update convolution biases
+update dense layer weights
+update dense layer biases
+</code></pre></div></div>
+
+<h3 id="step-1-forward-pass">Step 1: forward pass</h3>
+
+<p>The forward pass means the image travels from input to output.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>image
+→ convolution
+→ ReLU
+→ pooling
+→ flatten
+→ dense layers
+→ prediction
+</code></pre></div></div>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>input image: cat
+model output: 70% dog, 30% cat
+</code></pre></div></div>
+
+<p>The model made a wrong prediction.</p>
+
+<p>Now it needs to learn from that mistake.</p>
+
+<h3 id="what-happens-inside-convolution-during-the-forward-pass">What happens inside convolution during the forward pass?</h3>
+
+<p>A convolution layer contains kernels, also called filters.</p>
+
+<p>A filter is a small grid of weights.</p>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3 × 3 filter = 9 weights for one input channel
+</code></pre></div></div>
+
+<p>For an RGB image, the filter looks across 3 channels:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3 × 3 × 3 = 27 weights
+</code></pre></div></div>
+
+<p>The filter slides over the image like a small window.</p>
+
+<p>At each position:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>image patch × filter weights + bias = one output number
+</code></pre></div></div>
+
+<p>After the filter scans the image, it creates a feature map.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>one filter → one feature map
+many filters → many feature maps
+</code></pre></div></div>
+
+<p>Each filter has its own weights and one bias. These are learnable parameters.</p>
+
+<h3 id="what-happens-inside-pooling-and-flatten">What happens inside pooling and flatten?</h3>
+
+<p>Pooling does not learn weights.</p>
+
+<p>Max pooling only keeps the strongest value from a small region.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[5, 10]
+[15, 16]
+</code></pre></div></div>
+
+<p>Max pooling keeps:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>16
+</code></pre></div></div>
+
+<p>Flatten also does not learn weights.</p>
+
+<p>It only reshapes feature maps into one long vector.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>many 2D feature maps → one 1D vector
+</code></pre></div></div>
+
+<p>So pooling and flatten help data move through the CNN, but they do not store learned knowledge.</p>
+
+<h3 id="step-2-calculate-the-loss">Step 2: calculate the loss</h3>
+
+<p>After the forward pass, the model has a prediction.</p>
+
+<p>The true answer is also known during training.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>prediction: 70% dog
+true label: cat
+</code></pre></div></div>
+
+<p>The loss function measures the mistake.</p>
+
+<p>For classification, a common loss is cross-entropy loss.</p>
+
+<p>Simple meaning:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>small loss → prediction is close to correct
+large loss → prediction is far from correct
+</code></pre></div></div>
+
+<p>The loss gives backpropagation a target:</p>
+
+<blockquote>
+  <p>Reduce this mistake next time.</p>
+</blockquote>
+
+<h3 id="step-3-backward-pass">Step 3: backward pass</h3>
+
+<p>The backward pass starts from the loss and moves backward through the network.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>loss
+→ dense layers
+→ flatten
+→ pooling
+→ ReLU
+→ convolution filters
+</code></pre></div></div>
+
+<p>Backpropagation asks one repeated question:</p>
+
+<blockquote>
+  <p>How much did this weight contribute to the mistake?</p>
+</blockquote>
+
+<p>The answer is called a <strong>gradient</strong>.</p>
+
+<p>A gradient tells the optimizer how to change a weight.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gradient says weight is too high  → decrease it a little
+gradient says weight is too low   → increase it a little
+</code></pre></div></div>
+
+<p>Then the optimizer updates the weight.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new weight = old weight - learning rate × gradient
+</code></pre></div></div>
+
+<p>The <strong>learning rate</strong> controls how big each update step is.</p>
+
+<h3 id="backpropagation-through-dense-layers">Backpropagation through dense layers</h3>
+
+<p>Dense layers work like the neural network layers from earlier parts.</p>
+
+<p>Each connection has a weight.</p>
+
+<p>Each neuron has a bias.</p>
+
+<p>During backpropagation, the CNN updates:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dense weights
+dense biases
+</code></pre></div></div>
+
+<p>This helps the final classifier combine image clues better.</p>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ear clue + fur clue + eye clue → cat score
+snout clue + tail clue         → dog score
+</code></pre></div></div>
+
+<p>If those combinations caused a wrong prediction, backpropagation adjusts the dense layer weights.</p>
+
+<h3 id="backpropagation-through-flatten">Backpropagation through flatten</h3>
+
+<p>Flatten has no weights.</p>
+
+<p>So there is nothing to update.</p>
+
+<p>During the backward pass, flatten simply reshapes the gradient back to the earlier feature map shape.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forward:  feature maps → long vector
+backward: long vector gradient → feature map gradient
+</code></pre></div></div>
+
+<h3 id="backpropagation-through-max-pooling">Backpropagation through max pooling</h3>
+
+<p>Max pooling also has no weights.</p>
+
+<p>But it must still pass the gradient backward.</p>
+
+<p>During the forward pass, max pooling remembers which value was the maximum.</p>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[5, 10]
+[15, 16]
+</code></pre></div></div>
+
+<p>The winner was <code class="language-plaintext highlighter-rouge">16</code>.</p>
+
+<p>During the backward pass, the gradient goes back only to that winning position.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[0, 0]
+[0, gradient]
+</code></pre></div></div>
+
+<p>The other positions receive <code class="language-plaintext highlighter-rouge">0</code> because they were not selected by max pooling.</p>
+
+<h3 id="backpropagation-through-relu">Backpropagation through ReLU</h3>
+
+<p>ReLU also has no weights.</p>
+
+<p>But it controls whether gradients can pass backward.</p>
+
+<p>Forward pass:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>positive value → keep it
+negative value → turn it into 0
+</code></pre></div></div>
+
+<p>Backward pass:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>positive path → gradient passes through
+zero path     → gradient is blocked
+</code></pre></div></div>
+
+<p>So ReLU behaves like a gate.</p>
+
+<h3 id="backpropagation-through-convolution-filters">Backpropagation through convolution filters</h3>
+
+<p>Now the gradient reaches the convolution layer.</p>
+
+<p>This is where CNN-specific learning happens.</p>
+
+<p>A convolution filter was used many times while sliding across the image.</p>
+
+<p>The same filter looked at many different patches.</p>
+
+<p>So during backpropagation, the CNN collects learning signals from all those positions.</p>
+
+<p>Then it updates the filter weights.</p>
+
+<p>Simple idea:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>filter detected useful pattern    → strengthen useful weights
+filter caused wrong/confusing clue → adjust weights to reduce mistake
+</code></pre></div></div>
+
+<p>Each filter weight receives its own gradient.</p>
+
+<p>Each filter bias also receives a gradient.</p>
+
+<p>Then the optimizer updates them:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>old filter
+→ gradients from many image patches
+→ updated filter
+→ better pattern detector
+</code></pre></div></div>
+
+<p>This is how a random filter slowly becomes an edge detector, texture detector, curve detector, or object-part detector.</p>
+
+<h3 id="full-cnn-learning-flow">Full CNN learning flow</h3>
+
+<p>Forward pass:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>image
+→ filters create feature maps
+→ ReLU keeps useful positive signals
+→ pooling keeps strongest signals
+→ flatten creates a vector
+→ dense layers make prediction
+→ loss measures mistake
+</code></pre></div></div>
+
+<p>Backward pass:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>loss sends correction backward
+→ dense weights are updated
+→ flatten reshapes gradients
+→ pooling sends gradient to winning locations
+→ ReLU blocks gradients where values were zero
+→ convolution filters and biases are updated
+</code></pre></div></div>
+
+<h3 id="tiny-pytorch-gradient-check">Tiny PyTorch gradient check</h3>
+
+<p>This small example shows that convolution filters receive gradients.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">conv</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+<span class="n">target</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="nf">conv</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="p">((</span><span class="n">output</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">).</span><span class="nf">mean</span><span class="p">()</span>
+<span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">conv</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="n">grad</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([4, 3, 3, 3])
+</span><span class="nf">print</span><span class="p">(</span><span class="n">conv</span><span class="p">.</span><span class="n">bias</span><span class="p">.</span><span class="n">grad</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>    <span class="c1"># torch.Size([4])
+</span></code></pre></div></div>
+
+<p>The gradient shape matches the filter shape:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>4 filters, 3 input channels, 3 × 3 kernel
+</code></pre></div></div>
+
+<p>That means PyTorch calculated one gradient for every learnable filter weight.</p>
+
+<h3 id="final-beginner-friendly-summary">Final beginner-friendly summary</h3>
+
+<p>CNN learning means:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>make prediction
+→ measure mistake
+→ send mistake backward
+→ update filters and dense weights
+→ try again
+</code></pre></div></div>
+
+<p>The key idea is:</p>
+
+<blockquote>
+  <p>Backpropagation does not hand-code filters. It slowly adjusts filter weights so useful visual patterns become easier to detect.</p>
+</blockquote>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Forward pass asks, “What do I see?” Backward pass asks, “How should my filters change so I make fewer mistakes next time?”</p>
+</blockquote>
+
+<hr />
+
+<h2 id="12-a-modern-cnn-block">12. A modern CNN block</h2>
+
+<p>A beginner CNN block might look like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Conv → ReLU → Pool
+</code></pre></div></div>
+
+<p>A more modern block may look like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Conv → BatchNorm → ReLU → Conv → BatchNorm → ReLU → skip connection
+</code></pre></div></div>
+
+<p>Then pooling or downsampling may reduce the image size.</p>
+
+<p>So advanced CNNs are not completely new ideas. They are the same foundation with better training support.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Basic idea</th>
+      <th>Advanced improvement</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Convolution</td>
+      <td>More layers and better blocks</td>
+    </tr>
+    <tr>
+      <td>ReLU</td>
+      <td>Often still used after normalization</td>
+    </tr>
+    <tr>
+      <td>Pooling</td>
+      <td>Sometimes replaced by strided convolution</td>
+    </tr>
+    <tr>
+      <td>Dense classifier</td>
+      <td>Often reduced with global average pooling</td>
+    </tr>
+    <tr>
+      <td>Training from scratch</td>
+      <td>Often replaced with transfer learning</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="13-small-advanced-cnn-example-in-pytorch">13. Small advanced CNN example in PyTorch</h2>
+
+<p>Here is a small example that adds batch normalization, dropout, and global average pooling.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="k">class</span> <span class="nc">BetterCNN</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+
+        <span class="n">self</span><span class="p">.</span><span class="n">features</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">32</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="n">self</span><span class="p">.</span><span class="n">classifier</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">AdaptiveAvgPool2d</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Flatten</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Dropout</span><span class="p">(</span><span class="mf">0.3</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">features</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">classifier</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">BetterCNN</span><span class="p">()</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+<span class="n">output</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># torch.Size([1, 2])
+</span></code></pre></div></div>
+
+<p>Flow:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image
+→ Conv + BatchNorm + ReLU
+→ Pool
+→ Conv + BatchNorm + ReLU
+→ Pool
+→ Global average pooling
+→ Dropout
+→ Final class scores
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="14-final-mental-model">14. Final mental model</h2>
+
+<p>Advanced CNNs are not separate from basic CNNs.</p>
+
+<p>They are basic CNNs plus tools that make training better.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Simple meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Data augmentation</td>
+      <td>Show the model varied versions of images</td>
+    </tr>
+    <tr>
+      <td>Dropout</td>
+      <td>Randomly hide signals during training to reduce memorization</td>
+    </tr>
+    <tr>
+      <td>Batch normalization</td>
+      <td>Keep values stable between layers</td>
+    </tr>
+    <tr>
+      <td>Residual connection</td>
+      <td>Add a shortcut so deep networks train better</td>
+    </tr>
+    <tr>
+      <td>Global average pooling</td>
+      <td>Summarize each feature map instead of flattening everything</td>
+    </tr>
+    <tr>
+      <td>1x1 bottleneck convolution</td>
+      <td>Squeeze channels down, do the expensive work cheaply, expand back</td>
+    </tr>
+    <tr>
+      <td>CNN backpropagation</td>
+      <td>Send error signals backward to update filters, feature maps, ReLU gates, and pooling winners</td>
+    </tr>
+    <tr>
+      <td>Transfer learning</td>
+      <td>Reuse a CNN trained on a large dataset</td>
+    </tr>
+    <tr>
+      <td>Freezing</td>
+      <td>Keep some pretrained weights unchanged</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The full journey is:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Basic CNN
+→ handles images better than fully connected networks
+→ deeper CNN
+→ needs stable training and less overfitting
+→ advanced CNN tools
+→ better real-world performance
+</code></pre></div></div>
+
+<hr />
+
+<p>Previous: <strong><a href="/handbook/topics/convolutional-neural-networks">Part 9: Convolutional Neural Networks (CNNs)</a></strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">cnn</span>, <span class="tag">computer-vision</span>, <span class="tag">advanced-cnn</span>, <span class="tag">residual-networks</span>, <span class="tag">batch-normalization</span>, <span class="tag">dropout</span>, <span class="tag">transfer-learning</span>, <span class="tag">bottleneck</span>, <span class="tag">1x1-convolution</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
