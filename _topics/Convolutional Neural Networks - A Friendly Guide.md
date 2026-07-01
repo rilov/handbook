@@ -85,37 +85,85 @@ A CNN is built around these two facts.
 
 ## 2. Why not use a normal fully connected network?
 
-A normal fully connected layer connects every input number to every neuron.
+A normal fully connected layer is the kind of layer we used earlier with simple number lists.
 
-That was fine for the spam example:
+The phrase **fully connected** means:
+
+> Every input number gets its own connection to every neuron in the next layer.
+
+A **connection** means a learned weight.
+
+For example, suppose we have 5 input numbers and 3 neurons:
+
+```text
+5 input numbers × 3 neurons = 15 connections / weights
+```
+
+Each neuron looks at all 5 input numbers, but each neuron has its own 5 weights.
+
+That was easy to understand in the spam example:
 
 ```text
 5 input features → a few neurons
 ```
 
-But with an image, the input can contain more than 150,000 numbers.
+Only five numbers came in, so the model did not need many connections.
 
-If we connect every pixel to every neuron, two problems appear.
+Images are different. A `224 × 224` color image has:
 
-### Problem 1: Too many weights
+```text
+224 × 224 × 3 = 150,528 input numbers
+```
 
-If 150,528 pixel values connect to 1,000 neurons, the first layer alone needs more than 150 million weights.
+That means one image is not 5 numbers. It is 150,528 numbers.
 
-That is before the model has even learned edges, textures, or object parts.
+If we use a fully connected layer, every one of those input numbers connects to every neuron in the next layer.
 
-### Problem 2: No understanding of location
+### Problem 1: too many weights
 
-A fully connected layer treats every pixel as separate. It does not automatically know that two neighboring pixels are next to each other.
+Suppose the next layer has 1,000 neurons.
 
-But in images, location matters. A dark pixel next to a bright pixel may form an edge. A group of nearby edges may form an eye or ear.
+One neuron needs one weight for every input number:
+
+```text
+150,528 input numbers → 150,528 weights for one neuron
+```
+
+But we do not have one neuron. We have 1,000 neurons:
+
+```text
+150,528 weights per neuron × 1,000 neurons = 150,528,000 weights
+```
+
+So the first layer alone needs more than **150 million weights**.
+
+That is a lot of memory and computation, and the model has not even started learning useful image patterns like edges, textures, eyes, or ears.
+
+### Problem 2: no understanding of nearby pixels
+
+A fully connected layer treats every pixel as just another number.
+
+It does not automatically know that nearby pixels are related.
+
+But images depend on nearby pixels:
+
+```text
+dark pixel next to bright pixel → maybe an edge
+several edges together          → maybe a curve
+curves and textures together    → maybe an ear or eye
+```
+
+So location matters. Pixels next to each other often create meaningful visual patterns.
 
 <img src="{{ site.baseurl }}/assets/img/fc-vs-conv-connections.svg" alt="Side by side comparison: fully connected layer with dense mesh of connections versus a convolutional layer with a small local receptive field and shared weights" width="100%" />
 
-A CNN solves this by not looking at the whole image at once. Instead, it looks at a small patch, then slides to the next patch, then the next.
+A CNN solves both problems by looking at a small patch of the image instead of the whole image at once.
+
+It uses a small window, checks one patch, then slides to the next patch, then the next.
 
 That sliding operation is called **convolution**.
 
-> **Memory trick:** A fully connected layer looks at every pixel at once. A convolution layer uses a small window and moves it around the image.
+> **Memory trick:** Fully connected means every pixel talks to every neuron. Convolution means one small window moves around and reuses the same pattern detector everywhere.
 
 ---
 
