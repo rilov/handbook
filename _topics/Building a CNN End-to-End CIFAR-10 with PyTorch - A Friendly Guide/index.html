@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/deep-learning">Deep Learning</a> &mdash;
+    </nav>
+    <h2>Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/deep-learning">Deep Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="part-12-building-a-cnn-end-to-end--cifar-10-with-pytorch">Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch</h1>
+
+<h2 id="what-this-guide-covers">What this guide covers</h2>
+
+<p>The previous guides explained how CNNs work and how to design the training pipeline.</p>
+
+<p>This guide puts it all together in one working PyTorch project using <strong>CIFAR-10</strong> — the standard beginner CNN benchmark dataset.</p>
+
+<p>By the end you will have:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>✓ Loaded and preprocessed CIFAR-10
+✓ Defined a CNN model
+✓ Trained it with a validation loop
+✓ Evaluated it with accuracy, confusion matrix, and classification report
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="1-what-is-cifar-10">1. What is CIFAR-10?</h2>
+
+<p><strong>CIFAR-10</strong> is a dataset of 60,000 small color images across 10 classes.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Property</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Total images</td>
+      <td>60,000</td>
+    </tr>
+    <tr>
+      <td>Training images</td>
+      <td>50,000</td>
+    </tr>
+    <tr>
+      <td>Test images</td>
+      <td>10,000</td>
+    </tr>
+    <tr>
+      <td>Image size</td>
+      <td>32 × 32 pixels</td>
+    </tr>
+    <tr>
+      <td>Channels</td>
+      <td>3 (RGB color)</td>
+    </tr>
+    <tr>
+      <td>Classes</td>
+      <td>10</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The 10 classes are:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0: airplane    1: automobile  2: bird    3: cat   4: deer
+5: dog         6: frog        7: horse   8: ship  9: truck
+</code></pre></div></div>
+
+<p>Each class has exactly 6,000 images, so the dataset is <strong>balanced</strong>.</p>
+
+<p>CIFAR-10 is small enough to train quickly on a laptop but complex enough to need a real CNN — simple fully connected networks do not work well on it.</p>
+
+<hr />
+
+<h2 id="2-setup">2. Setup</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="n">torch.optim</span> <span class="k">as</span> <span class="n">optim</span>
+<span class="kn">import</span> <span class="n">torchvision</span>
+<span class="kn">import</span> <span class="n">torchvision.transforms</span> <span class="k">as</span> <span class="n">transforms</span>
+<span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">random_split</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">classification_report</span><span class="p">,</span> <span class="n">confusion_matrix</span>
+</code></pre></div></div>
+
+<p>Check if a GPU is available:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">device</span><span class="p">(</span><span class="sh">"</span><span class="s">cuda</span><span class="sh">"</span> <span class="k">if</span> <span class="n">torch</span><span class="p">.</span><span class="n">cuda</span><span class="p">.</span><span class="nf">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="sh">"</span><span class="s">cpu</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Using device: </span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-load-and-preprocess-cifar-10">3. Load and preprocess CIFAR-10</h2>
+
+<h3 id="transforms">Transforms</h3>
+
+<p>Training images get augmentation. Validation and test images get only normalization.</p>
+
+<p>The normalization values are the CIFAR-10 channel means and standard deviations:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">train_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="p">.</span><span class="nc">Compose</span><span class="p">([</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">RandomHorizontalFlip</span><span class="p">(),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">RandomCrop</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">ToTensor</span><span class="p">(),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">Normalize</span><span class="p">(</span>
+        <span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4914</span><span class="p">,</span> <span class="mf">0.4822</span><span class="p">,</span> <span class="mf">0.4465</span><span class="p">],</span>
+        <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.2470</span><span class="p">,</span> <span class="mf">0.2435</span><span class="p">,</span> <span class="mf">0.2616</span><span class="p">]</span>
+    <span class="p">),</span>
+<span class="p">])</span>
+
+<span class="n">test_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="p">.</span><span class="nc">Compose</span><span class="p">([</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">ToTensor</span><span class="p">(),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">Normalize</span><span class="p">(</span>
+        <span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4914</span><span class="p">,</span> <span class="mf">0.4822</span><span class="p">,</span> <span class="mf">0.4465</span><span class="p">],</span>
+        <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.2470</span><span class="p">,</span> <span class="mf">0.2435</span><span class="p">,</span> <span class="mf">0.2616</span><span class="p">]</span>
+    <span class="p">),</span>
+<span class="p">])</span>
+</code></pre></div></div>
+
+<h3 id="download-and-split">Download and split</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">full_train</span> <span class="o">=</span> <span class="n">torchvision</span><span class="p">.</span><span class="n">datasets</span><span class="p">.</span><span class="nc">CIFAR10</span><span class="p">(</span>
+    <span class="n">root</span><span class="o">=</span><span class="sh">'</span><span class="s">./data</span><span class="sh">'</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">train_transform</span>
+<span class="p">)</span>
+<span class="n">test_set</span> <span class="o">=</span> <span class="n">torchvision</span><span class="p">.</span><span class="n">datasets</span><span class="p">.</span><span class="nc">CIFAR10</span><span class="p">(</span>
+    <span class="n">root</span><span class="o">=</span><span class="sh">'</span><span class="s">./data</span><span class="sh">'</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">test_transform</span>
+<span class="p">)</span>
+
+<span class="c1"># Split training into train (45,000) and validation (5,000)
+</span><span class="n">train_size</span> <span class="o">=</span> <span class="mi">45000</span>
+<span class="n">val_size</span>   <span class="o">=</span> <span class="mi">5000</span>
+<span class="n">train_set</span><span class="p">,</span> <span class="n">val_set</span> <span class="o">=</span> <span class="nf">random_split</span><span class="p">(</span><span class="n">full_train</span><span class="p">,</span> <span class="p">[</span><span class="n">train_size</span><span class="p">,</span> <span class="n">val_size</span><span class="p">])</span>
+
+<span class="c1"># Apply test transform to validation set
+</span><span class="n">val_set</span><span class="p">.</span><span class="n">dataset</span><span class="p">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">test_transform</span>
+</code></pre></div></div>
+
+<h3 id="dataloaders">DataLoaders</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">train_loader</span> <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>  <span class="n">num_workers</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">val_loader</span>   <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">val_set</span><span class="p">,</span>   <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">test_loader</span>  <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">test_set</span><span class="p">,</span>  <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">classes</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">airplane</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">automobile</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">bird</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">cat</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">deer</span><span class="sh">'</span><span class="p">,</span>
+           <span class="sh">'</span><span class="s">dog</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">frog</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">horse</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">ship</span><span class="sh">'</span><span class="p">,</span><span class="sh">'</span><span class="s">truck</span><span class="sh">'</span><span class="p">]</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-define-the-cnn-model">4. Define the CNN model</h2>
+
+<p>This is a simple CNN with three convolution blocks followed by a small classifier.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">CIFAR10CNN</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+
+        <span class="n">self</span><span class="p">.</span><span class="n">features</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="c1"># Block 1
+</span>            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">32</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">32</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>       <span class="c1"># 32x32 → 16x16
+</span>            <span class="n">nn</span><span class="p">.</span><span class="nc">Dropout</span><span class="p">(</span><span class="mf">0.25</span><span class="p">),</span>
+
+            <span class="c1"># Block 2
+</span>            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>       <span class="c1"># 16x16 → 8x8
+</span>            <span class="n">nn</span><span class="p">.</span><span class="nc">Dropout</span><span class="p">(</span><span class="mf">0.25</span><span class="p">),</span>
+
+            <span class="c1"># Block 3
+</span>            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">BatchNorm2d</span><span class="p">(</span><span class="mi">128</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">MaxPool2d</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>       <span class="c1"># 8x8 → 4x4
+</span>            <span class="n">nn</span><span class="p">.</span><span class="nc">Dropout</span><span class="p">(</span><span class="mf">0.25</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="n">self</span><span class="p">.</span><span class="n">classifier</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Flatten</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">128</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Dropout</span><span class="p">(</span><span class="mf">0.5</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">features</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">classifier</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span>
+</code></pre></div></div>
+
+<h3 id="why-this-shape">Why this shape?</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:      3 × 32 × 32
+Block 1:   32 × 16 × 16  (after MaxPool)
+Block 2:   64 ×  8 ×  8  (after MaxPool)
+Block 3:  128 ×  4 ×  4  (after MaxPool)
+Flatten:  128 × 4 × 4 = 2048
+Dense:    256
+Output:   10
+</code></pre></div></div>
+
+<p>Count the trainable parameters:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="nc">CIFAR10CNN</span><span class="p">().</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">total</span> <span class="o">=</span> <span class="nf">sum</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="nf">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">()</span> <span class="k">if</span> <span class="n">p</span><span class="p">.</span><span class="n">requires_grad</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Trainable parameters: </span><span class="si">{</span><span class="n">total</span><span class="si">:</span><span class="p">,</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-loss-function-and-optimizer">5. Loss function and optimizer</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">CrossEntropyLoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+<span class="n">scheduler</span> <span class="o">=</span> <span class="n">optim</span><span class="p">.</span><span class="n">lr_scheduler</span><span class="p">.</span><span class="nc">StepLR</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">step_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</code></pre></div></div>
+
+<ul>
+  <li><strong>CrossEntropyLoss</strong> — standard for multiclass classification. Combines softmax and log loss.</li>
+  <li><strong>Adam</strong> — adaptive optimizer, works well as a default.</li>
+  <li><strong>StepLR</strong> — halves the learning rate every 10 epochs to fine-tune later.</li>
+</ul>
+
+<hr />
+
+<h2 id="6-training-loop">6. Training loop</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">train_epoch</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">loader</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">train</span><span class="p">()</span>
+    <span class="n">total_loss</span><span class="p">,</span> <span class="n">correct</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">images</span><span class="p">,</span> <span class="n">labels</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+        <span class="n">images</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">images</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span> <span class="n">labels</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+        <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+
+        <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">predicted</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">.</span><span class="nf">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">correct</span> <span class="o">+=</span> <span class="n">predicted</span><span class="p">.</span><span class="nf">eq</span><span class="p">(</span><span class="n">labels</span><span class="p">).</span><span class="nf">sum</span><span class="p">().</span><span class="nf">item</span><span class="p">()</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="n">labels</span><span class="p">.</span><span class="nf">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">avg_loss</span> <span class="o">=</span> <span class="n">total_loss</span> <span class="o">/</span> <span class="nf">len</span><span class="p">(</span><span class="n">loader</span><span class="p">)</span>
+    <span class="n">accuracy</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="n">correct</span> <span class="o">/</span> <span class="n">total</span>
+    <span class="k">return</span> <span class="n">avg_loss</span><span class="p">,</span> <span class="n">accuracy</span>
+
+
+<span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">loader</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+    <span class="n">total_loss</span><span class="p">,</span> <span class="n">correct</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+    <span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">images</span><span class="p">,</span> <span class="n">labels</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+            <span class="n">images</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">images</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span> <span class="n">labels</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+
+            <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">predicted</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">.</span><span class="nf">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">correct</span> <span class="o">+=</span> <span class="n">predicted</span><span class="p">.</span><span class="nf">eq</span><span class="p">(</span><span class="n">labels</span><span class="p">).</span><span class="nf">sum</span><span class="p">().</span><span class="nf">item</span><span class="p">()</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="n">labels</span><span class="p">.</span><span class="nf">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">avg_loss</span> <span class="o">=</span> <span class="n">total_loss</span> <span class="o">/</span> <span class="nf">len</span><span class="p">(</span><span class="n">loader</span><span class="p">)</span>
+    <span class="n">accuracy</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="n">correct</span> <span class="o">/</span> <span class="n">total</span>
+    <span class="k">return</span> <span class="n">avg_loss</span><span class="p">,</span> <span class="n">accuracy</span>
+</code></pre></div></div>
+
+<h3 id="run-training">Run training</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">30</span>
+<span class="n">train_losses</span><span class="p">,</span> <span class="n">val_losses</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="n">train_accs</span><span class="p">,</span> <span class="n">val_accs</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_epochs</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="n">train_loss</span><span class="p">,</span> <span class="n">train_acc</span> <span class="o">=</span> <span class="nf">train_epoch</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">train_loader</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+    <span class="n">val_loss</span><span class="p">,</span>   <span class="n">val_acc</span>   <span class="o">=</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">val_loader</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+    <span class="n">scheduler</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+
+    <span class="n">train_losses</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">train_loss</span><span class="p">)</span>
+    <span class="n">val_losses</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">val_loss</span><span class="p">)</span>
+    <span class="n">train_accs</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">train_acc</span><span class="p">)</span>
+    <span class="n">val_accs</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">val_acc</span><span class="p">)</span>
+
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">:</span><span class="mi">2</span><span class="n">d</span><span class="si">}</span><span class="s">/</span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s"> | </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">Train loss: </span><span class="si">{</span><span class="n">train_loss</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s">, acc: </span><span class="si">{</span><span class="n">train_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% | </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">Val loss: </span><span class="si">{</span><span class="n">val_loss</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s">, acc: </span><span class="si">{</span><span class="n">val_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="7-plot-training-curves">7. Plot training curves</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+
+<span class="n">ax1</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">train_losses</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Train</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax1</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">val_losses</span><span class="p">,</span>   <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Validation</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax1</span><span class="p">.</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Loss</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax1</span><span class="p">.</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Epoch</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax1</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+
+<span class="n">ax2</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">train_accs</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Train</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax2</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">val_accs</span><span class="p">,</span>   <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Validation</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax2</span><span class="p">.</span><span class="nf">set_title</span><span class="p">(</span><span class="sh">'</span><span class="s">Accuracy (%)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax2</span><span class="p">.</span><span class="nf">set_xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Epoch</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">ax2</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>What to look for:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Good: train loss ↓, val loss ↓ together
+Overfitting: train loss ↓, val loss ↑ (gap opens up)
+Underfitting: both losses stay high
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="8-evaluate-on-the-test-set">8. Evaluate on the test set</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test_loss</span><span class="p">,</span> <span class="n">test_acc</span> <span class="o">=</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">test_loader</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Test accuracy: </span><span class="si">{</span><span class="n">test_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="full-classification-report">Full classification report</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">all_preds</span><span class="p">,</span> <span class="n">all_labels</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+<span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">images</span><span class="p">,</span> <span class="n">labels</span> <span class="ow">in</span> <span class="n">test_loader</span><span class="p">:</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">images</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">predicted</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">.</span><span class="nf">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">all_preds</span><span class="p">.</span><span class="nf">extend</span><span class="p">(</span><span class="n">predicted</span><span class="p">.</span><span class="nf">cpu</span><span class="p">().</span><span class="nf">numpy</span><span class="p">())</span>
+        <span class="n">all_labels</span><span class="p">.</span><span class="nf">extend</span><span class="p">(</span><span class="n">labels</span><span class="p">.</span><span class="nf">numpy</span><span class="p">())</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">all_labels</span><span class="p">,</span> <span class="n">all_preds</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="n">classes</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>This prints precision, recall, and F1 for every class.</p>
+
+<h3 id="confusion-matrix">Confusion matrix</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">cm</span> <span class="o">=</span> <span class="nf">confusion_matrix</span><span class="p">(</span><span class="n">all_labels</span><span class="p">,</span> <span class="n">all_preds</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Reading the confusion matrix:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Row = actual class
+Column = predicted class
+Diagonal = correct predictions
+Off-diagonal = mistakes
+</code></pre></div></div>
+
+<p>If the model confuses cats and dogs often, you will see high values in that off-diagonal cell.</p>
+
+<hr />
+
+<h2 id="9-save-and-load-the-model">9. Save and load the model</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Save
+</span><span class="n">torch</span><span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">state_dict</span><span class="p">(),</span> <span class="sh">'</span><span class="s">cifar10_cnn.pth</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Load
+</span><span class="n">model_loaded</span> <span class="o">=</span> <span class="nc">CIFAR10CNN</span><span class="p">().</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">model_loaded</span><span class="p">.</span><span class="nf">load_state_dict</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="sh">'</span><span class="s">cifar10_cnn.pth</span><span class="sh">'</span><span class="p">))</span>
+<span class="n">model_loaded</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="10-predict-on-a-single-image">10. Predict on a single image</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">PIL.Image</span>
+
+<span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">image_path</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="p">.</span><span class="n">Image</span><span class="p">.</span><span class="nf">open</span><span class="p">(</span><span class="n">image_path</span><span class="p">).</span><span class="nf">convert</span><span class="p">(</span><span class="sh">'</span><span class="s">RGB</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">tensor</span> <span class="o">=</span> <span class="nf">transform</span><span class="p">(</span><span class="n">img</span><span class="p">).</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+        <span class="n">probs</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">conf</span><span class="p">,</span> <span class="n">pred</span> <span class="o">=</span> <span class="n">probs</span><span class="p">.</span><span class="nf">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Predicted: </span><span class="si">{</span><span class="n">classes</span><span class="p">[</span><span class="n">pred</span><span class="p">.</span><span class="nf">item</span><span class="p">()]</span><span class="si">}</span><span class="s">  (</span><span class="si">{</span><span class="n">conf</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">% confidence)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="11-expected-results">11. Expected results</h2>
+
+<p>With this architecture and 30 epochs:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Typical value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Test accuracy</td>
+      <td>~80–85%</td>
+    </tr>
+    <tr>
+      <td>Training time (CPU)</td>
+      <td>~30–60 min</td>
+    </tr>
+    <tr>
+      <td>Training time (GPU)</td>
+      <td>~3–5 min</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Accuracy above 90% requires deeper networks, more augmentation, or techniques like ResNet or learning rate warm-up.</p>
+
+<hr />
+
+<h2 id="12-summary">12. Summary</h2>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Load CIFAR-10
+→ apply augmentation to training set only
+→ split into train / validation / test
+→ define CNN (conv blocks + classifier)
+→ train with CrossEntropyLoss and Adam
+→ monitor val loss each epoch
+→ evaluate on test set
+→ check confusion matrix per class
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Code</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Download dataset</td>
+      <td><code class="language-plaintext highlighter-rouge">torchvision.datasets.CIFAR10</code></td>
+    </tr>
+    <tr>
+      <td>Augment training</td>
+      <td><code class="language-plaintext highlighter-rouge">transforms.RandomHorizontalFlip</code>, <code class="language-plaintext highlighter-rouge">RandomCrop</code></td>
+    </tr>
+    <tr>
+      <td>Normalize</td>
+      <td><code class="language-plaintext highlighter-rouge">transforms.Normalize</code> with CIFAR-10 stats</td>
+    </tr>
+    <tr>
+      <td>Define model</td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Conv2d</code>, <code class="language-plaintext highlighter-rouge">nn.BatchNorm2d</code>, <code class="language-plaintext highlighter-rouge">nn.MaxPool2d</code>, <code class="language-plaintext highlighter-rouge">nn.Dropout</code></td>
+    </tr>
+    <tr>
+      <td>Train</td>
+      <td><code class="language-plaintext highlighter-rouge">loss.backward()</code>, <code class="language-plaintext highlighter-rouge">optimizer.step()</code></td>
+    </tr>
+    <tr>
+      <td>Evaluate</td>
+      <td><code class="language-plaintext highlighter-rouge">torch.no_grad()</code>, <code class="language-plaintext highlighter-rouge">classification_report</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="what-to-read-next">What to read next</h2>
+
+<ul>
+  <li><a href="/handbook/topics/cnn-training-pipeline-transfer-learning-and-visualization">Part 11: CNN Training Pipeline, Transfer Learning, and Visualization</a> — the full pipeline explained conceptually</li>
+  <li><a href="/handbook/topics/cnn-applications-image-classification-object-detection-segmentation">Part 13: CNN Applications</a> — image classification, object detection, segmentation, facial recognition, OCR</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">cnn</span>, <span class="tag">computer-vision</span>, <span class="tag">cifar-10</span>, <span class="tag">pytorch</span>, <span class="tag">image-classification</span>, <span class="tag">training-loop</span>, <span class="tag">evaluation</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

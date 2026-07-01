@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Part 13: CNN Applications — Image Classification, Object Detection, Segmentation, Facial Recognition, and OCR</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/deep-learning">Deep Learning</a> &mdash;
+    </nav>
+    <h2>Part 13: CNN Applications — Image Classification, Object Detection, Segmentation, Facial Recognition, and OCR</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/deep-learning">Deep Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="part-13-cnn-applications--image-classification-object-detection-segmentation-facial-recognition-and-ocr">Part 13: CNN Applications — Image Classification, Object Detection, Segmentation, Facial Recognition, and OCR</h1>
+
+<h2 id="what-this-guide-covers">What this guide covers</h2>
+
+<p>CNNs power almost every modern computer vision application.</p>
+
+<p>This guide explains the five main application areas:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Image classification   — what is in this image?
+2. Object detection       — where is each object in this image?
+3. Image segmentation     — which pixels belong to each object?
+4. Facial recognition     — who is this person?
+5. OCR                    — what text is in this image?
+</code></pre></div></div>
+
+<p>Each section explains the task, how a CNN solves it, key architectures, and real-world uses.</p>
+
+<hr />
+
+<h2 id="1-image-classification">1. Image classification</h2>
+
+<h3 id="what-is-it">What is it?</h3>
+
+<p>Given an image, predict which class it belongs to.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  one image
+Output: one label (e.g. "cat", "truck", "airplane")
+</code></pre></div></div>
+
+<p>This is the simplest CNN task and the one covered in previous guides.</p>
+
+<h3 id="how-a-cnn-solves-it">How a CNN solves it</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image
+→ convolution layers extract features (edges, textures, shapes)
+→ pooling reduces spatial size
+→ flatten
+→ dense layers
+→ softmax → probability for each class
+</code></pre></div></div>
+
+<h3 id="real-world-examples">Real-world examples</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use case</th>
+      <th>Classes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Medical image diagnosis</td>
+      <td>Tumor present / not present</td>
+    </tr>
+    <tr>
+      <td>Quality control in manufacturing</td>
+      <td>Defect / no defect</td>
+    </tr>
+    <tr>
+      <td>Plant disease detection</td>
+      <td>Healthy / diseased / which disease</td>
+    </tr>
+    <tr>
+      <td>Satellite image classification</td>
+      <td>Forest / water / urban / farmland</td>
+    </tr>
+    <tr>
+      <td>Food recognition</td>
+      <td>Pizza / salad / burger / …</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="key-architectures">Key architectures</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Architecture</th>
+      <th>Year</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>AlexNet</td>
+      <td>2012</td>
+      <td>First deep CNN to win ImageNet</td>
+    </tr>
+    <tr>
+      <td>VGG16</td>
+      <td>2014</td>
+      <td>Simple and deep, 16 weight layers</td>
+    </tr>
+    <tr>
+      <td>ResNet</td>
+      <td>2015</td>
+      <td>Residual connections, up to 152 layers</td>
+    </tr>
+    <tr>
+      <td>EfficientNet</td>
+      <td>2019</td>
+      <td>Scaled depth, width, resolution together</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="in-pytorch">In PyTorch</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torchvision.models</span> <span class="k">as</span> <span class="n">models</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="p">.</span><span class="nf">resnet50</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="n">fc</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="2-object-detection">2. Object detection</h2>
+
+<h3 id="what-is-it-1">What is it?</h3>
+
+<p>Given an image, find every object in it and draw a bounding box around each one.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  one image
+Output: list of (class label, bounding box coordinates, confidence score)
+</code></pre></div></div>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image of a street scene
+→ [car at (120, 80, 200, 160), confidence 0.95]
+   [person at (50, 30, 90, 180), confidence 0.88]
+   [bicycle at (300, 100, 380, 200), confidence 0.72]
+</code></pre></div></div>
+
+<h3 id="how-it-differs-from-classification">How it differs from classification</h3>
+
+<p>Classification gives one label per image.</p>
+
+<p>Detection gives many labels and locations per image.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Classification: "there is a car in this image"
+Detection:      "there is a car at these pixel coordinates"
+</code></pre></div></div>
+
+<h3 id="how-a-cnn-solves-it-1">How a CNN solves it</h3>
+
+<p>Modern detectors use a CNN as a <strong>backbone</strong> to extract features, then add a <strong>detection head</strong> that predicts boxes and class scores.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image
+→ CNN backbone (ResNet, VGG) → feature maps
+→ detection head → bounding boxes + class scores
+→ non-maximum suppression → remove duplicate boxes
+→ final detections
+</code></pre></div></div>
+
+<h3 id="key-architectures-1">Key architectures</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Architecture</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>YOLO (You Only Look Once)</td>
+      <td>Very fast, good for real-time video</td>
+    </tr>
+    <tr>
+      <td>SSD (Single Shot Detector)</td>
+      <td>Fast single-pass detection</td>
+    </tr>
+    <tr>
+      <td>Faster R-CNN</td>
+      <td>Two-stage: propose regions then classify</td>
+    </tr>
+    <tr>
+      <td>DETR</td>
+      <td>Transformer-based detection, no anchor boxes</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-examples-1">Real-world examples</h3>
+
+<ul>
+  <li>Self-driving cars detecting pedestrians, vehicles, traffic signs</li>
+  <li>Security cameras detecting intruders</li>
+  <li>Retail shelf monitoring detecting products</li>
+  <li>Medical imaging detecting tumors or lesions in scans</li>
+</ul>
+
+<h3 id="in-pytorch-1">In PyTorch</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torchvision.models.detection</span> <span class="k">as</span> <span class="n">detection</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">detection</span><span class="p">.</span><span class="nf">fasterrcnn_resnet50_fpn</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">predictions</span> <span class="o">=</span> <span class="nf">model</span><span class="p">([</span><span class="n">image_tensor</span><span class="p">])</span>
+
+<span class="c1"># predictions[0] contains boxes, labels, scores
+</span><span class="n">boxes</span>  <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">boxes</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">labels</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">scores</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">scores</span><span class="sh">'</span><span class="p">]</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-image-segmentation">3. Image segmentation</h2>
+
+<h3 id="what-is-it-2">What is it?</h3>
+
+<p>Given an image, assign a class label to <strong>every single pixel</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  one image (H × W × 3)
+Output: one label map (H × W) where each pixel has a class
+</code></pre></div></div>
+
+<p>There are two main types:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>What it does</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Semantic segmentation</td>
+      <td>Labels every pixel with its class</td>
+      <td>All cars are “car”, all roads are “road”</td>
+    </tr>
+    <tr>
+      <td>Instance segmentation</td>
+      <td>Labels every pixel AND tells individual objects apart</td>
+      <td>Car 1, Car 2, Person 1, Person 2</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="how-a-cnn-solves-it-2">How a CNN solves it</h3>
+
+<p>Segmentation networks produce an output the <strong>same size as the input</strong>.</p>
+
+<p>They use an <strong>encoder-decoder</strong> structure:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image
+→ Encoder (CNN backbone): shrink spatial size, extract features
+→ Decoder: expand back to original size, assign class per pixel
+→ Output: H × W label map
+</code></pre></div></div>
+
+<p>The decoder uses <strong>transposed convolutions</strong> (also called upsampling or deconvolution) to grow the feature maps back to the original image size.</p>
+
+<h3 id="key-architectures-2">Key architectures</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Architecture</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>FCN (Fully Convolutional Network)</td>
+      <td>First end-to-end segmentation network</td>
+    </tr>
+    <tr>
+      <td>U-Net</td>
+      <td>Encoder-decoder with skip connections; widely used in medical imaging</td>
+    </tr>
+    <tr>
+      <td>DeepLab</td>
+      <td>Uses dilated convolutions to capture context without shrinking resolution</td>
+    </tr>
+    <tr>
+      <td>Mask R-CNN</td>
+      <td>Adds segmentation mask output on top of Faster R-CNN detection</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-examples-2">Real-world examples</h3>
+
+<ul>
+  <li>Autonomous driving: segment road, cars, pedestrians, sky</li>
+  <li>Medical imaging: segment tumor boundaries in MRI scans</li>
+  <li>Satellite imagery: segment land use (forest, water, buildings)</li>
+  <li>Portrait mode photography: separate person from background</li>
+</ul>
+
+<h3 id="simple-comparison-classification-vs-detection-vs-segmentation">Simple comparison: classification vs detection vs segmentation</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Classification: is there a cat? → YES
+Detection:      where is the cat? → bounding box at (x1, y1, x2, y2)
+Segmentation:   which pixels are the cat? → pixel-level mask
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-facial-recognition-and-analysis">4. Facial recognition and analysis</h2>
+
+<h3 id="what-is-it-3">What is it?</h3>
+
+<p>Facial recognition identifies <strong>who</strong> a person is from their face.</p>
+
+<p>Facial analysis extracts other attributes from a face: age, emotion, gender, gaze direction.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  image containing one or more faces
+Output: identity / attribute predictions
+</code></pre></div></div>
+
+<h3 id="how-it-works">How it works</h3>
+
+<p>The pipeline typically has three stages:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stage 1: Face detection
+→ find all face regions in the image (bounding boxes)
+→ uses object detection CNN
+
+Stage 2: Face alignment
+→ normalize each face to a standard position and size
+→ align eyes, nose, mouth to fixed landmarks
+
+Stage 3: Feature extraction and recognition
+→ CNN encodes the face into a compact feature vector (embedding)
+→ compare embedding to database of known people
+→ closest match = predicted identity
+</code></pre></div></div>
+
+<h3 id="face-embeddings">Face embeddings</h3>
+
+<p>A face embedding is a fixed-length vector (e.g. 128 or 512 numbers) that represents the face.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Photo of Alice → CNN → [0.2, -0.5, 0.8, ..., 0.3]  (128 numbers)
+Photo of Alice (different angle) → CNN → [0.19, -0.48, 0.81, ..., 0.31]  (very similar)
+Photo of Bob   → CNN → [0.9, 0.3, -0.2, ..., 0.7]   (very different)
+</code></pre></div></div>
+
+<p>Two photos of the same person produce similar embeddings. Different people produce distant embeddings.</p>
+
+<p>Recognition: compare embeddings using a distance metric (cosine similarity or Euclidean distance).</p>
+
+<h3 id="key-architectures-3">Key architectures</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Architecture</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DeepFace (Meta)</td>
+      <td>One of the first deep CNNs for face recognition</td>
+    </tr>
+    <tr>
+      <td>FaceNet (Google)</td>
+      <td>Learns embeddings using triplet loss</td>
+    </tr>
+    <tr>
+      <td>ArcFace</td>
+      <td>State-of-the-art face recognition, angular margin loss</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="facial-analysis-tasks">Facial analysis tasks</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Output</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Emotion recognition</td>
+      <td>Happy / sad / angry / surprised / neutral</td>
+    </tr>
+    <tr>
+      <td>Age estimation</td>
+      <td>Estimated age in years</td>
+    </tr>
+    <tr>
+      <td>Gaze estimation</td>
+      <td>Where the person is looking</td>
+    </tr>
+    <tr>
+      <td>Landmark detection</td>
+      <td>Positions of eyes, nose, mouth corners</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-examples-3">Real-world examples</h3>
+
+<ul>
+  <li>Phone unlock using face ID</li>
+  <li>Airport passport control</li>
+  <li>Attendance tracking systems</li>
+  <li>Emotion analysis for customer feedback</li>
+  <li>Driver monitoring systems (detecting drowsiness)</li>
+</ul>
+
+<hr />
+
+<h2 id="5-optical-character-recognition-ocr">5. Optical Character Recognition (OCR)</h2>
+
+<h3 id="what-is-it-4">What is it?</h3>
+
+<p>OCR converts images containing text into machine-readable text.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  image with text (photo, scan, screenshot)
+Output: extracted text string
+</code></pre></div></div>
+
+<h3 id="how-it-works-1">How it works</h3>
+
+<p>OCR with CNNs typically has two stages:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stage 1: Text detection
+→ CNN detects regions containing text
+→ outputs bounding boxes around words or lines
+
+Stage 2: Text recognition
+→ CNN + sequence model reads each detected region
+→ outputs the text string
+</code></pre></div></div>
+
+<p>The recognition stage uses a CNN to extract visual features from the text region, then a recurrent model (like LSTM) or a transformer to decode the character sequence.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Detected text region image
+→ CNN: extract column-by-column features
+→ LSTM: decode sequence of characters
+→ CTC loss: handle variable-length output
+→ "Hello World"
+</code></pre></div></div>
+
+<h3 id="key-architectures-4">Key architectures</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Architecture</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CRNN</td>
+      <td>CNN + RNN, standard for text recognition</td>
+    </tr>
+    <tr>
+      <td>EAST</td>
+      <td>Efficient text detection network</td>
+    </tr>
+    <tr>
+      <td>Tesseract</td>
+      <td>Classic OCR engine, now with deep learning backend</td>
+    </tr>
+    <tr>
+      <td>TrOCR (Microsoft)</td>
+      <td>Transformer-based OCR, state of the art</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="real-world-examples-4">Real-world examples</h3>
+
+<ul>
+  <li>Scanning paper documents into editable text</li>
+  <li>Reading license plates</li>
+  <li>Extracting text from photos for translation</li>
+  <li>Processing invoices and receipts automatically</li>
+  <li>Digitizing historical books and newspapers</li>
+  <li>Reading handwritten forms</li>
+</ul>
+
+<hr />
+
+<h2 id="6-comparison-which-task-for-which-problem">6. Comparison: which task for which problem?</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>You want to know…</th>
+      <th>Task</th>
+      <th>Output</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>What is in this image?</td>
+      <td>Classification</td>
+      <td>One label</td>
+    </tr>
+    <tr>
+      <td>Where are the objects?</td>
+      <td>Detection</td>
+      <td>Bounding boxes + labels</td>
+    </tr>
+    <tr>
+      <td>Which pixels belong to which object?</td>
+      <td>Segmentation</td>
+      <td>Pixel-level mask</td>
+    </tr>
+    <tr>
+      <td>Who is this person?</td>
+      <td>Facial recognition</td>
+      <td>Identity or embedding</td>
+    </tr>
+    <tr>
+      <td>What does the text say?</td>
+      <td>OCR</td>
+      <td>Text string</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="7-summary">7. Summary</h2>
+
+<p>All five applications are built on the same CNN foundation:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Convolution layers extract features
+→ pooling reduces size
+→ task-specific head produces the output
+</code></pre></div></div>
+
+<p>What changes is the output format and the loss function:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Application</th>
+      <th>Output</th>
+      <th>Loss</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Classification</td>
+      <td>Class probabilities</td>
+      <td>CrossEntropyLoss</td>
+    </tr>
+    <tr>
+      <td>Detection</td>
+      <td>Boxes + class scores</td>
+      <td>Box regression + classification loss</td>
+    </tr>
+    <tr>
+      <td>Segmentation</td>
+      <td>Per-pixel class map</td>
+      <td>CrossEntropyLoss per pixel</td>
+    </tr>
+    <tr>
+      <td>Face recognition</td>
+      <td>Embedding vector</td>
+      <td>Triplet loss or ArcFace loss</td>
+    </tr>
+    <tr>
+      <td>OCR</td>
+      <td>Character sequence</td>
+      <td>CTC loss</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="what-to-read-next">What to read next</h2>
+
+<ul>
+  <li><a href="/handbook/topics/building-a-cnn-end-to-end-cifar-10-with-pytorch">Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch</a> — hands-on implementation</li>
+  <li><a href="/handbook/topics/cnn-training-pipeline-transfer-learning-and-visualization">Part 11: CNN Training Pipeline, Transfer Learning, and Visualization</a> — training strategy and Grad-CAM</li>
+  <li><a href="/handbook/topics/advanced-convolutional-neural-networks">Part 10: Advanced Convolutional Neural Networks</a> — dropout, batch norm, residual connections</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">cnn</span>, <span class="tag">computer-vision</span>, <span class="tag">image-classification</span>, <span class="tag">object-detection</span>, <span class="tag">image-segmentation</span>, <span class="tag">facial-recognition</span>, <span class="tag">ocr</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
