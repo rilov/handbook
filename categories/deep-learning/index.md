@@ -16,6 +16,7 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 6. **[Part 6: Forward and Backward Propagation]({{ site.baseurl }}/topics/forward-and-backward-propagation)** — A worked numerical example showing exactly how forward prediction and backpropagation with the chain rule update a two-layer spam model.
 7. **[Part 7: Cognitive Analogies — Brain-inspired Learning]({{ site.baseurl }}/topics/cognitive-analogies-brain-inspired-learning)** — How spam detection mirrors neurons, synapses, memory, attention, and generalisation in the brain.
 8. **[Part 8: Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** — Formulas, memory tricks, and quick reference, all using the spam example.
+9. **[Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/convolutional-neural-networks)** — Moves from email features to images: convolution, activation, feature maps, padding, and pooling, explained from zero with diagrams, then a full layer-by-layer walkthrough of the real VGG16 architecture.
 
 **What You'll Learn:**
 
@@ -30,5 +31,7 @@ Learn deep learning from scratch using one consistent, real-world example: a spa
 - How forward and backward propagation work step by step with the chain rule
 - How deep learning mirrors brain concepts like memory, attention, and generalisation
 - Memory tricks for every formula and concept
+- Why images need convolution instead of fully connected layers, and how kernels, feature maps, padding, and pooling work
+- The exact output-size and parameter-count formulas for convolutional layers, plus a full walkthrough of VGG16's 16 weight layers and ~138 million parameters
 
-All guides use friendly explanations, real-world spam examples, and working PyTorch code you can run yourself.
+All guides use friendly explanations, real-world examples, and working PyTorch code you can run yourself.
