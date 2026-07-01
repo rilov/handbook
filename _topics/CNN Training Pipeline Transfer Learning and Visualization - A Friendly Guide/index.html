@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Part 11: CNN Training Pipeline, Transfer Learning, and Visualization — A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/deep-learning">Deep Learning</a> &mdash;
+    </nav>
+    <h2>Part 11: CNN Training Pipeline, Transfer Learning, and Visualization — A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/deep-learning">Deep Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="part-11-cnn-training-pipeline-transfer-learning-and-visualization--a-friendly-guide">Part 11: CNN Training Pipeline, Transfer Learning, and Visualization — A Friendly Guide</h1>
+
+<h2 id="what-this-guide-covers">What this guide covers</h2>
+
+<p>You now understand how a CNN works and how it learns through backpropagation.</p>
+
+<p>But understanding the architecture is just the beginning.</p>
+
+<p>Before you can train a CNN on a real problem, you need to answer three questions:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. How do I prepare my data?
+2. Should I train from scratch or reuse an existing model?
+3. How do I know what the model actually learned?
+</code></pre></div></div>
+
+<p>This guide answers all three.</p>
+
+<hr />
+
+<h2 id="1-the-cnn-model-design-pipeline">1. The CNN model design pipeline</h2>
+
+<p>Designing a CNN for a real problem follows a clear sequence of steps.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: Explore the problem
+Step 2: Collect data
+Step 3: Annotate data
+Step 4: Preprocess data
+Step 5: Augment data
+Step 6: Split into train / validation / test
+Step 7: Train the model
+Step 8: Evaluate and iterate
+</code></pre></div></div>
+
+<p>Each step matters. Skipping one usually causes problems later.</p>
+
+<hr />
+
+<h2 id="2-step-1-explore-the-problem">2. Step 1: Explore the problem</h2>
+
+<p>Before collecting any data, understand what you are trying to do.</p>
+
+<p>Ask yourself:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Question</th>
+      <th>What it tells you</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Do I have a target label?</td>
+      <td>If yes, supervised learning. If no, unsupervised.</td>
+    </tr>
+    <tr>
+      <td>Is the label a category?</td>
+      <td>If yes, classification problem.</td>
+    </tr>
+    <tr>
+      <td>Is the label a number?</td>
+      <td>If yes, regression problem.</td>
+    </tr>
+    <tr>
+      <td>How many classes?</td>
+      <td>Tells you how many output neurons you need.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Problem: classify vehicle images into car, bus, truck
+→ supervised classification
+→ 3 output neurons with softmax
+</code></pre></div></div>
+
+<p>You also need to ask: is my dataset diverse enough for this problem?</p>
+
+<p>If the task is “classify all vehicles” but your dataset only has cars, buses, and trucks, the model is not ready for motorcycles or cycles even though they are also vehicles.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Diverse = enough coverage of all the variation in your real-world problem
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-step-2-collect-data">3. Step 2: Collect data</h2>
+
+<p>A CNN is a <strong>parametric model</strong> — it has many learnable weights and biases inside its convolution layers and dense layers.</p>
+
+<p>To learn all those parameters correctly, it needs enough examples.</p>
+
+<p>A rough rule of thumb:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>More complex model → more parameters → needs more data
+</code></pre></div></div>
+
+<p>For a simple CNN, a few thousand images per class may be enough.</p>
+
+<p>For a deep CNN like VGG16, you may need tens of thousands per class if training from scratch.</p>
+
+<h3 id="imbalanced-data">Imbalanced data</h3>
+
+<p>Your dataset also needs to be <strong>balanced</strong> — roughly equal examples per class.</p>
+
+<p>Example of an imbalanced dataset:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1000 car images
+ 900 bus images
+  20 truck images
+</code></pre></div></div>
+
+<p>The model will see cars and buses hundreds of times per epoch, but trucks only 20 times.</p>
+
+<p>It will learn cars and buses well but fail on trucks.</p>
+
+<p>Options to fix imbalance:</p>
+<ul>
+  <li>Collect more data for the minority class</li>
+  <li>Use data augmentation to create more variety from the few examples you have</li>
+  <li>Use class weights during training to penalize mistakes on rare classes more heavily</li>
+</ul>
+
+<hr />
+
+<h2 id="4-step-3-annotate-data">4. Step 3: Annotate data</h2>
+
+<p>Each image needs a correct label.</p>
+
+<p>If an image of a cat is labeled as “dog”, the model is learning the wrong mapping.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wrong label → wrong gradient → wrong weight update → broken model
+</code></pre></div></div>
+
+<p>For classification:</p>
+<ul>
+  <li>Each image gets one class label</li>
+  <li>Labels must be consistent across the whole dataset</li>
+</ul>
+
+<p>For detection or segmentation:</p>
+<ul>
+  <li>Annotations can include bounding boxes or pixel-level masks</li>
+  <li>These require more careful tooling</li>
+</ul>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Garbage in, garbage out. No amount of architecture complexity fixes a badly labeled dataset.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="5-step-4-preprocess-data">5. Step 4: Preprocess data</h2>
+
+<p>Raw images collected in the real world often contain noise or distortion.</p>
+
+<p>Common sources:</p>
+<ul>
+  <li>Camera sensor noise during capture</li>
+  <li>Compression artifacts during storage</li>
+  <li>Network transmission errors</li>
+</ul>
+
+<p>Preprocessing cleans up the data before giving it to the model.</p>
+
+<h3 id="noise-removal-and-enhancement">Noise removal and enhancement</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Technique</th>
+      <th>What it does</th>
+      <th>When to use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Low-pass filter</td>
+      <td>Removes high-frequency noise, blurs slightly</td>
+      <td>General smoothing</td>
+    </tr>
+    <tr>
+      <td>High-pass filter</td>
+      <td>Enhances edges and fine detail</td>
+      <td>When you want sharper features</td>
+    </tr>
+    <tr>
+      <td>Median filter</td>
+      <td>Replaces each pixel with the median of its neighbors</td>
+      <td>Removing salt-and-pepper noise</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Salt-and-pepper noise</strong> is a common noise type where random pixels are set to either pure white or pure black — like a scattering of white and black dots across the image.</p>
+
+<p>The median filter removes this well because the extreme values get replaced by the actual local neighborhood values.</p>
+
+<h3 id="resizing">Resizing</h3>
+
+<p>CNNs expect a fixed input size.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>VGG16 expects: 224 × 224 × 3
+ResNet50 expects: 224 × 224 × 3
+</code></pre></div></div>
+
+<p>All images in your dataset must be resized to match the expected input before training.</p>
+
+<h3 id="normalization">Normalization</h3>
+
+<p>Raw pixel values range from 0 to 255.</p>
+
+<p>When different features have very different ranges, the model may learn them unevenly.</p>
+
+<p><strong>Normalization</strong> rescales values to a common range so the model treats all inputs fairly.</p>
+
+<h4 id="min-max-normalization">Min-max normalization</h4>
+
+<p>Rescales values to be between 0 and 1:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>normalized value = (value - min) / (max - min)
+</code></pre></div></div>
+
+<p>Example for pixel values:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>original pixel: 180
+min: 0, max: 255
+normalized: 180 / 255 = 0.706
+</code></pre></div></div>
+
+<h4 id="mean-and-standard-deviation-normalization-standardization">Mean and standard deviation normalization (standardization)</h4>
+
+<p>Rescales values so the distribution has mean 0 and standard deviation 1:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>normalized value = (value - mean) / std
+</code></pre></div></div>
+
+<p>This is the most common method for image inputs to CNNs.</p>
+
+<p>ImageNet pretrained models typically use:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mean = [0.485, 0.456, 0.406]  (one per RGB channel)
+std  = [0.229, 0.224, 0.225]
+</code></pre></div></div>
+
+<p>In PyTorch:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
+
+<span class="n">transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="p">.</span><span class="nc">Compose</span><span class="p">([</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">Resize</span><span class="p">((</span><span class="mi">224</span><span class="p">,</span> <span class="mi">224</span><span class="p">)),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">ToTensor</span><span class="p">(),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">Normalize</span><span class="p">(</span>
+        <span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">],</span>
+        <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">]</span>
+    <span class="p">),</span>
+<span class="p">])</span>
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Normalization is like converting everyone’s score to the same grading scale. A 90 out of 100 and a 900 out of 1000 are both 90%, so the model treats them the same.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="6-step-5-augment-data">6. Step 5: Augment data</h2>
+
+<p>See the full augmentation explanation in the <a href="/handbook/topics/advanced-convolutional-neural-networks">Advanced CNN guide</a>, Section 4.</p>
+
+<p>Quick summary:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original image → rotate, flip, crop, change brightness, add noise
+→ multiple new training examples
+→ model learns general patterns, not exact photos
+</code></pre></div></div>
+
+<p>Augmentation is applied only to the training set. Validation and test sets are not augmented.</p>
+
+<hr />
+
+<h2 id="7-step-6-train--validation--test-split">7. Step 6: Train / validation / test split</h2>
+
+<p>Split your dataset into three separate parts before any training begins.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Full dataset
+  ├── Training set   (~70–80%)  → used to update weights and biases
+  ├── Validation set (~10–15%)  → used to monitor performance each epoch
+  └── Test set       (~10–15%)  → used once at the very end to evaluate the final model
+</code></pre></div></div>
+
+<h3 id="what-happens-each-epoch">What happens each epoch</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Epoch 1:
+  → train on training set → update weights
+  → evaluate on validation set → check loss
+
+Epoch 2:
+  → train on training set → update weights further
+  → evaluate on validation set → is loss improving?
+
+...
+
+Epoch N:
+  → validation loss stops improving → stop training
+  → evaluate once on test set → final score
+</code></pre></div></div>
+
+<p>The test set represents the real world. The model has never seen it during training or validation.</p>
+
+<p><strong>Critical rule:</strong> Never mix test data into training. Split before training begins.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Training set is the textbook. Validation set is the practice exam after each chapter. Test set is the final exam you only sit once.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="8-training-from-scratch-vs-transfer-learning-vs-fine-tuning">8. Training from scratch vs. transfer learning vs. fine-tuning</h2>
+
+<p>Once the data is ready, you need to decide how to train.</p>
+
+<p>There are three strategies.</p>
+
+<h3 id="strategy-1-training-from-scratch">Strategy 1: Training from scratch</h3>
+
+<p>All weights start at random values.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>All weights = random
+→ model learns everything from your data alone
+</code></pre></div></div>
+
+<p>When to use:</p>
+<ul>
+  <li>You have a very large, labeled dataset (tens of thousands of images per class)</li>
+  <li>Your task is very different from anything in ImageNet</li>
+  <li>You have the compute resources to run many epochs</li>
+</ul>
+
+<p>Challenge: CNN models have millions of parameters. With too little data, the model cannot learn all of them correctly.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3×3×3 filter = 27 weights + 1 bias = 28 parameters per filter
+VGG16 total  = ~138 million parameters
+</code></pre></div></div>
+
+<p>You need enough examples to give the model enough signal to update all those weights meaningfully.</p>
+
+<h3 id="strategy-2-transfer-learning">Strategy 2: Transfer learning</h3>
+
+<p>Take a CNN already trained on a large dataset (such as ImageNet), freeze its weights, and attach a new classifier head for your task.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pretrained CNN (frozen)     → acts as a feature extractor
+New classifier head (trained) → learns your specific classes
+</code></pre></div></div>
+
+<p>Why this works:</p>
+
+<p>Early CNN layers learn very general features — edges, corners, textures, color gradients.</p>
+
+<p>These features are useful across many image tasks, not just the original task.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ImageNet-trained layer 1 → detects edges
+ImageNet-trained layer 2 → detects corners and simple textures
+ImageNet-trained layer 3 → detects more complex patterns
+</code></pre></div></div>
+
+<p>These learned features transfer to your task even if the classes are different.</p>
+
+<p>When to use:</p>
+<ul>
+  <li>Your dataset is small (a few hundred to a few thousand images per class)</li>
+  <li>Your task is related to what ImageNet contains (natural images, objects, scenes)</li>
+</ul>
+
+<p>When transfer learning may not work:</p>
+<ul>
+  <li>Your task is very different from ImageNet (e.g., medical ultrasound, satellite imagery from unusual sensors)</li>
+  <li>Even then, it is worth trying — it has worked surprisingly well in some unrelated domains</li>
+</ul>
+
+<h3 id="strategy-3-fine-tuning">Strategy 3: Fine-tuning</h3>
+
+<p>Same as transfer learning, but you also unfreeze some of the later pretrained layers and train them alongside the new classifier.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pretrained CNN early layers (frozen)  → keep general features as-is
+Pretrained CNN later layers (unfrozen) → update slightly for your task
+New classifier head (trained)          → learns your specific classes
+</code></pre></div></div>
+
+<p>Why fine-tune later layers and not early ones?</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Early layers → general features (edges, corners) → useful everywhere → freeze
+Later layers → task-specific features → may need small adjustment → fine-tune
+</code></pre></div></div>
+
+<p>When to use:</p>
+<ul>
+  <li>Transfer learning alone gives good but not great results</li>
+  <li>Your dataset is somewhat related to ImageNet but has its own specific variations</li>
+  <li>You have some compute budget for the extra training</li>
+</ul>
+
+<h3 id="decision-guide">Decision guide</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Your situation</th>
+      <th>Recommended strategy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Large dataset, unique task</td>
+      <td>Train from scratch</td>
+    </tr>
+    <tr>
+      <td>Small dataset, related to ImageNet</td>
+      <td>Transfer learning</td>
+    </tr>
+    <tr>
+      <td>Medium dataset, related but different enough</td>
+      <td>Fine-tuning</td>
+    </tr>
+    <tr>
+      <td>Very unrelated task (e.g., medical, satellite)</td>
+      <td>Try transfer learning first, then fine-tune</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="in-pytorch">In PyTorch</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torchvision.models</span> <span class="k">as</span> <span class="n">models</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Load pretrained VGG16
+</span><span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="p">.</span><span class="nf">vgg16</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Freeze all layers
+</span><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">():</span>
+    <span class="n">param</span><span class="p">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="c1"># Replace the final classifier for your number of classes
+</span><span class="n">model</span><span class="p">.</span><span class="n">classifier</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4096</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>  <span class="c1"># 3 classes: car, bus, truck
+</span>
+<span class="c1"># Now only model.classifier[6] has requires_grad = True
+</span></code></pre></div></div>
+
+<p>For fine-tuning, unfreeze the last few layers after the initial transfer learning phase:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Unfreeze last two feature blocks
+</span><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="n">features</span><span class="p">[</span><span class="mi">24</span><span class="p">:].</span><span class="nf">parameters</span><span class="p">():</span>
+    <span class="n">param</span><span class="p">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="bp">True</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="9-cnn-visualization-what-did-the-model-actually-learn">9. CNN visualization: what did the model actually learn?</h2>
+
+<p>For a long time, CNNs were treated as <strong>black boxes</strong>.</p>
+
+<p>You gave them input, they produced output, and nobody knew exactly what was happening inside.</p>
+
+<p>In 2014, researchers published methods to visualize the intermediate layers of a trained CNN. This opened up the interpretation of what CNNs actually learn.</p>
+
+<h3 id="what-each-layer-learns">What each layer learns</h3>
+
+<p>When you visualize intermediate feature maps from a trained CNN, a clear pattern appears:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Early layers  → detect edges, lines, color boundaries
+Middle layers → detect textures, corners, simple shapes
+Later layers  → detect complex object parts (eyes, wheels, windows)
+</code></pre></div></div>
+
+<p>This is the hierarchical learning that makes CNNs so powerful — simple patterns combine into complex ones.</p>
+
+<h3 id="testing-phase-weights-are-fixed">Testing phase: weights are fixed</h3>
+
+<p>Once a CNN is trained, the weights and biases do not change during inference.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input image 1: car  → same weights → highest activation on car neuron
+Input image 2: bus  → same weights → highest activation on bus neuron
+Input image 3: truck → same weights → highest activation on truck neuron
+</code></pre></div></div>
+
+<p>The same fixed weights generalize to different inputs and produce the right output for each, in an ideal scenario.</p>
+
+<h3 id="activation-maps">Activation maps</h3>
+
+<p>After each layer, the output is called an <strong>activation map</strong> (or feature map).</p>
+
+<p>The final activation map before softmax tells you how strongly each class is being activated for the given input.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Final activation map for a car input:
+  car  → 0.91
+  bus  → 0.06
+  truck → 0.03
+</code></pre></div></div>
+
+<p>The model predicts “car” because that activation is highest.</p>
+
+<h3 id="grad-cam-visualizing-where-the-model-looks">Grad-CAM: visualizing where the model looks</h3>
+
+<p><strong>Grad-CAM</strong> (Gradient-weighted Class Activation Mapping) is a technique that generates a heatmap showing which spatial regions of the input image the model focused on most for a given prediction.</p>
+
+<p>Simple idea:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Run a forward pass → get prediction
+2. Compute gradients of the predicted class score
+   with respect to the last convolutional layer's activations
+3. Use those gradients to weight the activation maps
+4. Average the weighted maps → one heatmap
+5. Resize and overlay on the original image
+</code></pre></div></div>
+
+<p>The result is a heatmap where:</p>
+<ul>
+  <li><strong>Red</strong> = high activation, model focused here</li>
+  <li><strong>Blue</strong> = low activation, model ignored this region</li>
+</ul>
+
+<p>Example: give a CNN an image of a beach scene with people flying kites.</p>
+
+<p>The Grad-CAM heatmap will show the highest activation around the kites and the people — the regions that drove the prediction.</p>
+
+<p>This is possible because of the spatial structure of convolution. Each location in a feature map corresponds to a specific region in the input image. Grad-CAM traces the gradients back through that spatial correspondence.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Feature map location (x, y)
+→ corresponds to receptive field at (x, y) in the input image
+→ gradient tells us how important that location was
+→ visualize as a heatmap
+</code></pre></div></div>
+
+<h3 id="why-grad-cam-matters">Why Grad-CAM matters</h3>
+
+<p>Without visualization, you cannot tell whether the model learned the right thing.</p>
+
+<p>Examples of things Grad-CAM can reveal:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>What you hoped the model learned</th>
+      <th>What Grad-CAM reveals it actually learned</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Dog’s face and body</td>
+      <td>The background field it was always photographed in</td>
+    </tr>
+    <tr>
+      <td>Truck body shape</td>
+      <td>The license plate that only appeared on trucks</td>
+    </tr>
+    <tr>
+      <td>Disease region in X-ray</td>
+      <td>The corner text watermark that was only in positive scans</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These are called <strong>shortcut features</strong> — the model learned a spurious correlation rather than the real signal.</p>
+
+<p>Grad-CAM lets you catch this before deployment.</p>
+
+<h3 id="simple-grad-cam-in-pytorch">Simple Grad-CAM in PyTorch</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torchvision.models</span> <span class="k">as</span> <span class="n">models</span>
+<span class="kn">import</span> <span class="n">torchvision.transforms</span> <span class="k">as</span> <span class="n">transforms</span>
+<span class="kn">from</span> <span class="n">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="p">.</span><span class="nf">vgg16</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+
+<span class="c1"># Hook to capture gradients and activations from last conv layer
+</span><span class="n">activations</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">gradients</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">def</span> <span class="nf">save_activation</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">):</span>
+        <span class="n">activations</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
+    <span class="k">return</span> <span class="n">hook</span>
+
+<span class="k">def</span> <span class="nf">save_gradient</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">grad_input</span><span class="p">,</span> <span class="n">grad_output</span><span class="p">):</span>
+        <span class="n">gradients</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">grad_output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">hook</span>
+
+<span class="c1"># Register hooks on last conv layer
+</span><span class="n">model</span><span class="p">.</span><span class="n">features</span><span class="p">[</span><span class="mi">28</span><span class="p">].</span><span class="nf">register_forward_hook</span><span class="p">(</span><span class="nf">save_activation</span><span class="p">(</span><span class="sh">'</span><span class="s">last_conv</span><span class="sh">'</span><span class="p">))</span>
+<span class="n">model</span><span class="p">.</span><span class="n">features</span><span class="p">[</span><span class="mi">28</span><span class="p">].</span><span class="nf">register_backward_hook</span><span class="p">(</span><span class="nf">save_gradient</span><span class="p">(</span><span class="sh">'</span><span class="s">last_conv</span><span class="sh">'</span><span class="p">))</span>
+
+<span class="c1"># Forward pass
+</span><span class="n">output</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">image_tensor</span><span class="p">)</span>
+<span class="n">pred_class</span> <span class="o">=</span> <span class="n">output</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">).</span><span class="nf">item</span><span class="p">()</span>
+
+<span class="c1"># Backward pass for predicted class
+</span><span class="n">model</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+<span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">pred_class</span><span class="p">].</span><span class="nf">backward</span><span class="p">()</span>
+
+<span class="c1"># Compute Grad-CAM
+</span><span class="n">grads</span> <span class="o">=</span> <span class="n">gradients</span><span class="p">[</span><span class="sh">'</span><span class="s">last_conv</span><span class="sh">'</span><span class="p">]</span>         <span class="c1"># shape: [1, C, H, W]
+</span><span class="n">acts</span>  <span class="o">=</span> <span class="n">activations</span><span class="p">[</span><span class="sh">'</span><span class="s">last_conv</span><span class="sh">'</span><span class="p">]</span>       <span class="c1"># shape: [1, C, H, W]
+</span><span class="n">weights</span> <span class="o">=</span> <span class="n">grads</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>       <span class="c1"># average over spatial dims → [1, C]
+</span><span class="n">cam</span> <span class="o">=</span> <span class="p">(</span><span class="n">weights</span><span class="p">[:,</span> <span class="p">:,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">acts</span><span class="p">).</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># weighted sum → [1, H, W]
+</span><span class="n">cam</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">relu</span><span class="p">(</span><span class="n">cam</span><span class="p">)</span>                  <span class="c1"># keep positive values only
+</span></code></pre></div></div>
+
+<p>The resulting <code class="language-plaintext highlighter-rouge">cam</code> tensor can be resized and overlaid on the original image to produce the visualization.</p>
+
+<hr />
+
+<h2 id="10-summary">10. Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>What happens</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Explore problem</td>
+      <td>Decide: classification, regression, or unsupervised</td>
+    </tr>
+    <tr>
+      <td>Collect data</td>
+      <td>Enough examples, balanced across classes, diverse</td>
+    </tr>
+    <tr>
+      <td>Annotate</td>
+      <td>Correct labels for every image</td>
+    </tr>
+    <tr>
+      <td>Preprocess</td>
+      <td>Remove noise, resize, normalize</td>
+    </tr>
+    <tr>
+      <td>Augment</td>
+      <td>Create variety from existing images</td>
+    </tr>
+    <tr>
+      <td>Split</td>
+      <td>Train / validation / test before any training</td>
+    </tr>
+    <tr>
+      <td>Train</td>
+      <td>From scratch, transfer learning, or fine-tuning</td>
+    </tr>
+    <tr>
+      <td>Visualize</td>
+      <td>Grad-CAM to check what the model actually learned</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The full pipeline in one line:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>problem → data → clean → augment → split → train → visualize → evaluate
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="what-to-read-next">What to read next</h2>
+
+<ul>
+  <li><a href="/handbook/topics/convolutional-neural-networks">Part 9: Convolutional Neural Networks</a> — CNN architecture from scratch</li>
+  <li><a href="/handbook/topics/advanced-convolutional-neural-networks">Part 10: Advanced Convolutional Neural Networks</a> — overfitting, dropout, batch normalization, residual connections, backpropagation</li>
+  <li><a href="/handbook/topics/data-handling-with-dataset-and-dataloader">Part 4: Data Handling with Dataset and DataLoader</a> — how to build training pipelines in PyTorch</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">cnn</span>, <span class="tag">computer-vision</span>, <span class="tag">transfer-learning</span>, <span class="tag">fine-tuning</span>, <span class="tag">data-preparation</span>, <span class="tag">preprocessing</span>, <span class="tag">normalization</span>, <span class="tag">grad-cam</span>, <span class="tag">visualization</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

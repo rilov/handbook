@@ -201,55 +201,185 @@ body shape
 
 <h2 id="4-data-augmentation-create-more-variety">4. Data augmentation: create more variety</h2>
 
-<p><strong>Data augmentation</strong> means changing training images slightly so the model sees more variety.</p>
+<p><strong>Data augmentation</strong> means creating modified copies of training images so the model sees more variety without collecting new data.</p>
 
-<p>For example:</p>
+<h3 id="why-augmentation-is-needed">Why augmentation is needed</h3>
+
+<p>Imagine you have imbalanced training data:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1000 cat images
+1000 dog images
+  50 truck images
+</code></pre></div></div>
+
+<p>The model will see cats and dogs very often, but trucks barely at all.</p>
+
+<p>It may learn cats and dogs well, but fail on trucks.</p>
+
+<p>Augmentation helps:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>50 original truck images
+→ each image is transformed multiple ways
+→ now you have many effective truck examples
+</code></pre></div></div>
+
+<p>Augmentation is also useful when you simply do not have enough total data.</p>
+
+<h3 id="why-copy-paste-is-not-augmentation">Why copy-paste is not augmentation</h3>
+
+<p>Just copying and pasting images does not help.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>copy + paste = same information, just repeated
+</code></pre></div></div>
+
+<p>The model sees the same pixels repeated and learns nothing new.</p>
+
+<p>Real augmentation applies small changes that make the image look slightly different:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>original image
+→ rotate 15 degrees
+→ now a slightly different sample with new angle information
+</code></pre></div></div>
+
+<p>The model has to generalize to that variation, which makes it stronger.</p>
+
+<h3 id="three-categories-of-augmentation">Three categories of augmentation</h3>
+
+<h4 id="1-geometric-transformations">1. Geometric transformations</h4>
+
+<p>These change the shape, position, or orientation of the image.</p>
 
 <table>
   <thead>
     <tr>
-      <th>Augmentation</th>
-      <th>What it teaches</th>
+      <th>Example</th>
+      <th>What the model learns</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Flip image</td>
+      <td>Rotation</td>
+      <td>Object can appear tilted</td>
+    </tr>
+    <tr>
+      <td>Crop</td>
+      <td>Object may appear at different positions</td>
+    </tr>
+    <tr>
+      <td>Flip</td>
       <td>Object can face left or right</td>
     </tr>
     <tr>
-      <td>Rotate slightly</td>
-      <td>Object may be tilted</td>
+      <td>Zoom in or out</td>
+      <td>Object can appear larger or smaller</td>
     </tr>
     <tr>
-      <td>Crop image</td>
-      <td>Object may appear in different positions</td>
-    </tr>
-    <tr>
-      <td>Change brightness</td>
-      <td>Lighting can change</td>
-    </tr>
-    <tr>
-      <td>Add small noise</td>
-      <td>Image may not be perfect</td>
+      <td>Elastic distortion</td>
+      <td>Object can look slightly warped</td>
     </tr>
   </tbody>
 </table>
 
-<p>The label stays the same.</p>
+<h4 id="2-color-space-transformations">2. Color space transformations</h4>
 
-<p>A cat image is still a cat after a small rotation or brightness change.</p>
+<p>These change the colors or brightness of the image.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Example</th>
+      <th>What the model learns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Brightness change</td>
+      <td>Lighting conditions vary</td>
+    </tr>
+    <tr>
+      <td>Contrast change</td>
+      <td>Image can look washed out or sharp</td>
+    </tr>
+    <tr>
+      <td>Hue or saturation shift</td>
+      <td>Colors can shift slightly</td>
+    </tr>
+    <tr>
+      <td>RGB channel adjustment</td>
+      <td>Color balance can change</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="3-filtering">3. Filtering</h4>
+
+<p>These apply visual effects to the image.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Example</th>
+      <th>What the model learns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Blur</td>
+      <td>Images may not always be sharp</td>
+    </tr>
+    <tr>
+      <td>Add noise</td>
+      <td>Images may have small random variations</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="advanced-gan-based-augmentation">Advanced: GAN-based augmentation</h3>
+
+<p>Generative adversarial networks can create entirely new synthetic images.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GAN generates new, realistic-looking images
+→ add those images to the training set
+→ model sees more variety
+</code></pre></div></div>
+
+<p>This is more complex and usually not needed for beginners, but useful for very small datasets.</p>
+
+<h3 id="the-label-stays-the-same">The label stays the same</h3>
+
+<p>For all augmentation types, the label does not change.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>original truck image      → label: truck
+rotated truck image       → label: truck
+cropped truck image       → label: truck
+color-shifted truck image → label: truck
+</code></pre></div></div>
 
 <p><img src="/handbook/assets/img/data-augmentation-examples.svg" alt="One cat photo transformed into several augmented versions: horizontal flip, small rotation, random crop/zoom, color/brightness shift, and added noise, all keeping the same label" width="100%" /></p>
 
-<p>Simple mental model:</p>
+<h3 id="in-pytorch">In PyTorch</h3>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>One training image
-→ many slightly different versions
-→ model learns the object, not the exact photo
+<p>Augmentation is done with <code class="language-plaintext highlighter-rouge">torchvision.transforms</code> and applied only during training.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
+
+<span class="n">train_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="p">.</span><span class="nc">Compose</span><span class="p">([</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">RandomHorizontalFlip</span><span class="p">(),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">RandomRotation</span><span class="p">(</span><span class="mi">15</span><span class="p">),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">ColorJitter</span><span class="p">(</span><span class="n">brightness</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">contrast</span><span class="o">=</span><span class="mf">0.2</span><span class="p">),</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">ToTensor</span><span class="p">(),</span>
+<span class="p">])</span>
+
+<span class="n">val_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="p">.</span><span class="nc">Compose</span><span class="p">([</span>
+    <span class="n">transforms</span><span class="p">.</span><span class="nc">ToTensor</span><span class="p">(),</span>
+<span class="p">])</span>
 </code></pre></div></div>
 
-<p>In PyTorch, augmentation is usually done with <code class="language-plaintext highlighter-rouge">torchvision.transforms</code>.</p>
+<p>The validation and test sets use no random changes.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Augmentation tells the model: the same object can look many different ways. Learn the object, not the photo.</p>
+</blockquote>
 
 <hr />
 
@@ -1086,6 +1216,8 @@ filter caused wrong/confusing clue → adjust weights to reduce mistake
 <hr />
 
 <p>Previous: <strong><a href="/handbook/topics/convolutional-neural-networks">Part 9: Convolutional Neural Networks (CNNs)</a></strong></p>
+
+<p>Next: <strong><a href="/handbook/topics/cnn-training-pipeline-transfer-learning-and-visualization">Part 11: CNN Training Pipeline, Transfer Learning, and Visualization</a></strong></p>
 
   </section>
 
