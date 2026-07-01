@@ -463,72 +463,169 @@ The highest probability becomes the prediction.
 
 ## 11. Exact formulas, explained gently
 
-You do not need to memorize formulas on the first read. But formulas help when you want to understand why shapes change.
+This section is optional on the first read. The main idea is simple: formulas help answer two practical questions:
 
-### Output size formula
+```text
+1. What will the output shape be?
+2. How many learnable numbers does this layer store?
+```
 
-For one side of the image:
+If you understand those two questions, the formulas become less scary.
+
+### Formula 1: output size
+
+When a kernel slides across an image, it creates a new grid of numbers.
+
+That new grid is the **output feature map**.
+
+The size of this new grid depends on how the kernel moves:
+
+- **No padding:** the kernel cannot fully cover the border pixels, so the output usually becomes smaller.
+- **With padding:** we add a border around the image, so the output can stay the same size.
+- **Bigger stride:** the kernel jumps more pixels at a time, so the output becomes smaller faster.
+
+So this formula answers one simple question:
+
+> If my input image is this size, what size will the output feature map be?
+
+For one side of the image, such as height or width:
 
 $$
 \text{Output size} = \left\lfloor \frac{N - F + 2P}{S} \right\rfloor + 1
 $$
 
-Where:
+Read the formula like this:
 
-| Symbol | Meaning |
-|---|---|
-| `N` | Input size, such as 224 |
-| `F` | Filter/kernel size, such as 3 |
-| `P` | Padding, such as 1 |
-| `S` | Stride, how far the kernel moves each step |
+| Symbol | Simple meaning | Example |
+|---|---|---|
+| `N` | Original input size | `224` pixels wide |
+| `F` | Filter/kernel size | `3 × 3` kernel means `F = 3` |
+| `P` | Padding added on each side | `1` pixel border |
+| `S` | Stride, how far the kernel moves | `1` pixel at a time |
+
+Why `+ 2P`? Padding is added to both sides. If `P = 1`, we add 1 pixel on the left and 1 pixel on the right, so the total added width is `2`.
 
 For VGG16's common convolution:
 
 ```text
-N = 224, F = 3, P = 1, S = 1
+N = 224
+F = 3
+P = 1
+S = 1
 ```
 
-$$
-\frac{224 - 3 + 2(1)}{1} + 1 = 224
-$$
-
-So the output stays `224 × 224`.
-
-### Parameter count formula
-
-A convolution layer has weights and biases.
-
-$$
-\text{Parameters} = (\text{filters}) \times (F \times F \times \text{channels}) + \text{filters}
-$$
-
-The final `+ filters` is the bias: one bias per filter.
-
-Example: first VGG16 convolution:
+Step by step:
 
 ```text
-64 filters, 3 × 3 kernel, 3 input channels
+Output size = ((224 - 3 + 2×1) / 1) + 1
+            = ((224 - 3 + 2) / 1) + 1
+            = (223 / 1) + 1
+            = 224
 ```
 
+So a `224 × 224` image stays `224 × 224` after this convolution.
+
+That is why VGG16 can apply convolution without shrinking the image. The shrinking happens later during max pooling.
+
+### Formula 2: convolution parameter count
+
+A convolution layer stores learned numbers. These are the model's memory.
+
+Each filter has:
+
+```text
+kernel height × kernel width × input channels
+```
+
+For example, one `3 × 3` filter looking at an RGB image has:
+
+```text
+3 × 3 × 3 = 27 weights
+```
+
+Each filter also has one bias.
+
+So the formula is:
+
 $$
-64 \times (3 \times 3 \times 3) + 64 = 1{,}792
+\text{Parameters} = (\text{number of filters}) \times (F \times F \times \text{input channels}) + \text{number of filters}
 $$
 
-A deeper layer might have 512 filters over 512 input channels:
+The final `+ number of filters` means one bias per filter.
 
-$$
-512 \times (3 \times 3 \times 512) + 512 = 2{,}359{,}808
-$$
+### Example: first VGG16 convolution
 
-The deeper layer has many more parameters because it sees many more input channels.
+The first VGG16 convolution uses:
+
+```text
+64 filters
+3 × 3 kernel
+3 input channels: red, green, blue
+```
+
+One filter has:
+
+```text
+3 × 3 × 3 = 27 weights
+```
+
+Sixty-four filters have:
+
+```text
+64 × 27 = 1,728 weights
+```
+
+Each filter has one bias:
+
+```text
+64 biases
+```
+
+Total:
+
+```text
+1,728 weights + 64 biases = 1,792 parameters
+```
+
+### Example: deeper VGG16 convolution
+
+A deeper VGG16 layer may use:
+
+```text
+512 filters
+3 × 3 kernel
+512 input channels
+```
+
+One filter has:
+
+```text
+3 × 3 × 512 = 4,608 weights
+```
+
+All filters together have:
+
+```text
+512 × 4,608 = 2,359,296 weights
+```
+
+Add one bias for each of the 512 filters:
+
+```text
+2,359,296 + 512 = 2,359,808 parameters
+```
+
+This is much larger because the layer receives 512 input channels instead of 3.
 
 ### Recap
 
-| Concept | Formula |
+| Question | Formula |
 |---|---|
-| Output size | $\left\lfloor \dfrac{N-F+2P}{S} \right\rfloor + 1$ |
-| Conv parameters | (filters) x (F x F x channels) + filters |
-| Dense parameters | (inputs) x (outputs) + outputs |
+| What is the output size? | $\left\lfloor \dfrac{N-F+2P}{S} \right\rfloor + 1$ |
+| How many conv parameters? | filters × (F × F × input channels) + filters |
+| How many dense parameters? | inputs × outputs + outputs |
+
+> **Memory trick:** Output-size formula tells you the new image size. Parameter-count formula tells you how much the layer remembers.
 
 ---
 
@@ -562,11 +659,29 @@ Pooling layers are not counted because they have no learned weights.
 
 VGG16 starts with a `224 × 224 × 3` image.
 
+Read this shape as:
+
+```text
+224 = height
+224 = width
+3   = color channels: red, green, blue
+```
+
 As the image moves through the network:
 
-- Width and height get smaller after pooling.
-- The number of channels gets larger after convolution blocks.
-- The model moves from simple visual details to richer object clues.
+- **Convolution layers change the number of channels.** For example, 64 filters produce 64 output channels.
+- **Pooling layers shrink height and width.** For example, `224 × 224` becomes `112 × 112`.
+- **Deeper layers keep more pattern maps.** The network remembers many kinds of clues while the spatial size becomes smaller.
+
+A shape like `112 × 112 × 128` means:
+
+```text
+112 pixels high
+112 pixels wide
+128 feature maps / channels
+```
+
+The table below follows the image as it travels through VGG16. You do not need to memorize the whole table. Read it as a story: size goes down, channels go up, and parameters are stored only in convolution and dense layers.
 
 | # | Layer | Output shape | Parameters |
 |---|---|---|---|
@@ -597,9 +712,24 @@ As the image moves through the network:
 Two important observations:
 
 - **Pooling shrinks width and height.** `224 → 112 → 56 → 28 → 14 → 7`.
+- **Convolution increases channels.** The network moves from 64 feature maps to 128, then 256, then 512.
 - **Dense layers contain most parameters.** The first dense layer alone has over 102 million parameters.
 
-So VGG16 teaches an important lesson: convolution layers are good at sharing small kernels across the image, while dense layers become expensive when they connect everything to everything.
+Why is the first dense layer so large?
+
+Before the dense layer, VGG16 has:
+
+```text
+7 × 7 × 512 = 25,088 numbers
+```
+
+The first dense layer connects those 25,088 numbers to 4,096 neurons:
+
+```text
+25,088 × 4,096 + 4,096 = 102,764,544 parameters
+```
+
+So VGG16 teaches an important lesson: convolution layers are efficient because they reuse small filters across the image, while dense layers become expensive because every input connects to every output.
 
 ---
 
@@ -617,23 +747,44 @@ For example:
 nn.Conv2d(3, 64, kernel_size=3)
 ```
 
-This means:
+Read it as:
 
 ```text
-input has 3 channels
-layer learns 64 filters
-layer produces 64 feature maps
+3  input channels come in
+64 filters are created
+64 feature maps come out
 ```
 
-The model does not automatically decide to use 64 filters. The human designer chooses it, then training learns the actual filter values.
+The model does not automatically decide to use 64 filters. The human designer chooses `64`. Then training learns the values inside those 64 filters.
 
-Common choices are 16, 32, 64, 128, 256, and 512 filters. More filters allow the model to learn more patterns, but they also require more memory, more computation, and more training data.
+Why choose more filters?
+
+More filters mean the layer can look for more kinds of patterns.
+
+```text
+16 filters  → small/simple model
+64 filters  → more pattern detectors
+512 filters → many pattern detectors, but expensive
+```
+
+Common choices are 16, 32, 64, 128, 256, and 512 filters. More filters can make the model stronger, but they also require more memory, more computation, and more training data.
 
 ### Deep dive 2: What does a filter learn?
 
 At the beginning of training, filter values are random. They do not yet detect anything useful.
 
-During training, backpropagation adjusts the filter weights. After seeing many images, some filters may become useful detectors:
+During training, the model makes predictions, measures mistakes with a loss function, and backpropagation adjusts the filter weights. After seeing many images, some filters become useful detectors.
+
+A simple mental model:
+
+```text
+random filter
+→ many training examples
+→ many small weight updates
+→ useful pattern detector
+```
+
+Different layers tend to learn different levels of patterns:
 
 ```text
 early filters → edges, colors, corners
@@ -663,15 +814,33 @@ Example from VGG16:
 7 × 7 × 512
 ```
 
-Why?
+This can feel strange at first: why make the image smaller but increase channels?
 
-Early layers keep large image size because they need location detail. Later layers shrink the image because exact pixel position matters less. At the same time, the model uses more channels so it can remember more types of patterns.
+Think of the network as moving from **location detail** to **meaning detail**.
+
+Early layers need large width and height because they are asking:
+
+```text
+Where are the edges?
+Where are the corners?
+Where are the color changes?
+```
+
+Later layers do not need exact pixel-level location as much. They are asking:
+
+```text
+Is there an eye-like pattern?
+Is there a wheel-like pattern?
+Is there a face-like pattern?
+```
+
+So the network keeps fewer positions but stores more types of clues at each position.
 
 Simple way to think about it:
 
 ```text
-early layers: where are the small details?
-later layers: what important object clues exist?
+early layers: many locations, simple clues
+later layers: fewer locations, richer clues
 ```
 
 ### Deep dive 4: What is learned and what is not learned?
