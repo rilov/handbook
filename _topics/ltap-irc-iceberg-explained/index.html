@@ -6,6 +6,84 @@
 
 <hr />
 
+<h2 id="why-ltap-matters">Why LTAP matters</h2>
+
+<p>LTAP may be the next major architecture pattern in data — and open-source Apache Iceberg could play a critical role.</p>
+
+<p>For decades we maintained two separate worlds.</p>
+
+<p><strong>Operational databases</strong> process orders, payments, customer updates, and application transactions. <strong>Analytical platforms</strong> process reporting, machine learning, and large-scale data exploration.</p>
+
+<p>Connecting them usually requires CDC, ETL pipelines, replicas, and multiple copies of the same data.</p>
+
+<p>LTAP — Lake Transactional and Analytical Processing — proposes a different model. Instead of constantly moving data between operational and analytical systems, <strong>separate engines work over one shared and governed data foundation</strong>.</p>
+
+<p>This is where Apache Iceberg becomes important. Iceberg gives data stored in object storage many database-like capabilities:</p>
+
+<ul>
+  <li>Atomic commits</li>
+  <li>Concurrent writes</li>
+  <li><code class="language-plaintext highlighter-rouge">MERGE</code>, <code class="language-plaintext highlighter-rouge">UPDATE</code>, and <code class="language-plaintext highlighter-rouge">DELETE</code> operations</li>
+  <li>Schema evolution</li>
+  <li>Time travel</li>
+  <li>Access from Spark, Trino, Flink, DuckDB, and other engines</li>
+</ul>
+
+<p><strong>But Iceberg alone is not an OLTP database.</strong> It does not replace PostgreSQL or the transactional engine serving an application. The LTAP pattern still needs a transactional layer capable of fast point reads, writes, indexes, and application-level transactions.</p>
+
+<p>This is where projects such as <code class="language-plaintext highlighter-rouge">pg_lake</code> become interesting. <code class="language-plaintext highlighter-rouge">pg_lake</code> allows PostgreSQL to create, query, and modify Iceberg-backed tables directly. PostgreSQL applications can continue using a familiar transactional interface, while analytical engines access the same open Iceberg tables.</p>
+
+<p><strong>Apache Gravitino</strong> can provide the shared Iceberg REST Catalog, metadata, and governance layer. The data itself can live on S3-compatible object storage such as Pure Storage FlashBlade, MinIO, Ceph, Cloudian, or Dell ECS.</p>
+
+<p>An open-source, on-premises LTAP-style architecture could look like this:</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph apps["Applications &amp; AI Agents"]
+        APP["🖥️ App / AI Agent"]
+    end
+
+    subgraph oltp["Transactional Layer"]
+        PG["🐘 PostgreSQL + pg_lake"]
+    end
+
+    subgraph format["Open Table Format"]
+        ICE["🧊 Apache Iceberg tables<br />(Parquet files)"]
+    end
+
+    subgraph catalog["Catalog &amp; Governance"]
+        GRV["📖 Apache Gravitino<br />IRC, metadata, access control"]
+    end
+
+    subgraph storage["Object Storage (S3-compatible)"]
+        OBJ["💾 FlashBlade / MinIO / Ceph / Dell ECS"]
+    end
+
+    subgraph analytics["Analytical Engines"]
+        SP["⚡ Spark"]
+        TR["🔍 Trino"]
+        FL["🌊 Flink"]
+        DK["🦆 DuckDB"]
+    end
+
+    APP --&gt; PG
+    PG --&gt; ICE
+    ICE --&gt; GRV
+    GRV --&gt; OBJ
+    OBJ --&gt; SP
+    OBJ --&gt; TR
+    OBJ --&gt; FL
+    OBJ --&gt; DK
+</div>
+
+<p>This does not mean every pipeline disappears. Pipelines will still be needed for enrichment, validation, aggregation, external ingestion, and data quality. But it can remove the need for a separate CDC pipeline whose only purpose is to create another analytical copy of operational data.</p>
+
+<p>The bigger shift is simple: <strong>we stop constantly moving copies of data between systems. We bring specialized compute engines to the same open data.</strong></p>
+
+<p>The future data platform may not be one engine trying to do everything. It may be multiple engines working independently over one open and governed data foundation — and that foundation should not belong to a single vendor.</p>
+
+<hr />
+
 <h2 id="the-iceberg-you-cant-see">The Iceberg You Can’t See</h2>
 
 <p>Imagine an actual iceberg floating in the ocean. What you see above the waterline is a small, clean tip. But 90% of the mass is hidden below.</p>
@@ -16,7 +94,28 @@
 
 <p>Below the water: an entire hidden machinery — metadata files, snapshots, manifest lists, manifest files, and thousands of Parquet data files. None of this is visible when you run a query. But it’s all doing work.</p>
 
-<p><img src="/handbook/assets/img/iceberg-metaphor.svg" alt="Iceberg metaphor: SQL tables above the water, hidden metadata layers below" width="100%" /></p>
+<div class="mermaid">
+flowchart TB
+    subgraph above["🌊 Above the waterline"]
+        SQL["SQL query: SELECT * FROM orders"]
+        TBL["Table name: db.orders"]
+        SCH["Schema: order_id, customer, amount"]
+    end
+
+    subgraph below["🧊 Below the waterline"]
+        META["metadata.json<br />(root of everything)"]
+        SNAP["Snapshots<br />(immutable point-in-time versions)"]
+        MFLIST["Manifest List<br />(index of manifest files)"]
+        MF["Manifest Files<br />(column stats per data file)"]
+        PARQ["Parquet Data Files<br />(millions of rows on S3)"]
+    end
+
+    SQL --&gt; META
+    META --&gt; SNAP
+    SNAP --&gt; MFLIST
+    MFLIST --&gt; MF
+    MF --&gt; PARQ
+</div>
 
 <p>The reason this matters is simple: <strong>the hidden machinery is exactly what makes LTAP possible.</strong></p>
 
@@ -26,39 +125,168 @@
 
 <p>LTAP stands for <strong>Lake Transactional/Analytical Processing</strong>.</p>
 
-<p>Before we explain what it <em>is</em>, let’s understand the problem it solves.</p>
+<p>It was announced by Databricks in 2026. Before we explain what it <em>is</em>, let’s understand the problem it solves — and the important nuance of what it does and does not replace.</p>
 
 <h3 id="the-old-world-had-two-separate-systems">The old world had two separate systems</h3>
 
 <p>In the traditional data architecture, you had a hard split:</p>
 
 <ul>
-  <li><strong>Transactional systems</strong> (OLTP): databases like PostgreSQL or MySQL that handle writes — inserts, updates, deletes. Fast for individual row operations. Bad for large analytical scans.</li>
-  <li><strong>Analytical systems</strong> (OLAP): warehouses like Redshift or Snowflake that handle reporting and aggregations. Fast for large scans. Not designed for constant writes.</li>
+  <li><strong>Transactional systems</strong> (OLTP): databases like PostgreSQL or MySQL that handle writes — inserts, updates, deletes. Fast for individual row operations. Stores data in <strong>row format</strong> on disk.</li>
+  <li><strong>Analytical systems</strong> (OLAP): warehouses like Redshift or Snowflake that handle reporting and aggregations. Fast for large scans. Stores data in <strong>columnar format</strong> for efficient reads.</li>
 </ul>
 
 <p>To get data from one world to the other, teams built ETL pipelines — nightly batch jobs that copied data across. The result: your analytics were always hours or days behind reality. And you were paying to store the same data twice.</p>
 
-<p><img src="/handbook/assets/img/ltap-vs-traditional.svg" alt="LTAP vs Traditional: before shows two siloed systems with ETL lag; after shows one Iceberg lakehouse handling both" width="100%" /></p>
+<div class="mermaid">
+flowchart TB
+    subgraph before["❌ Before LTAP"]
+        PG1["🐘 Postgres<br />(row format, fresh data)"]
+        ETL["⏳ ETL Pipeline<br />(hours of lag)"]
+        WH["🏭 Data Warehouse<br />(columnar, stale data)"]
+        PG1 --&gt; ETL --&gt; WH
+    end
 
-<h3 id="ltap-collapses-that-split">LTAP collapses that split</h3>
+    subgraph after["✅ With LTAP"]
+        PG2["🐘 Postgres / Lakebase<br />(OLTP transactions)"]
+        PS["PageServer<br />transcodes rows to Parquet"]
+        S3["💾 Object Storage<br />(Parquet / Iceberg)"]
+        ENG["⚡ Spark / Trino / DuckDB<br />(OLAP analytics)"]
+        PG2 --&gt; PS --&gt; S3 --&gt; ENG
+    end
+</div>
 
-<p>LTAP means doing both transactional and analytical work on the <strong>same</strong> table, on the <strong>same</strong> lake, at the <strong>same</strong> time — with no ETL lag, no data duplication, and full ACID guarantees.</p>
+<h3 id="does-ltap-replace-the-transactional-database">Does LTAP replace the transactional database?</h3>
 
-<p>You can run:</p>
+<p><strong>No.</strong> This is the most important thing to understand about LTAP.</p>
 
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- A transactional write</span>
-<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">orders</span> <span class="k">VALUES</span> <span class="p">(</span><span class="mi">1234</span><span class="p">,</span> <span class="s1">'Alice'</span><span class="p">,</span> <span class="mi">99</span><span class="p">.</span><span class="mi">99</span><span class="p">,</span> <span class="n">NOW</span><span class="p">());</span>
+<p>LTAP does <strong>not</strong> replace PostgreSQL or any transactional database. Postgres still handles all your OLTP workloads — inserts, updates, deletes, row-level locking, ACID transactions.</p>
 
-<span class="c1">-- And immediately after, an analytical query on the same table</span>
-<span class="k">SELECT</span> <span class="n">region</span><span class="p">,</span> <span class="k">SUM</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">orders</span> <span class="k">GROUP</span> <span class="k">BY</span> <span class="n">region</span><span class="p">;</span>
-</code></pre></div></div>
+<p>What LTAP does is unify the two worlds <strong>at the storage layer</strong>, not at the engine layer.</p>
 
-<p>Both operations hit the same Iceberg table. There is no pipeline in between. The write and the read are isolated from each other by snapshot versioning — the analytical query sees a consistent view even while a write is in progress.</p>
+<div class="mermaid">
+flowchart LR
+    subgraph before["❌ Before"]
+        A["Postgres<br />row format"] --&gt;|"ETL pipeline<br />hours of lag"| B["Data Warehouse<br />columnar format"]
+    end
+    subgraph after["✅ After LTAP"]
+        C["Postgres<br />OLTP"] --&gt;|"WAL"| D["PageServer<br />row to Parquet"]
+        D --&gt;|"writes"| E["Object Storage<br />Parquet/Iceberg"]
+        E --&gt;|"reads"| F["Spark / Trino<br />OLAP"]
+    end
+</div>
+
+<p>The key architectural decision: <strong>keep the best tool for each job</strong>.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Job</th>
+      <th>Engine</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Transactions (OLTP)</td>
+      <td>PostgreSQL / Lakebase</td>
+      <td>Full ACID, row-level locking, mature ecosystem</td>
+    </tr>
+    <tr>
+      <td>Analytics (OLAP)</td>
+      <td>Spark, Trino, DuckDB</td>
+      <td>Column-oriented, optimized for large scans</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>What changes is the <strong>data underneath</strong> them — instead of two copies in two formats maintained by a pipeline, there is one durable copy in open columnar format (Parquet/Iceberg) on object storage that both sides read.</p>
+
+<h3 id="what-is-lakebase">What is Lakebase?</h3>
+
+<p>LTAP is built on top of <strong>Lakebase</strong> — Databricks’ serverless PostgreSQL built on the <a href="https://neon.tech">Neon</a> architecture (a company Databricks acquired).</p>
+
+<p>Lakebase separates the traditional monolithic database into two parts:</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph mono["❌ Traditional Postgres Monolith"]
+        M1["🖥️ Compute + WAL + Data files<br />all on one machine"]
+    end
+
+    subgraph lakebase["✅ Lakebase (disaggregated)"]
+        COMP["🖥️ Postgres Compute<br />(stateless)"]
+        SK["📝 SafeKeeper<br />(WAL - durable log)"]
+        PGS["📄 PageServer<br />(data files in object storage)"]
+        COMP --&gt; SK
+        COMP --&gt; PGS
+    end
+</div>
+
+<ul>
+  <li><strong>SafeKeeper</strong> stores the write-ahead log (WAL) — the durable record of every committed transaction.</li>
+  <li><strong>PageServer</strong> materializes the WAL changes into actual data pages, stored in object storage (S3).</li>
+</ul>
+
+<p>This gives you unlimited storage, elastic compute, and instant branching — and it is the foundation that makes LTAP possible.</p>
+
+<h3 id="how-ltap-works-at-the-storage-layer">How LTAP works at the storage layer</h3>
+
+<p>When a transaction commits in Lakebase, the PageServer does something new: as it writes the data pages to object storage, it <strong>transcodes the row-format Postgres data into Parquet columnar format</strong>.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant App as 🖥️ Application
+    participant PG as 🐘 Postgres
+    participant SK as 📝 SafeKeeper WAL
+    participant PS as 📄 PageServer
+    participant S3 as 💾 Object Storage
+    participant SP as ⚡ Spark or Trino
+
+    App-&gt;&gt;PG: INSERT or UPDATE
+    PG-&gt;&gt;SK: Write WAL entry - commit
+    SK--&gt;&gt;PG: Durably acknowledged
+    PG--&gt;&gt;App: Transaction committed
+    SK-&gt;&gt;PS: Stream WAL changes
+    PS-&gt;&gt;S3: Materialize pages - row to Parquet
+    SP-&gt;&gt;S3: Read Parquet via Iceberg
+    S3--&gt;&gt;SP: Columnar data - no ETL needed
+</div>
+
+<p>Postgres reads row-format pages from the PageServer’s local cache (fast for OLTP point reads). Spark and other analytical engines read the columnar Parquet files from object storage (fast for analytical scans). Both are reading from the same underlying durable store.</p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> LTAP is like a live spreadsheet that everyone edits and reads at the same time, but nobody ever sees a half-saved row.</p>
+  <p><strong>Memory trick:</strong> LTAP is like a bilingual document — the same content exists in English for one audience and French for another, but there is only one source of truth underneath.</p>
 </blockquote>
+
+<h3 id="ltap-vs-htap-an-important-distinction">LTAP vs HTAP: an important distinction</h3>
+
+<p><strong>HTAP</strong> (Hybrid Transactional/Analytical Processing) was a previous attempt at the same goal — build a <strong>single engine</strong> that handles both workloads.</p>
+
+<p>HTAP largely failed in practice because:</p>
+<ul>
+  <li>Building one engine great at both transactions AND analytics is enormously complex</li>
+  <li>The two workloads contend for the same CPU and memory — an analytical query slows down your OLTP</li>
+  <li>New engines lack the ecosystem and maturity of Postgres or Spark</li>
+</ul>
+
+<p>LTAP takes a different approach: <strong>unify at the storage layer, not the engine layer</strong>. Keep Postgres for transactions, keep Spark/Lakehouse for analytics, make them read the same data.</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph htap["❌ HTAP approach"]
+        ONE["One engine<br />trying to do both"]
+        ONE --&gt; SLOW["Usually compromises on both<br />slow OLTP or slow analytics"]
+    end
+
+    subgraph ltap["✅ LTAP approach"]
+        PGE["🐘 Postgres<br />(OLTP)"]
+        ANA["⚡ Spark / Trino<br />(OLAP)"]
+        STO["💾 Unified storage<br />(Parquet / Iceberg)"]
+        PGE --&gt; STO
+        ANA --&gt; STO
+    end
+</div>
 
 <hr />
 
@@ -144,7 +372,35 @@
   <li>Teams can share tables across completely different tools with zero data copying.</li>
 </ul>
 
-<p><img src="/handbook/assets/img/irc-architecture.svg" alt="IRC Architecture: multiple engines connect to one REST catalog which maps table names to S3 metadata paths" width="100%" /></p>
+<div class="mermaid">
+flowchart LR
+    subgraph engines["Query Engines"]
+        SP["⚡ Spark"]
+        TR["🔍 Trino"]
+        DK["🦆 DuckDB"]
+        FL["🌊 Flink"]
+        SF["❄️ Snowflake"]
+    end
+
+    IRC["📖 IRC Catalog<br />Apache Gravitino<br />REST API endpoint"]
+
+    subgraph s3["Object Storage"]
+        META["metadata.json"]
+        PARQ["Parquet files"]
+    end
+
+    SP --&gt;|"lookup"| IRC
+    TR --&gt;|"lookup"| IRC
+    DK --&gt;|"lookup"| IRC
+    FL --&gt;|"lookup"| IRC
+    SF --&gt;|"lookup"| IRC
+    IRC --&gt;|"metadata-location"| SP
+    IRC --&gt;|"metadata-location"| TR
+    IRC --&gt;|"metadata-location"| DK
+    SP --&gt;|"read"| s3
+    TR --&gt;|"read"| s3
+    DK --&gt;|"read"| s3
+</div>
 
 <h3 id="what-the-irc-api-looks-like">What the IRC API looks like</h3>
 
@@ -243,7 +499,26 @@ POST /v1/transactions/commit               → commit an ACID transaction
 <span class="k">GROUP</span> <span class="k">BY</span> <span class="n">region</span><span class="p">;</span>
 </code></pre></div></div>
 
-<p><img src="/handbook/assets/img/ltap-flow.svg" alt="LTAP query flow: 5 steps from SQL to Parquet rows, with file pruning reducing 10,000 files to 60" width="100%" /></p>
+<div class="mermaid">
+sequenceDiagram
+    participant ENG as ⚡ Query Engine
+    participant IRC as 📖 IRC Gravitino
+    participant S3M as 📄 Metadata File
+    participant MFL as 📋 Manifest List
+    participant MF as 📁 Manifest Files
+    participant PQ as 💾 Parquet Files
+
+    ENG-&gt;&gt;IRC: Lookup table: db.orders
+    IRC--&gt;&gt;ENG: metadata-location path on S3
+    ENG-&gt;&gt;S3M: Fetch metadata.json
+    S3M--&gt;&gt;ENG: current-snapshot-id and manifest-list path
+    ENG-&gt;&gt;MFL: Fetch manifest list
+    MFL--&gt;&gt;ENG: List of manifest files
+    ENG-&gt;&gt;MF: Read manifest files with column stats
+    Note over ENG,MF: File pruning: 10,000 files reduced to 60 matching order_date filter
+    ENG-&gt;&gt;PQ: Read only 60 matching Parquet files
+    PQ--&gt;&gt;ENG: Rows returned to user
+</div>
 
 <p><strong>Step 1 — Parse the query.</strong> Spark or Trino receives the SQL and identifies that it needs the <code class="language-plaintext highlighter-rouge">orders</code> table.</p>
 
@@ -277,28 +552,38 @@ File: part-00001.parquet
 
 <h2 id="6-a-concrete-ltap-example-order-processing">6. A Concrete LTAP Example: Order Processing</h2>
 
-<p>Here is a realistic scenario showing transactions and analytics on the same Iceberg table simultaneously.</p>
+<p>Here is a realistic scenario showing how the two engines play their separate roles in LTAP.</p>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">pyspark.sql</span> <span class="kn">import</span> <span class="n">SparkSession</span>
+<p>The <strong>transactional write</strong> happens through Postgres (Lakebase). The <strong>analytical query</strong> happens through Spark. There is no ETL pipeline connecting them — they share the same underlying Parquet/Iceberg storage.</p>
 
-<span class="n">spark</span> <span class="o">=</span> <span class="p">(</span><span class="n">SparkSession</span><span class="p">.</span><span class="n">builder</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">psycopg2</span>
+<span class="kn">from</span> <span class="n">pyspark.sql</span> <span class="kn">import</span> <span class="n">SparkSession</span>
+
+<span class="c1"># ── Transactional: write new orders via Postgres (Lakebase) ───────────────────
+# Postgres handles the OLTP side — row-level ACID, fast point writes
+</span><span class="n">conn</span> <span class="o">=</span> <span class="n">psycopg2</span><span class="p">.</span><span class="nf">connect</span><span class="p">(</span><span class="sh">"</span><span class="s">postgresql://lakebase.company.com/orders_db</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">cur</span> <span class="o">=</span> <span class="n">conn</span><span class="p">.</span><span class="nf">cursor</span><span class="p">()</span>
+
+<span class="n">cur</span><span class="p">.</span><span class="nf">execute</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+    INSERT INTO orders (order_id, customer, region, amount, order_date)
+    VALUES
+        (1001, </span><span class="sh">'</span><span class="s">Alice</span><span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="s">EU</span><span class="sh">'</span><span class="s">,   149.99, </span><span class="sh">'</span><span class="s">2026-06-29</span><span class="sh">'</span><span class="s">),
+        (1002, </span><span class="sh">'</span><span class="s">Bob</span><span class="sh">'</span><span class="s">,   </span><span class="sh">'</span><span class="s">US</span><span class="sh">'</span><span class="s">,    89.50, </span><span class="sh">'</span><span class="s">2026-06-29</span><span class="sh">'</span><span class="s">),
+        (1003, </span><span class="sh">'</span><span class="s">Carla</span><span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="s">APAC</span><span class="sh">'</span><span class="s">, 210.00, </span><span class="sh">'</span><span class="s">2026-06-29</span><span class="sh">'</span><span class="s">)
+</span><span class="sh">"""</span><span class="p">)</span>
+<span class="n">conn</span><span class="p">.</span><span class="nf">commit</span><span class="p">()</span>
+<span class="c1"># ↑ Commits to Postgres via WAL → PageServer transcodes to Parquet in object storage
+# ↑ No ETL needed — the columnar copy is created as part of the commit path
+</span>
+<span class="c1"># ── Analytical: immediately query via Spark — no ETL needed ───────────────────
+# Spark reads the same Parquet/Iceberg data that Postgres just wrote
+</span><span class="n">spark</span> <span class="o">=</span> <span class="p">(</span><span class="n">SparkSession</span><span class="p">.</span><span class="n">builder</span>
     <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">org.apache.iceberg.spark.SparkCatalog</span><span class="sh">"</span><span class="p">)</span>
     <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.type</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">rest</span><span class="sh">"</span><span class="p">)</span>
     <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.uri</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">https://my-catalog.company.com</span><span class="sh">"</span><span class="p">)</span>
     <span class="p">.</span><span class="nf">getOrCreate</span><span class="p">())</span>
 
-<span class="c1"># ── Transactional: write new orders ──────────────────────────────────────────
-</span><span class="n">new_orders</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">createDataFrame</span><span class="p">([</span>
-    <span class="p">(</span><span class="mi">1001</span><span class="p">,</span> <span class="sh">"</span><span class="s">Alice</span><span class="sh">"</span><span class="p">,</span>   <span class="sh">"</span><span class="s">EU</span><span class="sh">"</span><span class="p">,</span>  <span class="mf">149.99</span><span class="p">,</span> <span class="sh">"</span><span class="s">2026-06-29</span><span class="sh">"</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">1002</span><span class="p">,</span> <span class="sh">"</span><span class="s">Bob</span><span class="sh">"</span><span class="p">,</span>     <span class="sh">"</span><span class="s">US</span><span class="sh">"</span><span class="p">,</span>   <span class="mf">89.50</span><span class="p">,</span> <span class="sh">"</span><span class="s">2026-06-29</span><span class="sh">"</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">1003</span><span class="p">,</span> <span class="sh">"</span><span class="s">Carla</span><span class="sh">"</span><span class="p">,</span>   <span class="sh">"</span><span class="s">APAC</span><span class="sh">"</span><span class="p">,</span> <span class="mf">210.00</span><span class="p">,</span> <span class="sh">"</span><span class="s">2026-06-29</span><span class="sh">"</span><span class="p">),</span>
-<span class="p">],</span> <span class="p">[</span><span class="sh">"</span><span class="s">order_id</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">customer</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">region</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">amount</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">order_date</span><span class="sh">"</span><span class="p">])</span>
-
-<span class="n">new_orders</span><span class="p">.</span><span class="nf">writeTo</span><span class="p">(</span><span class="sh">"</span><span class="s">my_catalog.db.orders</span><span class="sh">"</span><span class="p">).</span><span class="nf">append</span><span class="p">()</span>
-<span class="c1"># ↑ Creates a new snapshot atomically. Readers see the old snapshot until commit.
-</span>
-<span class="c1"># ── Analytical: immediately query — no ETL needed ─────────────────────────────
-</span><span class="n">result</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
+<span class="n">result</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"""</span><span class="s">
     SELECT
         region,
         COUNT(*)          AS num_orders,
@@ -313,7 +598,13 @@ File: part-00001.parquet
 <span class="n">result</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p>Both operations complete on the same table. No copy. No pipeline. No lag.</p>
+<p>The transactional write uses Postgres. The analytical query uses Spark. No pipeline. No separate copy to maintain. The freshness of the analytics is determined by how quickly the PageServer transcodes committed rows into the columnar store — which is near real-time, not hours.</p>
+
+<div class="mermaid">
+flowchart LR
+    A["🐘 Postgres commits rows<br />(OLTP)"] --&gt;|"WAL to PageServer"| B["💾 Parquet on Object Storage<br />(Iceberg)"]
+    B --&gt;|"Spark reads via IRC"| C["⚡ Spark query<br />(OLAP)"]
+</div>
 
 <hr />
 
@@ -418,27 +709,469 @@ File: part-00001.parquet
 
 <hr />
 
+<h2 id="10-running-ltap-style-architecture-on-premises">10. Running LTAP-style architecture on-premises</h2>
+
+<p>Databricks’ LTAP is a managed cloud product — Lakebase runs on their infrastructure, PageServer writes to S3, and the Lakehouse engines are hosted Spark/Trino clusters.</p>
+
+<p>But the same architecture can be assembled on-premises using open-source components. You need to replace each layer independently.</p>
+
+<h3 id="the-four-layers-and-their-on-prem-replacements">The four layers and their on-prem replacements</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Databricks LTAP layer         On-prem open-source equivalent
+─────────────────────         ──────────────────────────────
+Lakebase (serverless Postgres) →  Self-hosted Neon OR standard Postgres + pg_lake
+PageServer (WAL → Parquet)     →  pg_lake extension (Postgres writes Iceberg natively)
+Object storage (S3)            →  Pure Storage FlashBlade (enterprise on-prem)
+                                   OR MinIO (commodity hardware / dev)
+IRC Catalog                    →  Apache Gravitino (recommended)
+Analytics engine               →  Trino OR Apache Spark (self-hosted)
+</code></pre></div></div>
+
+<h3 id="object-storage-pure-storage-flashblade">Object storage: Pure Storage FlashBlade</h3>
+
+<p>For enterprise on-prem deployments, <a href="https://www.purestorage.com/products/unstructured-data-storage/flashblade-s.html">Pure Storage FlashBlade</a> is the recommended object storage layer. FlashBlade exposes a native <strong>S3-compatible API</strong> — the same API used by AWS S3 — so every tool in the stack (pg_lake, Gravitino, Spark, Trino, DuckDB) connects to it without modification.</p>
+
+<p>Key properties relevant to this architecture:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Property</th>
+      <th>FlashBlade</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>S3 API compatibility</td>
+      <td>✅ Native S3 REST API</td>
+    </tr>
+    <tr>
+      <td>Path-style access</td>
+      <td>✅ Required — set <code class="language-plaintext highlighter-rouge">path_style: true</code></td>
+    </tr>
+    <tr>
+      <td>Protocols</td>
+      <td>NFS, S3, SMB on the same system</td>
+    </tr>
+    <tr>
+      <td>Scale</td>
+      <td>Tens of terabytes to multiple petabytes</td>
+    </tr>
+    <tr>
+      <td>Tested SDKs</td>
+      <td>Java, Python, Go, C#, .NET S3 clients</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="critical-flashblade-configuration-stsunavailable">Critical FlashBlade configuration: <code class="language-plaintext highlighter-rouge">stsUnavailable</code></h4>
+
+<p>FlashBlade does not support AWS STS (Security Token Service) — the credential-vending mechanism that cloud-native tools like Polaris or Gravitino may try to call. You must disable this explicitly in your catalog config.</p>
+
+<p>For <strong>Gravitino IRC</strong> pointing at FlashBlade:</p>
+
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="py">gravitino.iceberg-rest.s3-endpoint</span>   <span class="p">=</span> <span class="s">https://&lt;FLASHBLADE_DATA_VIP&gt;:80</span>
+<span class="py">gravitino.iceberg-rest.s3-path-style</span> <span class="p">=</span> <span class="s">true</span>
+<span class="py">gravitino.iceberg-rest.s3-region</span>     <span class="p">=</span> <span class="s">us-east-1</span>
+<span class="py">gravitino.iceberg-rest.s3-access-key</span> <span class="p">=</span> <span class="s">&lt;flashblade_access_key&gt;</span>
+<span class="py">gravitino.iceberg-rest.s3-secret-key</span> <span class="p">=</span> <span class="s">&lt;flashblade_secret_key&gt;</span>
+</code></pre></div></div>
+
+<p>For <strong>Spark</strong> connecting directly to FlashBlade via S3A:</p>
+
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="py">spark.hadoop.fs.s3a.endpoint</span>               <span class="p">=</span> <span class="s">&lt;FLASHBLADE_DATA_VIP&gt;</span>
+<span class="py">spark.hadoop.fs.s3a.path.style.access</span>      <span class="p">=</span> <span class="s">true</span>
+<span class="py">spark.hadoop.fs.s3a.connection.ssl.enabled</span> <span class="p">=</span> <span class="s">false</span>
+<span class="py">spark.hadoop.fs.s3a.access.key</span>             <span class="p">=</span> <span class="s">&lt;flashblade_access_key&gt;</span>
+<span class="py">spark.hadoop.fs.s3a.secret.key</span>             <span class="p">=</span> <span class="s">&lt;flashblade_secret_key&gt;</span>
+</code></pre></div></div>
+
+<p>For <strong>pg_lake</strong> connecting to FlashBlade instead of MinIO — only the S3 endpoint changes in the Docker Compose environment variables:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">AWS_S3_ENDPOINT</span><span class="o">=</span>https://&lt;FLASHBLADE_DATA_VIP&gt;:80
+<span class="nv">AWS_S3_PATH_STYLE</span><span class="o">=</span><span class="nb">true
+</span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span>&lt;flashblade_access_key&gt;
+<span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span>&lt;flashblade_secret_key&gt;
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>MinIO vs FlashBlade:</strong> MinIO is ideal for dev/test or commodity hardware. FlashBlade is the enterprise choice — all-flash hardware, unified NFS+S3 access, petabyte scale, and enterprise support. The configuration is identical from the software side; only the endpoint changes.</p>
+</blockquote>
+
+<h3 id="why-gravitino-for-the-irc-catalog">Why Gravitino for the IRC catalog?</h3>
+
+<p><a href="https://gravitino.apache.org">Apache Gravitino</a> is a fully open-source, Apache-licensed unified metadata catalog. It implements the Iceberg REST Catalog (IRC) specification natively and adds governance, multi-engine access control, and multi-catalog federation on top.</p>
+
+<p>Key reasons to choose it over alternatives like Polaris or Lakekeeper:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Gravitino</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>IRC spec compliant</td>
+      <td>✅ Full HTTP API at <code class="language-plaintext highlighter-rouge">/iceberg/</code></td>
+    </tr>
+    <tr>
+      <td>Catalog backends</td>
+      <td>Hive Metastore, JDBC (Postgres, MySQL), REST</td>
+    </tr>
+    <tr>
+      <td>Object storage</td>
+      <td>S3 / MinIO, GCS, Azure ADLS, HDFS, OSS</td>
+    </tr>
+    <tr>
+      <td>Access control</td>
+      <td>✅ When run as auxiliary service</td>
+    </tr>
+    <tr>
+      <td>Multi-catalog federation</td>
+      <td>✅ One Gravitino instance, many catalogs</td>
+    </tr>
+    <tr>
+      <td>Docker image</td>
+      <td><code class="language-plaintext highlighter-rouge">apache/gravitino-iceberg-rest</code></td>
+    </tr>
+    <tr>
+      <td>License</td>
+      <td>Apache 2.0</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="two-deployment-modes">Two deployment modes</h4>
+
+<p><strong>Standalone</strong> — quickest to run, no access control:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker run <span class="nt">--rm</span> <span class="nt">-d</span> <span class="nt">-p</span> 9001:9001 apache/gravitino-iceberg-rest:0.8.0-incubating
+<span class="c"># IRC endpoint available at: http://localhost:9001/iceberg/</span>
+</code></pre></div></div>
+
+<p><strong>Auxiliary service</strong> (embedded in Gravitino server) — adds access control and Web UI:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Gravitino server exposes:</span>
+<span class="c">#   port 8090 → Web UI + metadata API</span>
+<span class="c">#   port 9001 → Iceberg REST catalog endpoint</span>
+</code></pre></div></div>
+
+<h4 id="configuration-for-on-prem-with-minio-and-postgres">Configuration for on-prem with MinIO and Postgres</h4>
+
+<p>Production config in <code class="language-plaintext highlighter-rouge">gravitino.conf</code> (auxiliary mode):</p>
+
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable Iceberg REST as an auxiliary service
+</span><span class="py">gravitino.auxService.names</span> <span class="p">=</span> <span class="s">iceberg-rest</span>
+<span class="py">gravitino.iceberg-rest.classpath</span> <span class="p">=</span> <span class="s">iceberg-rest-server/libs,iceberg-rest-server/conf</span>
+
+<span class="c"># Use Postgres as the catalog backend (reliable, persistent)
+</span><span class="py">gravitino.iceberg-rest.catalog-backend</span> <span class="p">=</span> <span class="s">jdbc</span>
+<span class="py">gravitino.iceberg-rest.jdbc-driver</span>     <span class="p">=</span> <span class="s">org.postgresql.Driver</span>
+<span class="py">gravitino.iceberg-rest.uri</span>             <span class="p">=</span> <span class="s">jdbc:postgresql://localhost:5432/gravitino_catalog</span>
+<span class="py">gravitino.iceberg-rest.jdbc-user</span>       <span class="p">=</span> <span class="s">gravitino</span>
+<span class="py">gravitino.iceberg-rest.jdbc-password</span>   <span class="p">=</span> <span class="s">yourpassword</span>
+
+<span class="c"># Point warehouse at MinIO (S3-compatible on-prem)
+</span><span class="py">gravitino.iceberg-rest.warehouse</span>       <span class="p">=</span> <span class="s">s3a://iceberg-warehouse/</span>
+<span class="py">gravitino.iceberg-rest.io-impl</span>         <span class="p">=</span> <span class="s">org.apache.iceberg.aws.s3.S3FileIO</span>
+<span class="py">gravitino.iceberg-rest.s3-endpoint</span>     <span class="p">=</span> <span class="s">http://minio:9000</span>
+<span class="py">gravitino.iceberg-rest.s3-access-key</span>   <span class="p">=</span> <span class="s">minioadmin</span>
+<span class="py">gravitino.iceberg-rest.s3-secret-key</span>   <span class="p">=</span> <span class="s">minioadmin</span>
+<span class="py">gravitino.iceberg-rest.s3-path-style</span>   <span class="p">=</span> <span class="s">true</span>
+</code></pre></div></div>
+
+<h4 id="connecting-engines-to-gravitino-irc">Connecting engines to Gravitino IRC</h4>
+
+<p>Any engine that speaks the IRC spec points to the same endpoint:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Spark
+</span><span class="n">spark</span> <span class="o">=</span> <span class="n">SparkSession</span><span class="p">.</span><span class="n">builder</span> \
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">org.apache.iceberg.spark.SparkCatalog</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.type</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">rest</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="sh">"</span><span class="s">spark.sql.catalog.my_catalog.uri</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">http://gravitino:9001/iceberg/</span><span class="sh">"</span><span class="p">)</span> \
+    <span class="p">.</span><span class="nf">getOrCreate</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Trino</span>
+<span class="k">CREATE</span> <span class="k">CATALOG</span> <span class="n">iceberg</span> <span class="k">USING</span> <span class="n">iceberg</span>
+<span class="k">WITH</span> <span class="p">(</span>
+    <span class="nv">"iceberg.catalog.type"</span> <span class="o">=</span> <span class="s1">'rest'</span><span class="p">,</span>
+    <span class="nv">"iceberg.rest-catalog.uri"</span> <span class="o">=</span> <span class="s1">'http://gravitino:9001/iceberg/'</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># DuckDB
+</span><span class="kn">import</span> <span class="n">duckdb</span>
+<span class="n">duckdb</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">ATTACH </span><span class="sh">'</span><span class="s">http://gravitino:9001/iceberg/</span><span class="sh">'</span><span class="s"> AS cat (TYPE ICEBERG)</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">duckdb</span><span class="p">.</span><span class="nf">sql</span><span class="p">(</span><span class="sh">"</span><span class="s">SELECT * FROM cat.db.orders LIMIT 10</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>All three engines read from the same Iceberg tables on MinIO, coordinated by Gravitino.</p>
+
+<h3 id="option-a-self-hosted-neon-stack-closest-to-lakebase">Option A: Self-hosted Neon stack (closest to Lakebase)</h3>
+
+<p><a href="https://github.com/neondatabase/neon">Neon went fully open source in 2024 (MIT license)</a>. You can run the entire Neon stack yourself — the same codebase that powers Neon Cloud.</p>
+
+<p>The stack runs via Docker Compose:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">services</span><span class="pi">:</span>
+  <span class="na">storage_broker</span><span class="pi">:</span>   <span class="c1"># lightweight pub-sub coordination</span>
+  <span class="na">safekeeper1</span><span class="pi">:</span>      <span class="c1"># WAL durability with quorum replication</span>
+  <span class="na">pageserver</span><span class="pi">:</span>       <span class="c1"># materializes WAL pages → object storage</span>
+  <span class="na">compute</span><span class="pi">:</span>          <span class="c1"># stateless Postgres connected to pageserver</span>
+  <span class="na">minio</span><span class="pi">:</span>            <span class="c1"># S3-compatible object storage</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">pageserver</code> connects to MinIO instead of AWS S3. Everything else is the same architecture.</p>
+
+<p>Hardware minimum to run this stack:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Environment</th>
+      <th>RAM</th>
+      <th>CPU</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Dev / testing</td>
+      <td>2 GB</td>
+      <td>1 vCPU</td>
+    </tr>
+    <tr>
+      <td>Small production</td>
+      <td>4 GB</td>
+      <td>2 vCPUs</td>
+    </tr>
+    <tr>
+      <td>Multi-tenant / sustained writes</td>
+      <td>8 GB+</td>
+      <td>4 vCPUs</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>For Kubernetes environments, the <a href="https://github.com/lovablelabs/neon-operator">Neon Operator</a> deploys all components as Kubernetes workloads with S3-compatible storage (MinIO, Ceph, or Rook).</p>
+
+<p><strong>Limitation:</strong> The on-prem Neon stack does not yet do the LTAP-specific Parquet transcoding automatically during PageServer materialization — that part is Databricks’ proprietary extension to the Neon architecture. You need to bridge that gap with one of the options below.</p>
+
+<h3 id="option-b-postgres--pg_lake-snowflake-open-source">Option B: Postgres + pg_lake (Snowflake open source)</h3>
+
+<p><a href="https://github.com/Snowflake-Labs/pg_lake"><code class="language-plaintext highlighter-rouge">pg_lake</code></a> (Apache 2.0, originally built by Crunchy Data, open-sourced by Snowflake in 2025) turns standard Postgres into a standalone lakehouse. You can create and write Iceberg tables directly from Postgres — they land as Parquet files on any S3-compatible store — and any other Iceberg engine (Spark, Trino, DuckDB) can read them immediately.</p>
+
+<h4 id="architecture">Architecture</h4>
+
+<p><code class="language-plaintext highlighter-rouge">pg_lake</code> has two components:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>User → PostgreSQL (with pg_lake extensions)
+              ↓
+         pgduck_server  ← separate process, PostgreSQL wire protocol
+              ↓
+           DuckDB       ← handles column-oriented scanning and computation
+              ↓
+     S3-compatible object store (MinIO / Pure Storage FlashBlade / AWS S3)
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">pgduck_server</code> runs DuckDB as a separate multi-threaded process and exposes it via the Postgres wire protocol. The <code class="language-plaintext highlighter-rouge">pg_lake</code> extension delegates scanning and analytical computation to DuckDB transparently — users just write standard SQL against Postgres.</p>
+
+<h4 id="what-you-can-do">What you can do</h4>
+
+<ul>
+  <li>Create Iceberg tables with <code class="language-plaintext highlighter-rouge">USING iceberg</code> — data goes straight to Parquet on S3</li>
+  <li>Query Iceberg tables, heap tables, and raw Parquet/CSV/JSON files <strong>in the same SQL query</strong></li>
+  <li><code class="language-plaintext highlighter-rouge">COPY</code> data to/from S3 in Parquet, CSV, or JSON</li>
+  <li>Create foreign tables directly from files in object storage — columns are inferred automatically</li>
+  <li>Full transactional guarantees across all table types</li>
+</ul>
+
+<h4 id="sql-examples">SQL examples</h4>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Create an Iceberg table — data lands in S3 as Parquet</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">orders</span> <span class="k">USING</span> <span class="n">iceberg</span> <span class="k">AS</span>
+    <span class="k">SELECT</span> <span class="n">i</span> <span class="k">AS</span> <span class="n">order_id</span><span class="p">,</span> <span class="s1">'customer_'</span> <span class="o">||</span> <span class="n">i</span> <span class="k">AS</span> <span class="n">customer</span>
+    <span class="k">FROM</span> <span class="n">generate_series</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span> <span class="n">i</span><span class="p">;</span>
+
+<span class="c1">-- Standard query</span>
+<span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">orders</span><span class="p">;</span>
+
+<span class="c1">-- See where the Iceberg metadata lives on S3</span>
+<span class="k">SELECT</span> <span class="k">table_name</span><span class="p">,</span> <span class="n">metadata_location</span> <span class="k">FROM</span> <span class="n">iceberg_tables</span><span class="p">;</span>
+<span class="c1">-- orders | s3://warehouse/pglake/public/orders/metadata/00001-....metadata.json</span>
+
+<span class="c1">-- COPY results to S3 as Parquet</span>
+<span class="k">COPY</span> <span class="p">(</span><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">orders</span> <span class="k">WHERE</span> <span class="n">order_id</span> <span class="o">&gt;</span> <span class="mi">500</span><span class="p">)</span>
+<span class="k">TO</span> <span class="s1">'s3://warehouse/exports/orders_recent.parquet'</span><span class="p">;</span>
+
+<span class="c1">-- Query raw Parquet files on S3 without importing them</span>
+<span class="k">CREATE</span> <span class="k">FOREIGN</span> <span class="k">TABLE</span> <span class="n">parquet_logs</span> <span class="p">()</span>
+    <span class="n">SERVER</span> <span class="n">pg_lake</span>
+    <span class="k">OPTIONS</span> <span class="p">(</span><span class="n">path</span> <span class="s1">'s3://warehouse/logs/*.parquet'</span><span class="p">);</span>
+
+<span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">parquet_logs</span><span class="p">;</span>
+<span class="c1">-- columns are inferred automatically from the file schema</span>
+
+<span class="c1">-- Mix Iceberg, heap, and foreign tables in one query</span>
+<span class="k">SELECT</span> <span class="n">o</span><span class="p">.</span><span class="n">customer</span><span class="p">,</span> <span class="n">l</span><span class="p">.</span><span class="n">event</span>
+<span class="k">FROM</span> <span class="n">orders</span> <span class="n">o</span>
+<span class="k">JOIN</span> <span class="n">parquet_logs</span> <span class="n">l</span> <span class="k">ON</span> <span class="n">o</span><span class="p">.</span><span class="n">order_id</span> <span class="o">=</span> <span class="n">l</span><span class="p">.</span><span class="n">order_id</span>
+<span class="k">WHERE</span> <span class="n">o</span><span class="p">.</span><span class="n">order_id</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h4 id="setup-docker">Setup (Docker)</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/Snowflake-Labs/pg_lake
+<span class="nb">cd </span>pg_lake
+docker compose up
+<span class="c"># connects to MinIO by default; swap endpoint for FlashBlade or any S3-compatible store</span>
+</code></pre></div></div>
+
+<h3 id="option-c-postgres--coldfront-pgedge-open-source">Option C: Postgres + ColdFront (pgEdge, open source)</h3>
+
+<p><a href="https://github.com/pgEdge/coldfront"><code class="language-plaintext highlighter-rouge">ColdFront</code></a> is an open source Postgres extension (PostgreSQL License) that keeps hot data in native Postgres partitions and automatically tiers cold data to Apache Iceberg on any S3-compatible store. Both tiers are readable and writable through the same SQL — no application changes needed.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Postgres table (unified SQL view)
+├── Hot tier:  recent rows in native Postgres partitions
+└── Cold tier: older rows in Iceberg Parquet on MinIO
+</code></pre></div></div>
+
+<p>Both tiers look like the same table to the application. The archiver moves rows from hot to cold on a schedule based on a watermark you define.</p>
+
+<p>Stack:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Version</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>PostgreSQL</td>
+      <td>16, 17, or 18 (stock, no fork)</td>
+    </tr>
+    <tr>
+      <td>pg_duckdb</td>
+      <td>Iceberg reads/writes via DuckDB in-process</td>
+    </tr>
+    <tr>
+      <td>Lakekeeper</td>
+      <td>Iceberg REST catalog (Rust)</td>
+    </tr>
+    <tr>
+      <td>MinIO / SeaweedFS</td>
+      <td>S3-compatible object storage</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="option-d-edb-postgres--iceberg-reference-architecture">Option D: EDB Postgres + Iceberg reference architecture</h3>
+
+<p>EnterpriseDB (EDB) published a <a href="https://github.com/milesrichardson-edb/converged-analytics-reference">converged analytics reference architecture</a> that replicates from Postgres to Iceberg automatically using their PGAA (Postgres Analytics Accelerator) extension:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>EDB Postgres Distributed (PGD)
+→ PGAA extension replicates rows → Iceberg on MinIO
+→ Lakekeeper (IRC catalog)
+→ WarehousePG / Spark for analytics
+</code></pre></div></div>
+
+<p>This is the most production-ready fully on-prem option but requires EDB licensing.</p>
+
+<h3 id="option-e-full-open-source-lakehouse-stack-for-learning--prototyping">Option E: Full open-source lakehouse stack for learning / prototyping</h3>
+
+<p><a href="https://github.com/pfabrici/iceduck"><code class="language-plaintext highlighter-rouge">iceduck</code></a> provides a complete Docker Compose on-prem lakehouse stack for learning and prototyping with zero cloud dependencies:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">services</span><span class="pi">:</span>
+  <span class="na">minio</span><span class="pi">:</span>           <span class="c1"># S3-compatible object storage</span>
+  <span class="na">polaris</span><span class="pi">:</span>         <span class="c1"># Apache Polaris — Iceberg REST catalog</span>
+  <span class="na">postgres</span><span class="pi">:</span>        <span class="c1"># Metastore for Polaris + relational store</span>
+  <span class="na">trino</span><span class="pi">:</span>           <span class="c1"># SQL query engine over Iceberg</span>
+  <span class="na">spark</span><span class="pi">:</span>           <span class="c1"># Distributed processing</span>
+  <span class="na">duckdb</span><span class="pi">:</span>          <span class="c1"># Fast local analytical queries</span>
+  <span class="na">jupyter</span><span class="pi">:</span>         <span class="c1"># Interactive notebooks</span>
+</code></pre></div></div>
+
+<p>Run locally with <code class="language-plaintext highlighter-rouge">docker compose up</code>. All services connect to each other automatically.</p>
+
+<h3 id="summary-which-option-for-which-situation">Summary: which option for which situation</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Recommended approach</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Enterprise on-prem (production)</td>
+      <td><code class="language-plaintext highlighter-rouge">pg_lake</code> + <strong>Pure Storage FlashBlade</strong> + <strong>Gravitino IRC</strong> + Trino/Spark</td>
+    </tr>
+    <tr>
+      <td>Closest to Databricks LTAP architecture</td>
+      <td>Self-hosted Neon + FlashBlade/MinIO + <strong>Gravitino IRC</strong> + Trino</td>
+    </tr>
+    <tr>
+      <td>Hot/cold tiering from Postgres to Iceberg</td>
+      <td><code class="language-plaintext highlighter-rouge">ColdFront</code> (pgEdge) + FlashBlade/MinIO + <strong>Gravitino IRC</strong></td>
+    </tr>
+    <tr>
+      <td>Enterprise on-prem with EDB licensing</td>
+      <td>EDB PGD + PGAA + <strong>Gravitino IRC</strong> + FlashBlade</td>
+    </tr>
+    <tr>
+      <td>Dev / commodity hardware</td>
+      <td><code class="language-plaintext highlighter-rouge">pg_lake</code> + MinIO + <strong>Gravitino IRC</strong></td>
+    </tr>
+    <tr>
+      <td>Learning and prototyping locally</td>
+      <td><code class="language-plaintext highlighter-rouge">iceduck</code> Docker Compose stack (uses Apache Polaris)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="the-one-thing-you-cannot-self-host-yet">The one thing you cannot self-host yet</h3>
+
+<p>The specific Databricks innovation in LTAP — where the <strong>PageServer automatically transcodes committed Postgres rows into Parquet columnar format as part of the WAL materialization path</strong> — is proprietary to Databricks’ fork of Neon. The open-source Neon PageServer writes row-format pages to object storage, not Parquet.</p>
+
+<p>You can achieve the same end result (Postgres transactions readable by Spark/Trino via Iceberg) using <code class="language-plaintext highlighter-rouge">pg_lake</code> or <code class="language-plaintext highlighter-rouge">ColdFront</code>, but the transcoding happens at a different layer — via extension rather than inside the storage engine itself.</p>
+
+<hr />
+
 <h2 id="final-mental-model">Final Mental Model</h2>
 
-<p>Before Iceberg and LTAP, the data world looked like this:</p>
+<p>Before LTAP, the data world looked like this:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Transactions:  [Operational DB]  ──ETL──►  [Data Warehouse]  :Analytics
-               (fresh data)       (hours)   (stale data)
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[Postgres / MySQL]  ──ETL pipeline──►  [Data Warehouse]
+  OLTP: fresh data      hours of lag     OLAP: stale data
+  row format                             columnar format
 </code></pre></div></div>
 
-<p>With LTAP on Apache Iceberg:</p>
+<p>With LTAP:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            ┌─────────────────────────────────┐
-            │     Apache Iceberg Table        │
-            │  (S3 + metadata chain + IRC)    │
-            └────────────┬────────────────────┘
-                         │
-         ┌───────────────┼───────────────┐
-         ▼               ▼               ▼
-   Transactions      Analytics       Time Travel
-   (INSERT/UPDATE)  (SELECT/AGG)   (past snapshots)
-   
-   Any engine:  Spark · Trino · DuckDB · Flink · Snowflake
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>         ┌─────────────────────────────────────────────┐
+         │           Lakebase (Postgres)               │
+         │     SafeKeeper (WAL) + PageServer           │
+         └────────────────────┬────────────────────────┘
+                              │ transcodes rows → Parquet
+                              ▼
+         ┌─────────────────────────────────────────────┐
+         │    Object Storage (S3)                      │
+         │    Parquet files in Apache Iceberg format   │
+         │    IRC Catalog maps table names → metadata  │
+         └────────┬──────────────────────┬─────────────┘
+                  │                      │
+                  ▼                      ▼
+         Postgres reads           Spark · Trino · DuckDB
+         (row cache, OLTP)        (columnar, OLAP)
+         point queries            aggregations, reports
+         millisecond latency      petabyte-scale scans
 </code></pre></div></div>
 
-<p>The IRC is the front door. The metadata chain is the map. The snapshots are the safety net. And LTAP is the outcome: one lake that handles it all.</p>
+<p>LTAP does not replace the transactional database. It removes the ETL pipeline between the transactional database and the analytical system by unifying them at the storage layer.</p>
+
+<p>The IRC is the front door. The metadata chain is the map. The PageServer transcoding is the bridge. And LTAP is the outcome: the same data, fresh, readable by both worlds.</p>
