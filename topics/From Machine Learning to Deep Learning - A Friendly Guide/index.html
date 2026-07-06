@@ -47,36 +47,33 @@
   <section class="topic-body">
     <h1 id="part-2-from-machine-learning-to-deep-learning--a-friendly-guide">Part 2: From Machine Learning to Deep Learning — A Friendly Guide</h1>
 
-<h2 id="what-part-1-covered--and-what-it-left-out">What Part 1 covered — and what it left out</h2>
+<p>In Part 1 we built this model:</p>
 
-<p>Part 1 showed you the <strong>mechanics</strong> of a neuron:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+</code></pre></div></div>
 
-<ul>
-  <li>How an email becomes a feature vector of numbers</li>
-  <li>How a neuron multiplies inputs by weights, adds a bias, and applies sigmoid</li>
-  <li>What a hidden layer is structurally</li>
-  <li>What weights and biases are stored in the model</li>
-</ul>
+<p>And we used <strong>handcoded weights</strong> like <code class="language-plaintext highlighter-rouge">[0.8, 0.6, -1.2, 2.0, 0.01]</code> to show how the calculation works.</p>
 
-<p>But Part 1 left one big question unanswered:</p>
+<p>But that raises the obvious question:</p>
 
 <blockquote>
-  <p><strong>Where did those weights come from? How does the model actually learn them?</strong></p>
+  <p><strong>In a real model, nobody writes those numbers by hand. So where do the weights actually come from?</strong></p>
 </blockquote>
 
-<p>Part 1 used manually written weights like <code class="language-plaintext highlighter-rouge">[0.8, 0.6, -1.2, 2.0, 0.01]</code> to demonstrate the calculation. A real model does not start with useful weights. It starts with random ones, and <strong>learns</strong> better values by repeatedly looking at labelled examples and correcting its mistakes.</p>
-
-<p>That is what Part 2 is about: <strong>the learning process itself</strong>, and how traditional machine learning and deep learning differ in <em>what</em> they ask the model to learn.</p>
+<p>Part 2 answers that. We will take the exact same spam model from Part 1 and <strong>train it</strong> — starting from random weights and teaching it to improve by looking at labelled examples.</p>
 
 <hr />
 
-<h2 id="1-do-you-need-labels-yes--and-here-is-exactly-why">1. Do you need labels? Yes — and here is exactly why</h2>
+<h2 id="1-step-1--give-the-model-labelled-examples">1. Step 1 — Give the model labelled examples</h2>
 
-<p>This is the most common confusion in this topic.</p>
+<p>In Part 1, the model received one email and predicted a probability. But it could not learn anything because we never told it whether its prediction was right or wrong.</p>
 
-<p><strong>For spam detection, labels are required.</strong> Without them, the model has no way to know when it is wrong.</p>
-
-<p>A label is simply the correct answer for each example:</p>
+<p>To train a model, every email needs a <strong>label</strong> — the correct answer:</p>
 
 <table>
   <thead>
@@ -90,106 +87,127 @@
     <tr>
       <td>“Congratulations! Claim your prize now.”</td>
       <td><code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
-      <td><code class="language-plaintext highlighter-rouge">1</code> (spam)</td>
+      <td><code class="language-plaintext highlighter-rouge">1</code> — spam</td>
     </tr>
     <tr>
       <td>“Hi, your meeting is confirmed for 3pm.”</td>
       <td><code class="language-plaintext highlighter-rouge">[0, 0, 1, 0.02, 82]</code></td>
-      <td><code class="language-plaintext highlighter-rouge">0</code> (not spam)</td>
+      <td><code class="language-plaintext highlighter-rouge">0</code> — not spam</td>
     </tr>
     <tr>
       <td>“Win a free iPhone — click here now!”</td>
       <td><code class="language-plaintext highlighter-rouge">[5, 4, 0, 0.40, 31]</code></td>
-      <td><code class="language-plaintext highlighter-rouge">1</code> (spam)</td>
+      <td><code class="language-plaintext highlighter-rouge">1</code> — spam</td>
     </tr>
     <tr>
       <td>“Your invoice for March is attached.”</td>
       <td><code class="language-plaintext highlighter-rouge">[0, 1, 1, 0.01, 110]</code></td>
-      <td><code class="language-plaintext highlighter-rouge">0</code> (not spam)</td>
+      <td><code class="language-plaintext highlighter-rouge">0</code> — not spam</td>
     </tr>
   </tbody>
 </table>
 
-<p>In PyTorch, these labels become a tensor:</p>
+<p><code class="language-plaintext highlighter-rouge">1</code> means spam. <code class="language-plaintext highlighter-rouge">0</code> means not spam. These are called <strong>labels</strong>, and a human assigns them by reading each email and deciding.</p>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
+<p>In PyTorch, the features and labels become two tensors:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+
+<span class="c1"># Features: [suspicious_words, links, known_sender, capitals, length]
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span>  <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span>  <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span>  <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">110.0</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="c1"># Labels: 1 = spam, 0 = not spam
+</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
 </code></pre></div></div>
 
-<p>The model predicts a probability for each email. The label tells the model what the probability <em>should have been</em>. The gap between the prediction and the label is the <strong>loss</strong> — and reducing the loss is the entire goal of training.</p>
+<p>The model will process <code class="language-plaintext highlighter-rouge">X</code> and try to produce predictions that match <code class="language-plaintext highlighter-rouge">y</code>.</p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> Labels are the answer key. Without the answer key, the model cannot know if it got the question right.</p>
+  <p><strong>Memory trick:</strong> Labels are the answer key. Without the answer key, the model cannot know if it got a question right or wrong.</p>
 </blockquote>
 
-<h3 id="why-labels-are-required-for-classification">Why labels are required for classification</h3>
+<hr />
 
-<p>The training loop works like this:</p>
+<h2 id="2-step-2--start-with-random-weights">2. Step 2 — Start with random weights</h2>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Model predicts: email [3, 1, 0, 0.20, 47] → probability 0.30
-2. Label says:     correct answer is 1.0 (spam)
-3. Loss measures:  how far is 0.30 from 1.0?  → loss is large
-4. Backprop finds: which weights caused the mistake?
-5. Optimizer:      nudge those weights to reduce the loss
-6. Repeat across all emails until loss is small
+<p>In Part 1 we wrote the weights by hand. In a real model, PyTorch assigns <strong>random weights</strong> at the start:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>   <span class="c1"># same structure as Part 1
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Predict before any training — weights are random
+</span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">raw_predictions</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">raw_predictions</span><span class="p">)</span>
+<span class="c1"># Output: something like [[0.47], [0.51], [0.49], [0.52]] — basically guessing
+</span></code></pre></div></div>
+
+<p>The model starts knowing nothing. All four emails get roughly 50% spam probability — essentially a coin flip. Training is the process of improving those weights until predictions match the labels.</p>
+
+<hr />
+
+<h2 id="3-step-3--measure-the-mistake-with-a-loss-function">3. Step 3 — Measure the mistake with a loss function</h2>
+
+<p>After the model predicts, we need a way to measure how wrong it was. That measure is called the <strong>loss</strong>.</p>
+
+<p>For spam detection (binary classification), the standard loss is <strong>Binary Cross-Entropy (BCE)</strong>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">loss_fn</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p>Without the label <code class="language-plaintext highlighter-rouge">1.0</code> in step 2, there is nothing to compare against. The loop cannot run.</p>
+<p>It compares each prediction to its label:</p>
 
-<h3 id="when-labels-are-not-required">When labels are not required</h3>
-
-<p>Labels are only required for <strong>supervised learning</strong> — tasks where each example has a known correct answer.</p>
-
-<p>Some tasks do not need labels:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">prediction</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">0.47</span><span class="p">]])</span>   <span class="c1"># model said 47% spam
+</span><span class="n">label</span>      <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]])</span>    <span class="c1"># correct answer: this IS spam
+</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>   <span class="c1"># ~0.75 — prediction was quite wrong
+</span></code></pre></div></div>
 
 <table>
   <thead>
     <tr>
-      <th>Learning type</th>
-      <th>Labels?</th>
-      <th>Example</th>
+      <th>Prediction</th>
+      <th>Label</th>
+      <th>Loss</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Supervised (spam classifier)</td>
-      <td><strong>Yes</strong></td>
-      <td>Human labels each email spam / not spam</td>
+      <td><code class="language-plaintext highlighter-rouge">0.95</code></td>
+      <td><code class="language-plaintext highlighter-rouge">1.0</code> (spam)</td>
+      <td>small — almost correct</td>
     </tr>
     <tr>
-      <td>Unsupervised (clustering)</td>
-      <td>No</td>
-      <td>Group emails by similarity, no pre-defined answers</td>
+      <td><code class="language-plaintext highlighter-rouge">0.47</code></td>
+      <td><code class="language-plaintext highlighter-rouge">1.0</code> (spam)</td>
+      <td>large — quite wrong</td>
     </tr>
     <tr>
-      <td>Self-supervised (language model pre-training)</td>
-      <td>No — labels come from the data itself</td>
-      <td>Predict the next word in an email</td>
+      <td><code class="language-plaintext highlighter-rouge">0.05</code></td>
+      <td><code class="language-plaintext highlighter-rouge">0.0</code> (not spam)</td>
+      <td>small — almost correct</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">0.60</code></td>
+      <td><code class="language-plaintext highlighter-rouge">0.0</code> (not spam)</td>
+      <td>large — quite wrong</td>
     </tr>
   </tbody>
 </table>
 
-<p>Everything in this series — spam classification, PyTorch training loops, cross-entropy loss — is supervised learning. <strong>Labels are required.</strong></p>
-
-<hr />
-
-<h2 id="2-what-loss-is-and-why-it-matters">2. What loss is and why it matters</h2>
-
-<p>The model’s prediction is a probability between 0 and 1. The label is either 0 or 1. The <strong>loss function</strong> measures how wrong the prediction is.</p>
-
-<p>For binary classification like spam detection, the standard loss function is <strong>Binary Cross-Entropy (BCE)</strong>:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
-
-<span class="n">loss_fn</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
-
-<span class="n">prediction</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">0.30</span><span class="p">]])</span>   <span class="c1"># model said 30% spam
-</span><span class="n">label</span>      <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]])</span>    <span class="c1"># correct answer: spam
-</span>
-<span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>   <span class="c1"># large number — prediction was very wrong
-</span></code></pre></div></div>
-
-<p>If the model predicts <code class="language-plaintext highlighter-rouge">0.95</code> for a spam email (label <code class="language-plaintext highlighter-rouge">1.0</code>), the loss is small. If it predicts <code class="language-plaintext highlighter-rouge">0.10</code> for a spam email, the loss is large. Training is just the process of repeatedly reducing this loss across thousands of emails.</p>
+<p>The higher the loss, the more the model needs to change. Training is just the process of driving this number down.</p>
 
 <blockquote>
   <p><strong>Memory trick:</strong> Loss is the score on a test. Training is studying to improve that score.</p>
@@ -197,326 +215,236 @@
 
 <hr />
 
-<h2 id="3-traditional-ml-vs-deep-learning--the-real-difference">3. Traditional ML vs deep learning — the real difference</h2>
+<h2 id="4-step-4--backpropagation-finds-which-weights-caused-the-mistake">4. Step 4 — Backpropagation finds which weights caused the mistake</h2>
 
-<p>Part 1 showed you <em>how</em> a model computes. Now the question is: <strong>what does the model actually learn to do?</strong></p>
+<p>The model has many weights spread across two layers. After computing the loss, we need to know: <strong>which weights were most responsible for the mistake?</strong></p>
 
-<p>Both traditional ML and deep learning follow the same training loop:</p>
+<p>This is what <strong>backpropagation</strong> does. It works backwards through the model, calculating how much each weight contributed to the error. PyTorch does this automatically with one line:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Predict → measure loss against labels → update weights → repeat
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p>The difference is in <strong>what the model is asked to learn from</strong>.</p>
+<p>After this call, every weight in the model has a <strong>gradient</strong> — a number that says “increase this weight to reduce the loss” or “decrease this weight to reduce the loss.”</p>
 
-<h3 id="traditional-machine-learning--you-design-the-features">Traditional machine learning — you design the features</h3>
-
-<p>In traditional ML, a human decides which features to extract from the raw email <em>before</em> feeding it to the model:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Raw email
-    ↓
-Human writes code to count suspicious words, links, capitals, etc.
-    ↓
-Model receives: [3, 1, 0, 0.20, 47]
-    ↓
-Model learns: 5 weights + 1 bias
-    ↓
-Spam probability
-</code></pre></div></div>
-
-<p>The model only learns <strong>how much weight to give each human-chosen feature</strong>. It does not discover new features. This is called <strong>feature engineering</strong> — the human does the hard thinking about what matters.</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
-
-<span class="c1"># Features chosen by a human
-</span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mi">47</span><span class="p">],</span>
-    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mi">82</span><span class="p">],</span>
-    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">31</span><span class="p">],</span>
-    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">110</span><span class="p">]</span>
-<span class="p">]</span>
-<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>   <span class="c1"># ← labels required here too
-</span>
-<span class="n">model</span> <span class="o">=</span> <span class="nc">LogisticRegression</span><span class="p">()</span>
-<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
-</code></pre></div></div>
-
-<h3 id="deep-learning--the-model-discovers-its-own-features">Deep learning — the model discovers its own features</h3>
-
-<p>In deep learning, you give the model raw or lightly processed input. The hidden layers learn their own internal representations:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Raw email
-    ↓
-Convert words to token IDs: [1842, 95, 721, 4031, ...]
-    ↓
-Embedding layer learns a vector per word
-    ↓
-Hidden layers learn combinations: "claim your prize" = strong spam signal
-    ↓
-Output layer produces spam probability
-</code></pre></div></div>
-
-<p>The model does not just learn weights for human-chosen features. It learns <strong>what to look for in the first place</strong>. This is called <strong>feature learning</strong>.</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
-
-<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">num_embeddings</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">),</span>  <span class="c1"># learns word vectors
-</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
-<span class="p">)</span>
-</code></pre></div></div>
+<p>You do not need to write backpropagation yourself. PyTorch computes it automatically because it has been tracking every calculation since the input arrived.</p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> Traditional ML is like giving a detective a checklist you wrote. Deep learning is like hiring a detective who writes their own checklist by studying thousands of cases.</p>
+  <p><strong>Memory trick:</strong> Backpropagation is like tracing a domino chain backwards — you look at which domino caused the final one to fall.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="4-why-part-1s-model-is-traditional-ml--not-deep-learning">4. Why Part 1’s model is traditional ML — not deep learning</h2>
+<h2 id="5-step-5--the-optimizer-adjusts-the-weights">5. Step 5 — The optimizer adjusts the weights</h2>
 
-<p>This is the exact confusion the article title creates.</p>
+<p>Now that we know which direction to move each weight, the <strong>optimizer</strong> makes the actual adjustment:</p>
 
-<p>Part 1 built this model:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>   <span class="c1"># 5 hand-chosen features → 3 hidden values
-</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
-<span class="p">)</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p>Even though this uses PyTorch and has a hidden layer, it is <strong>traditional machine learning in deep learning clothing</strong>. Why?</p>
+<p><code class="language-plaintext highlighter-rouge">lr=0.01</code> is the <strong>learning rate</strong> — how large a step to take. A large learning rate changes weights aggressively and can overshoot. A small learning rate changes them cautiously and can be slow. <code class="language-plaintext highlighter-rouge">0.01</code> is a common starting point.</p>
 
-<p>Because the five input features (<code class="language-plaintext highlighter-rouge">suspicious_words</code>, <code class="language-plaintext highlighter-rouge">links</code>, <code class="language-plaintext highlighter-rouge">known_sender</code>, <code class="language-plaintext highlighter-rouge">capitals</code>, <code class="language-plaintext highlighter-rouge">length</code>) were <strong>chosen by a human</strong>. The model only learns how to combine those five numbers — it does not discover what to look for in the raw email text.</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>What the model receives</th>
-      <th>What the model learns</th>
-      <th>Type</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Human-chosen features <code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
-      <td>Weights for those features</td>
-      <td>Traditional ML</td>
-    </tr>
-    <tr>
-      <td>Raw token IDs <code class="language-plaintext highlighter-rouge">[1842, 95, 721, ...]</code></td>
-      <td>What patterns in words predict spam</td>
-      <td>Deep Learning</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>Adding hidden layers to a model that receives hand-crafted features makes it a <strong>deeper traditional ML model</strong>, not deep learning in the true sense. The power of deep learning comes from learning features, not from having more layers.</p>
+<p>After <code class="language-plaintext highlighter-rouge">optimizer.step()</code>, every weight has been nudged slightly in the direction that reduces the loss. The model is now marginally better at distinguishing spam from normal email.</p>
 
 <hr />
 
-<h2 id="5-why-deep-learning-needs-more-data-and-compute">5. Why deep learning needs more data and compute</h2>
+<h2 id="6-step-6--repeat-across-many-emails-and-many-epochs">6. Step 6 — Repeat across many emails and many epochs</h2>
 
-<p>Because deep learning asks the model to discover features from scratch, it needs to see far more examples:</p>
+<p>One pass through the training data is called an <strong>epoch</strong>. We repeat the loop many times until the loss stops decreasing:</p>
 
-<table>
-  <thead>
-    <tr>
-      <th>Situation</th>
-      <th>Traditional ML</th>
-      <th>Deep Learning</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>500 labelled emails</td>
-      <td>Works well</td>
-      <td>Likely overfit or underfit</td>
-    </tr>
-    <tr>
-      <td>100,000 labelled emails</td>
-      <td>Possibly overkill</td>
-      <td>Starts to shine</td>
-    </tr>
-    <tr>
-      <td>10,000,000 emails</td>
-      <td>Cannot improve much</td>
-      <td>Can learn subtle language patterns</td>
-    </tr>
-    <tr>
-      <td>Need to explain every decision</td>
-      <td>Good — weights are readable</td>
-      <td>Harder — patterns are buried in layers</td>
-    </tr>
-    <tr>
-      <td>Input is raw text, images, or audio</td>
-      <td>Requires manual feature design</td>
-      <td>Handles naturally</td>
-    </tr>
-  </tbody>
-</table>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">200</span><span class="p">):</span>
+    <span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>               <span class="c1"># forward pass
+</span>    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>       <span class="c1"># how wrong?
+</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>               <span class="c1"># clear previous gradients
+</span>    <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>                     <span class="c1"># backprop: who caused the mistake?
+</span>    <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>                    <span class="c1"># update weights
+</span>
+    <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s">  loss: </span><span class="si">{</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
 
-<p>The tradeoff is: deep learning requires <strong>labelled data at scale</strong> and <strong>significantly more compute</strong>, but it can learn things that no human would think to hand-code as a feature.</p>
+<p><code class="language-plaintext highlighter-rouge">optimizer.zero_grad()</code> clears the gradients before each pass — if you skip it, PyTorch accumulates gradients from previous steps, which gives wrong results.</p>
+
+<p>After 200 epochs you will see the loss decreasing:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Epoch 0    loss: 0.7431
+Epoch 50   loss: 0.4812
+Epoch 100  loss: 0.2903
+Epoch 150  loss: 0.1644
+Epoch 200  loss: 0.0951
+</code></pre></div></div>
 
 <hr />
 
-<h2 id="6-the-complete-picture--putting-part-1-and-part-2-together">6. The complete picture — putting Part 1 and Part 2 together</h2>
+<h2 id="7-the-complete-training-loop">7. The complete training loop</h2>
 
-<p>Here is how the two parts connect:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Concept</th>
-      <th>Where it lives</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Neuron calculation (weights × inputs + bias)</td>
-      <td>Part 1</td>
-    </tr>
-    <tr>
-      <td>Sigmoid turns score into probability</td>
-      <td>Part 1</td>
-    </tr>
-    <tr>
-      <td>Hidden layers as structure</td>
-      <td>Part 1</td>
-    </tr>
-    <tr>
-      <td>What weights and biases are stored</td>
-      <td>Part 1</td>
-    </tr>
-    <tr>
-      <td><strong>What labels are and why they are required</strong></td>
-      <td><strong>Part 2</strong></td>
-    </tr>
-    <tr>
-      <td><strong>What loss is and how it drives training</strong></td>
-      <td><strong>Part 2</strong></td>
-    </tr>
-    <tr>
-      <td><strong>Feature engineering vs feature learning</strong></td>
-      <td><strong>Part 2</strong></td>
-    </tr>
-    <tr>
-      <td><strong>Why Part 1’s model is traditional ML, not deep learning</strong></td>
-      <td><strong>Part 2</strong></td>
-    </tr>
-    <tr>
-      <td><strong>When to use traditional ML vs deep learning</strong></td>
-      <td><strong>Part 2</strong></td>
-    </tr>
-  </tbody>
-</table>
-
-<hr />
-
-<h2 id="7-the-training-loop-in-full--with-labels">7. The training loop in full — with labels</h2>
-
-<p>Here is the complete supervised training loop using Part 1’s five-feature model:</p>
+<p>Putting all six steps together:</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
-<span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">TensorDataset</span>
 
-<span class="c1"># Features: [suspicious_words, links, known_sender, capitals, length]
+<span class="c1"># Step 1 — labelled data
 </span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
-    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
-    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
-    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span>  <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span>  <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span>  <span class="mf">31.0</span><span class="p">],</span>
     <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">110.0</span><span class="p">]</span>
 <span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
 
-<span class="c1"># Labels: 1 = spam, 0 = not spam  ← required
-</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
-
-<span class="n">dataset</span> <span class="o">=</span> <span class="nc">TensorDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-<span class="n">loader</span>  <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-
-<span class="n">model</span>     <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">())</span>
-<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
-<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
-
-<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-    <span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
-        <span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">batch_x</span><span class="p">)</span>
-        <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">batch_y</span><span class="p">)</span>   <span class="c1"># compares prediction to label
+<span class="c1"># Step 2 — model with random weights
+</span><span class="n">model</span>     <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">())</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>                       <span class="c1"># Step 3 — loss function
+</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>  <span class="c1"># Step 5 — optimizer
 </span>
-        <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
-        <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>    <span class="c1"># finds which weights caused the error
-</span>        <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>   <span class="c1"># nudges weights to reduce error
-</span></code></pre></div></div>
+<span class="c1"># Steps 4, 5, 6 — train
+</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">300</span><span class="p">):</span>
+    <span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 
-<p>Every line that involves <code class="language-plaintext highlighter-rouge">batch_y</code> — <code class="language-plaintext highlighter-rouge">loss_fn(prediction, batch_y)</code> — is the point where labels are used. Remove <code class="language-plaintext highlighter-rouge">y</code> and the training loop breaks immediately.</p>
-
-<hr />
-
-<h2 id="8-summary">8. Summary</h2>
-
-<ul>
-  <li><strong>Labels are required</strong> for supervised learning. The model learns by comparing its predictions to labels and adjusting weights to reduce the error.</li>
-  <li><strong>Loss</strong> measures how wrong the model is. Training is the process of reducing loss over many labelled examples.</li>
-  <li><strong>Traditional ML</strong>: a human extracts features from raw data, then the model learns weights for those features.</li>
-  <li><strong>Deep learning</strong>: the model receives raw or lightly processed input and learns what features to look for by itself.</li>
-  <li><strong>Part 1’s model is traditional ML</strong> because it receives hand-chosen features. The presence of hidden layers does not make it deep learning — the <em>source of the features</em> does.</li>
-  <li>Deep learning needs significantly more labelled data and compute in exchange for not requiring manual feature design.</li>
-</ul>
-
-<hr />
-
-<h2 id="9-try-it-yourself">9. Try it yourself</h2>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
-<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
-
-<span class="c1"># Four emails: [suspicious_words, links, known_sender, capitals, length]
-</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
-    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
-    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
-    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
-    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
-<span class="p">])</span>
-
-<span class="c1"># Labels are required — 1 = spam, 0 = not spam
-</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
-
-<span class="n">model</span>     <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">())</span>
-<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
-<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
-
-<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">300</span><span class="p">):</span>
-    <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
     <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
     <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
     <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
 
-<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+<span class="c1"># Check the result
+</span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
     <span class="n">final</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">prob</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">final</span><span class="p">):</span>
-        <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span> <span class="k">if</span> <span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span>
-        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Email </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s"> → </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span> <span class="k">if</span> <span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Email </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">  →  </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
 
-<p>Try removing the <code class="language-plaintext highlighter-rouge">y</code> labels and see what breaks. Try replacing the five hand-chosen features with raw token counts — that is the first step toward true deep learning.</p>
+<p>Expected output:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Email 1: 0.923  →  spam
+Email 2: 0.071  →  not spam
+Email 3: 0.981  →  spam
+Email 4: 0.064  →  not spam
+</code></pre></div></div>
+
+<p>The model learned — starting from random weights — to correctly classify all four emails.</p>
+
+<hr />
+
+<h2 id="8-what-from-machine-learning-to-deep-learning-actually-means">8. What “from machine learning to deep learning” actually means</h2>
+
+<p>Both traditional machine learning (like logistic regression) and deep learning follow the exact same training loop above:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>predict → measure loss → backprop → update weights → repeat
+</code></pre></div></div>
+
+<p>The difference is not the training loop. The difference is <strong>what you give the model as input</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>What goes into the model</th>
+      <th>What the model learns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Traditional ML</strong></td>
+      <td>Features you extracted: <code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
+      <td>Weights for those 5 features</td>
+    </tr>
+    <tr>
+      <td><strong>Deep learning</strong></td>
+      <td>Raw text tokens: <code class="language-plaintext highlighter-rouge">[1842, 95, 721, 4031, ...]</code></td>
+      <td>Which words and phrases signal spam</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In our tutorial, we have been giving the model <strong>hand-crafted features</strong> (suspicious word count, link count, etc.). That is traditional ML, even though we are using PyTorch.</p>
+
+<p>Deep learning starts when you remove the human feature extraction step and feed the raw email text directly. The model then needs to learn what to look for from scratch — which requires far more data and compute, but can discover patterns a human would never think to hand-code.</p>
+
+<p>The rest of this series builds toward that. Part 3 covers tensors in more depth, Part 4 covers data loading at scale, and from there we progress to real text and image models.</p>
+
+<hr />
+
+<h2 id="9-summary">9. Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>What happens</th>
+      <th>PyTorch</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Provide features + labels</td>
+      <td><code class="language-plaintext highlighter-rouge">X</code>, <code class="language-plaintext highlighter-rouge">y</code> tensors</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Model starts with random weights</td>
+      <td><code class="language-plaintext highlighter-rouge">nn.Sequential(...)</code></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Predict and measure loss</td>
+      <td><code class="language-plaintext highlighter-rouge">loss_fn(prediction, y)</code></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Backprop finds responsible weights</td>
+      <td><code class="language-plaintext highlighter-rouge">loss.backward()</code></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Optimizer adjusts weights</td>
+      <td><code class="language-plaintext highlighter-rouge">optimizer.step()</code></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Repeat until loss is low</td>
+      <td><code class="language-plaintext highlighter-rouge">for epoch in range(...)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<ul>
+  <li>Labels are the correct answers — required for the loss calculation to work.</li>
+  <li>Loss measures how wrong the model is. Lower is better.</li>
+  <li>Backpropagation traces the error back through the model to find which weights to adjust.</li>
+  <li>The optimizer makes the actual weight update, one small step at a time.</li>
+  <li>Traditional ML and deep learning use the same loop — the difference is whether a human or the model decides what features to look at.</li>
+</ul>
+
+<hr />
+
+<h2 id="10-try-it-yourself">10. Try it yourself</h2>
+
+<p>Run the complete training loop above. Then experiment:</p>
+
+<ol>
+  <li>Change <code class="language-plaintext highlighter-rouge">lr=0.01</code> to <code class="language-plaintext highlighter-rouge">lr=0.5</code> — does the model learn faster or does loss jump around?</li>
+  <li>Change <code class="language-plaintext highlighter-rouge">range(300)</code> to <code class="language-plaintext highlighter-rouge">range(10)</code> — how accurate are the predictions after just 10 epochs?</li>
+  <li>Add a fifth email <code class="language-plaintext highlighter-rouge">[2.0, 0.0, 0.0, 0.15, 60.0]</code> with label <code class="language-plaintext highlighter-rouge">1.0</code> — does the model classify it correctly after training?</li>
+</ol>
 
 <hr />
 
 <h2 id="final-mental-model">Final mental model</h2>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Part 1 answered:  How does a neuron compute a prediction?
-Part 2 answers:   How does a model learn — and what is it learning from?
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Part 1:  email → features → neuron calculates → probability
+                                                    ↑
+                                         weights were handcoded
 
-Traditional ML:   Human extracts features  →  model learns weights for them
-Deep Learning:    Model receives raw input  →  model learns what features matter
+Part 2:  Same model, but now with labelled data the model learns those weights itself:
 
-Both need labels. Both use loss. Both use gradient descent.
-The difference is who decides what the model looks at.
+         random weights
+              ↓
+         predict → loss → backprop → optimizer → better weights
+              ↑___________________________________________|
+                         repeat until loss is low
 </code></pre></div></div>
 
 
