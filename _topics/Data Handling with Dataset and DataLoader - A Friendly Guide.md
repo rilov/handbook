@@ -17,7 +17,13 @@ summary: Learn how to load, batch, shuffle, and iterate over spam-detection data
 
 # Part 4: Data Handling with Dataset and DataLoader — A Friendly Guide
 
-Before a neural network can learn, it needs clean, organised batches of data. In PyTorch, `Dataset` and `DataLoader` handle this for you. We will use the same spam-detection example throughout.
+In Part 3 you saw that the training data is a 2D tensor `X` with shape `(4, 5)` — four emails, five features each — and a labels tensor `y` with shape `(4, 1)`. We passed the whole thing to the model in one go.
+
+That works fine for four emails. But a real spam dataset might have 100,000 emails. You cannot load all of them into one tensor, shuffle them properly, or split them into train and validation sets by hand.
+
+PyTorch solves this with two classes: `Dataset` and `DataLoader`. `Dataset` defines where your data lives and how to access one example. `DataLoader` wraps it and automatically handles batching, shuffling, and iteration during the training loop.
+
+This is the same training loop from Part 2 — we are just replacing the raw `X` and `y` tensors with a proper data pipeline that scales.
 
 ---
 

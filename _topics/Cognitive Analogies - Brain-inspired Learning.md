@@ -17,6 +17,10 @@ summary: Learn how deep learning mirrors ideas from the brain, using the spam-de
 
 # Part 7: Cognitive Analogies — Brain-inspired Learning
 
+Parts 1–6 covered the mechanics: neurons, training, tensors, data loading, parameters, and backpropagation. You now have a complete picture of how the spam-detection model works from a mathematical and engineering perspective.
+
+Part 7 takes a step back. Before diving into specialised architectures like CNNs in Part 9, it is useful to ask: *why do these mechanics work at all?* The answer lies in how closely deep learning mirrors the way biological brains learn — not perfectly, but closely enough to be instructive.
+
 Neural networks are called "neural" because they borrow ideas from the brain. But they are not brains. In this guide, we use the spam-detection example to see how deep learning mirrors ideas from human cognition.
 
 ---

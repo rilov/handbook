@@ -18,6 +18,12 @@ summary: Learn how PyTorch creates, tracks, and updates learnable parameters for
 
 # Part 5: Parameters in PyTorch — A Friendly Guide
 
+By Part 4 you have a complete data pipeline: a `Dataset`, a `DataLoader` producing batches, and the training loop calling `loss.backward()` and `optimizer.step()` on each batch.
+
+But what exactly is `optimizer.step()` changing? The answer is **parameters** — the weights and biases stored inside each layer. Every time `optimizer.step()` runs, it nudges those numbers slightly to reduce the loss.
+
+Part 5 opens up the model and shows you exactly what parameters exist, how PyTorch tracks them, and how you can inspect, freeze, save, and load them. This is the foundation you need before Part 6 shows you how backpropagation computes which direction to nudge each one.
+
 When you build a spam-detection model, the things that learn are called **parameters**. In PyTorch, parameters are automatically created, tracked, and updated. This guide explains how that works using the same email example.
 
 ---
