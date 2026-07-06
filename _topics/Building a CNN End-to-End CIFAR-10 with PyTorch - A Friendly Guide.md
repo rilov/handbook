@@ -2,6 +2,7 @@
 layout: topic
 title: "Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch"
 category: Deep Learning
+order: 12
 tags:
   - deep-learning
   - cnn

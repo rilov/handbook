@@ -2,6 +2,7 @@
 layout: topic
 title: "Part 11: CNN Training Pipeline, Transfer Learning, and Visualization — A Friendly Guide"
 category: Deep Learning
+order: 11
 tags:
   - deep-learning
   - cnn

@@ -2,6 +2,7 @@
 layout: topic
 title: "Part 13: CNN Applications — Image Classification, Object Detection, Segmentation, Facial Recognition, and OCR"
 category: Deep Learning
+order: 13
 tags:
   - deep-learning
   - cnn
