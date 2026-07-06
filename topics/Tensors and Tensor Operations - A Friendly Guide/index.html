@@ -47,7 +47,25 @@
   <section class="topic-body">
     <h1 id="part-3-tensors-and-tensor-operations--a-friendly-guide">Part 3: Tensors and Tensor Operations — A Friendly Guide</h1>
 
-<p>Everything in a spam-detection model is a tensor. The email features are a tensor, the weights are a tensor, the bias is a tensor, and even the final probability is a tensor. In this guide, we will see exactly how those tensors work.</p>
+<p>In Part 2 you ran this training loop:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span>  <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span>  <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span>  <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">110.0</span><span class="p">]</span>
+<span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
+
+<span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+<span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>Every single variable in that loop — <code class="language-plaintext highlighter-rouge">X</code>, <code class="language-plaintext highlighter-rouge">y</code>, <code class="language-plaintext highlighter-rouge">prediction</code>, <code class="language-plaintext highlighter-rouge">loss</code> — is a <strong>tensor</strong>. You have been using tensors all along. Part 3 explains exactly what they are, what their shapes mean, and the operations PyTorch performs on them during the forward pass and training.</p>
+
+<p>Understanding tensors is what lets you debug shape errors, understand what <code class="language-plaintext highlighter-rouge">nn.Linear(5, 4)</code> actually computes, and confidently build more complex models.</p>
 
 <hr />
 
@@ -60,14 +78,14 @@
     <tr>
       <th>Tensor Type</th>
       <th>Dimensions</th>
-      <th>Spam Example</th>
+      <th>Part 2 example</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Scalar</strong></td>
       <td>0D</td>
-      <td>One number, such as the bias <code class="language-plaintext highlighter-rouge">-1.0</code></td>
+      <td><code class="language-plaintext highlighter-rouge">loss</code> after one forward pass — a single number</td>
     </tr>
     <tr>
       <td><strong>Vector</strong></td>
@@ -77,12 +95,12 @@
     <tr>
       <td><strong>Matrix</strong></td>
       <td>2D</td>
-      <td>A batch of emails: 4 rows × 5 columns</td>
+      <td><code class="language-plaintext highlighter-rouge">X</code> — 4 emails × 5 features. <code class="language-plaintext highlighter-rouge">y</code> — 4 labels × 1 column</td>
     </tr>
     <tr>
       <td><strong>3D tensor</strong></td>
       <td>3D+</td>
-      <td>A collection of email batches over several training steps</td>
+      <td>A stack of batches across multiple training steps</td>
     </tr>
   </tbody>
 </table>
