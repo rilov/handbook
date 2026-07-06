@@ -12,243 +12,179 @@ tags:
   - spam-detection
   - beginners
   - friendly
-summary: Learn what changes when you move from traditional machine learning to deep learning, using the same spam-detection example throughout. Covers feature engineering, feature learning, hidden layers, and why non-linearity matters.
+summary: Understand how a model actually learns — what labels are, why they are required for spam detection, what loss means, and the exact difference between traditional machine learning and deep learning. Builds directly on Part 1.
 ---
 
 # Part 2: From Machine Learning to Deep Learning — A Friendly Guide
 
-Let us continue with the spam email example. We already saw that a single neuron can take five numbers and produce a spam probability. Now we will ask: what changes if we switch from traditional machine learning to deep learning?
+## What Part 1 covered — and what it left out
+
+Part 1 showed you the **mechanics** of a neuron:
+
+- How an email becomes a feature vector of numbers
+- How a neuron multiplies inputs by weights, adds a bias, and applies sigmoid
+- What a hidden layer is structurally
+- What weights and biases are stored in the model
+
+But Part 1 left one big question unanswered:
+
+> **Where did those weights come from? How does the model actually learn them?**
+
+Part 1 used manually written weights like `[0.8, 0.6, -1.2, 2.0, 0.01]` to demonstrate the calculation. A real model does not start with useful weights. It starts with random ones, and **learns** better values by repeatedly looking at labelled examples and correcting its mistakes.
+
+That is what Part 2 is about: **the learning process itself**, and how traditional machine learning and deep learning differ in *what* they ask the model to learn.
 
 ---
 
-## 1. The same problem, two different approaches
+## 1. Do you need labels? Yes — and here is exactly why
 
-Imagine you work at an email company and you must build a spam detector.
+This is the most common confusion in this topic.
 
-In **traditional machine learning**, a human might decide which features matter:
+**For spam detection, labels are required.** Without them, the model has no way to know when it is wrong.
 
-| Feature | How to get it |
-|---------|---------------|
-| Number of suspicious words | Count words like “free”, “win”, “prize” |
-| Number of links | Count `http://` or `<a>` tags |
-| Sender known or unknown | Check against an address book |
-| Percentage of capital letters | Count uppercase letters ÷ total letters |
-| Message length | Count words |
+A label is simply the correct answer for each example:
 
-You then feed these features into a model like logistic regression or a decision tree. The model learns weights, but the features themselves are designed by a person. This is called **feature engineering**.
+| Email | Features | Label |
+|-------|----------|-------|
+| "Congratulations! Claim your prize now." | `[3, 1, 0, 0.20, 47]` | `1` (spam) |
+| "Hi, your meeting is confirmed for 3pm." | `[0, 0, 1, 0.02, 82]` | `0` (not spam) |
+| "Win a free iPhone — click here now!" | `[5, 4, 0, 0.40, 31]` | `1` (spam) |
+| "Your invoice for March is attached." | `[0, 1, 1, 0.01, 110]` | `0` (not spam) |
 
-In **deep learning**, you might give the model raw text instead:
-
-> “Congratulations! Click here to claim your prize.”
-
-The model learns which words, phrases, and patterns matter. It might discover that “claim your prize” is a strong spam signal without anyone telling it explicitly. This is called **feature learning**.
-
-> **Memory trick:** In traditional ML, you hand-pick the clues. In deep learning, the detective learns which clues to look for.
-
-<img src="{{ site.baseurl }}/assets/img/ml-vs-dl-pipeline.svg" alt="Side-by-side comparison of Traditional ML pipeline vs Deep Learning pipeline for spam detection" width="100%" />
-
----
-
-## 2. What stays the same
-
-Both approaches share the same high-level goal:
-
-> **Feed data into a model, measure the error, and update the model to reduce the error.**
-
-| Step | Traditional ML | Deep Learning |
-|------|----------------|---------------|
-| Input | Features designed by humans | Raw or lightly processed data |
-| Model | Logistic regression, SVM, decision tree | Neural network |
-| Loss function | Cross-entropy, MSE | Cross-entropy, MSE |
-| Optimisation | Gradient descent or similar | Gradient descent / Adam |
-| Goal | Generalise to unseen emails | Same |
-
-The difference is not the goal. The difference is **who decides what the model looks at**.
-
----
-
-## 3. A single neuron is just traditional ML
-
-Recall our simple spam model:
+In PyTorch, these labels become a tensor:
 
 ```python
-email = torch.tensor([3.0, 1.0, 0.0, 0.20, 47.0])
-weights = torch.tensor([0.8, 0.6, -1.2, 2.0, 0.01])
-bias = torch.tensor(-1.0)
-
-raw_score = email @ weights + bias
-probability = torch.sigmoid(raw_score)
+labels = torch.tensor([[1.0], [0.0], [1.0], [0.0]])
 ```
 
-This is almost the same as **logistic regression**:
+The model predicts a probability for each email. The label tells the model what the probability *should have been*. The gap between the prediction and the label is the **loss** — and reducing the loss is the entire goal of training.
 
-- Multiply each feature by a weight.
-- Add them up.
-- Add a bias.
-- Squash with sigmoid to get a probability.
+> **Memory trick:** Labels are the answer key. Without the answer key, the model cannot know if it got the question right.
 
-So a single neuron with five hand-chosen features is a traditional machine-learning model wearing a neural-network costume. It is useful, but it cannot learn new combinations of features.
+### Why labels are required for classification
+
+The training loop works like this:
+
+```
+1. Model predicts: email [3, 1, 0, 0.20, 47] → probability 0.30
+2. Label says:     correct answer is 1.0 (spam)
+3. Loss measures:  how far is 0.30 from 1.0?  → loss is large
+4. Backprop finds: which weights caused the mistake?
+5. Optimizer:      nudge those weights to reduce the loss
+6. Repeat across all emails until loss is small
+```
+
+Without the label `1.0` in step 2, there is nothing to compare against. The loop cannot run.
+
+### When labels are not required
+
+Labels are only required for **supervised learning** — tasks where each example has a known correct answer.
+
+Some tasks do not need labels:
+
+| Learning type | Labels? | Example |
+|---|---|---|
+| Supervised (spam classifier) | **Yes** | Human labels each email spam / not spam |
+| Unsupervised (clustering) | No | Group emails by similarity, no pre-defined answers |
+| Self-supervised (language model pre-training) | No — labels come from the data itself | Predict the next word in an email |
+
+Everything in this series — spam classification, PyTorch training loops, cross-entropy loss — is supervised learning. **Labels are required.**
 
 ---
 
-## 4. Why a single neuron is limited
+## 2. What loss is and why it matters
 
-A single neuron can only learn patterns that look like a straight line in feature space. For example, it can learn:
+The model's prediction is a probability between 0 and 1. The label is either 0 or 1. The **loss function** measures how wrong the prediction is.
 
-> If `(0.8 × suspicious_words) + (0.6 × links) + ... + bias` is large enough, it is spam.
-
-But it cannot easily learn combinations such as:
-
-> “An email is spam only if it has many links AND an unknown sender, OR if it has many suspicious words AND many capitals.”
-
-Those combinations are not simple straight-line rules. They need a way to mix features together before making the final decision.
-
-<img src="{{ site.baseurl }}/assets/img/linear-limit.svg" alt="Scatter plot showing a single neuron can only draw a straight decision boundary, while a hidden layer learns a curved one" width="100%" />
-
----
-
-## 5. Hidden layers add combinations
-
-A hidden layer is a group of neurons between the input and the output. Each hidden neuron looks at the same five features but learns a different combination.
-
-For spam detection, one hidden neuron might learn:
-
-```
-neuron_1 = links × 0.7 + unknown_sender × 1.5 + bias
-```
-
-This neuron fires when an email has many links and an unknown sender.
-
-Another hidden neuron might learn:
-
-```
-neuron_2 = suspicious_words × 1.1 + capitals × 0.9 + bias
-```
-
-This neuron fires when an email has many suspicious words and many capital letters.
-
-The output neuron then combines these hidden neurons:
-
-```
-spam_score = neuron_1 × 0.8 + neuron_2 × 0.6 + bias
-```
-
-So the model can now say: “This email is spam because it triggered both the suspicious-words neuron and the unknown-sender neuron.”
-
-> **Memory trick:** A single neuron is like one judge. A hidden layer is like a panel of judges, each scoring a different aspect, before the final decision.
-
-<img src="{{ site.baseurl }}/assets/img/hidden-combinations.svg" alt="Diagram showing three hidden neurons each detecting a different combination of features before combining into a final spam score" width="100%" />
-
----
-
-## 6. Why depth matters
-
-Each hidden layer builds on the previous one. With spam text, this might look like:
-
-| Layer | What it learns |
-|-------|----------------|
-| Input | Raw words or hand features |
-| Hidden layer 1 | Word combinations like “claim your” or “free prize” |
-| Hidden layer 2 | Phrase patterns like “click here to claim” |
-| Output | Spam probability |
-
-Early layers see simple patterns. Deeper layers see richer patterns. This is why deep networks are powerful for text, images, and audio.
-
-> **Memory trick:** Deep learning is like reading a book. First you recognise letters, then words, then sentences, then meaning.
-
-<img src="{{ site.baseurl }}/assets/img/depth-layers.svg" alt="Layer-by-layer diagram showing how each layer builds richer understanding: raw email → word signals → combinations → phrase patterns → spam decision" width="100%" />
-
----
-
-## 7. The role of non-linearity
-
-Without activation functions, a deep network would just be a long chain of multiplications and additions. In fact, it would collapse into one single multiplication and addition.
-
-Here is why:
-
-```
-Layer 1: z = xW₁ + b₁
-Layer 2: z = zW₂ + b₂ = (xW₁ + b₁)W₂ + b₂ = x(W₁W₂) + (b₁W₂ + b₂)
-```
-
-If there is no activation between the layers, the two layers are mathematically the same as one layer. The activation function breaks the linearity.
-
-ReLU, for example, simply turns negative values to zero:
+For binary classification like spam detection, the standard loss function is **Binary Cross-Entropy (BCE)**:
 
 ```python
-ReLU([2.4, -0.7, 1.3]) = [2.4, 0.0, 1.3]
+import torch.nn as nn
+
+loss_fn = nn.BCELoss()
+
+prediction = torch.tensor([[0.30]])   # model said 30% spam
+label      = torch.tensor([[1.0]])    # correct answer: spam
+
+loss = loss_fn(prediction, label)
+print(loss.item())   # large number — prediction was very wrong
 ```
 
-This small change is what allows the network to learn complex shapes and combinations. It is like adding a small switch between layers.
+If the model predicts `0.95` for a spam email (label `1.0`), the loss is small. If it predicts `0.10` for a spam email, the loss is large. Training is just the process of repeatedly reducing this loss across thousands of emails.
 
-> **Memory trick:** Activation functions are the wrinkles that stop the network from being a flat piece of paper.
-
-<img src="{{ site.baseurl }}/assets/img/activation-functions.svg" alt="Four activation function curves side by side: Sigmoid, Tanh, ReLU, and Leaky ReLU — showing how each transforms values differently" width="100%" />
+> **Memory trick:** Loss is the score on a test. Training is studying to improve that score.
 
 ---
 
-## 8. Common activation functions in detail
+## 3. Traditional ML vs deep learning — the real difference
 
-| Function | What it does | Where it is used | Memory trick |
-|----------|--------------|------------------|--------------|
-| **Sigmoid** | Squishes any number to 0..1 | Output layer for binary classification | Thermometer with a 0-to-1 scale |
-| **Tanh** | Squishes any number to -1..1 | Older hidden layers | Sigmoid stretched to -1..1 |
-| **ReLU** | Turns negatives to zero | Most modern hidden layers | Bouncer that blocks negatives |
-| **Leaky ReLU** | Lets a small negative through | ReLU replacement | Slightly open door for negatives |
-| **Softmax** | Turns scores into probabilities that sum to 1 | Output layer for multi-class classification | Normalised ranking |
+Part 1 showed you *how* a model computes. Now the question is: **what does the model actually learn to do?**
 
-For spam detection, the final output is one probability, so sigmoid is the right choice. The hidden layers use ReLU because it is fast and avoids the vanishing gradient problem.
+Both traditional ML and deep learning follow the same training loop:
 
----
+```
+Predict → measure loss against labels → update weights → repeat
+```
 
-## 9. Feature engineering vs feature learning for spam
+The difference is in **what the model is asked to learn from**.
 
-### Traditional ML spam detector
+### Traditional machine learning — you design the features
+
+In traditional ML, a human decides which features to extract from the raw email *before* feeding it to the model:
 
 ```
 Raw email
     ↓
-Human writes rules to extract 5 features
+Human writes code to count suspicious words, links, capitals, etc.
     ↓
-Logistic regression learns 5 weights + bias
+Model receives: [3, 1, 0, 0.20, 47]
+    ↓
+Model learns: 5 weights + 1 bias
     ↓
 Spam probability
 ```
 
+The model only learns **how much weight to give each human-chosen feature**. It does not discover new features. This is called **feature engineering** — the human does the hard thinking about what matters.
+
 ```python
 from sklearn.linear_model import LogisticRegression
 
-# Features designed by a human
+# Features chosen by a human
 features = [
     [3, 1, 0, 0.20, 47],
     [0, 0, 1, 0.02, 82],
-    [5, 4, 0, 0.40, 31]
+    [5, 4, 0, 0.40, 31],
+    [0, 1, 1, 0.01, 110]
 ]
-labels = [1, 0, 1]
+labels = [1, 0, 1, 0]   # ← labels required here too
 
 model = LogisticRegression()
 model.fit(features, labels)
 ```
 
-### Deep learning spam detector
+### Deep learning — the model discovers its own features
+
+In deep learning, you give the model raw or lightly processed input. The hidden layers learn their own internal representations:
 
 ```
 Raw email
     ↓
-Convert words to token IDs
+Convert words to token IDs: [1842, 95, 721, 4031, ...]
     ↓
-Embedding layer learns vectors
+Embedding layer learns a vector per word
     ↓
-Hidden layers learn word and phrase patterns
+Hidden layers learn combinations: "claim your prize" = strong spam signal
     ↓
 Output layer produces spam probability
 ```
+
+The model does not just learn weights for human-chosen features. It learns **what to look for in the first place**. This is called **feature learning**.
 
 ```python
 import torch.nn as nn
 
 model = nn.Sequential(
-    nn.Embedding(num_embeddings=10000, embedding_dim=32),
+    nn.Embedding(num_embeddings=10000, embedding_dim=32),  # learns word vectors
     nn.Linear(32, 16),
     nn.ReLU(),
     nn.Linear(16, 1),
@@ -256,181 +192,173 @@ model = nn.Sequential(
 )
 ```
 
-In this simple example, the embedding layer learns a vector for each word. The hidden layers learn to combine those vectors into a spam score.
-
-> **Memory trick:** Traditional ML is a recipe with ingredients you choose. Deep learning is a kitchen that discovers its own ingredients.
+> **Memory trick:** Traditional ML is like giving a detective a checklist you wrote. Deep learning is like hiring a detective who writes their own checklist by studying thousands of cases.
 
 ---
 
-## 10. When to use which approach for spam
+## 4. Why Part 1's model is traditional ML — not deep learning
 
-| Situation | Use Traditional ML | Use Deep Learning |
-|-----------|-------------------|-------------------|
-| Small dataset of 1,000 emails | Yes | No — not enough data |
-| Dataset has clear, measurable features | Yes | Maybe overkill |
-| Need to explain why an email was flagged | Yes | Harder |
-| Dataset has 1,000,000 emails | No | Yes |
-| Need to understand subtle language | No | Yes |
-| Need to handle many languages and typos | No | Yes |
+This is the exact confusion the article title creates.
 
----
-
-## 11. A deep learning spam model with hand features
-
-Even if we keep the same five hand features, adding a hidden layer can improve the model because it learns combinations.
+Part 1 built this model:
 
 ```python
-import torch
-import torch.nn as nn
-
-# One email: suspicious_words, links, known_sender, capitals, length
-email = torch.tensor([[3.0, 1.0, 0.0, 0.20, 47.0]])
-
 model = nn.Sequential(
-    nn.Linear(5, 4),   # 5 features → 4 hidden combinations
-    nn.ReLU(),          # remove negative hidden signals
-    nn.Linear(4, 1),    # 4 hidden combinations → 1 spam score
-    nn.Sigmoid()        # spam score → probability
-)
-
-probability = model(email)
-print("Spam probability:", probability.item())
-```
-
-The first layer creates four hidden combinations. ReLU removes the negative ones. The second layer combines the remaining positive signals into a final score. Sigmoid turns that score into a probability.
-
----
-
-## 12. What the hidden neurons might learn
-
-We do not get to read the neurons' minds, but we can imagine what they might represent:
-
-| Hidden neuron | Might learn |
-|---------------|-------------|
-| 1 | High links + unknown sender = suspicious |
-| 2 | High capitals + suspicious words = suspicious |
-| 3 | Known sender + long message = normal |
-| 4 | Short message + no links = normal |
-
-These are not programmed. They emerge during training as the network tries to reduce its mistakes.
-
----
-
-## 13. The training loop is the same in both worlds
-
-Whether you use traditional ML or deep learning, the training process is similar:
-
-```
-1. Forward pass:   predict spam probability for each email
-2. Compute loss:    how far is the prediction from the true label?
-3. Backward pass:   find which weights caused the mistake
-4. Update weights:  move a small step in the direction that reduces loss
-5. Repeat
-```
-
-The only difference is that deep learning has more weights to update, including weights inside the hidden layers.
-
-```python
-import torch.nn as nn
-
-model = nn.Sequential(
-    nn.Linear(5, 4),
-    nn.ReLU(),
-    nn.Linear(4, 1),
-    nn.Sigmoid()
-)
-
-criterion = nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-
-# Training loop
-for batch_x, batch_y in train_loader:
-    prediction = model(batch_x)
-    loss = criterion(prediction, batch_y)
-
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-```
-
----
-
-## 14. From shallow to deep
-
-| Network | Hidden layers | What it can learn |
-|---------|---------------|-------------------|
-| **No hidden layer** | 0 | Linear spam rule (like logistic regression) |
-| **Shallow network** | 1 | Simple feature combinations |
-| **Deep network** | 3 or more | Rich patterns in text, images, or audio |
-
-Most modern spam filters use deep learning because spam evolves. Spammers change wording, use images, and add noise. A deep model can adapt to new patterns if it is retrained on fresh data.
-
----
-
-## 15. Summary
-
-- Traditional ML asks a human to design features. Deep learning asks the network to learn features.
-- A single neuron with hand features is basically logistic regression.
-- Hidden layers let the model learn combinations of features, such as “many links + unknown sender.”
-- Activation functions like ReLU add non-linearity, which is why deep networks can learn complex patterns.
-- Deep learning needs more data and compute, but it can handle raw text, images, and audio better than traditional ML.
-- For spam detection, deep learning shines when the dataset is large and the language is subtle.
-
----
-
-## 16. Try it yourself
-
-```python
-import torch
-import torch.nn as nn
-
-# Two simple hand-crafted features for four emails
-emails = torch.tensor([
-    [3.0, 1.0],   # 3 suspicious words, 1 link
-    [0.0, 0.0],   # clean email
-    [5.0, 4.0],   # very spammy
-    [1.0, 0.0]    # slightly suspicious
-])
-
-labels = torch.tensor([[1.0], [0.0], [1.0], [0.0]])
-
-# Build a model with one hidden layer
-model = nn.Sequential(
-    nn.Linear(2, 3),
+    nn.Linear(5, 3),   # 5 hand-chosen features → 3 hidden values
     nn.ReLU(),
     nn.Linear(3, 1),
     nn.Sigmoid()
 )
+```
 
-loss_fn = nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+Even though this uses PyTorch and has a hidden layer, it is **traditional machine learning in deep learning clothing**. Why?
 
-# Train for a few epochs
-for epoch in range(200):
-    pred = model(emails)
-    loss = loss_fn(pred, labels)
+Because the five input features (`suspicious_words`, `links`, `known_sender`, `capitals`, `length`) were **chosen by a human**. The model only learns how to combine those five numbers — it does not discover what to look for in the raw email text.
 
+| What the model receives | What the model learns | Type |
+|---|---|---|
+| Human-chosen features `[3, 1, 0, 0.20, 47]` | Weights for those features | Traditional ML |
+| Raw token IDs `[1842, 95, 721, ...]` | What patterns in words predict spam | Deep Learning |
+
+Adding hidden layers to a model that receives hand-crafted features makes it a **deeper traditional ML model**, not deep learning in the true sense. The power of deep learning comes from learning features, not from having more layers.
+
+---
+
+## 5. Why deep learning needs more data and compute
+
+Because deep learning asks the model to discover features from scratch, it needs to see far more examples:
+
+| Situation | Traditional ML | Deep Learning |
+|---|---|---|
+| 500 labelled emails | Works well | Likely overfit or underfit |
+| 100,000 labelled emails | Possibly overkill | Starts to shine |
+| 10,000,000 emails | Cannot improve much | Can learn subtle language patterns |
+| Need to explain every decision | Good — weights are readable | Harder — patterns are buried in layers |
+| Input is raw text, images, or audio | Requires manual feature design | Handles naturally |
+
+The tradeoff is: deep learning requires **labelled data at scale** and **significantly more compute**, but it can learn things that no human would think to hand-code as a feature.
+
+---
+
+## 6. The complete picture — putting Part 1 and Part 2 together
+
+Here is how the two parts connect:
+
+| Concept | Where it lives |
+|---|---|
+| Neuron calculation (weights × inputs + bias) | Part 1 |
+| Sigmoid turns score into probability | Part 1 |
+| Hidden layers as structure | Part 1 |
+| What weights and biases are stored | Part 1 |
+| **What labels are and why they are required** | **Part 2** |
+| **What loss is and how it drives training** | **Part 2** |
+| **Feature engineering vs feature learning** | **Part 2** |
+| **Why Part 1's model is traditional ML, not deep learning** | **Part 2** |
+| **When to use traditional ML vs deep learning** | **Part 2** |
+
+---
+
+## 7. The training loop in full — with labels
+
+Here is the complete supervised training loop using Part 1's five-feature model:
+
+```python
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+# Features: [suspicious_words, links, known_sender, capitals, length]
+X = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0],
+    [5.0, 4.0, 0.0, 0.40, 31.0],
+    [0.0, 1.0, 1.0, 0.01, 110.0]
+])
+
+# Labels: 1 = spam, 0 = not spam  ← required
+y = torch.tensor([[1.0], [0.0], [1.0], [0.0]])
+
+dataset = TensorDataset(X, y)
+loader  = DataLoader(dataset, batch_size=2, shuffle=True)
+
+model     = nn.Sequential(nn.Linear(5, 4), nn.ReLU(), nn.Linear(4, 1), nn.Sigmoid())
+loss_fn   = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+for epoch in range(100):
+    for batch_x, batch_y in loader:
+        prediction = model(batch_x)
+        loss = loss_fn(prediction, batch_y)   # compares prediction to label
+
+        optimizer.zero_grad()
+        loss.backward()    # finds which weights caused the error
+        optimizer.step()   # nudges weights to reduce error
+```
+
+Every line that involves `batch_y` — `loss_fn(prediction, batch_y)` — is the point where labels are used. Remove `y` and the training loop breaks immediately.
+
+---
+
+## 8. Summary
+
+- **Labels are required** for supervised learning. The model learns by comparing its predictions to labels and adjusting weights to reduce the error.
+- **Loss** measures how wrong the model is. Training is the process of reducing loss over many labelled examples.
+- **Traditional ML**: a human extracts features from raw data, then the model learns weights for those features.
+- **Deep learning**: the model receives raw or lightly processed input and learns what features to look for by itself.
+- **Part 1's model is traditional ML** because it receives hand-chosen features. The presence of hidden layers does not make it deep learning — the *source of the features* does.
+- Deep learning needs significantly more labelled data and compute in exchange for not requiring manual feature design.
+
+---
+
+## 9. Try it yourself
+
+```python
+import torch
+import torch.nn as nn
+
+# Four emails: [suspicious_words, links, known_sender, capitals, length]
+X = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20, 47.0],
+    [0.0, 0.0, 1.0, 0.02, 82.0],
+    [5.0, 4.0, 0.0, 0.40, 31.0],
+    [1.0, 0.0, 1.0, 0.05, 120.0]
+])
+
+# Labels are required — 1 = spam, 0 = not spam
+y = torch.tensor([[1.0], [0.0], [1.0], [0.0]])
+
+model     = nn.Sequential(nn.Linear(5, 4), nn.ReLU(), nn.Linear(4, 1), nn.Sigmoid())
+loss_fn   = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.05)
+
+for epoch in range(300):
+    pred = model(X)
+    loss = loss_fn(pred, y)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-# Check predictions
 with torch.no_grad():
-    final = model(emails)
+    final = model(X)
     for i, prob in enumerate(final):
         label = "spam" if prob.item() >= 0.5 else "not spam"
-        print(f"Email {i}: probability {prob.item():.3f} → {label}")
+        print(f"Email {i+1}: {prob.item():.3f} → {label}")
 ```
+
+Try removing the `y` labels and see what breaks. Try replacing the five hand-chosen features with raw token counts — that is the first step toward true deep learning.
 
 ---
 
 ## Final mental model
 
 ```
-Traditional ML:   Email → human features → simple model → spam probability
-Deep learning:    Email → raw tokens → learned embeddings → hidden layers → spam probability
+Part 1 answered:  How does a neuron compute a prediction?
+Part 2 answers:   How does a model learn — and what is it learning from?
+
+Traditional ML:   Human extracts features  →  model learns weights for them
+Deep Learning:    Model receives raw input  →  model learns what features matter
+
+Both need labels. Both use loss. Both use gradient descent.
+The difference is who decides what the model looks at.
 ```
 
-The real shift is from **hand-written features** to **learned representations**. Everything else — loss, optimisation, and evaluation — stays largely the same.
-
-<img src="{{ site.baseurl }}/assets/img/training-loop.svg" alt="The training loop: forward pass → compute loss → backward pass → update weights → repeat, with a loss curve dropping over epochs" width="100%" />
