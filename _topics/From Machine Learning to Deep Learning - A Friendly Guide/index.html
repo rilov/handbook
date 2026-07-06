@@ -1,607 +1,474 @@
 <h1 id="part-2-from-machine-learning-to-deep-learning--a-friendly-guide">Part 2: From Machine Learning to Deep Learning — A Friendly Guide</h1>
 
-<p>Let us continue with the spam email example. We already saw that a single neuron can take five numbers and produce a spam probability. Now we will ask: what changes if we switch from traditional machine learning to deep learning?</p>
+<h2 id="what-part-1-covered--and-what-it-left-out">What Part 1 covered — and what it left out</h2>
 
-<hr />
-
-<h2 id="1-the-same-problem-two-different-approaches">1. The same problem, two different approaches</h2>
-
-<p>Imagine you work at an email company and you must build a spam detector.</p>
-
-<p>In <strong>traditional machine learning</strong>, a human might decide which features matter:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Feature</th>
-      <th>How to get it</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Number of suspicious words</td>
-      <td>Count words like “free”, “win”, “prize”</td>
-    </tr>
-    <tr>
-      <td>Number of links</td>
-      <td>Count <code class="language-plaintext highlighter-rouge">http://</code> or <code class="language-plaintext highlighter-rouge">&lt;a&gt;</code> tags</td>
-    </tr>
-    <tr>
-      <td>Sender known or unknown</td>
-      <td>Check against an address book</td>
-    </tr>
-    <tr>
-      <td>Percentage of capital letters</td>
-      <td>Count uppercase letters ÷ total letters</td>
-    </tr>
-    <tr>
-      <td>Message length</td>
-      <td>Count words</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>You then feed these features into a model like logistic regression or a decision tree. The model learns weights, but the features themselves are designed by a person. This is called <strong>feature engineering</strong>.</p>
-
-<p>In <strong>deep learning</strong>, you might give the model raw text instead:</p>
-
-<blockquote>
-  <p>“Congratulations! Click here to claim your prize.”</p>
-</blockquote>
-
-<p>The model learns which words, phrases, and patterns matter. It might discover that “claim your prize” is a strong spam signal without anyone telling it explicitly. This is called <strong>feature learning</strong>.</p>
-
-<blockquote>
-  <p><strong>Memory trick:</strong> In traditional ML, you hand-pick the clues. In deep learning, the detective learns which clues to look for.</p>
-</blockquote>
-
-<p><img src="/handbook/assets/img/ml-vs-dl-pipeline.svg" alt="Side-by-side comparison of Traditional ML pipeline vs Deep Learning pipeline for spam detection" width="100%" /></p>
-
-<hr />
-
-<h2 id="2-what-stays-the-same">2. What stays the same</h2>
-
-<p>Both approaches share the same high-level goal:</p>
-
-<blockquote>
-  <p><strong>Feed data into a model, measure the error, and update the model to reduce the error.</strong></p>
-</blockquote>
-
-<table>
-  <thead>
-    <tr>
-      <th>Step</th>
-      <th>Traditional ML</th>
-      <th>Deep Learning</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Input</td>
-      <td>Features designed by humans</td>
-      <td>Raw or lightly processed data</td>
-    </tr>
-    <tr>
-      <td>Model</td>
-      <td>Logistic regression, SVM, decision tree</td>
-      <td>Neural network</td>
-    </tr>
-    <tr>
-      <td>Loss function</td>
-      <td>Cross-entropy, MSE</td>
-      <td>Cross-entropy, MSE</td>
-    </tr>
-    <tr>
-      <td>Optimisation</td>
-      <td>Gradient descent or similar</td>
-      <td>Gradient descent / Adam</td>
-    </tr>
-    <tr>
-      <td>Goal</td>
-      <td>Generalise to unseen emails</td>
-      <td>Same</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>The difference is not the goal. The difference is <strong>who decides what the model looks at</strong>.</p>
-
-<hr />
-
-<h2 id="3-a-single-neuron-is-just-traditional-ml">3. A single neuron is just traditional ML</h2>
-
-<p>Recall our simple spam model:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">])</span>
-<span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">])</span>
-<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
-
-<span class="n">raw_score</span> <span class="o">=</span> <span class="n">email</span> <span class="o">@</span> <span class="n">weights</span> <span class="o">+</span> <span class="n">bias</span>
-<span class="n">probability</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="n">raw_score</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>This is almost the same as <strong>logistic regression</strong>:</p>
+<p>Part 1 showed you the <strong>mechanics</strong> of a neuron:</p>
 
 <ul>
-  <li>Multiply each feature by a weight.</li>
-  <li>Add them up.</li>
-  <li>Add a bias.</li>
-  <li>Squash with sigmoid to get a probability.</li>
+  <li>How an email becomes a feature vector of numbers</li>
+  <li>How a neuron multiplies inputs by weights, adds a bias, and applies sigmoid</li>
+  <li>What a hidden layer is structurally</li>
+  <li>What weights and biases are stored in the model</li>
 </ul>
 
-<p>So a single neuron with five hand-chosen features is a traditional machine-learning model wearing a neural-network costume. It is useful, but it cannot learn new combinations of features.</p>
+<p>But Part 1 left one big question unanswered:</p>
+
+<blockquote>
+  <p><strong>Where did those weights come from? How does the model actually learn them?</strong></p>
+</blockquote>
+
+<p>Part 1 used manually written weights like <code class="language-plaintext highlighter-rouge">[0.8, 0.6, -1.2, 2.0, 0.01]</code> to demonstrate the calculation. A real model does not start with useful weights. It starts with random ones, and <strong>learns</strong> better values by repeatedly looking at labelled examples and correcting its mistakes.</p>
+
+<p>That is what Part 2 is about: <strong>the learning process itself</strong>, and how traditional machine learning and deep learning differ in <em>what</em> they ask the model to learn.</p>
 
 <hr />
 
-<h2 id="4-why-a-single-neuron-is-limited">4. Why a single neuron is limited</h2>
+<h2 id="1-do-you-need-labels-yes--and-here-is-exactly-why">1. Do you need labels? Yes — and here is exactly why</h2>
 
-<p>A single neuron can only learn patterns that look like a straight line in feature space. For example, it can learn:</p>
+<p>This is the most common confusion in this topic.</p>
 
-<blockquote>
-  <p>If <code class="language-plaintext highlighter-rouge">(0.8 × suspicious_words) + (0.6 × links) + ... + bias</code> is large enough, it is spam.</p>
-</blockquote>
+<p><strong>For spam detection, labels are required.</strong> Without them, the model has no way to know when it is wrong.</p>
 
-<p>But it cannot easily learn combinations such as:</p>
-
-<blockquote>
-  <p>“An email is spam only if it has many links AND an unknown sender, OR if it has many suspicious words AND many capitals.”</p>
-</blockquote>
-
-<p>Those combinations are not simple straight-line rules. They need a way to mix features together before making the final decision.</p>
-
-<p><img src="/handbook/assets/img/linear-limit.svg" alt="Scatter plot showing a single neuron can only draw a straight decision boundary, while a hidden layer learns a curved one" width="100%" /></p>
-
-<hr />
-
-<h2 id="5-hidden-layers-add-combinations">5. Hidden layers add combinations</h2>
-
-<p>A hidden layer is a group of neurons between the input and the output. Each hidden neuron looks at the same five features but learns a different combination.</p>
-
-<p>For spam detection, one hidden neuron might learn:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>neuron_1 = links × 0.7 + unknown_sender × 1.5 + bias
-</code></pre></div></div>
-
-<p>This neuron fires when an email has many links and an unknown sender.</p>
-
-<p>Another hidden neuron might learn:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>neuron_2 = suspicious_words × 1.1 + capitals × 0.9 + bias
-</code></pre></div></div>
-
-<p>This neuron fires when an email has many suspicious words and many capital letters.</p>
-
-<p>The output neuron then combines these hidden neurons:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>spam_score = neuron_1 × 0.8 + neuron_2 × 0.6 + bias
-</code></pre></div></div>
-
-<p>So the model can now say: “This email is spam because it triggered both the suspicious-words neuron and the unknown-sender neuron.”</p>
-
-<blockquote>
-  <p><strong>Memory trick:</strong> A single neuron is like one judge. A hidden layer is like a panel of judges, each scoring a different aspect, before the final decision.</p>
-</blockquote>
-
-<p><img src="/handbook/assets/img/hidden-combinations.svg" alt="Diagram showing three hidden neurons each detecting a different combination of features before combining into a final spam score" width="100%" /></p>
-
-<hr />
-
-<h2 id="6-why-depth-matters">6. Why depth matters</h2>
-
-<p>Each hidden layer builds on the previous one. With spam text, this might look like:</p>
+<p>A label is simply the correct answer for each example:</p>
 
 <table>
   <thead>
     <tr>
-      <th>Layer</th>
-      <th>What it learns</th>
+      <th>Email</th>
+      <th>Features</th>
+      <th>Label</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Input</td>
-      <td>Raw words or hand features</td>
+      <td>“Congratulations! Claim your prize now.”</td>
+      <td><code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">1</code> (spam)</td>
     </tr>
     <tr>
-      <td>Hidden layer 1</td>
-      <td>Word combinations like “claim your” or “free prize”</td>
+      <td>“Hi, your meeting is confirmed for 3pm.”</td>
+      <td><code class="language-plaintext highlighter-rouge">[0, 0, 1, 0.02, 82]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">0</code> (not spam)</td>
     </tr>
     <tr>
-      <td>Hidden layer 2</td>
-      <td>Phrase patterns like “click here to claim”</td>
+      <td>“Win a free iPhone — click here now!”</td>
+      <td><code class="language-plaintext highlighter-rouge">[5, 4, 0, 0.40, 31]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">1</code> (spam)</td>
     </tr>
     <tr>
-      <td>Output</td>
-      <td>Spam probability</td>
+      <td>“Your invoice for March is attached.”</td>
+      <td><code class="language-plaintext highlighter-rouge">[0, 1, 1, 0.01, 110]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">0</code> (not spam)</td>
     </tr>
   </tbody>
 </table>
 
-<p>Early layers see simple patterns. Deeper layers see richer patterns. This is why deep networks are powerful for text, images, and audio.</p>
+<p>In PyTorch, these labels become a tensor:</p>
 
-<blockquote>
-  <p><strong>Memory trick:</strong> Deep learning is like reading a book. First you recognise letters, then words, then sentences, then meaning.</p>
-</blockquote>
-
-<p><img src="/handbook/assets/img/depth-layers.svg" alt="Layer-by-layer diagram showing how each layer builds richer understanding: raw email → word signals → combinations → phrase patterns → spam decision" width="100%" /></p>
-
-<hr />
-
-<h2 id="7-the-role-of-non-linearity">7. The role of non-linearity</h2>
-
-<p>Without activation functions, a deep network would just be a long chain of multiplications and additions. In fact, it would collapse into one single multiplication and addition.</p>
-
-<p>Here is why:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Layer 1: z = xW₁ + b₁
-Layer 2: z = zW₂ + b₂ = (xW₁ + b₁)W₂ + b₂ = x(W₁W₂) + (b₁W₂ + b₂)
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
 </code></pre></div></div>
 
-<p>If there is no activation between the layers, the two layers are mathematically the same as one layer. The activation function breaks the linearity.</p>
-
-<p>ReLU, for example, simply turns negative values to zero:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">ReLU</span><span class="p">([</span><span class="mf">2.4</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">])</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">]</span>
-</code></pre></div></div>
-
-<p>This small change is what allows the network to learn complex shapes and combinations. It is like adding a small switch between layers.</p>
+<p>The model predicts a probability for each email. The label tells the model what the probability <em>should have been</em>. The gap between the prediction and the label is the <strong>loss</strong> — and reducing the loss is the entire goal of training.</p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> Activation functions are the wrinkles that stop the network from being a flat piece of paper.</p>
+  <p><strong>Memory trick:</strong> Labels are the answer key. Without the answer key, the model cannot know if it got the question right.</p>
 </blockquote>
 
-<p><img src="/handbook/assets/img/activation-functions.svg" alt="Four activation function curves side by side: Sigmoid, Tanh, ReLU, and Leaky ReLU — showing how each transforms values differently" width="100%" /></p>
+<h3 id="why-labels-are-required-for-classification">Why labels are required for classification</h3>
 
-<hr />
+<p>The training loop works like this:</p>
 
-<h2 id="8-common-activation-functions-in-detail">8. Common activation functions in detail</h2>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Model predicts: email [3, 1, 0, 0.20, 47] → probability 0.30
+2. Label says:     correct answer is 1.0 (spam)
+3. Loss measures:  how far is 0.30 from 1.0?  → loss is large
+4. Backprop finds: which weights caused the mistake?
+5. Optimizer:      nudge those weights to reduce the loss
+6. Repeat across all emails until loss is small
+</code></pre></div></div>
+
+<p>Without the label <code class="language-plaintext highlighter-rouge">1.0</code> in step 2, there is nothing to compare against. The loop cannot run.</p>
+
+<h3 id="when-labels-are-not-required">When labels are not required</h3>
+
+<p>Labels are only required for <strong>supervised learning</strong> — tasks where each example has a known correct answer.</p>
+
+<p>Some tasks do not need labels:</p>
 
 <table>
   <thead>
     <tr>
-      <th>Function</th>
-      <th>What it does</th>
-      <th>Where it is used</th>
-      <th>Memory trick</th>
+      <th>Learning type</th>
+      <th>Labels?</th>
+      <th>Example</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Sigmoid</strong></td>
-      <td>Squishes any number to 0..1</td>
-      <td>Output layer for binary classification</td>
-      <td>Thermometer with a 0-to-1 scale</td>
+      <td>Supervised (spam classifier)</td>
+      <td><strong>Yes</strong></td>
+      <td>Human labels each email spam / not spam</td>
     </tr>
     <tr>
-      <td><strong>Tanh</strong></td>
-      <td>Squishes any number to -1..1</td>
-      <td>Older hidden layers</td>
-      <td>Sigmoid stretched to -1..1</td>
+      <td>Unsupervised (clustering)</td>
+      <td>No</td>
+      <td>Group emails by similarity, no pre-defined answers</td>
     </tr>
     <tr>
-      <td><strong>ReLU</strong></td>
-      <td>Turns negatives to zero</td>
-      <td>Most modern hidden layers</td>
-      <td>Bouncer that blocks negatives</td>
-    </tr>
-    <tr>
-      <td><strong>Leaky ReLU</strong></td>
-      <td>Lets a small negative through</td>
-      <td>ReLU replacement</td>
-      <td>Slightly open door for negatives</td>
-    </tr>
-    <tr>
-      <td><strong>Softmax</strong></td>
-      <td>Turns scores into probabilities that sum to 1</td>
-      <td>Output layer for multi-class classification</td>
-      <td>Normalised ranking</td>
+      <td>Self-supervised (language model pre-training)</td>
+      <td>No — labels come from the data itself</td>
+      <td>Predict the next word in an email</td>
     </tr>
   </tbody>
 </table>
 
-<p>For spam detection, the final output is one probability, so sigmoid is the right choice. The hidden layers use ReLU because it is fast and avoids the vanishing gradient problem.</p>
+<p>Everything in this series — spam classification, PyTorch training loops, cross-entropy loss — is supervised learning. <strong>Labels are required.</strong></p>
 
 <hr />
 
-<h2 id="9-feature-engineering-vs-feature-learning-for-spam">9. Feature engineering vs feature learning for spam</h2>
+<h2 id="2-what-loss-is-and-why-it-matters">2. What loss is and why it matters</h2>
 
-<h3 id="traditional-ml-spam-detector">Traditional ML spam detector</h3>
+<p>The model’s prediction is a probability between 0 and 1. The label is either 0 or 1. The <strong>loss function</strong> measures how wrong the prediction is.</p>
+
+<p>For binary classification like spam detection, the standard loss function is <strong>Binary Cross-Entropy (BCE)</strong>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">loss_fn</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
+
+<span class="n">prediction</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">0.30</span><span class="p">]])</span>   <span class="c1"># model said 30% spam
+</span><span class="n">label</span>      <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]])</span>    <span class="c1"># correct answer: spam
+</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>   <span class="c1"># large number — prediction was very wrong
+</span></code></pre></div></div>
+
+<p>If the model predicts <code class="language-plaintext highlighter-rouge">0.95</code> for a spam email (label <code class="language-plaintext highlighter-rouge">1.0</code>), the loss is small. If it predicts <code class="language-plaintext highlighter-rouge">0.10</code> for a spam email, the loss is large. Training is just the process of repeatedly reducing this loss across thousands of emails.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Loss is the score on a test. Training is studying to improve that score.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-traditional-ml-vs-deep-learning--the-real-difference">3. Traditional ML vs deep learning — the real difference</h2>
+
+<p>Part 1 showed you <em>how</em> a model computes. Now the question is: <strong>what does the model actually learn to do?</strong></p>
+
+<p>Both traditional ML and deep learning follow the same training loop:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Predict → measure loss against labels → update weights → repeat
+</code></pre></div></div>
+
+<p>The difference is in <strong>what the model is asked to learn from</strong>.</p>
+
+<h3 id="traditional-machine-learning--you-design-the-features">Traditional machine learning — you design the features</h3>
+
+<p>In traditional ML, a human decides which features to extract from the raw email <em>before</em> feeding it to the model:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Raw email
     ↓
-Human writes rules to extract 5 features
+Human writes code to count suspicious words, links, capitals, etc.
     ↓
-Logistic regression learns 5 weights + bias
+Model receives: [3, 1, 0, 0.20, 47]
+    ↓
+Model learns: 5 weights + 1 bias
     ↓
 Spam probability
 </code></pre></div></div>
 
+<p>The model only learns <strong>how much weight to give each human-chosen feature</strong>. It does not discover new features. This is called <strong>feature engineering</strong> — the human does the hard thinking about what matters.</p>
+
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
 
-<span class="c1"># Features designed by a human
+<span class="c1"># Features chosen by a human
 </span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span>
     <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mi">47</span><span class="p">],</span>
     <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mi">82</span><span class="p">],</span>
-    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">31</span><span class="p">]</span>
+    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">31</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">110</span><span class="p">]</span>
 <span class="p">]</span>
-<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>   <span class="c1"># ← labels required here too
+</span>
 <span class="n">model</span> <span class="o">=</span> <span class="nc">LogisticRegression</span><span class="p">()</span>
 <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
 </code></pre></div></div>
 
-<h3 id="deep-learning-spam-detector">Deep learning spam detector</h3>
+<h3 id="deep-learning--the-model-discovers-its-own-features">Deep learning — the model discovers its own features</h3>
+
+<p>In deep learning, you give the model raw or lightly processed input. The hidden layers learn their own internal representations:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Raw email
     ↓
-Convert words to token IDs
+Convert words to token IDs: [1842, 95, 721, 4031, ...]
     ↓
-Embedding layer learns vectors
+Embedding layer learns a vector per word
     ↓
-Hidden layers learn word and phrase patterns
+Hidden layers learn combinations: "claim your prize" = strong spam signal
     ↓
 Output layer produces spam probability
 </code></pre></div></div>
 
+<p>The model does not just learn weights for human-chosen features. It learns <strong>what to look for in the first place</strong>. This is called <strong>feature learning</strong>.</p>
+
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">num_embeddings</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">num_embeddings</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">),</span>  <span class="c1"># learns word vectors
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
     <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
 <span class="p">)</span>
 </code></pre></div></div>
 
-<p>In this simple example, the embedding layer learns a vector for each word. The hidden layers learn to combine those vectors into a spam score.</p>
-
 <blockquote>
-  <p><strong>Memory trick:</strong> Traditional ML is a recipe with ingredients you choose. Deep learning is a kitchen that discovers its own ingredients.</p>
+  <p><strong>Memory trick:</strong> Traditional ML is like giving a detective a checklist you wrote. Deep learning is like hiring a detective who writes their own checklist by studying thousands of cases.</p>
 </blockquote>
 
 <hr />
 
-<h2 id="10-when-to-use-which-approach-for-spam">10. When to use which approach for spam</h2>
+<h2 id="4-why-part-1s-model-is-traditional-ml--not-deep-learning">4. Why Part 1’s model is traditional ML — not deep learning</h2>
+
+<p>This is the exact confusion the article title creates.</p>
+
+<p>Part 1 built this model:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>   <span class="c1"># 5 hand-chosen features → 3 hidden values
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<p>Even though this uses PyTorch and has a hidden layer, it is <strong>traditional machine learning in deep learning clothing</strong>. Why?</p>
+
+<p>Because the five input features (<code class="language-plaintext highlighter-rouge">suspicious_words</code>, <code class="language-plaintext highlighter-rouge">links</code>, <code class="language-plaintext highlighter-rouge">known_sender</code>, <code class="language-plaintext highlighter-rouge">capitals</code>, <code class="language-plaintext highlighter-rouge">length</code>) were <strong>chosen by a human</strong>. The model only learns how to combine those five numbers — it does not discover what to look for in the raw email text.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>What the model receives</th>
+      <th>What the model learns</th>
+      <th>Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Human-chosen features <code class="language-plaintext highlighter-rouge">[3, 1, 0, 0.20, 47]</code></td>
+      <td>Weights for those features</td>
+      <td>Traditional ML</td>
+    </tr>
+    <tr>
+      <td>Raw token IDs <code class="language-plaintext highlighter-rouge">[1842, 95, 721, ...]</code></td>
+      <td>What patterns in words predict spam</td>
+      <td>Deep Learning</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Adding hidden layers to a model that receives hand-crafted features makes it a <strong>deeper traditional ML model</strong>, not deep learning in the true sense. The power of deep learning comes from learning features, not from having more layers.</p>
+
+<hr />
+
+<h2 id="5-why-deep-learning-needs-more-data-and-compute">5. Why deep learning needs more data and compute</h2>
+
+<p>Because deep learning asks the model to discover features from scratch, it needs to see far more examples:</p>
 
 <table>
   <thead>
     <tr>
       <th>Situation</th>
-      <th>Use Traditional ML</th>
-      <th>Use Deep Learning</th>
+      <th>Traditional ML</th>
+      <th>Deep Learning</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Small dataset of 1,000 emails</td>
-      <td>Yes</td>
-      <td>No — not enough data</td>
+      <td>500 labelled emails</td>
+      <td>Works well</td>
+      <td>Likely overfit or underfit</td>
     </tr>
     <tr>
-      <td>Dataset has clear, measurable features</td>
-      <td>Yes</td>
-      <td>Maybe overkill</td>
+      <td>100,000 labelled emails</td>
+      <td>Possibly overkill</td>
+      <td>Starts to shine</td>
     </tr>
     <tr>
-      <td>Need to explain why an email was flagged</td>
-      <td>Yes</td>
-      <td>Harder</td>
+      <td>10,000,000 emails</td>
+      <td>Cannot improve much</td>
+      <td>Can learn subtle language patterns</td>
     </tr>
     <tr>
-      <td>Dataset has 1,000,000 emails</td>
-      <td>No</td>
-      <td>Yes</td>
+      <td>Need to explain every decision</td>
+      <td>Good — weights are readable</td>
+      <td>Harder — patterns are buried in layers</td>
     </tr>
     <tr>
-      <td>Need to understand subtle language</td>
-      <td>No</td>
-      <td>Yes</td>
+      <td>Input is raw text, images, or audio</td>
+      <td>Requires manual feature design</td>
+      <td>Handles naturally</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The tradeoff is: deep learning requires <strong>labelled data at scale</strong> and <strong>significantly more compute</strong>, but it can learn things that no human would think to hand-code as a feature.</p>
+
+<hr />
+
+<h2 id="6-the-complete-picture--putting-part-1-and-part-2-together">6. The complete picture — putting Part 1 and Part 2 together</h2>
+
+<p>Here is how the two parts connect:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Where it lives</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Neuron calculation (weights × inputs + bias)</td>
+      <td>Part 1</td>
     </tr>
     <tr>
-      <td>Need to handle many languages and typos</td>
-      <td>No</td>
-      <td>Yes</td>
+      <td>Sigmoid turns score into probability</td>
+      <td>Part 1</td>
+    </tr>
+    <tr>
+      <td>Hidden layers as structure</td>
+      <td>Part 1</td>
+    </tr>
+    <tr>
+      <td>What weights and biases are stored</td>
+      <td>Part 1</td>
+    </tr>
+    <tr>
+      <td><strong>What labels are and why they are required</strong></td>
+      <td><strong>Part 2</strong></td>
+    </tr>
+    <tr>
+      <td><strong>What loss is and how it drives training</strong></td>
+      <td><strong>Part 2</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Feature engineering vs feature learning</strong></td>
+      <td><strong>Part 2</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Why Part 1’s model is traditional ML, not deep learning</strong></td>
+      <td><strong>Part 2</strong></td>
+    </tr>
+    <tr>
+      <td><strong>When to use traditional ML vs deep learning</strong></td>
+      <td><strong>Part 2</strong></td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="11-a-deep-learning-spam-model-with-hand-features">11. A deep learning spam model with hand features</h2>
+<h2 id="7-the-training-loop-in-full--with-labels">7. The training loop in full — with labels</h2>
 
-<p>Even if we keep the same five hand features, adding a hidden layer can improve the model because it learns combinations.</p>
+<p>Here is the complete supervised training loop using Part 1’s five-feature model:</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+<span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">TensorDataset</span>
 
-<span class="c1"># One email: suspicious_words, links, known_sender, capitals, length
-</span><span class="n">email</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">]])</span>
+<span class="c1"># Features: [suspicious_words, links, known_sender, capitals, length]
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">110.0</span><span class="p">]</span>
+<span class="p">])</span>
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>   <span class="c1"># 5 features → 4 hidden combinations
-</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>          <span class="c1"># remove negative hidden signals
-</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>    <span class="c1"># 4 hidden combinations → 1 spam score
-</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>        <span class="c1"># spam score → probability
-</span><span class="p">)</span>
+<span class="c1"># Labels: 1 = spam, 0 = not spam  ← required
+</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
 
-<span class="n">probability</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Spam probability:</span><span class="sh">"</span><span class="p">,</span> <span class="n">probability</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>
-</code></pre></div></div>
+<span class="n">dataset</span> <span class="o">=</span> <span class="nc">TensorDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">loader</span>  <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 
-<p>The first layer creates four hidden combinations. ReLU removes the negative ones. The second layer combines the remaining positive signals into a final score. Sigmoid turns that score into a probability.</p>
-
-<hr />
-
-<h2 id="12-what-the-hidden-neurons-might-learn">12. What the hidden neurons might learn</h2>
-
-<p>We do not get to read the neurons’ minds, but we can imagine what they might represent:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Hidden neuron</th>
-      <th>Might learn</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>1</td>
-      <td>High links + unknown sender = suspicious</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>High capitals + suspicious words = suspicious</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>Known sender + long message = normal</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td>Short message + no links = normal</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>These are not programmed. They emerge during training as the network tries to reduce its mistakes.</p>
-
-<hr />
-
-<h2 id="13-the-training-loop-is-the-same-in-both-worlds">13. The training loop is the same in both worlds</h2>
-
-<p>Whether you use traditional ML or deep learning, the training process is similar:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Forward pass:   predict spam probability for each email
-2. Compute loss:    how far is the prediction from the true label?
-3. Backward pass:   find which weights caused the mistake
-4. Update weights:  move a small step in the direction that reduces loss
-5. Repeat
-</code></pre></div></div>
-
-<p>The only difference is that deep learning has more weights to update, including weights inside the hidden layers.</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
-
-<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
-<span class="p">)</span>
-
-<span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
+<span class="n">model</span>     <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">())</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
 <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
 
-<span class="c1"># Training loop
-</span><span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">train_loader</span><span class="p">:</span>
-    <span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">batch_x</span><span class="p">)</span>
-    <span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">batch_y</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+        <span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">batch_x</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">batch_y</span><span class="p">)</span>   <span class="c1"># compares prediction to label
+</span>
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+        <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>    <span class="c1"># finds which weights caused the error
+</span>        <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>   <span class="c1"># nudges weights to reduce error
+</span></code></pre></div></div>
 
-    <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
-    <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
-    <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
-</code></pre></div></div>
-
-<hr />
-
-<h2 id="14-from-shallow-to-deep">14. From shallow to deep</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Network</th>
-      <th>Hidden layers</th>
-      <th>What it can learn</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><strong>No hidden layer</strong></td>
-      <td>0</td>
-      <td>Linear spam rule (like logistic regression)</td>
-    </tr>
-    <tr>
-      <td><strong>Shallow network</strong></td>
-      <td>1</td>
-      <td>Simple feature combinations</td>
-    </tr>
-    <tr>
-      <td><strong>Deep network</strong></td>
-      <td>3 or more</td>
-      <td>Rich patterns in text, images, or audio</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>Most modern spam filters use deep learning because spam evolves. Spammers change wording, use images, and add noise. A deep model can adapt to new patterns if it is retrained on fresh data.</p>
+<p>Every line that involves <code class="language-plaintext highlighter-rouge">batch_y</code> — <code class="language-plaintext highlighter-rouge">loss_fn(prediction, batch_y)</code> — is the point where labels are used. Remove <code class="language-plaintext highlighter-rouge">y</code> and the training loop breaks immediately.</p>
 
 <hr />
 
-<h2 id="15-summary">15. Summary</h2>
+<h2 id="8-summary">8. Summary</h2>
 
 <ul>
-  <li>Traditional ML asks a human to design features. Deep learning asks the network to learn features.</li>
-  <li>A single neuron with hand features is basically logistic regression.</li>
-  <li>Hidden layers let the model learn combinations of features, such as “many links + unknown sender.”</li>
-  <li>Activation functions like ReLU add non-linearity, which is why deep networks can learn complex patterns.</li>
-  <li>Deep learning needs more data and compute, but it can handle raw text, images, and audio better than traditional ML.</li>
-  <li>For spam detection, deep learning shines when the dataset is large and the language is subtle.</li>
+  <li><strong>Labels are required</strong> for supervised learning. The model learns by comparing its predictions to labels and adjusting weights to reduce the error.</li>
+  <li><strong>Loss</strong> measures how wrong the model is. Training is the process of reducing loss over many labelled examples.</li>
+  <li><strong>Traditional ML</strong>: a human extracts features from raw data, then the model learns weights for those features.</li>
+  <li><strong>Deep learning</strong>: the model receives raw or lightly processed input and learns what features to look for by itself.</li>
+  <li><strong>Part 1’s model is traditional ML</strong> because it receives hand-chosen features. The presence of hidden layers does not make it deep learning — the <em>source of the features</em> does.</li>
+  <li>Deep learning needs significantly more labelled data and compute in exchange for not requiring manual feature design.</li>
 </ul>
 
 <hr />
 
-<h2 id="16-try-it-yourself">16. Try it yourself</h2>
+<h2 id="9-try-it-yourself">9. Try it yourself</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="c1"># Two simple hand-crafted features for four emails
-</span><span class="n">emails</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
-    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>   <span class="c1"># 3 suspicious words, 1 link
-</span>    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>   <span class="c1"># clean email
-</span>    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">],</span>   <span class="c1"># very spammy
-</span>    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>    <span class="c1"># slightly suspicious
-</span><span class="p">])</span>
+<span class="c1"># Four emails: [suspicious_words, links, known_sender, capitals, length]
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">,</span> <span class="mf">47.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">82.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mf">31.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<span class="p">])</span>
 
-<span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
+<span class="c1"># Labels are required — 1 = spam, 0 = not spam
+</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
 
-<span class="c1"># Build a model with one hidden layer
-</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
-<span class="p">)</span>
+<span class="n">model</span>     <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">())</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
 
-<span class="n">loss_fn</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
-<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
-
-<span class="c1"># Train for a few epochs
-</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">200</span><span class="p">):</span>
-    <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
-    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
-
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">300</span><span class="p">):</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
     <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
     <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
     <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
 
-<span class="c1"># Check predictions
-</span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
-    <span class="n">final</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">final</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">prob</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">final</span><span class="p">):</span>
         <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span> <span class="k">if</span> <span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span>
-        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Email </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s">: probability </span><span class="si">{</span><span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s"> → </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Email </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s"> → </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
+
+<p>Try removing the <code class="language-plaintext highlighter-rouge">y</code> labels and see what breaks. Try replacing the five hand-chosen features with raw token counts — that is the first step toward true deep learning.</p>
 
 <hr />
 
 <h2 id="final-mental-model">Final mental model</h2>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Traditional ML:   Email → human features → simple model → spam probability
-Deep learning:    Email → raw tokens → learned embeddings → hidden layers → spam probability
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Part 1 answered:  How does a neuron compute a prediction?
+Part 2 answers:   How does a model learn — and what is it learning from?
+
+Traditional ML:   Human extracts features  →  model learns weights for them
+Deep Learning:    Model receives raw input  →  model learns what features matter
+
+Both need labels. Both use loss. Both use gradient descent.
+The difference is who decides what the model looks at.
 </code></pre></div></div>
 
-<p>The real shift is from <strong>hand-written features</strong> to <strong>learned representations</strong>. Everything else — loss, optimisation, and evaluation — stays largely the same.</p>
-
-<p><img src="/handbook/assets/img/training-loop.svg" alt="The training loop: forward pass → compute loss → backward pass → update weights → repeat, with a loss curve dropping over epochs" width="100%" /></p>
