@@ -10,12 +10,31 @@ tags:
   - spam-detection
   - beginners
   - friendly
-summary: Learn tensors and tensor operations using the same spam-detection example. Covers feature vectors, batches of emails, weights, matrix multiplication, broadcasting, and reshaping.
+summary: Learn tensors and tensor operations using the same spam-detection example. Covers feature vectors, batches of emails, weights, matrix multiplication, broadcasting, and reshaping. Builds directly on the training loop from Part 2.
 ---
 
 # Part 3: Tensors and Tensor Operations — A Friendly Guide
 
-Everything in a spam-detection model is a tensor. The email features are a tensor, the weights are a tensor, the bias is a tensor, and even the final probability is a tensor. In this guide, we will see exactly how those tensors work.
+In Part 2 you ran this training loop:
+
+```python
+X = torch.tensor([
+    [3.0, 1.0, 0.0, 0.20,  47.0],
+    [0.0, 0.0, 1.0, 0.02,  82.0],
+    [5.0, 4.0, 0.0, 0.40,  31.0],
+    [0.0, 1.0, 1.0, 0.01, 110.0]
+])
+y = torch.tensor([[1.0], [0.0], [1.0], [0.0]])
+
+prediction = model(X)
+loss = loss_fn(prediction, y)
+loss.backward()
+optimizer.step()
+```
+
+Every single variable in that loop — `X`, `y`, `prediction`, `loss` — is a **tensor**. You have been using tensors all along. Part 3 explains exactly what they are, what their shapes mean, and the operations PyTorch performs on them during the forward pass and training.
+
+Understanding tensors is what lets you debug shape errors, understand what `nn.Linear(5, 4)` actually computes, and confidently build more complex models.
 
 ---
 
@@ -23,12 +42,12 @@ Everything in a spam-detection model is a tensor. The email features are a tenso
 
 A tensor is a multi-dimensional array of numbers. The same idea appears at different scales.
 
-| Tensor Type | Dimensions | Spam Example |
-|-------------|------------|--------------|
-| **Scalar** | 0D | One number, such as the bias `-1.0` |
+| Tensor Type | Dimensions | Part 2 example |
+|-------------|------------|----------------|
+| **Scalar** | 0D | `loss` after one forward pass — a single number |
 | **Vector** | 1D | One email's features: `[3, 1, 0, 0.20, 47]` |
-| **Matrix** | 2D | A batch of emails: 4 rows × 5 columns |
-| **3D tensor** | 3D+ | A collection of email batches over several training steps |
+| **Matrix** | 2D | `X` — 4 emails × 5 features. `y` — 4 labels × 1 column |
+| **3D tensor** | 3D+ | A stack of batches across multiple training steps |
 
 > **Memory trick:** A tensor is a numbered box. 0D is a single number, 1D is a list, 2D is a table, 3D is a stack of tables.
 
