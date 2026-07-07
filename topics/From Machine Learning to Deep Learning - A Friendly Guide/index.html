@@ -140,11 +140,11 @@
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>   <span class="c1"># same structure as Part 1
-</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
-<span class="p">)</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>   <span class="c1"># Layer 1: takes 5 features, passes through 4 neurons
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>         <span class="c1"># activation — same as Part 1
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>   <span class="c1"># Layer 2: combines the 4 signals into a single output
+</span>    <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>       <span class="c1"># squashes output to a 0–1 probability
+</span><span class="p">)</span>
 
 <span class="c1"># Predict before any training — weights are random
 </span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
@@ -152,6 +152,8 @@
     <span class="nf">print</span><span class="p">(</span><span class="n">raw_predictions</span><span class="p">)</span>
 <span class="c1"># Output: something like [[0.47], [0.51], [0.49], [0.52]] — basically guessing
 </span></code></pre></div></div>
+
+<p>This is the same model from Part 1. The two <code class="language-plaintext highlighter-rouge">nn.Linear</code> layers were already there — Part 1 explained how a single neuron computes its output. Here we have a first layer of 4 neurons feeding into a second layer with 1 neuron. You do not need to understand layers deeply yet — Part 3 onwards covers this. For now, just notice that all the numbers in both layers need to be learned.</p>
 
 <p>The model starts knowing nothing. All four emails get roughly 50% spam probability — essentially a coin flip. Training is the process of improving those weights until predictions match the labels.</p>
 
@@ -217,7 +219,16 @@
 
 <h2 id="4-step-4--backpropagation-finds-which-weights-caused-the-mistake">4. Step 4 — Backpropagation finds which weights caused the mistake</h2>
 
-<p>The model has many weights spread across two layers. After computing the loss, we need to know: <strong>which weights were most responsible for the mistake?</strong></p>
+<p>Look at the model we defined in Step 2:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>   <span class="c1"># Layer 1: 5 inputs → 4 neurons, each with its own weights
+</span><span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">()</span>
+<span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>   <span class="c1"># Layer 2: 4 inputs → 1 output neuron
+</span></code></pre></div></div>
+
+<p>Each <code class="language-plaintext highlighter-rouge">nn.Linear</code> layer has its own set of weights. <code class="language-plaintext highlighter-rouge">nn.Linear(5, 4)</code> alone has 5 × 4 = 20 weights plus 4 biases. The model has dozens of individual weight numbers in total, spread across both layers.</p>
+
+<p>After computing the loss, we need to know: <strong>which of those weights were most responsible for the mistake?</strong></p>
 
 <p>This is what <strong>backpropagation</strong> does. It works backwards through the model, calculating how much each weight contributed to the error. PyTorch does this automatically with one line:</p>
 
