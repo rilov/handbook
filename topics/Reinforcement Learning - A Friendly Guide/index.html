@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>23. Reinforcement Learning - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>23. Reinforcement Learning - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="reinforcement-learning">Reinforcement Learning</h1>
+
+<h2 id="learning-by-trial-error-and-reward">Learning by trial, error, and reward</h2>
+
+<p>A child learning to walk does not read a physics textbook. They try, fall, try again, and gradually learn what works through a cycle of actions and feedback. That is the essence of <strong>reinforcement learning (RL)</strong>.</p>
+
+<p>In RL, a software <strong>agent</strong> takes <strong>actions</strong> in an <strong>environment</strong>. Each action produces a <strong>reward</strong> (positive or negative). Over time, the agent learns which actions lead to the most reward.</p>
+
+<p>No labelled dataset. No explicit teacher. Just a cycle of trying and learning from the outcome.</p>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>The key concepts — agent, environment, state, action, reward.</li>
+  <li>The exploration vs exploitation trade-off.</li>
+  <li>Q-learning — the foundational RL algorithm.</li>
+  <li>Deep Q-Networks (DQN).</li>
+  <li>Reinforcement Learning from Human Feedback (RLHF) — how ChatGPT is trained.</li>
+  <li>Python demonstration.</li>
+</ol>
+
+<hr />
+
+<h2 id="1-the-key-concepts">1. The key concepts</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Definition</th>
+      <th>Example (game of chess)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Agent</strong></td>
+      <td>The learner / decision-maker</td>
+      <td>The chess-playing program</td>
+    </tr>
+    <tr>
+      <td><strong>Environment</strong></td>
+      <td>The world the agent operates in</td>
+      <td>The chess board</td>
+    </tr>
+    <tr>
+      <td><strong>State</strong></td>
+      <td>The current situation</td>
+      <td>Current positions of all pieces</td>
+    </tr>
+    <tr>
+      <td><strong>Action</strong></td>
+      <td>What the agent can do</td>
+      <td>Move a piece</td>
+    </tr>
+    <tr>
+      <td><strong>Reward</strong></td>
+      <td>Feedback signal after an action</td>
+      <td>+1 for winning, -1 for losing, 0 otherwise</td>
+    </tr>
+    <tr>
+      <td><strong>Policy</strong></td>
+      <td>The agent’s strategy</td>
+      <td>“Given this board state, make this move”</td>
+    </tr>
+    <tr>
+      <td><strong>Episode</strong></td>
+      <td>One complete run from start to end</td>
+      <td>One complete chess game</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The goal: learn a <strong>policy</strong> that maximises <strong>total reward</strong> over time.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> RL is like training a dog. You don’t explain the rules — you give treats (rewards) for good behaviour and none for bad. Over many repetitions, the dog learns what earns treats.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-the-reward-signal-drives-everything">2. The reward signal drives everything</h2>
+
+<p>The reward signal is the only feedback the agent receives. Designing it carefully is crucial:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Reward design</th>
+      <th>Consequence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>+1 for winning a game</td>
+      <td>Agent learns winning strategies</td>
+    </tr>
+    <tr>
+      <td>+0.01 for each move survived</td>
+      <td>Agent learns to prolong the game (may not be what you want)</td>
+    </tr>
+    <tr>
+      <td>+1 for scoring, -0.01 per step</td>
+      <td>Agent learns to score efficiently</td>
+    </tr>
+    <tr>
+      <td>Sparse reward (only at the end)</td>
+      <td>Agent struggles to learn — no intermediate signal</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Reward shaping</strong> — adding intermediate rewards to help the agent learn faster — is a key part of RL system design.</p>
+
+<hr />
+
+<h2 id="3-exploration-vs-exploitation">3. Exploration vs exploitation</h2>
+
+<p>A fundamental tension in RL:</p>
+
+<ul>
+  <li><strong>Exploitation</strong> — do what you already know works (take the action with the highest known reward)</li>
+  <li><strong>Exploration</strong> — try something new (you might discover something even better)</li>
+</ul>
+
+<p>A purely exploiting agent gets stuck in a local optimum. A purely exploring agent never capitalises on what it learned.</p>
+
+<p>The <strong>epsilon-greedy</strong> strategy balances this:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">random</span>
+
+<span class="n">epsilon</span> <span class="o">=</span> <span class="mf">0.1</span>   <span class="c1"># 10% chance of exploring
+</span>
+<span class="k">def</span> <span class="nf">choose_action</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">q_table</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">random</span><span class="p">.</span><span class="nf">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>   <span class="c1"># explore
+</span>    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nf">max</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">q_table</span><span class="p">[</span><span class="n">state</span><span class="p">][</span><span class="n">a</span><span class="p">])</span>   <span class="c1"># exploit
+</span></code></pre></div></div>
+
+<p>Typically epsilon starts high (lots of exploration) and decays over time as the agent learns.</p>
+
+<hr />
+
+<h2 id="4-q-learning--the-foundational-algorithm">4. Q-learning — the foundational algorithm</h2>
+
+<p><strong>Q-learning</strong> learns a table of values <code class="language-plaintext highlighter-rouge">Q(state, action)</code> — the expected total future reward for taking action <code class="language-plaintext highlighter-rouge">a</code> in state <code class="language-plaintext highlighter-rouge">s</code>.</p>
+
+<p>The <strong>Bellman equation</strong> updates Q values after each action:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q(s, a) ← Q(s, a) + α × [r + γ × max Q(s', a') − Q(s, a)]
+                           ↑                 ↑
+                      immediate reward    best future reward
+</code></pre></div></div>
+
+<ul>
+  <li><strong>α (alpha)</strong> — learning rate (how fast to update)</li>
+  <li><strong>γ (gamma)</strong> — discount factor (how much to value future rewards vs immediate)</li>
+  <li><strong>r</strong> — reward received</li>
+  <li><strong>s’</strong> — next state after taking action a</li>
+</ul>
+
+<h3 id="python-example--simple-grid-world">Python example — simple grid world</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">random</span>
+
+<span class="c1"># 4x4 grid world
+# Agent starts at (0,0), goal at (3,3), cliff at (2,2)
+# Actions: 0=up, 1=right, 2=down, 3=left
+</span>
+<span class="n">GRID_SIZE</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">ACTIONS</span>   <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>   <span class="c1"># up, right, down, left
+</span><span class="n">GOAL</span>      <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">CLIFF</span>     <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+    <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">state</span>
+    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">r</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">r</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">c</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">GRID_SIZE</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span> <span class="n">r</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">r</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">GRID_SIZE</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">next_state</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">next_state</span> <span class="o">==</span> <span class="n">GOAL</span><span class="p">:</span>  <span class="k">return</span> <span class="n">next_state</span><span class="p">,</span> <span class="o">+</span><span class="mi">10</span><span class="p">,</span> <span class="bp">True</span>
+    <span class="k">if</span> <span class="n">next_state</span> <span class="o">==</span> <span class="n">CLIFF</span><span class="p">:</span> <span class="k">return</span> <span class="n">next_state</span><span class="p">,</span>  <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="bp">True</span>
+    <span class="k">return</span> <span class="n">next_state</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="bp">False</span>   <span class="c1"># small penalty per step
+</span>
+<span class="c1"># Q-table: state → action → value
+</span><span class="n">Q</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">GRID_SIZE</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">GRID_SIZE</span><span class="p">):</span>
+        <span class="n">Q</span><span class="p">[(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">)]</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ACTIONS</span><span class="p">}</span>
+
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.1</span>   <span class="c1"># learning rate
+</span><span class="n">gamma</span> <span class="o">=</span> <span class="mf">0.9</span>   <span class="c1"># discount factor
+</span><span class="n">epsilon</span> <span class="o">=</span> <span class="mf">0.3</span> <span class="c1"># exploration rate
+</span>
+<span class="k">for</span> <span class="n">episode</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">2000</span><span class="p">):</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+        <span class="c1"># Choose action
+</span>        <span class="k">if</span> <span class="n">random</span><span class="p">.</span><span class="nf">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">ACTIONS</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">ACTIONS</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">Q</span><span class="p">[</span><span class="n">state</span><span class="p">][</span><span class="n">a</span><span class="p">])</span>
+
+        <span class="n">next_state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span> <span class="o">=</span> <span class="nf">step</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">)</span>
+
+        <span class="c1"># Bellman update
+</span>        <span class="n">best_next</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="n">next_state</span><span class="p">].</span><span class="nf">values</span><span class="p">())</span>
+        <span class="n">Q</span><span class="p">[</span><span class="n">state</span><span class="p">][</span><span class="n">action</span><span class="p">]</span> <span class="o">+=</span> <span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="n">reward</span> <span class="o">+</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">best_next</span> <span class="o">-</span> <span class="n">Q</span><span class="p">[</span><span class="n">state</span><span class="p">][</span><span class="n">action</span><span class="p">])</span>
+
+        <span class="n">state</span> <span class="o">=</span> <span class="n">next_state</span>
+        <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+            <span class="k">break</span>
+
+<span class="c1"># Show learned policy
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Learned policy (best action at each cell):</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">arrows</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="sh">'</span><span class="s">↑</span><span class="sh">'</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="sh">'</span><span class="s">→</span><span class="sh">'</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="sh">'</span><span class="s">↓</span><span class="sh">'</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="sh">'</span><span class="s">←</span><span class="sh">'</span><span class="p">}</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">GRID_SIZE</span><span class="p">):</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="sh">''</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">GRID_SIZE</span><span class="p">):</span>
+        <span class="nf">if </span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">)</span> <span class="o">==</span> <span class="n">GOAL</span><span class="p">:</span>  <span class="n">row</span> <span class="o">+=</span> <span class="sh">'</span><span class="s"> G </span><span class="sh">'</span>
+        <span class="nf">elif </span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">)</span> <span class="o">==</span> <span class="n">CLIFF</span><span class="p">:</span> <span class="n">row</span> <span class="o">+=</span> <span class="sh">'</span><span class="s"> X </span><span class="sh">'</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">best</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">ACTIONS</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">Q</span><span class="p">[(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">)][</span><span class="n">a</span><span class="p">])</span>
+            <span class="n">row</span> <span class="o">+=</span> <span class="sa">f</span><span class="sh">'</span><span class="s"> </span><span class="si">{</span><span class="n">arrows</span><span class="p">[</span><span class="n">best</span><span class="p">]</span><span class="si">}</span><span class="s"> </span><span class="sh">'</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-deep-q-networks-dqn">5. Deep Q-Networks (DQN)</h2>
+
+<p>For complex environments (like video games with pixel inputs), a Q-table is too large. <strong>DQN</strong> replaces the Q-table with a neural network:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>State (pixels or features) → Neural Network → Q-values for each action
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="k">class</span> <span class="nc">DQN</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">state_dim</span><span class="p">,</span> <span class="n">action_dim</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">net</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">state_dim</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="n">action_dim</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">net</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>   <span class="c1"># returns Q-value for each action
+</span>
+<span class="c1"># Usage with OpenAI Gymnasium
+</span><span class="kn">import</span> <span class="n">gymnasium</span> <span class="k">as</span> <span class="n">gym</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">gym</span><span class="p">.</span><span class="nf">make</span><span class="p">(</span><span class="sh">'</span><span class="s">CartPole-v1</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">state_dim</span>  <span class="o">=</span> <span class="n">env</span><span class="p">.</span><span class="n">observation_space</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>   <span class="c1"># 4 (cart position, velocity, pole angle, angular velocity)
+</span><span class="n">action_dim</span> <span class="o">=</span> <span class="n">env</span><span class="p">.</span><span class="n">action_space</span><span class="p">.</span><span class="n">n</span>               <span class="c1"># 2 (push left or right)
+</span>
+<span class="n">dqn</span> <span class="o">=</span> <span class="nc">DQN</span><span class="p">(</span><span class="n">state_dim</span><span class="p">,</span> <span class="n">action_dim</span><span class="p">)</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">dqn</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+<span class="c1"># Full DQN training loop uses experience replay and a target network
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="6-reinforcement-learning-from-human-feedback-rlhf">6. Reinforcement Learning from Human Feedback (RLHF)</h2>
+
+<p>RLHF is how models like ChatGPT are trained to be helpful and safe. It has three stages:</p>
+
+<h3 id="stage-1--supervised-fine-tuning-sft">Stage 1 — Supervised Fine-Tuning (SFT)</h3>
+<p>Start with a pre-trained language model. Fine-tune it on a curated dataset of (prompt, good response) pairs written by humans.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Prompt:   "Explain gradient descent"
+Response: "Gradient descent is an optimisation algorithm..." (human-written)
+</code></pre></div></div>
+
+<h3 id="stage-2--train-a-reward-model">Stage 2 — Train a reward model</h3>
+<p>Show human raters multiple model responses to the same prompt. They rank them from best to worst. A <strong>reward model</strong> is trained to predict these human rankings.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Response A: "Gradient descent minimises a loss function by..."  → rank 1 (best)
+Response B: "I don't know what gradient descent is"            → rank 3 (worst)
+Response C: "It's an algorithm for training neural networks"   → rank 2
+</code></pre></div></div>
+
+<h3 id="stage-3--rl-fine-tuning-with-ppo">Stage 3 — RL fine-tuning with PPO</h3>
+<p>The language model is treated as an RL agent. For each response it generates, the reward model assigns a score. The model is updated using <strong>Proximal Policy Optimisation (PPO)</strong> to generate responses with higher reward scores.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Language model (agent)
+    ↓ generates response
+Reward model
+    ↓ scores the response
+PPO algorithm
+    ↓ updates language model weights to increase score
+    ↑_____________________________________________|
+              repeat thousands of times
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>RLHF pipeline:
+Pre-trained LLM
+    → SFT on demonstrations
+    → Reward model trained on human rankings
+    → PPO fine-tuning guided by reward model
+    → ChatGPT / Claude / Gemini
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> RLHF is like training a new employee. First you show them good examples (SFT). Then you have customers rate their work (reward model). Then you give the employee feedback based on customer ratings and they improve (PPO).</p>
+</blockquote>
+
+<hr />
+
+<h2 id="7-rl-vs-supervised-learning">7. RL vs supervised learning</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Supervised Learning</th>
+      <th>Reinforcement Learning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Labels</td>
+      <td>Explicit correct answers</td>
+      <td>Only a reward signal</td>
+    </tr>
+    <tr>
+      <td>Timing</td>
+      <td>Label available immediately</td>
+      <td>Reward may come much later</td>
+    </tr>
+    <tr>
+      <td>Data</td>
+      <td>Static dataset</td>
+      <td>Generated by agent’s own actions</td>
+    </tr>
+    <tr>
+      <td>Examples</td>
+      <td>Spam classifier, image classifier</td>
+      <td>Game playing, robotics, RLHF</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="8-where-rl-is-used-today">8. Where RL is used today</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Application</th>
+      <th>What the agent learns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Game playing (AlphaGo, AlphaZero)</td>
+      <td>Winning strategies in games</td>
+    </tr>
+    <tr>
+      <td>Robotics</td>
+      <td>How to walk, grasp, navigate</td>
+    </tr>
+    <tr>
+      <td>Recommendation systems</td>
+      <td>Which content maximises engagement</td>
+    </tr>
+    <tr>
+      <td>Trading algorithms</td>
+      <td>When to buy and sell</td>
+    </tr>
+    <tr>
+      <td>ChatGPT / Claude (RLHF)</td>
+      <td>How to give helpful, safe responses</td>
+    </tr>
+    <tr>
+      <td>Data centre cooling (DeepMind)</td>
+      <td>How to minimise energy use</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>RL trains an <strong>agent</strong> to maximise <strong>reward</strong> by taking <strong>actions</strong> in an <strong>environment</strong>.</li>
+  <li>No labelled data — only a reward signal after each action.</li>
+  <li><strong>Q-learning</strong> maintains a table of expected future rewards for each (state, action) pair.</li>
+  <li><strong>DQN</strong> replaces the Q-table with a neural network for complex environments.</li>
+  <li><strong>RLHF</strong> applies RL to language models: human raters rank outputs, a reward model captures their preferences, and PPO fine-tunes the LLM to generate higher-ranked responses.</li>
+  <li>The exploration vs exploitation trade-off is central to all RL algorithms.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">reinforcement-learning</span>, <span class="tag">rlhf</span>, <span class="tag">reward</span>, <span class="tag">agent</span>, <span class="tag">q-learning</span>, <span class="tag">policy</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

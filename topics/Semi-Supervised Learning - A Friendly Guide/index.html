@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>21. Semi-Supervised Learning - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>21. Semi-Supervised Learning - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="semi-supervised-learning">Semi-Supervised Learning</h1>
+
+<h2 id="making-the-most-of-data-you-havent-labelled-yet">Making the most of data you haven’t labelled yet</h2>
+
+<p>Labelling data is expensive. Training a spam classifier requires someone to read thousands of emails and mark each one spam or not spam. Building a medical image classifier requires doctors to examine thousands of scans. This takes enormous time and money.</p>
+
+<p>But you almost always have far more <em>unlabelled</em> data than labelled data. Your inbox has millions of emails. Hospitals have millions of scans. Can the model learn something useful from the unlabelled data, guided by the small labelled set?</p>
+
+<p>Yes — and that is exactly what <strong>semi-supervised learning</strong> does.</p>
+
+<blockquote>
+  <p><strong>Definition:</strong> Semi-supervised learning trains on a <strong>small labelled dataset</strong> and a <strong>large unlabelled dataset</strong> together, using the unlabelled data to improve the model.</p>
+</blockquote>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>When you need semi-supervised learning.</li>
+  <li>Self-training — the simplest approach.</li>
+  <li>Label propagation — spreading labels through a graph.</li>
+  <li>GANs — generating unlabelled data as a semi-supervised tool.</li>
+  <li>Full Python demonstrations.</li>
+  <li>When to use each approach.</li>
+</ol>
+
+<hr />
+
+<h2 id="1-the-problem--labels-are-rare-data-is-abundant">1. The problem — labels are rare, data is abundant</h2>
+
+<p>Typical real-world situation:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Dataset</th>
+      <th>Labelled</th>
+      <th>Unlabelled</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Email spam</td>
+      <td>500 labelled</td>
+      <td>50,000 unlabelled</td>
+    </tr>
+    <tr>
+      <td>Medical images</td>
+      <td>200 labelled</td>
+      <td>10,000 unlabelled</td>
+    </tr>
+    <tr>
+      <td>Product reviews</td>
+      <td>1,000 labelled</td>
+      <td>500,000 unlabelled</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Options:</p>
+
+<ul>
+  <li><strong>Pure supervised learning</strong> — use only the 500 labelled examples. Simple but wastes 50,000 data points.</li>
+  <li><strong>Pure unsupervised learning</strong> — use all 50,500 but ignore the labels entirely. Loses the useful signal.</li>
+  <li><strong>Semi-supervised learning</strong> — use all 50,500, with the 500 labels guiding the learning. Best of both worlds.</li>
+</ul>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Imagine teaching a child to recognise cats. You show 10 labelled pictures of cats and non-cats. Then you let them look at 1,000 unlabelled photos and tell you which ones look similar to the labelled cats. They learn much faster than from 10 pictures alone.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-self-training--the-simplest-approach">2. Self-training — the simplest approach</h2>
+
+<p>Self-training is the most intuitive semi-supervised method:</p>
+
+<ol>
+  <li>Train a model on the small labelled dataset.</li>
+  <li>Use the model to predict labels on the unlabelled data.</li>
+  <li>Add the highest-confidence predictions to the labelled set.</li>
+  <li>Re-train the model on the expanded labelled set.</li>
+  <li>Repeat until no high-confidence unlabelled points remain.</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.semi_supervised</span> <span class="kn">import</span> <span class="n">SelfTrainingClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_classification</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="c1"># Generate data
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_classification</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">n_features</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                            <span class="n">n_informative</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+
+<span class="c1"># Simulate having only 50 labelled examples out of 800
+</span><span class="n">y_train_partial</span> <span class="o">=</span> <span class="n">y_train</span><span class="p">.</span><span class="nf">copy</span><span class="p">()</span>
+<span class="n">unlabelled_idx</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">y_train</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="mi">750</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">y_train_partial</span><span class="p">[</span><span class="n">unlabelled_idx</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>   <span class="c1"># -1 = unlabelled in sklearn
+</span>
+<span class="c1"># Compare: supervised only (50 labels) vs self-training (50 labels + 750 unlabelled)
+</span><span class="n">base_model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">probability</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+<span class="c1"># Supervised only — ignore unlabelled points
+</span><span class="n">labelled_mask</span> <span class="o">=</span> <span class="n">y_train_partial</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span>
+<span class="n">sup_model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">sup_model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">[</span><span class="n">labelled_mask</span><span class="p">],</span> <span class="n">y_train</span><span class="p">[</span><span class="n">labelled_mask</span><span class="p">])</span>
+<span class="n">acc_sup</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">sup_model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+
+<span class="c1"># Self-training — uses unlabelled points too
+</span><span class="n">self_trainer</span> <span class="o">=</span> <span class="nc">SelfTrainingClassifier</span><span class="p">(</span><span class="n">base_estimator</span><span class="o">=</span><span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">probability</span><span class="o">=</span><span class="bp">True</span><span class="p">))</span>
+<span class="n">self_trainer</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train_partial</span><span class="p">)</span>
+<span class="n">acc_semi</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">self_trainer</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Supervised only (50 labels):          </span><span class="si">{</span><span class="n">acc_sup</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Self-training  (50 labels + 750 more): </span><span class="si">{</span><span class="n">acc_semi</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="how-confidence-threshold-works">How confidence threshold works</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># threshold=0.9 means: only add predictions the model is 90%+ confident about
+</span><span class="n">self_trainer</span> <span class="o">=</span> <span class="nc">SelfTrainingClassifier</span><span class="p">(</span>
+    <span class="n">base_estimator</span><span class="o">=</span><span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">probability</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>       <span class="c1"># minimum confidence to accept a pseudo-label
+</span>    <span class="n">max_iter</span><span class="o">=</span><span class="mi">10</span>          <span class="c1"># maximum rounds of self-training
+</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-label-propagation--spreading-labels-through-similarity">3. Label propagation — spreading labels through similarity</h2>
+
+<p>Label propagation treats data points as a graph. Labelled points are sources. Their labels spread to similar unlabelled points like ink spreading through paper.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.semi_supervised</span> <span class="kn">import</span> <span class="n">LabelPropagation</span><span class="p">,</span> <span class="n">LabelSpreading</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_moons</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Two-moon dataset — classic semi-supervised benchmark
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_moons</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="c1"># Keep only 10% of labels
+</span><span class="n">y_partial</span> <span class="o">=</span> <span class="n">y</span><span class="p">.</span><span class="nf">copy</span><span class="p">()</span>
+<span class="n">unlabelled</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="mi">270</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">y_partial</span><span class="p">[</span><span class="n">unlabelled</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>   <span class="c1"># -1 = unlabelled
+</span>
+<span class="c1"># Label Propagation
+</span><span class="n">lp</span> <span class="o">=</span> <span class="nc">LabelPropagation</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">lp</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y_partial</span><span class="p">)</span>
+
+<span class="n">acc</span> <span class="o">=</span> <span class="p">(</span><span class="n">lp</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">unlabelled</span><span class="p">])</span> <span class="o">==</span> <span class="n">y</span><span class="p">[</span><span class="n">unlabelled</span><span class="p">]).</span><span class="nf">mean</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Label Propagation accuracy on unlabelled: </span><span class="si">{</span><span class="n">acc</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Label Spreading (more robust to noise)
+</span><span class="n">ls</span> <span class="o">=</span> <span class="nc">LabelSpreading</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+<span class="n">ls</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y_partial</span><span class="p">)</span>
+<span class="n">acc_ls</span> <span class="o">=</span> <span class="p">(</span><span class="n">ls</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">unlabelled</span><span class="p">])</span> <span class="o">==</span> <span class="n">y</span><span class="p">[</span><span class="n">unlabelled</span><span class="p">]).</span><span class="nf">mean</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Label Spreading accuracy on unlabelled:   </span><span class="si">{</span><span class="n">acc_ls</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="label-propagation-vs-label-spreading">Label Propagation vs Label Spreading</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Label Propagation</th>
+      <th>Label Spreading</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Labelled points</td>
+      <td>Kept fixed</td>
+      <td>Can be updated slightly</td>
+    </tr>
+    <tr>
+      <td>Noise handling</td>
+      <td>Can overfit to noisy labels</td>
+      <td>More robust</td>
+    </tr>
+    <tr>
+      <td>Parameter</td>
+      <td><code class="language-plaintext highlighter-rouge">gamma</code> (kernel width)</td>
+      <td><code class="language-plaintext highlighter-rouge">alpha</code> (how much labels spread)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="4-gans--learning-from-unlabelled-data-via-generation">4. GANs — learning from unlabelled data via generation</h2>
+
+<p>A <strong>Generative Adversarial Network (GAN)</strong> trains two neural networks against each other:</p>
+
+<ul>
+  <li><strong>Generator</strong> — creates fake examples that look like real data</li>
+  <li><strong>Discriminator</strong> — tries to tell real examples from fake ones</li>
+</ul>
+
+<p>The discriminator learns the structure of the data without needing labels. This learned structure can then be fine-tuned with a small labelled dataset — a powerful form of semi-supervised learning.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Simple GAN structure (conceptual — full training loop omitted for brevity)
+</span><span class="k">class</span> <span class="nc">Generator</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">noise_dim</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">output_dim</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">net</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">noise_dim</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">output_dim</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">net</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Discriminator</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">input_dim</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">net</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+        <span class="p">)</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">net</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># The discriminator learns the data distribution from unlabelled examples.
+# Its internal representations (features) can then be used for classification
+# with only a small labelled set — the semi-supervised GAN approach.
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="5-choosing-the-right-approach">5. Choosing the right approach</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Best approach</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Any sklearn-compatible model, few labels</td>
+      <td><strong>Self-training</strong></td>
+    </tr>
+    <tr>
+      <td>Data has clear clusters or manifold structure</td>
+      <td><strong>Label Propagation / Spreading</strong></td>
+    </tr>
+    <tr>
+      <td>Image or text data, large unlabelled set</td>
+      <td><strong>GAN-based or pre-trained models</strong></td>
+    </tr>
+    <tr>
+      <td>Labels are noisy</td>
+      <td><strong>Label Spreading</strong> (more robust than Propagation)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="6-when-semi-supervised-learning-helps-most">6. When semi-supervised learning helps most</h2>
+
+<p><strong>Works well when:</strong></p>
+<ul>
+  <li>Labelled data is very small (&lt; 5–10% of total data)</li>
+  <li>Unlabelled data is abundant and from the same distribution</li>
+  <li>The data has natural cluster structure</li>
+</ul>
+
+<p><strong>Works poorly when:</strong></p>
+<ul>
+  <li>Unlabelled data is from a different distribution than labelled data</li>
+  <li>The model’s early predictions (in self-training) are very wrong — errors compound</li>
+  <li>The dataset is already large and fully labelled</li>
+</ul>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Semi-supervised learning bridges the gap between supervised and unsupervised learning.</li>
+  <li>It uses a <strong>small labelled set</strong> to guide learning from a <strong>large unlabelled set</strong>.</li>
+  <li><strong>Self-training</strong>: train on labels → predict unlabelled → add confident predictions → retrain.</li>
+  <li><strong>Label propagation</strong>: labels spread from labelled to similar unlabelled points.</li>
+  <li><strong>GANs</strong>: the discriminator learns data structure from unlabelled examples, then fine-tuned with labels.</li>
+  <li>Most powerful when labelled data is scarce and unlabelled data is plentiful.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">semi-supervised-learning</span>, <span class="tag">label-propagation</span>, <span class="tag">self-training</span>, <span class="tag">gan</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

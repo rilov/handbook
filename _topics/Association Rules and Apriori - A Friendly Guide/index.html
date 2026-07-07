@@ -1,0 +1,326 @@
+<h1 id="association-rules-and-apriori">Association Rules and Apriori</h1>
+
+<h2 id="discovering-also-bought-patterns-in-data">Discovering “also bought” patterns in data</h2>
+
+<p>When you shop on Amazon, the website shows “Customers who bought this also bought…”. When Netflix shows “Because you watched X, you might like Y.” These recommendations come from <strong>association rule mining</strong> — finding patterns in large collections of transactions.</p>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>What association rules are.</li>
+  <li>The three key metrics: support, confidence, lift.</li>
+  <li>The Apriori algorithm — how it finds rules efficiently.</li>
+  <li>Full Python demonstration.</li>
+  <li>Real-world applications beyond shopping.</li>
+</ol>
+
+<hr />
+
+<h2 id="1-what-is-an-association-rule">1. What is an association rule?</h2>
+
+<p>An association rule has the form:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{bread, butter} → {milk}
+</code></pre></div></div>
+
+<p>“If a customer buys bread and butter, they also tend to buy milk.”</p>
+
+<p>The left side is the <strong>antecedent</strong> (if…). The right side is the <strong>consequent</strong> (then…).</p>
+
+<p>The data is a collection of <strong>transactions</strong> — each transaction is a set of items purchased together:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Transaction</th>
+      <th>Items</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>T1</td>
+      <td>bread, butter, milk</td>
+    </tr>
+    <tr>
+      <td>T2</td>
+      <td>bread, butter</td>
+    </tr>
+    <tr>
+      <td>T3</td>
+      <td>milk, eggs</td>
+    </tr>
+    <tr>
+      <td>T4</td>
+      <td>bread, milk, eggs</td>
+    </tr>
+    <tr>
+      <td>T5</td>
+      <td>butter, milk, eggs</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>From this data we want to find rules like <code class="language-plaintext highlighter-rouge">{bread, butter} → {milk}</code> that hold frequently.</p>
+
+<hr />
+
+<h2 id="2-the-three-key-metrics">2. The three key metrics</h2>
+
+<h3 id="support--how-common-is-this-combination">Support — how common is this combination?</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Support({bread, butter}) = transactions containing bread AND butter
+                           ─────────────────────────────────────────
+                                    total transactions
+
+= 3/5 = 0.60  (60% of transactions contain both)
+</code></pre></div></div>
+
+<p>Low support means the rule rarely applies. Typically you set a <strong>minimum support threshold</strong> to filter out rare patterns.</p>
+
+<h3 id="confidence--how-reliable-is-the-rule">Confidence — how reliable is the rule?</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Confidence({bread, butter} → {milk}) = Support({bread, butter, milk})
+                                        ──────────────────────────────
+                                          Support({bread, butter})
+
+= (2/5) / (3/5) = 0.67
+</code></pre></div></div>
+
+<p>“In 67% of transactions where bread and butter appear, milk also appears.”</p>
+
+<h3 id="lift--is-the-rule-better-than-chance">Lift — is the rule better than chance?</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Lift({bread, butter} → {milk}) = Confidence({bread, butter} → {milk})
+                                  ──────────────────────────────────────
+                                            Support({milk})
+
+= 0.67 / (4/5) = 0.67 / 0.80 = 0.84
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Lift value</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Lift &gt; 1</td>
+      <td>The items appear together more than by chance — genuine association</td>
+    </tr>
+    <tr>
+      <td>Lift = 1</td>
+      <td>Items are independent — the rule adds no value</td>
+    </tr>
+    <tr>
+      <td>Lift &lt; 1</td>
+      <td>Items appear together less than by chance — negative association</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Lift is the most important metric.</strong> High support and confidence with low lift just means both items are popular — there is no real connection.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Support = how often. Confidence = how reliable. Lift = how much better than random.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-the-apriori-algorithm">3. The Apriori algorithm</h2>
+
+<p>With 10,000 products, there are billions of possible item combinations. Checking all of them is impossible.</p>
+
+<p><strong>Apriori</strong> uses one key insight: <strong>if a set is infrequent, all its supersets are also infrequent</strong>.</p>
+
+<p>If <code class="language-plaintext highlighter-rouge">{bread, caviar}</code> is rare, then <code class="language-plaintext highlighter-rouge">{bread, caviar, milk}</code> is also rare — no need to check it.</p>
+
+<p>This lets Apriori prune the search space dramatically:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: Find all individual items with support ≥ min_support
+        {bread: 0.80, butter: 0.60, milk: 0.80, eggs: 0.60}  ← all pass
+
+Step 2: Find all pairs with support ≥ min_support
+        {bread, butter}: 0.60 ✓
+        {bread, milk}:   0.60 ✓
+        {butter, milk}:  0.60 ✓
+        {bread, eggs}:   0.20 ✗  ← removed, and all larger sets with bread+eggs too
+
+Step 3: Find all triples from the surviving pairs
+        {bread, butter, milk}: check support
+        ...
+
+Step 4: Generate rules from frequent itemsets
+        {bread, butter} → {milk}  confidence=0.67, lift=0.84
+        {milk, butter}  → {eggs}  confidence=...
+        ...
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-full-python-demonstration">4. Full Python demonstration</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Install: pip install mlxtend
+</span><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">from</span> <span class="n">mlxtend.frequent_patterns</span> <span class="kn">import</span> <span class="n">apriori</span><span class="p">,</span> <span class="n">association_rules</span>
+<span class="kn">from</span> <span class="n">mlxtend.preprocessing</span> <span class="kn">import</span> <span class="n">TransactionEncoder</span>
+
+<span class="c1"># Transaction dataset
+</span><span class="n">transactions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">bread</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">butter</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">milk</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">bread</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">butter</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">milk</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eggs</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">bread</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">milk</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eggs</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">butter</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">milk</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eggs</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">bread</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">butter</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">milk</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eggs</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">bread</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">milk</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">butter</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eggs</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">bread</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">eggs</span><span class="sh">'</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">'</span><span class="s">milk</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">butter</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">bread</span><span class="sh">'</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="c1"># Step 1 — Encode transactions as a binary matrix
+</span><span class="n">te</span> <span class="o">=</span> <span class="nc">TransactionEncoder</span><span class="p">()</span>
+<span class="n">te_array</span> <span class="o">=</span> <span class="n">te</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">transactions</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">(</span><span class="n">te_array</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">te</span><span class="p">.</span><span class="n">columns_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">df</span><span class="p">.</span><span class="nf">head</span><span class="p">())</span>
+<span class="c1">#    bread  butter   eggs   milk
+# 0   True    True  False   True
+# 1   True    True  False  False
+# ...
+</span>
+<span class="c1"># Step 2 — Find frequent itemsets (support &gt;= 50%)
+</span><span class="n">frequent_itemsets</span> <span class="o">=</span> <span class="nf">apriori</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">min_support</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">use_colnames</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Frequent itemsets:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">frequent_itemsets</span><span class="p">.</span><span class="nf">sort_values</span><span class="p">(</span><span class="sh">'</span><span class="s">support</span><span class="sh">'</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">))</span>
+
+<span class="c1"># Step 3 — Generate association rules (confidence &gt;= 60%)
+</span><span class="n">rules</span> <span class="o">=</span> <span class="nf">association_rules</span><span class="p">(</span><span class="n">frequent_itemsets</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="sh">'</span><span class="s">confidence</span><span class="sh">'</span><span class="p">,</span> <span class="n">min_threshold</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+<span class="n">rules</span> <span class="o">=</span> <span class="n">rules</span><span class="p">.</span><span class="nf">sort_values</span><span class="p">(</span><span class="sh">'</span><span class="s">lift</span><span class="sh">'</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Top association rules by lift:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">rules</span><span class="p">[[</span><span class="sh">'</span><span class="s">antecedents</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">consequents</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">support</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">confidence</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">lift</span><span class="sh">'</span><span class="p">]].</span><span class="nf">to_string</span><span class="p">())</span>
+</code></pre></div></div>
+
+<h3 id="filtering-the-best-rules">Filtering the best rules</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Keep only rules with high lift AND high confidence
+</span><span class="n">strong_rules</span> <span class="o">=</span> <span class="n">rules</span><span class="p">[</span>
+    <span class="p">(</span><span class="n">rules</span><span class="p">[</span><span class="sh">'</span><span class="s">lift</span><span class="sh">'</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">1.2</span><span class="p">)</span> <span class="o">&amp;</span>
+    <span class="p">(</span><span class="n">rules</span><span class="p">[</span><span class="sh">'</span><span class="s">confidence</span><span class="sh">'</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Strong rules (lift &gt; 1.2 AND confidence &gt; 0.7):</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">strong_rules</span><span class="p">[[</span><span class="sh">'</span><span class="s">antecedents</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">consequents</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">confidence</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">lift</span><span class="sh">'</span><span class="p">]])</span>
+</code></pre></div></div>
+
+<h3 id="visualising-rules">Visualising rules</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">rules</span><span class="p">[</span><span class="sh">'</span><span class="s">support</span><span class="sh">'</span><span class="p">],</span> <span class="n">rules</span><span class="p">[</span><span class="sh">'</span><span class="s">confidence</span><span class="sh">'</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">rules</span><span class="p">[</span><span class="sh">'</span><span class="s">lift</span><span class="sh">'</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">'</span><span class="s">RdYlGn</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Lift</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Support</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Confidence</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Association Rules — Support vs Confidence (colour = Lift)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-real-world-applications">5. Real-world applications</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Application</th>
+      <th>What the “items” are</th>
+      <th>What a rule looks like</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Retail basket analysis</strong></td>
+      <td>Products purchased</td>
+      <td><code class="language-plaintext highlighter-rouge">{nappies} → {beer}</code> (famous example)</td>
+    </tr>
+    <tr>
+      <td><strong>Netflix / Spotify</strong></td>
+      <td>Movies or songs watched</td>
+      <td><code class="language-plaintext highlighter-rouge">{Inception} → {Interstellar}</code></td>
+    </tr>
+    <tr>
+      <td><strong>Medical diagnosis</strong></td>
+      <td>Symptoms or diagnoses</td>
+      <td><code class="language-plaintext highlighter-rouge">{fever, cough} → {flu}</code></td>
+    </tr>
+    <tr>
+      <td><strong>Web navigation</strong></td>
+      <td>Pages visited in a session</td>
+      <td><code class="language-plaintext highlighter-rouge">{homepage, pricing} → {signup}</code></td>
+    </tr>
+    <tr>
+      <td><strong>Cross-selling</strong></td>
+      <td>Customer purchases</td>
+      <td><code class="language-plaintext highlighter-rouge">{laptop} → {mouse, keyboard}</code></td>
+    </tr>
+    <tr>
+      <td><strong>Fraud detection</strong></td>
+      <td>Transaction patterns</td>
+      <td><code class="language-plaintext highlighter-rouge">{foreign_ATM, large_withdrawal} → {fraud}</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="6-choosing-thresholds">6. Choosing thresholds</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Typical range</th>
+      <th>Effect of too low</th>
+      <th>Effect of too high</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">min_support</code></td>
+      <td>0.01 – 0.10</td>
+      <td>Millions of rules, slow</td>
+      <td>Misses rare but valuable patterns</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">min_confidence</code></td>
+      <td>0.50 – 0.80</td>
+      <td>Unreliable rules included</td>
+      <td>Too few rules</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">min_lift</code></td>
+      <td>1.0 – 2.0</td>
+      <td>Obvious rules included</td>
+      <td>Misses moderate associations</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>For large e-commerce datasets, <code class="language-plaintext highlighter-rouge">min_support=0.01</code> (1%) is typical. For small datasets, 5–10% is more appropriate.</p>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Association rules find “if A then B” patterns in transaction data.</li>
+  <li><strong>Support</strong> = how often the combination appears. <strong>Confidence</strong> = how reliable the rule is. <strong>Lift</strong> = how much better than chance.</li>
+  <li><strong>Apriori</strong> prunes the search space using the principle that subsets of infrequent sets are also infrequent.</li>
+  <li>Filter rules by <strong>lift &gt; 1</strong> to keep only genuine associations, not just popular items.</li>
+  <li>Applications go far beyond shopping: recommendations, medical patterns, fraud, web analytics.</li>
+  <li>Use <code class="language-plaintext highlighter-rouge">mlxtend</code> in Python for a complete Apriori implementation.</li>
+</ul>

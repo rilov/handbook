@@ -1,0 +1,331 @@
+<h1 id="self-supervised-learning">Self-Supervised Learning</h1>
+
+<h2 id="teaching-a-model-without-any-human-provided-labels">Teaching a model without any human-provided labels</h2>
+
+<p>Training a large language model like GPT or a vision model like CLIP requires learning from billions of examples. Labelling billions of examples by hand is impossible. So how do these models learn?</p>
+
+<p>The answer is <strong>self-supervised learning (SSL)</strong>: the model creates its own labels automatically from the raw data — no human annotation required.</p>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>The core idea — generating labels from data itself.</li>
+  <li>Masked prediction — how BERT learns language.</li>
+  <li>Next token prediction — how GPT learns to generate text.</li>
+  <li>Contrastive learning — how vision models learn without labels.</li>
+  <li>The pre-train → fine-tune workflow.</li>
+  <li>Python examples.</li>
+</ol>
+
+<hr />
+
+<h2 id="1-the-core-idea--labels-from-the-data-itself">1. The core idea — labels from the data itself</h2>
+
+<p>In supervised learning, a human labels each example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Email text  →  "spam" or "not spam"   (human labelled)
+</code></pre></div></div>
+
+<p>In self-supervised learning, the data labels itself:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The cat sat on the ___"  →  "mat"    (label comes from the sentence itself)
+"___ cat sat on the mat"  →  "The"    (label comes from the sentence itself)
+</code></pre></div></div>
+
+<p>The model is trained to fill in missing or predicted parts. By solving millions of these automatic puzzles, the model develops deep understanding of language, images, or audio — without a single human label.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Self-supervised learning is like a student who creates their own practice tests from a textbook. The textbook is the unlabelled data. The questions and answers are generated automatically from the text itself.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-masked-prediction--how-bert-works">2. Masked prediction — how BERT works</h2>
+
+<p><strong>BERT</strong> (Bidirectional Encoder Representations from Transformers) is pre-trained using <strong>masked language modelling</strong>:</p>
+
+<ol>
+  <li>Take a sentence: <code class="language-plaintext highlighter-rouge">"The spam email contained a free prize offer"</code></li>
+  <li>Randomly mask 15% of the words: <code class="language-plaintext highlighter-rouge">"The spam email contained a [MASK] prize offer"</code></li>
+  <li>Train the model to predict the masked word: <code class="language-plaintext highlighter-rouge">"free"</code></li>
+</ol>
+
+<p>The labels (<code class="language-plaintext highlighter-rouge">"free"</code>) come directly from the original text — no human needed.</p>
+
+<p>After training on billions of sentences this way, BERT develops a rich understanding of language context. It can then be <strong>fine-tuned</strong> on a small labelled dataset (e.g., 1,000 spam/not-spam examples) for a specific task.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Using a pre-trained BERT model for masked prediction
+</span><span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">pipeline</span>
+
+<span class="c1"># This model was pre-trained with masked language modelling
+</span><span class="n">fill_mask</span> <span class="o">=</span> <span class="nf">pipeline</span><span class="p">(</span><span class="sh">"</span><span class="s">fill-mask</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">bert-base-uncased</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="nf">fill_mask</span><span class="p">(</span><span class="sh">"</span><span class="s">The email contained a [MASK] offer.</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[:</span><span class="mi">3</span><span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="sh">'</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="sh">'</span><span class="s">token_str</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">'</span><span class="s"> — score: </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># Output:
+#   'special' — score: 0.142
+#   'limited' — score: 0.098
+#   'free'    — score: 0.087
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="3-next-token-prediction--how-gpt-works">3. Next token prediction — how GPT works</h2>
+
+<p><strong>GPT</strong> uses <strong>causal language modelling</strong>: predict the next word given all previous words.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  "The spam email contained a free"
+Target: "prize"
+
+Input:  "The spam email contained a free prize"
+Target: "offer"
+</code></pre></div></div>
+
+<p>Again — the labels (<code class="language-plaintext highlighter-rouge">"prize"</code>, <code class="language-plaintext highlighter-rouge">"offer"</code>) come directly from the text. The model sees billions of sentences and learns to predict what comes next. This forces it to understand grammar, facts, reasoning, and context.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">pipeline</span>
+
+<span class="n">generator</span> <span class="o">=</span> <span class="nf">pipeline</span><span class="p">(</span><span class="sh">"</span><span class="s">text-generation</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt2</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="nf">generator</span><span class="p">(</span><span class="sh">"</span><span class="s">The spam email contained</span><span class="sh">"</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="sh">'</span><span class="s">generated_text</span><span class="sh">'</span><span class="p">])</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-contrastive-learning--self-supervised-vision">4. Contrastive learning — self-supervised vision</h2>
+
+<p>For images there is no natural “next token.” Instead, <strong>contrastive learning</strong> creates labels by comparing views of the same image:</p>
+
+<ol>
+  <li>Take one image (e.g., a cat photo).</li>
+  <li>Create two augmented views: rotate it, crop it, change brightness.</li>
+  <li>Train the model so the two views of the <strong>same</strong> image have similar representations, while views of <strong>different</strong> images have different representations.</li>
+</ol>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cat photo → Crop + flip  →  Representation A  ┐
+                                                ├→ Pull together (same image)
+Cat photo → Rotate + brighten → Representation B ┘
+
+Cat photo vs Dog photo → Representations → Push apart (different images)
+</code></pre></div></div>
+
+<p>No human labels needed. The “label” is simply: these two views are of the same image.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Conceptual SimCLR-style contrastive learning structure
+</span><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="n">torchvision.transforms</span> <span class="k">as</span> <span class="n">T</span>
+
+<span class="c1"># Two random augmentations of the same image
+</span><span class="n">augment</span> <span class="o">=</span> <span class="n">T</span><span class="p">.</span><span class="nc">Compose</span><span class="p">([</span>
+    <span class="n">T</span><span class="p">.</span><span class="nc">RandomResizedCrop</span><span class="p">(</span><span class="mi">32</span><span class="p">),</span>
+    <span class="n">T</span><span class="p">.</span><span class="nc">RandomHorizontalFlip</span><span class="p">(),</span>
+    <span class="n">T</span><span class="p">.</span><span class="nc">ColorJitter</span><span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">),</span>
+    <span class="n">T</span><span class="p">.</span><span class="nc">ToTensor</span><span class="p">(),</span>
+<span class="p">])</span>
+
+<span class="c1"># For a batch of images, create two augmented views
+</span><span class="k">def</span> <span class="nf">get_views</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
+    <span class="n">view1</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">stack</span><span class="p">([</span><span class="nf">augment</span><span class="p">(</span><span class="n">img</span><span class="p">)</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">])</span>
+    <span class="n">view2</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">stack</span><span class="p">([</span><span class="nf">augment</span><span class="p">(</span><span class="n">img</span><span class="p">)</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">view1</span><span class="p">,</span> <span class="n">view2</span>
+
+<span class="c1"># The contrastive loss (NT-Xent) pulls same-image pairs together
+# and pushes different-image pairs apart in the embedding space.
+# After pre-training, the encoder is fine-tuned with labels.
+</span></code></pre></div></div>
+
+<p>Popular contrastive methods:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th>Domain</th>
+      <th>Key idea</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>SimCLR</td>
+      <td>Images</td>
+      <td>Two augmented views, NT-Xent loss</td>
+    </tr>
+    <tr>
+      <td>MoCo</td>
+      <td>Images</td>
+      <td>Momentum encoder for stable negatives</td>
+    </tr>
+    <tr>
+      <td>CLIP</td>
+      <td>Image + Text</td>
+      <td>Image and caption should be similar</td>
+    </tr>
+    <tr>
+      <td>wav2vec</td>
+      <td>Audio</td>
+      <td>Predict future audio representations</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="5-the-pre-train--fine-tune-workflow">5. The pre-train → fine-tune workflow</h2>
+
+<p>This is the defining pattern of modern machine learning:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1 — Pre-train with SSL (no labels, massive data)
+         ↓
+   Model learns general representations
+   (language structure, visual features, etc.)
+         ↓
+Step 2 — Fine-tune with supervised learning (small labelled dataset)
+         ↓
+   Model adapts to your specific task
+   (spam detection, sentiment, image classification)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">AutoTokenizer</span><span class="p">,</span> <span class="n">AutoModelForSequenceClassification</span>
+<span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">TrainingArguments</span><span class="p">,</span> <span class="n">Trainer</span>
+<span class="kn">import</span> <span class="n">torch</span>
+
+<span class="c1"># Step 1 — Load a model pre-trained with SSL (masked language modelling)
+</span><span class="n">model_name</span> <span class="o">=</span> <span class="sh">"</span><span class="s">bert-base-uncased</span><span class="sh">"</span>
+<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">num_labels</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Step 2 — Fine-tune on small labelled spam dataset
+</span><span class="n">emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">free prize win now click here</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">claim your reward today</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">meeting agenda tomorrow 3pm</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">project deadline report attached</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>   <span class="c1"># 1=spam, 0=not spam
+</span>
+<span class="c1"># Tokenise
+</span><span class="n">encodings</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">'</span><span class="s">pt</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">SpamDataset</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="n">utils</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">encodings</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">encodings</span> <span class="o">=</span> <span class="n">encodings</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span> <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">self</span><span class="p">.</span><span class="n">encodings</span><span class="p">.</span><span class="nf">items</span><span class="p">()}</span>
+        <span class="n">item</span><span class="p">[</span><span class="sh">'</span><span class="s">labels</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">labels</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="nc">SpamDataset</span><span class="p">(</span><span class="n">encodings</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+
+<span class="c1"># Fine-tune — only a few steps needed because BERT already understands language
+</span><span class="n">args</span> <span class="o">=</span> <span class="nc">TrainingArguments</span><span class="p">(</span><span class="n">output_dir</span><span class="o">=</span><span class="sh">'</span><span class="s">./spam_model</span><span class="sh">'</span><span class="p">,</span> <span class="n">num_train_epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                         <span class="n">per_device_train_batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">logging_steps</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="nc">Trainer</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">train_dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">trainer</span><span class="p">.</span><span class="nf">train</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>The key insight: <strong>BERT already knows what “free prize win” means</strong> from SSL pre-training. Fine-tuning with just 100 labelled spam examples can be enough for good performance.</p>
+
+<hr />
+
+<h2 id="6-ssl-vs-other-learning-types">6. SSL vs other learning types</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Supervised</th>
+      <th>Unsupervised</th>
+      <th>Self-Supervised</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Labels needed</td>
+      <td>Yes — all examples</td>
+      <td>No</td>
+      <td>No — labels from data</td>
+    </tr>
+    <tr>
+      <td>Data needed</td>
+      <td>Moderate</td>
+      <td>Large</td>
+      <td>Very large</td>
+    </tr>
+    <tr>
+      <td>Task</td>
+      <td>Specific</td>
+      <td>General patterns</td>
+      <td>General representations</td>
+    </tr>
+    <tr>
+      <td>Fine-tuning possible</td>
+      <td>N/A</td>
+      <td>Hard</td>
+      <td>Yes — easily</td>
+    </tr>
+    <tr>
+      <td>Examples</td>
+      <td>Spam classifier</td>
+      <td>K-Means clustering</td>
+      <td>GPT, BERT, CLIP</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="7-where-self-supervised-learning-is-used-today">7. Where self-supervised learning is used today</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Application</th>
+      <th>SSL method</th>
+      <th>Fine-tuned for</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>GPT-4 / ChatGPT</td>
+      <td>Next token prediction</td>
+      <td>Instruction following (SFT + RLHF)</td>
+    </tr>
+    <tr>
+      <td>BERT / RoBERTa</td>
+      <td>Masked token prediction</td>
+      <td>Classification, NER, QA</td>
+    </tr>
+    <tr>
+      <td>CLIP</td>
+      <td>Image-text contrastive</td>
+      <td>Zero-shot image classification</td>
+    </tr>
+    <tr>
+      <td>wav2vec 2.0</td>
+      <td>Audio contrastive</td>
+      <td>Speech recognition</td>
+    </tr>
+    <tr>
+      <td>DINO / MAE</td>
+      <td>Masked image patches</td>
+      <td>Image classification, detection</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Self-supervised learning creates labels <strong>automatically from the data itself</strong> — no human annotation needed.</li>
+  <li><strong>Masked prediction</strong> (BERT): hide parts of the input and predict them.</li>
+  <li><strong>Next token prediction</strong> (GPT): predict what comes next in a sequence.</li>
+  <li><strong>Contrastive learning</strong> (SimCLR, CLIP): pull together representations of the same data, push apart different data.</li>
+  <li>The <strong>pre-train → fine-tune</strong> workflow lets a model trained on billions of unlabelled examples be adapted to a specific task with just hundreds or thousands of labelled examples.</li>
+  <li>SSL is the foundation of modern large language models and vision models.</li>
+</ul>

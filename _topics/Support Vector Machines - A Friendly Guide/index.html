@@ -1,0 +1,441 @@
+<h1 id="support-vector-machines">Support Vector Machines</h1>
+
+<h2 id="finding-the-best-possible-boundary">Finding the best possible boundary</h2>
+
+<p>Suppose you have two groups of points on a piece of paper — red dots and blue dots — and you want to draw a line that separates them. You could draw many different lines that work. But which one is <em>best</em>?</p>
+
+<p>A <strong>Support Vector Machine</strong> (SVM) answers that question with a precise definition of “best”: the line that has the largest possible gap between the two groups. This gap is called the <strong>margin</strong>, and maximising it is the entire goal of SVM.</p>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>The intuition — what is a margin and why does it matter?</li>
+  <li>Support vectors — which points actually define the boundary?</li>
+  <li>Soft margin — handling data that is not perfectly separable.</li>
+  <li>The kernel trick — separating data that no straight line can divide.</li>
+  <li>Full Python demonstration.</li>
+  <li>When to use SVMs.</li>
+</ol>
+
+<hr />
+
+<h2 id="1-the-intuition--margins-matter">1. The intuition — margins matter</h2>
+
+<p>Imagine classifying emails as spam or not spam based on two features: number of suspicious words and number of links.</p>
+
+<p>You could draw many lines to separate them:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Line A: passes very close to several spam emails
+Line B: passes right through the middle of the gap between groups  ← SVM picks this
+Line C: passes very close to several normal emails
+</code></pre></div></div>
+
+<p>Line B is the safest choice. If a new email arrives that is slightly ambiguous, Line B gives it the most room to be classified correctly. Lines A and C would misclassify borderline emails.</p>
+
+<p>The <strong>margin</strong> is the width of the empty zone around the boundary line. SVM finds the line that maximises this margin.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> SVM is like drawing a road between two cities. You want the road as far from both cities as possible, so drivers have maximum safety margin on either side.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-support-vectors--the-critical-points">2. Support vectors — the critical points</h2>
+
+<p>Here is the key insight: <strong>most training points don’t matter</strong>.</p>
+
+<p>Only the points sitting right on the edge of each group — the ones closest to the boundary — determine where the boundary goes. These are the <strong>support vectors</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal emails:  ●  ●  ●  [●]  |    [■]  ■  ■  ■   :Spam emails
+                              ↑    ↑
+                         support vectors
+                         (these define the boundary)
+</code></pre></div></div>
+
+<p>If you removed all other points and kept only the support vectors, the boundary would be exactly the same. This is why SVM is memory-efficient — after training, only the support vectors are stored.</p>
+
+<hr />
+
+<h2 id="3-soft-margin--real-data-is-messy">3. Soft margin — real data is messy</h2>
+
+<p>In practice, data is rarely perfectly separable. A few spam emails will have no links and few suspicious words. A few normal emails will have several suspicious words.</p>
+
+<p>A <strong>hard margin</strong> SVM requires perfect separation — impossible with noisy data. A <strong>soft margin</strong> SVM allows some points to be on the wrong side of the boundary, controlled by a parameter <strong>C</strong>:</p>
+
+<ul>
+  <li><strong>Large C</strong> — strict, tries hard to classify everything correctly → can overfit</li>
+  <li><strong>Small C</strong> — relaxed, allows more misclassifications → better generalisation</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">model_strict</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">C</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>   <span class="c1"># large C — tight margin, few errors allowed
+</span><span class="n">model_relaxed</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">C</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># small C — wide margin, some errors allowed
+</span></code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> C is the “cost of being wrong.” High C = high cost = model tries very hard not to make mistakes.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="4-the-kernel-trick--handling-non-linear-data">4. The kernel trick — handling non-linear data</h2>
+
+<p>Sometimes no straight line can separate the two classes. Look at this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>          ●  ●  ●
+       ●           ●
+     ●    ■  ■  ■    ●
+       ●           ●
+          ●  ●  ●
+</code></pre></div></div>
+
+<p>The spam emails (■) are clustered in the centre, surrounded by normal emails (●). No straight line divides them.</p>
+
+<p>The <strong>kernel trick</strong> solves this by mathematically transforming the data into a higher-dimensional space where a straight line <em>can</em> separate them — without ever explicitly computing that transformation.</p>
+
+<p>Common kernels:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Kernel</th>
+      <th>When to use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">linear</code></td>
+      <td>Data is roughly linearly separable, high-dimensional (e.g., text)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">rbf</code> (radial basis function)</td>
+      <td>Most common default — handles curved boundaries</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">poly</code></td>
+      <td>Polynomial boundaries — less common</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Linear kernel — for text classification, high-dimensional data
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># RBF kernel — for most other problems (default)
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> The kernel trick is like crumpling a piece of paper so two groups of dots that were mixed together now sit on different layers — then cutting between the layers.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="5-full-python-demonstration">5. Full Python demonstration</h2>
+
+<h3 id="binary-classification--spam-detection">Binary classification — spam detection</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">classification_report</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Features: [suspicious_words, links, known_sender, capital_ratio, length]
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mi">42</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.50</span><span class="p">,</span> <span class="mi">28</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">,</span> <span class="mi">55</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.38</span><span class="p">,</span> <span class="mi">40</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mi">120</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="mi">95</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mi">110</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">140</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.04</span><span class="p">,</span> <span class="mi">100</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mi">130</span><span class="p">],</span>
+<span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># 1=spam, 0=not spam
+</span>
+<span class="c1"># Step 1 — Split data
+</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 2 — Scale features (IMPORTANT for SVM)
+</span><span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_train_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">X_test_scaled</span>  <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+<span class="c1"># Step 3 — Train SVM
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">,</span> <span class="n">probability</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_scaled</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1"># Step 4 — Evaluate
+</span><span class="n">y_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_scaled</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span><span class="p">]))</span>
+
+<span class="c1"># Step 5 — Check support vectors
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Number of support vectors per class: </span><span class="si">{</span><span class="n">model</span><span class="p">.</span><span class="n">n_support_</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Total support vectors: </span><span class="si">{</span><span class="nf">sum</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="n">n_support_</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 6 — Predict new email
+</span><span class="n">new_email</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mi">50</span><span class="p">]])</span>
+<span class="n">new_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">new_email</span><span class="p">)</span>
+<span class="n">pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">new_scaled</span><span class="p">)</span>
+<span class="n">prob</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">new_scaled</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">New email: </span><span class="si">{</span><span class="sh">'</span><span class="s">SPAM</span><span class="sh">'</span> <span class="k">if</span> <span class="n">pred</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="k">else</span> <span class="sh">'</span><span class="s">NOT SPAM</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Confidence: spam=</span><span class="si">{</span><span class="n">prob</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">, not spam=</span><span class="si">{</span><span class="n">prob</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="text-classification-with-linear-svm">Text classification with linear SVM</h3>
+
+<p>Linear SVMs work exceptionally well for text:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">LinearSVC</span>
+<span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+
+<span class="n">emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">free prize win now click</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">claim your reward today</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">win iPhone limited offer free</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">exclusive deal free gift</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">meeting agenda tomorrow 3pm</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">project deadline Friday report</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">quarterly review attached</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">please review the document</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Pipeline: TF-IDF → Linear SVM
+</span><span class="n">pipeline</span> <span class="o">=</span> <span class="nc">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">tfidf</span><span class="sh">'</span><span class="p">,</span> <span class="nc">TfidfVectorizer</span><span class="p">(</span><span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)),</span>
+    <span class="p">(</span><span class="sh">'</span><span class="s">svm</span><span class="sh">'</span><span class="p">,</span>   <span class="nc">LinearSVC</span><span class="p">(</span><span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">))</span>
+<span class="p">])</span>
+
+<span class="n">pipeline</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">emails</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+
+<span class="n">test</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">free iPhone win prize now</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">team meeting tomorrow agenda</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">pipeline</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">test</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">email</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="si">{</span><span class="n">email</span><span class="si">}</span><span class="sh">'</span><span class="s"> → </span><span class="si">{</span><span class="sh">'</span><span class="s">SPAM</span><span class="sh">'</span> <span class="k">if</span> <span class="n">pred</span><span class="o">==</span><span class="mi">1</span> <span class="k">else</span> <span class="sh">'</span><span class="s">NOT SPAM</span><span class="sh">'</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="visualising-the-decision-boundary-2d">Visualising the decision boundary (2D)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="c1"># Simple 2D example: suspicious words vs links
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="c1"># Plot
+</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">meshgrid</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">200</span><span class="p">),</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">200</span><span class="p">))</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="n">c_</span><span class="p">[</span><span class="n">xx</span><span class="p">.</span><span class="nf">ravel</span><span class="p">(),</span> <span class="n">yy</span><span class="p">.</span><span class="nf">ravel</span><span class="p">()])</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="n">Z</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="n">xx</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">'</span><span class="s">RdBu</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="sh">'</span><span class="s">RdBu</span><span class="sh">'</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">k</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Highlight support vectors
+</span><span class="n">sv</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">support_vectors_</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">sv</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">sv</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">facecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">none</span><span class="sh">'</span><span class="p">,</span>
+            <span class="n">edgecolors</span><span class="o">=</span><span class="sh">'</span><span class="s">k</span><span class="sh">'</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Support vectors</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Suspicious words</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Links</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">SVM Decision Boundary</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="6-scaling-is-not-optional">6. Scaling is not optional</h2>
+
+<p>SVM is one of the few algorithms where <strong>forgetting to scale your features will badly hurt performance</strong>.</p>
+
+<p>Why? The margin calculation uses distances. If feature A ranges from 0–1 and feature B ranges from 0–10,000, feature B will dominate the distance calculation and drown out feature A.</p>
+
+<p>Always scale before training an SVM:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+
+<span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_train_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">X_test_scaled</span>  <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>   <span class="c1"># use fit from training set only
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="7-tuning-c-and-gamma">7. Tuning C and gamma</h2>
+
+<p>For RBF kernel, two parameters matter most:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>C</strong></td>
+      <td>How much to penalise misclassifications. High C = complex boundary.</td>
+    </tr>
+    <tr>
+      <td><strong>gamma</strong></td>
+      <td>How far each training point’s influence reaches. High gamma = complex, localised boundary.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Use grid search to find the best combination:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">'</span><span class="s">C</span><span class="sh">'</span><span class="p">:</span>     <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">],</span>
+    <span class="sh">'</span><span class="s">gamma</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">auto</span><span class="sh">'</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">),</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">'</span><span class="s">accuracy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_scaled</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Best params: </span><span class="si">{</span><span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Best CV score: </span><span class="si">{</span><span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="8-svm-vs-other-classifiers">8. SVM vs other classifiers</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Algorithm</th>
+      <th>SVM advantage</th>
+      <th>SVM disadvantage</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Logistic Regression</td>
+      <td>Better with non-linear boundaries (RBF)</td>
+      <td>Slower, harder to tune</td>
+    </tr>
+    <tr>
+      <td>Decision Trees</td>
+      <td>Less prone to overfitting</td>
+      <td>Not as interpretable</td>
+    </tr>
+    <tr>
+      <td>Naive Bayes</td>
+      <td>Better with continuous features</td>
+      <td>Slower to train</td>
+    </tr>
+    <tr>
+      <td>KNN</td>
+      <td>No need to store training data after fitting</td>
+      <td>KNN faster on small datasets</td>
+    </tr>
+    <tr>
+      <td>Neural Networks</td>
+      <td>Works well with small-medium datasets</td>
+      <td>Neural nets scale better to huge data</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>SVM sweet spot:</strong> Medium-sized datasets (up to ~100k rows), high-dimensional data (text), or problems where the margin intuition fits naturally.</p>
+
+<hr />
+
+<h2 id="9-common-mistakes">9. Common mistakes</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mistake</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Forgetting to scale features</td>
+      <td>Always use <code class="language-plaintext highlighter-rouge">StandardScaler</code> before SVM</td>
+    </tr>
+    <tr>
+      <td>Using RBF kernel on text</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">LinearSVC</code> for text — much faster</td>
+    </tr>
+    <tr>
+      <td>Using <code class="language-plaintext highlighter-rouge">SVC</code> on large datasets (&gt;100k rows)</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">LinearSVC</code> or <code class="language-plaintext highlighter-rouge">SGDClassifier</code> instead</td>
+    </tr>
+    <tr>
+      <td>Not tuning C</td>
+      <td>Default C=1 is often suboptimal — try <code class="language-plaintext highlighter-rouge">GridSearchCV</code></td>
+    </tr>
+    <tr>
+      <td>Expecting probability outputs from <code class="language-plaintext highlighter-rouge">LinearSVC</code></td>
+      <td>Use <code class="language-plaintext highlighter-rouge">SVC(probability=True)</code> or <code class="language-plaintext highlighter-rouge">CalibratedClassifierCV</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-try-it-yourself">10. Try it yourself</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_classification</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="c1"># Generate a synthetic dataset
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_classification</span><span class="p">(</span>
+    <span class="n">n_samples</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">n_features</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">n_informative</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">n_redundant</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+
+<span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_train_s</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">X_test_s</span>  <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">kernel</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">poly</span><span class="sh">'</span><span class="p">]:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">kernel</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="n">acc</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_s</span><span class="p">))</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Kernel=</span><span class="si">{</span><span class="n">kernel</span><span class="si">:</span><span class="mi">8</span><span class="n">s</span><span class="si">}</span><span class="s">  Accuracy=</span><span class="si">{</span><span class="n">acc</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">  Support vectors=</span><span class="si">{</span><span class="nf">sum</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="n">n_support_</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Try different values of C (0.01, 1, 100) and see how the number of support vectors changes.</p>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>SVM finds the decision boundary that <strong>maximises the margin</strong> between classes.</li>
+  <li>The boundary is determined only by the <strong>support vectors</strong> — the points closest to the boundary.</li>
+  <li><strong>C</strong> controls the trade-off between a wide margin and fewer misclassifications.</li>
+  <li>The <strong>kernel trick</strong> maps data to higher dimensions where it becomes linearly separable.</li>
+  <li>Always <strong>scale your features</strong> before training an SVM.</li>
+  <li><strong>LinearSVC</strong> for text and high-dimensional data. <strong>SVC(kernel=’rbf’)</strong> for everything else.</li>
+</ul>

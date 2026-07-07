@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>18. Naive Bayes - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>18. Naive Bayes - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="naive-bayes">Naive Bayes</h1>
+
+<h2 id="the-algorithm-that-reads-your-email">The algorithm that reads your email</h2>
+
+<p>Every time your email client moves a message to the spam folder, there is a good chance Naive Bayes is involved. It is one of the oldest, simplest, and most battle-tested classification algorithms in machine learning — and it is built entirely on one idea from high school probability.</p>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>The intuition — what does “probability of spam” actually mean?</li>
+  <li>Bayes’ Theorem in plain English.</li>
+  <li>The “naive” assumption and why it works.</li>
+  <li>Types of Naive Bayes.</li>
+  <li>Step-by-step worked example.</li>
+  <li>Full Python demonstration.</li>
+  <li>When to use it and when not to.</li>
+</ol>
+
+<hr />
+
+<h2 id="1-the-intuition">1. The intuition</h2>
+
+<p>Imagine you receive an email with the subject line: <em>“Congratulations! You have won a free iPhone.”</em></p>
+
+<p>You have seen thousands of emails before. You know that:</p>
+
+<ul>
+  <li>The word “free” appears in 80% of spam emails but only 5% of normal emails.</li>
+  <li>The word “won” appears in 60% of spam but only 2% of normal emails.</li>
+  <li>The word “Congratulations” appears in 55% of spam but 10% of normal emails.</li>
+</ul>
+
+<p>Given these observations, what is the probability this new email is spam?</p>
+
+<p>Naive Bayes answers exactly this question — systematically, using probability.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Naive Bayes is like a detective who looks at individual clues (words) and combines the evidence to reach a verdict (spam or not spam).</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-bayes-theorem--the-engine">2. Bayes’ Theorem — the engine</h2>
+
+<p>Bayes’ Theorem tells us how to update our belief about something when we see new evidence.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(spam | words) = P(words | spam) × P(spam)
+                  ─────────────────────────
+                         P(words)
+</code></pre></div></div>
+
+<p>In plain English:</p>
+
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>**P(spam</td>
+          <td>words)** — probability this email is spam, given the words we see. This is what we want.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>**P(words</td>
+          <td>spam)** — how likely these words are if the email IS spam. Learned from training data.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li><strong>P(spam)</strong> — how common spam is overall. Also learned from training data.</li>
+  <li><strong>P(words)</strong> — overall probability of seeing these words. The same for all classes, so we can ignore it when comparing.</li>
+</ul>
+
+<p>We do not need to calculate the bottom. We just compare:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(spam | words)     vs     P(not spam | words)
+</code></pre></div></div>
+
+<p>Whichever is higher wins.</p>
+
+<hr />
+
+<h2 id="3-the-naive-assumption">3. The “naive” assumption</h2>
+
+<p>Here is where the “naive” part comes in.</p>
+
+<p>Computing <code class="language-plaintext highlighter-rouge">P(words | spam)</code> for a whole sentence is hard — you would need to have seen that exact combination of words before. Instead, Naive Bayes makes a simplifying assumption:</p>
+
+<blockquote>
+  <p><strong>Each word is independent of every other word.</strong></p>
+</blockquote>
+
+<p>So instead of <code class="language-plaintext highlighter-rouge">P("free won Congratulations" | spam)</code>, we compute:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P("free" | spam) × P("won" | spam) × P("Congratulations" | spam)
+</code></pre></div></div>
+
+<p>This is “naive” because words are obviously not independent — “New York” is much more likely as a pair than as two random words. But in practice, this assumption rarely hurts much and makes the algorithm incredibly fast.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Naive Bayes treats each word like a separate witness testifying independently. Even if the witnesses are related, their combined testimony still points to the right answer most of the time.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="4-types-of-naive-bayes">4. Types of Naive Bayes</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Use case</th>
+      <th>Input</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Multinomial NB</strong></td>
+      <td>Text classification — word counts</td>
+      <td>Word frequencies</td>
+    </tr>
+    <tr>
+      <td><strong>Bernoulli NB</strong></td>
+      <td>Short text, binary features — word present or not</td>
+      <td>0 or 1 per word</td>
+    </tr>
+    <tr>
+      <td><strong>Gaussian NB</strong></td>
+      <td>Continuous features like height, temperature</td>
+      <td>Real numbers</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>For spam detection with word counts, <strong>Multinomial NB</strong> is the standard choice.</p>
+
+<hr />
+
+<h2 id="5-step-by-step-worked-example">5. Step-by-step worked example</h2>
+
+<h3 id="training-data">Training data</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Email</th>
+      <th>Words</th>
+      <th>Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>“free prize win”</td>
+      <td>free, prize, win</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>“free offer claim”</td>
+      <td>free, offer, claim</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>“meeting tomorrow agenda”</td>
+      <td>meeting, tomorrow, agenda</td>
+      <td>not spam</td>
+    </tr>
+    <tr>
+      <td>“project update tomorrow”</td>
+      <td>project, update, tomorrow</td>
+      <td>not spam</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Step 1 — Calculate prior probabilities</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(spam)     = 2/4 = 0.5
+P(not spam) = 2/4 = 0.5
+</code></pre></div></div>
+
+<p><strong>Step 2 — Calculate word likelihoods from training data</strong></p>
+
+<p>Total words in spam emails: free, prize, win, free, offer, claim = 6 words</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P("free"  | spam) = 2/6 = 0.33
+P("prize" | spam) = 1/6 = 0.17
+P("win"   | spam) = 1/6 = 0.17
+P("offer" | spam) = 1/6 = 0.17
+P("claim" | spam) = 1/6 = 0.17
+</code></pre></div></div>
+
+<p>Total words in not-spam emails: 6 words</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P("free"     | not spam) = 0/6 ≈ 0.0  (we add smoothing — see below)
+P("tomorrow" | not spam) = 2/6 = 0.33
+P("meeting"  | not spam) = 1/6 = 0.17
+</code></pre></div></div>
+
+<p><strong>Step 3 — Predict a new email: “free win tomorrow”</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Score(spam)     = P(spam) × P("free"|spam) × P("win"|spam) × P("tomorrow"|spam)
+                = 0.5 × 0.33 × 0.17 × ~0.01   (tomorrow rarely appears in spam)
+                = very small positive number
+
+Score(not spam) = P(not spam) × P("free"|not spam) × P("win"|not spam) × P("tomorrow"|not spam)
+                = 0.5 × ~0.01 × ~0.01 × 0.33
+                = also very small
+</code></pre></div></div>
+
+<p>We compare which score is higher and assign that class.</p>
+
+<h3 id="laplace-smoothing--fixing-zero-probabilities">Laplace smoothing — fixing zero probabilities</h3>
+
+<p>If a word never appeared in training spam emails, <code class="language-plaintext highlighter-rouge">P(word | spam) = 0</code>, which would make the entire product zero no matter what other words say. That is too harsh.</p>
+
+<p><strong>Laplace smoothing</strong> adds 1 to every word count:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(word | class) = (count of word in class + 1)
+                  ─────────────────────────────
+                  (total words in class + vocabulary size)
+</code></pre></div></div>
+
+<p>This ensures no probability is ever exactly zero.</p>
+
+<hr />
+
+<h2 id="6-full-python-demonstration">6. Full Python demonstration</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">MultinomialNB</span>
+<span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">CountVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">classification_report</span>
+
+<span class="c1"># Training data
+</span><span class="n">emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">free prize win now</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">claim your free offer today</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">win a free iPhone click here</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">limited offer free gift</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">meeting at 3pm tomorrow</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">project update attached please review</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">agenda for tomorrow meeting</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">quarterly report due Friday</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">free lunch meeting agenda</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">please review the attached report</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="c1"># 1 = spam, 0 = not spam
+</span>
+<span class="c1"># Step 1 — Convert text to word count vectors
+</span><span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">CountVectorizer</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
+
+<span class="c1"># Step 2 — Split into train and test
+</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 3 — Train Naive Bayes
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">MultinomialNB</span><span class="p">()</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1"># Step 4 — Evaluate
+</span><span class="n">y_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span><span class="p">]))</span>
+
+<span class="c1"># Step 5 — Predict new emails
+</span><span class="n">new_emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">free offer win prize now</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">meeting notes from today attached</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">X_new</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">new_emails</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_new</span><span class="p">)</span>
+<span class="n">probs</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">X_new</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">email</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">prob</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">new_emails</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">probs</span><span class="p">):</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">SPAM</span><span class="sh">"</span> <span class="k">if</span> <span class="n">pred</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sh">"</span><span class="s">NOT SPAM</span><span class="sh">"</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="sh">'</span><span class="si">{</span><span class="n">email</span><span class="si">}</span><span class="sh">'"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  → </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s">  (spam prob: </span><span class="si">{</span><span class="n">prob</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="understanding-word-importance">Understanding word importance</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Which words are most associated with spam?
+</span><span class="n">feature_names</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">get_feature_names_out</span><span class="p">()</span>
+<span class="n">spam_log_probs</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">feature_log_prob_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>   <span class="c1"># class 1 = spam
+</span>
+<span class="n">top_spam_words</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">argsort</span><span class="p">(</span><span class="n">spam_log_probs</span><span class="p">)[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Top words for spam:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nf">reversed</span><span class="p">(</span><span class="n">top_spam_words</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="sh">'</span><span class="si">{</span><span class="n">feature_names</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="si">}</span><span class="sh">'</span><span class="s">: log-prob </span><span class="si">{</span><span class="n">spam_log_probs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="7-gaussian-naive-bayes--for-continuous-features">7. Gaussian Naive Bayes — for continuous features</h2>
+
+<p>When features are continuous numbers (like email length, number of links), use Gaussian NB, which assumes each feature follows a bell curve within each class:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">GaussianNB</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Features: [suspicious_word_count, link_count, message_length]
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">42</span><span class="p">],</span>   <span class="c1"># spam
+</span>    <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span>   <span class="c1"># spam
+</span>    <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">28</span><span class="p">],</span>   <span class="c1"># spam
+</span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">120</span><span class="p">],</span>  <span class="c1"># not spam
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">95</span><span class="p">],</span>   <span class="c1"># not spam
+</span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">110</span><span class="p">],</span>  <span class="c1"># not spam
+</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">GaussianNB</span><span class="p">()</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="c1"># Predict a new email
+</span><span class="n">new</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">50</span><span class="p">]])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">new</span><span class="p">))</span>          <span class="c1"># [1] → spam
+</span><span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">new</span><span class="p">))</span>    <span class="c1"># [[0.12, 0.88]] → 88% spam
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="8-when-to-use-naive-bayes">8. When to use Naive Bayes</h2>
+
+<p><strong>Good fit:</strong></p>
+<ul>
+  <li>Text classification (spam, sentiment, topic labelling)</li>
+  <li>Large vocabulary with many features</li>
+  <li>You need a fast baseline before trying complex models</li>
+  <li>Small training datasets — NB generalises well with little data</li>
+  <li>Real-time prediction — NB is extremely fast to score</li>
+</ul>
+
+<p><strong>Not ideal for:</strong></p>
+<ul>
+  <li>Features with strong dependencies (e.g., word order matters — “not good” vs “good not”)</li>
+  <li>Continuous features with complex distributions</li>
+  <li>Tasks where the independence assumption is badly violated</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th>Compared to</th>
+      <th>Naive Bayes advantage</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Logistic Regression</td>
+      <td>Faster training, works with tiny datasets</td>
+    </tr>
+    <tr>
+      <td>Decision Trees</td>
+      <td>Less prone to overfitting on small data</td>
+    </tr>
+    <tr>
+      <td>SVM</td>
+      <td>Much faster, easier to interpret</td>
+    </tr>
+    <tr>
+      <td>Deep Learning</td>
+      <td>Tiny model, instant training, explainable</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="9-common-mistakes">9. Common mistakes</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mistake</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Forgetting to apply <code class="language-plaintext highlighter-rouge">CountVectorizer</code> or <code class="language-plaintext highlighter-rouge">TfidfVectorizer</code></td>
+      <td>Text must be converted to numbers first</td>
+    </tr>
+    <tr>
+      <td>Using <code class="language-plaintext highlighter-rouge">MultinomialNB</code> with negative values</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">GaussianNB</code> for raw continuous features</td>
+    </tr>
+    <tr>
+      <td>Not applying Laplace smoothing</td>
+      <td><code class="language-plaintext highlighter-rouge">MultinomialNB</code> applies it by default via <code class="language-plaintext highlighter-rouge">alpha=1.0</code></td>
+    </tr>
+    <tr>
+      <td>Treating NB as your final model</td>
+      <td>Use it as a fast baseline, then try stronger models</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-try-it-yourself">10. Try it yourself</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">MultinomialNB</span>
+<span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+
+<span class="c1"># Try TF-IDF instead of raw counts
+</span><span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">(</span><span class="n">stop_words</span><span class="o">=</span><span class="sh">'</span><span class="s">english</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">free prize win now click here</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">claim your reward today free</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">win iPhone limited time offer</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">schedule meeting tomorrow agenda</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">project deadline Friday report</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">review attached document please</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">MultinomialNB</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+
+<span class="n">test</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">transform</span><span class="p">([</span><span class="sh">"</span><span class="s">free iPhone win prize</span><span class="sh">"</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">test</span><span class="p">))</span>         <span class="c1"># [1] → spam
+</span><span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">test</span><span class="p">))</span>   <span class="c1"># confidence scores
+</span></code></pre></div></div>
+
+<p>Experiment: change <code class="language-plaintext highlighter-rouge">alpha</code> (the smoothing parameter) from <code class="language-plaintext highlighter-rouge">0.01</code> to <code class="language-plaintext highlighter-rouge">10.0</code> and see how it affects confidence scores on borderline emails.</p>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Naive Bayes uses probability to classify. For each class it asks: “how likely is this input, given what we know about this class?”</li>
+  <li>The “naive” assumption is that features are independent. It is wrong but it works surprisingly well.</li>
+  <li><strong>Multinomial NB</strong> — word counts in text. <strong>Gaussian NB</strong> — continuous numbers. <strong>Bernoulli NB</strong> — word present/absent.</li>
+  <li>Laplace smoothing prevents zero probabilities from destroying the calculation.</li>
+  <li>It is fast, interpretable, and works well even with small datasets.</li>
+  <li>Use it as a strong baseline before investing in more complex models.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">naive-bayes</span>, <span class="tag">classification</span>, <span class="tag">probability</span>, <span class="tag">text-classification</span>, <span class="tag">spam-detection</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

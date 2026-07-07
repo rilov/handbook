@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>26. Anomaly Detection - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/machine-learning">Machine Learning</a> &mdash;
+    </nav>
+    <h2>26. Anomaly Detection - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/machine-learning">Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="anomaly-detection">Anomaly Detection</h1>
+
+<h2 id="finding-the-needle-in-the-haystack">Finding the needle in the haystack</h2>
+
+<p>Most credit card transactions are normal. A few are fraudulent. Most machines in a factory work correctly. A few are about to fail. Most network packets are legitimate. Some are intrusion attempts.</p>
+
+<p><strong>Anomaly detection</strong> — also called <strong>outlier detection</strong> — is the task of finding the rare, unusual points that don’t fit the pattern of normal data.</p>
+
+<p>The challenge: you often have thousands of normal examples but very few (or zero) examples of anomalies to train on.</p>
+
+<p>This tutorial covers:</p>
+
+<ol>
+  <li>What makes something an anomaly?</li>
+  <li>Statistical methods — Z-score and IQR.</li>
+  <li>Isolation Forest — the most popular algorithm.</li>
+  <li>One-Class SVM.</li>
+  <li>Autoencoder-based detection.</li>
+  <li>Full Python demonstration.</li>
+  <li>Choosing the right method.</li>
+</ol>
+
+<hr />
+
+<h2 id="1-what-makes-something-an-anomaly">1. What makes something an anomaly?</h2>
+
+<p>Three types:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Point anomaly</strong></td>
+      <td>A single unusual data point</td>
+      <td>A £50,000 credit card transaction when typical is £50</td>
+    </tr>
+    <tr>
+      <td><strong>Contextual anomaly</strong></td>
+      <td>Unusual in context, normal elsewhere</td>
+      <td>25°C in December (unusual), 25°C in July (normal)</td>
+    </tr>
+    <tr>
+      <td><strong>Collective anomaly</strong></td>
+      <td>A group of points is unusual together</td>
+      <td>100 small transactions in 5 minutes from the same card</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> An anomaly is not just a rare event. It’s a point that looks different from the bulk of the data.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-statistical-methods--simple-baselines">2. Statistical methods — simple baselines</h2>
+
+<h3 id="z-score-standard-deviations-from-the-mean">Z-score (standard deviations from the mean)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Transaction amounts (£)
+</span><span class="n">amounts</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">45</span><span class="p">,</span> <span class="mi">52</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">55</span><span class="p">,</span> <span class="mi">51</span><span class="p">,</span> <span class="mi">47</span><span class="p">,</span> <span class="mi">49</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">53</span><span class="p">,</span> <span class="mi">46</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">48</span><span class="p">])</span>
+
+<span class="n">mean</span> <span class="o">=</span> <span class="n">amounts</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span>
+<span class="n">std</span>  <span class="o">=</span> <span class="n">amounts</span><span class="p">.</span><span class="nf">std</span><span class="p">()</span>
+<span class="n">z_scores</span> <span class="o">=</span> <span class="p">(</span><span class="n">amounts</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Z-scores:</span><span class="sh">"</span><span class="p">,</span> <span class="n">z_scores</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="c1"># [−0.45, 0.08, −0.27, 0.35, −0.01, −0.36, −0.18, 9.43, 0.17, −0.45, −0.09, −0.27]
+</span>
+<span class="c1"># Flag anything beyond 3 standard deviations
+</span><span class="n">anomalies</span> <span class="o">=</span> <span class="n">amounts</span><span class="p">[</span><span class="n">np</span><span class="p">.</span><span class="nf">abs</span><span class="p">(</span><span class="n">z_scores</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Anomalies:</span><span class="sh">"</span><span class="p">,</span> <span class="n">anomalies</span><span class="p">)</span>   <span class="c1"># [1500]
+</span></code></pre></div></div>
+
+<h3 id="iqr-interquartile-range--robust-to-extreme-values">IQR (Interquartile Range) — robust to extreme values</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Q1</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">percentile</span><span class="p">(</span><span class="n">amounts</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+<span class="n">Q3</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">percentile</span><span class="p">(</span><span class="n">amounts</span><span class="p">,</span> <span class="mi">75</span><span class="p">)</span>
+<span class="n">IQR</span> <span class="o">=</span> <span class="n">Q3</span> <span class="o">-</span> <span class="n">Q1</span>
+
+<span class="n">lower</span> <span class="o">=</span> <span class="n">Q1</span> <span class="o">-</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">IQR</span>
+<span class="n">upper</span> <span class="o">=</span> <span class="n">Q3</span> <span class="o">+</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">IQR</span>
+
+<span class="n">anomalies</span> <span class="o">=</span> <span class="n">amounts</span><span class="p">[(</span><span class="n">amounts</span> <span class="o">&lt;</span> <span class="n">lower</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">amounts</span> <span class="o">&gt;</span> <span class="n">upper</span><span class="p">)]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">IQR bounds: </span><span class="si">{</span><span class="n">lower</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s"> to </span><span class="si">{</span><span class="n">upper</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Anomalies:</span><span class="sh">"</span><span class="p">,</span> <span class="n">anomalies</span><span class="p">)</span>   <span class="c1"># [1500]
+</span></code></pre></div></div>
+
+<p>These work well for simple, single-feature data. For multi-dimensional data (many features), machine learning methods are needed.</p>
+
+<hr />
+
+<h2 id="3-isolation-forest--the-most-popular-algorithm">3. Isolation Forest — the most popular algorithm</h2>
+
+<p><strong>Isolation Forest</strong> works on a clever insight: <strong>anomalies are easy to isolate</strong>.</p>
+
+<p>Think of it like a guessing game: “I’m thinking of a data point. Ask yes/no questions about features to find it.”</p>
+
+<ul>
+  <li>Normal points: need many questions (they blend in with the crowd)</li>
+  <li>Anomalous points: need very few questions (they are isolated from the rest)</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal transaction: 
+  "Amount &gt; £100?" No → "Amount &gt; £50?" No → "Amount &gt; £45?" Yes → Found (5 questions needed)
+
+Fraudulent transaction (£50,000):
+  "Amount &gt; £100?" Yes → "Amount &gt; £1000?" Yes → "Amount &gt; £10000?" Yes → Found (3 questions needed)
+</code></pre></div></div>
+
+<p>The fewer questions needed, the more anomalous the point.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">IsolationForest</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Simulate credit card transactions: [amount, hour_of_day]
+</span><span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">normal</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">column_stack</span><span class="p">([</span>
+    <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>     <span class="c1"># typical amounts £50 ± £15
+</span>    <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>      <span class="c1"># typical hour: 1pm ± 4 hours
+</span><span class="p">])</span>
+
+<span class="c1"># Inject anomalies
+</span><span class="n">anomalies_true</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>   <span class="c1"># large amount at 3am
+</span>    <span class="p">[</span><span class="mi">4500</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>   <span class="c1"># large amount at 2am
+</span>    <span class="p">[</span><span class="mi">8000</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>   <span class="c1"># huge amount at 4am
+</span>    <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>     <span class="c1"># normal amount but at 2am
+</span><span class="p">])</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">vstack</span><span class="p">([</span><span class="n">normal</span><span class="p">,</span> <span class="n">anomalies_true</span><span class="p">])</span>
+
+<span class="c1"># Fit Isolation Forest
+</span><span class="n">iso_forest</span> <span class="o">=</span> <span class="nc">IsolationForest</span><span class="p">(</span>
+    <span class="n">n_estimators</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>      <span class="c1"># number of trees
+</span>    <span class="n">contamination</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>    <span class="c1"># expected fraction of anomalies (1%)
+</span>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+<span class="n">iso_forest</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">iso_forest</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>   <span class="c1"># 1 = normal, -1 = anomaly
+</span><span class="n">scores</span> <span class="o">=</span> <span class="n">iso_forest</span><span class="p">.</span><span class="nf">score_samples</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>  <span class="c1"># lower = more anomalous
+</span>
+<span class="n">n_anomalies</span> <span class="o">=</span> <span class="p">(</span><span class="n">predictions</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">).</span><span class="nf">sum</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Detected </span><span class="si">{</span><span class="n">n_anomalies</span><span class="si">}</span><span class="s"> anomalies</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Visualise
+</span><span class="n">normal_mask</span>   <span class="o">=</span> <span class="n">predictions</span> <span class="o">==</span>  <span class="mi">1</span>
+<span class="n">anomaly_mask</span>  <span class="o">=</span> <span class="n">predictions</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">normal_mask</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>  <span class="n">X</span><span class="p">[</span><span class="n">normal_mask</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>  <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">blue</span><span class="sh">'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Normal</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">anomaly_mask</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">anomaly_mask</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span>  <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>    <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Anomaly</span><span class="sh">'</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">'</span><span class="s">X</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Transaction amount (£)</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Hour of day</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Isolation Forest — Anomaly Detection</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-one-class-svm">4. One-Class SVM</h2>
+
+<p>One-Class SVM learns a tight boundary around the normal data. Anything outside the boundary is an anomaly.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">OneClassSVM</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+
+<span class="c1"># Scale first (important for SVM)
+</span><span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Fit One-Class SVM — nu is the expected fraction of anomalies
+</span><span class="n">oc_svm</span> <span class="o">=</span> <span class="nc">OneClassSVM</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">oc_svm</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">)</span>
+
+<span class="n">predictions_svm</span> <span class="o">=</span> <span class="n">oc_svm</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">)</span>   <span class="c1"># 1 = normal, -1 = anomaly
+</span><span class="n">n_anomalies_svm</span> <span class="o">=</span> <span class="p">(</span><span class="n">predictions_svm</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">).</span><span class="nf">sum</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">One-Class SVM detected </span><span class="si">{</span><span class="n">n_anomalies_svm</span><span class="si">}</span><span class="s"> anomalies</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-local-outlier-factor-lof">5. Local Outlier Factor (LOF)</h2>
+
+<p>LOF compares the density of each point’s neighbourhood to its neighbours’ neighbourhoods. Points in sparse regions relative to their neighbours are anomalies.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">LocalOutlierFactor</span>
+
+<span class="n">lof</span> <span class="o">=</span> <span class="nc">LocalOutlierFactor</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">contamination</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="n">predictions_lof</span> <span class="o">=</span> <span class="n">lof</span><span class="p">.</span><span class="nf">fit_predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="n">n_lof</span> <span class="o">=</span> <span class="p">(</span><span class="n">predictions_lof</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">).</span><span class="nf">sum</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">LOF detected </span><span class="si">{</span><span class="n">n_lof</span><span class="si">}</span><span class="s"> anomalies</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="6-comparing-all-three-methods">6. Comparing all three methods</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">IsolationForest</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">OneClassSVM</span>
+<span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">LocalOutlierFactor</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">X_normal</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">multivariate_normal</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="mi">500</span><span class="p">)</span>
+<span class="n">X_anomaly</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">vstack</span><span class="p">([</span><span class="n">X_normal</span><span class="p">,</span> <span class="n">X_anomaly</span><span class="p">])</span>
+<span class="n">true_labels</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="mi">500</span> <span class="o">+</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="mi">20</span><span class="p">)</span>
+
+<span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_s</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="n">methods</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">'</span><span class="s">Isolation Forest</span><span class="sh">'</span><span class="p">:</span> <span class="nc">IsolationForest</span><span class="p">(</span><span class="n">contamination</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">One-Class SVM</span><span class="sh">'</span><span class="p">:</span>    <span class="nc">OneClassSVM</span><span class="p">(</span><span class="n">nu</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">),</span>
+    <span class="sh">'</span><span class="s">LOF</span><span class="sh">'</span><span class="p">:</span>             <span class="nc">LocalOutlierFactor</span><span class="p">(</span><span class="n">contamination</span><span class="o">=</span><span class="mf">0.04</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">.</span><span class="nf">items</span><span class="p">():</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">fit_predict</span><span class="p">(</span><span class="n">X_s</span><span class="p">)</span>
+    <span class="n">correct</span> <span class="o">=</span> <span class="p">(</span><span class="n">preds</span> <span class="o">==</span> <span class="n">true_labels</span><span class="p">).</span><span class="nf">sum</span><span class="p">()</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="mi">20</span><span class="n">s</span><span class="si">}</span><span class="s">  Accuracy: </span><span class="si">{</span><span class="n">correct</span><span class="o">/</span><span class="nf">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="7-choosing-the-right-method">7. Choosing the right method</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th>Best for</th>
+      <th>Limitation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Z-score / IQR</strong></td>
+      <td>Single feature, quick check</td>
+      <td>Only works for simple univariate data</td>
+    </tr>
+    <tr>
+      <td><strong>Isolation Forest</strong></td>
+      <td>General purpose, large datasets, many features</td>
+      <td>Needs <code class="language-plaintext highlighter-rouge">contamination</code> estimate</td>
+    </tr>
+    <tr>
+      <td><strong>One-Class SVM</strong></td>
+      <td>When normal data has a clear boundary</td>
+      <td>Slow on large datasets, needs scaling</td>
+    </tr>
+    <tr>
+      <td><strong>LOF</strong></td>
+      <td>Local density differences</td>
+      <td>Slow on very large datasets</td>
+    </tr>
+    <tr>
+      <td><strong>Autoencoder</strong></td>
+      <td>Complex patterns, image/text data</td>
+      <td>Needs deep learning setup</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="8-the-contamination-parameter">8. The contamination parameter</h2>
+
+<p>Most sklearn anomaly detectors need <code class="language-plaintext highlighter-rouge">contamination</code> — your estimate of what fraction of the data is anomalous.</p>
+
+<p>If you have no idea: start with <code class="language-plaintext highlighter-rouge">0.01</code> to <code class="language-plaintext highlighter-rouge">0.05</code> (1–5%). Tune using:</p>
+<ul>
+  <li>Domain knowledge (“we know about 2% of transactions are fraudulent”)</li>
+  <li>Validation on labelled anomaly examples if you have them</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># If you have some labelled anomalies, evaluate precision/recall
+</span><span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">classification_report</span>
+
+<span class="c1"># Convert sklearn's 1/-1 to 1/0 for classification report
+</span><span class="n">y_true</span> <span class="o">=</span> <span class="p">(</span><span class="n">true_labels</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">y_pred</span> <span class="o">=</span> <span class="p">(</span><span class="n">preds</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">classification_report</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">target_names</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">normal</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">anomaly</span><span class="sh">'</span><span class="p">]))</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="9-real-world-applications">9. Real-world applications</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Domain</th>
+      <th>What is “normal”</th>
+      <th>What is anomalous</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Credit card fraud</strong></td>
+      <td>Typical spending patterns</td>
+      <td>Large amounts, unusual locations, odd hours</td>
+    </tr>
+    <tr>
+      <td><strong>Network security</strong></td>
+      <td>Normal traffic patterns</td>
+      <td>Port scans, DDoS, unusual data volumes</td>
+    </tr>
+    <tr>
+      <td><strong>Manufacturing</strong></td>
+      <td>Sensor readings from working machines</td>
+      <td>Readings from a machine about to fail</td>
+    </tr>
+    <tr>
+      <td><strong>Healthcare</strong></td>
+      <td>Typical patient vital signs</td>
+      <td>Readings indicating a medical event</td>
+    </tr>
+    <tr>
+      <td><strong>E-commerce</strong></td>
+      <td>Normal user browsing behaviour</td>
+      <td>Bot traffic, account takeover attempts</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Anomaly detection finds data points that don’t fit the pattern of normal data.</li>
+  <li><strong>Z-score and IQR</strong> are simple statistical methods for single-feature data.</li>
+  <li><strong>Isolation Forest</strong> is the go-to algorithm — fast, scalable, works on many features.</li>
+  <li><strong>One-Class SVM</strong> learns a tight boundary around normal data.</li>
+  <li><strong>LOF</strong> compares local densities to find locally unusual points.</li>
+  <li>All methods need a <code class="language-plaintext highlighter-rouge">contamination</code> estimate — how many anomalies you expect.</li>
+  <li>In most real applications anomalies are rare (&lt; 5%), so focus on <strong>recall</strong> (catching real anomalies) over accuracy.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">anomaly-detection</span>, <span class="tag">outlier-detection</span>, <span class="tag">isolation-forest</span>, <span class="tag">one-class-svm</span>, <span class="tag">unsupervised-learning</span>, <span class="tag">fraud-detection</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
