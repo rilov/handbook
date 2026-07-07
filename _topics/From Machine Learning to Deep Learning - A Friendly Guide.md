@@ -84,10 +84,10 @@ In Part 1 we wrote the weights by hand. In a real model, PyTorch assigns **rando
 import torch.nn as nn
 
 model = nn.Sequential(
-    nn.Linear(5, 4),   # same structure as Part 1
-    nn.ReLU(),
-    nn.Linear(4, 1),
-    nn.Sigmoid()
+    nn.Linear(5, 4),   # Layer 1: takes 5 features, passes through 4 neurons
+    nn.ReLU(),         # activation — same as Part 1
+    nn.Linear(4, 1),   # Layer 2: combines the 4 signals into a single output
+    nn.Sigmoid()       # squashes output to a 0–1 probability
 )
 
 # Predict before any training — weights are random
@@ -96,6 +96,8 @@ with torch.no_grad():
     print(raw_predictions)
 # Output: something like [[0.47], [0.51], [0.49], [0.52]] — basically guessing
 ```
+
+This is the same model from Part 1. The two `nn.Linear` layers were already there — Part 1 explained how a single neuron computes its output. Here we have a first layer of 4 neurons feeding into a second layer with 1 neuron. You do not need to understand layers deeply yet — Part 3 onwards covers this. For now, just notice that all the numbers in both layers need to be learned.
 
 The model starts knowing nothing. All four emails get roughly 50% spam probability — essentially a coin flip. Training is the process of improving those weights until predictions match the labels.
 
@@ -136,7 +138,17 @@ The higher the loss, the more the model needs to change. Training is just the pr
 
 ## 4. Step 4 — Backpropagation finds which weights caused the mistake
 
-The model has many weights spread across two layers. After computing the loss, we need to know: **which weights were most responsible for the mistake?**
+Look at the model we defined in Step 2:
+
+```python
+nn.Linear(5, 4)   # Layer 1: 5 inputs → 4 neurons, each with its own weights
+nn.ReLU()
+nn.Linear(4, 1)   # Layer 2: 4 inputs → 1 output neuron
+```
+
+Each `nn.Linear` layer has its own set of weights. `nn.Linear(5, 4)` alone has 5 × 4 = 20 weights plus 4 biases. The model has dozens of individual weight numbers in total, spread across both layers.
+
+After computing the loss, we need to know: **which of those weights were most responsible for the mistake?**
 
 This is what **backpropagation** does. It works backwards through the model, calculating how much each weight contributed to the error. PyTorch does this automatically with one line:
 
