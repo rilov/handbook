@@ -1,7 +1,7 @@
 ---
-title: "19. ML Glossary - Plain English Dictionary"
+title: "28. ML Glossary - Plain English Dictionary"
 category: Machine Learning
-order: 19
+order: 28
 tags:
   - machine-learning
   - glossary

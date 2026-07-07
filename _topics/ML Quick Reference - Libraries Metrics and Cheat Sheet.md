@@ -1,7 +1,7 @@
 ---
-title: "18. ML Quick Reference - Libraries, Metrics and Cheat Sheet"
+title: "27. ML Quick Reference - Libraries, Metrics and Cheat Sheet"
 category: Machine Learning
-order: 18
+order: 27
 tags:
   - machine-learning
   - cheat-sheet

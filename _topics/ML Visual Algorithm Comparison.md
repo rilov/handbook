@@ -1,7 +1,7 @@
 ---
-title: "23. ML Visual Algorithm Comparison"
+title: "32. ML Visual Algorithm Comparison"
 category: Machine Learning
-order: 23
+order: 32
 tags:
   - machine-learning
   - comparison

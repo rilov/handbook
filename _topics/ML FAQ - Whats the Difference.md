@@ -1,7 +1,7 @@
 ---
-title: "21. ML FAQ - What is the Difference Between..."
+title: "30. ML FAQ - What is the Difference Between..."
 category: Machine Learning
-order: 21
+order: 30
 tags:
   - machine-learning
   - faq

@@ -1,7 +1,7 @@
 ---
-title: "24. ML End-to-End Worked Project - Titanic"
+title: "33. ML End-to-End Worked Project - Titanic"
 category: Machine Learning
-order: 24
+order: 33
 tags:
   - machine-learning
   - end-to-end

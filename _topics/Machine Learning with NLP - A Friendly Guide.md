@@ -1,7 +1,7 @@
 ---
 title: "Machine Learning with NLP - A Friendly Guide"
 category: Machine Learning
-order: 15
+order: 34
 tags:
   - nlp
   - machine-learning

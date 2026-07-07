@@ -1,7 +1,7 @@
 ---
-title: "22. ML Algorithm Intuition Flashcards"
+title: "31. ML Algorithm Intuition Flashcards"
 category: Machine Learning
-order: 22
+order: 31
 tags:
   - machine-learning
   - flashcards
