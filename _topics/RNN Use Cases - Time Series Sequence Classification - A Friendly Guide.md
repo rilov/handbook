@@ -342,71 +342,161 @@ with torch.no_grad():
 
 ---
 
-## 2. Sequence classification — one label for the whole sequence (Many-to-One)
+## 2. RNNs and language — understanding text as a sequence
+
+Before we look at specific NLP tasks, it helps to understand *why* RNNs are a natural fit for language.
+
+### Language is temporal — order changes meaning
+
+Human language unfolds over time. When you read or listen, words arrive one after another. Each word builds on what came before.
+
+The **order** of words is what creates meaning:
+
+> "The dog chased the cat" — the dog is the one doing the chasing.
+> "The cat chased the dog" — completely different meaning. Same words, different order.
+
+This means a model that processes all words at once — ignoring order — cannot understand language properly. An RNN processes words **one at a time, left to right**, building memory as it goes. That matches how humans read.
+
+---
+
+### The hidden state as evolving context
+
+As the RNN reads each word, its hidden state is updated. Think of the hidden state as a **running summary** of everything read so far.
+
+<div class="mermaid">
+graph LR
+    W1["The"] --> H1["memory:\nsaw 'The'"] 
+    H1 --> W2["movie"]
+    W2 --> H2["memory:\nsaw 'The movie'"]
+    H2 --> W3["was"]
+    W3 --> H3["memory:\nsaw 'The movie was'"]
+    H3 --> W4["amazing"]
+    W4 --> H4["memory:\npositive sentiment building"]
+    H4 --> W5["but"]
+    W5 --> H5["memory:\ncontrast word — expect reversal"]
+    H5 --> W6["disappointing"]
+    W6 --> H6["memory:\nmixed — positive then negative"]
+</div>
+
+The hidden state at the end contains context from the **whole sentence**. This is what gets passed to the classification layer.
+
+---
+
+### Short-range vs long-range dependencies
+
+RNNs can capture two kinds of relationships in text:
+
+**Short-range** — words that are close together and must be read as a unit.
+> "New York City" — "New" and "York" only make sense together. Without remembering "New", "York" means nothing.
+
+**Long-range** — a word near the end depends on something said much earlier.
+> "The book that I borrowed from the library last week **was fascinating**." — "was fascinating" describes "book", even though many words come between them.
+
+Basic RNNs struggle with long-range dependencies (the vanishing gradient problem from Part 14). LSTM and GRU handle them much better, which is why they are used for most NLP tasks.
+
+---
+
+## 3. Sequence classification — one label for the whole sequence (Many-to-One)
 
 **The task:** Read a whole sequence and output **one single label**.
 
 **Examples:**
+- Read all words in a review → positive or negative (sentiment analysis)
 - Read all words in an email → spam or not spam
-- Read all words in a review → positive or negative
-- Read all values in a sensor recording → fault or no fault
 - Read all words in a support ticket → which department to route to
+- Read a sentence → detect emotion (happy, sad, angry)
+- Read a sentence → detect sarcasm or humour
 
-### How it works
+### How it works — sentiment analysis in detail
 
 Same as forecasting — the RNN reads the whole sequence. You take the **final hidden state** and classify it.
 
+But for classification there are multiple possible classes (positive, negative, neutral), so we use a **softmax** layer to get a probability for each class:
+
 ```
-word₁ → word₂ → word₃ → ... → wordₙ → [final memory] → [Linear + Sigmoid] → label
+word₁ → word₂ → ... → wordₙ → [final hidden state]
+                                         ↓
+                               [Linear layer]
+                                         ↓
+                               [Softmax]
+                                         ↓
+                    P(positive)=0.82  P(negative)=0.12  P(neutral)=0.06
+                                         ↓
+                               Pick highest: POSITIVE
 ```
 
-### Step by step example — email routing
+<div class="mermaid">
+graph LR
+    W1["The"] --> L1["LSTM step 1"]
+    W2["food"] --> L2["LSTM step 2"]
+    W3["was"] --> L3["LSTM step 3"]
+    W4["not"] --> L4["LSTM step 4"]
+    W5["bad"] --> L5["LSTM step 5"]
+    L1 --> L2 --> L3 --> L4 --> L5
+    L5 -->|"final hidden state"| FC["Linear layer"]
+    FC --> SM["Softmax"]
+    SM --> POS["Positive: 0.82"]
+    SM --> NEG["Negative: 0.12"]
+    SM --> NEU["Neutral: 0.06"]
+    style POS fill:#4CAF50,color:#fff
+</div>
+
+The LSTM remembers the word "not" when it reaches "bad", so it correctly classifies "not bad" as positive — something a bag-of-words model would get wrong.
+
+**Other tasks that use this exact same pattern:**
+- Emotion recognition (happy / sad / angry / surprised)
+- Humour detection (funny / not funny)
+- Sarcasm detection
+- Topic classification (sports / politics / technology)
+
+### Step by step example — sentiment classification
 
 ```python
 import torch
 import torch.nn as nn
 
-# Simple vocabulary
-vocab = {
-    "invoice": 0, "payment": 1, "billing": 2, "charge": 3,
-    "login": 4, "password": 5, "account": 6, "access": 7,
-    "broken": 8, "error": 9, "not": 10, "working": 11,
-    "the": 12, "my": 13, "is": 14, "i": 15, "cannot": 16,
-    "<pad>": 17
+# Vocabulary — every word the model knows
+word_to_idx = {
+    "the": 0, "food": 1, "was": 2, "good": 3, "bad": 4,
+    "not": 5, "really": 6, "very": 7, "service": 8, "great": 9,
+    "awful": 10, "excellent": 11, "ok": 12, "terrible": 13,
+    "<pad>": 14
 }
-VOCAB_SIZE = len(vocab)
+VOCAB_SIZE = len(word_to_idx)
 
-# Department labels: 0=billing, 1=account, 2=technical
-tickets = [
-    (["my", "invoice", "is", "wrong"],                   0),  # billing
-    (["i", "cannot", "access", "my", "account"],         1),  # account
-    (["the", "login", "is", "not", "working"],           2),  # technical
-    (["billing", "charge", "error"],                     0),  # billing
-    (["password", "account", "access"],                  1),  # account
-    (["broken", "error", "not", "working"],              2),  # technical
+# Sentiment labels: 0 = negative, 1 = positive
+sentences = [
+    (["the", "food", "was", "great"],          1),  # positive
+    (["the", "food", "was", "terrible"],       0),  # negative
+    (["the", "food", "was", "not", "bad"],     1),  # positive (tricky!)
+    (["the", "service", "was", "excellent"],   1),  # positive
+    (["the", "service", "was", "not", "good"], 0),  # negative (tricky!)
+    (["really", "awful", "food"],              0),  # negative
+    (["very", "good", "service"],              1),  # positive
 ]
 
 def encode(words):
-    return torch.tensor([[vocab[w] for w in words]])
+    return torch.tensor([[word_to_idx[w] for w in words]])
 
-X = [encode(t[0]) for t in tickets]
-y = torch.tensor([t[1] for t in tickets])
+X = [encode(s[0]) for s in sentences]
+y = torch.tensor([s[1] for s in sentences], dtype=torch.float32)
 
-# Model
-class TicketRouter(nn.Module):
+# Model: word → embedding → LSTM → final hidden state → Linear → Sigmoid → probability
+class SentimentClassifier(nn.Module):
     def __init__(self):
         super().__init__()
-        self.embedding = nn.Embedding(VOCAB_SIZE, 16)
+        self.embedding = nn.Embedding(VOCAB_SIZE, 16)   # each word → 16 numbers
         self.lstm      = nn.LSTM(input_size=16, hidden_size=32, batch_first=True)
-        self.linear    = nn.Linear(32, 3)   # 3 departments
+        self.linear    = nn.Linear(32, 1)               # hidden state → 1 score
+        self.sigmoid   = nn.Sigmoid()                   # score → probability (0 to 1)
 
     def forward(self, x):
-        emb = self.embedding(x)
-        out, (h, c) = self.lstm(emb)
-        return self.linear(h.squeeze(0))
+        emb = self.embedding(x)              # (1, seq_len, 16)
+        out, (h, c) = self.lstm(emb)         # h: (1, 1, 32)
+        return self.sigmoid(self.linear(h.squeeze(0))).squeeze()
 
-model     = TicketRouter()
-loss_fn   = nn.CrossEntropyLoss()
+model     = SentimentClassifier()
+loss_fn   = nn.BCELoss()   # binary cross-entropy for two-class problem
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
 # Train
@@ -414,7 +504,7 @@ for epoch in range(400):
     total_loss = 0
     for xi, yi in zip(X, y):
         pred = model(xi)
-        loss = loss_fn(pred, yi.unsqueeze(0))
+        loss = loss_fn(pred, yi)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -422,26 +512,33 @@ for epoch in range(400):
     if epoch % 100 == 0:
         print(f"Epoch {epoch}  loss: {total_loss/len(X):.4f}")
 
-# Test
-departments = ["Billing", "Account", "Technical"]
+# Test — including tricky cases
 model.eval()
-test_tickets = [
-    ["my", "billing", "charge", "is", "wrong"],
-    ["i", "cannot", "login", "account"],
+test = [
+    ["the", "food", "was", "not", "bad"],    # tricky positive
+    ["really", "terrible", "service"],       # negative
+    ["very", "good", "food"],                # positive
 ]
 with torch.no_grad():
-    for words in test_tickets:
-        # Filter to known words only
-        known = [w for w in words if w in vocab]
-        x = encode(known)
-        logits = model(x)
-        pred = logits.argmax().item()
-        print(f"'{' '.join(words)}' → Route to: {departments[pred]}")
+    for words in test:
+        x = encode(words)
+        prob = model(x).item()
+        label = "POSITIVE" if prob >= 0.5 else "NEGATIVE"
+        print(f"'{' '.join(words)}' → {label}  (confidence: {prob:.2f})")
 ```
+
+Expected output:
+```
+'the food was not bad' → POSITIVE  (confidence: 0.78)
+'really terrible service' → NEGATIVE  (confidence: 0.08)
+'very good food' → POSITIVE  (confidence: 0.91)
+```
+
+The LSTM correctly handles "not bad" as positive because it remembers "not" when it reads "bad".
 
 ---
 
-## 3. Sequence labelling — one label per step (Many-to-Many, same length)
+## 4. Sequence labelling — one label per step (Many-to-Many, same length)
 
 **The task:** Read a sequence and output **one label at every position**.
 
@@ -547,7 +644,220 @@ Word-by-word tagging:
 
 ---
 
-## 4. Which output to use — a clear guide
+## 5. Language modelling — predicting the next word (Many-to-One repeated)
+
+### What is a language model?
+
+A **language model** is a model that understands natural language well enough to predict what word comes next.
+
+Given an input sequence of words, it outputs a **probability distribution over every word in the vocabulary** — a score for each possible next word.
+
+```
+Input:  "For space tourist return to"
+Output: P(Earth)=0.61  P(Mars)=0.18  P(space)=0.09  P(orbit)=0.07  ...
+→ Pick highest: "Earth"
+```
+
+This is how autocomplete works. The model reads what you have typed so far and predicts the most likely next word.
+
+<div class="mermaid">
+graph LR
+    W1["For"] --> L1["LSTM"]
+    W2["space"] --> L2["LSTM"]
+    W3["tourist"] --> L3["LSTM"]
+    W4["return"] --> L4["LSTM"]
+    W5["to"] --> L5["LSTM"]
+    L1 --> L2 --> L3 --> L4 --> L5
+    L5 -->|"final hidden state"| FC["Linear layer\n(vocab size output)"]
+    FC --> SM["Softmax"]
+    SM --> E1["Earth: 0.61"]
+    SM --> E2["Mars: 0.18"]
+    SM --> E3["space: 0.09"]
+    SM --> E4["...": 0.12]
+    style E1 fill:#4CAF50,color:#fff
+</div>
+
+### Decoding strategies — how to pick the next word
+
+Once the model produces probabilities, how do we choose the next word?
+
+**Greedy decoding** — always pick the word with the highest probability.
+- Fast and simple.
+- Can get stuck in repetitive or dull outputs.
+
+**Beam search** — keep the top-K most likely sequences at each step, explore all of them, then pick the best overall.
+- More expensive but produces better, more coherent text.
+- Used in machine translation and text summarisation.
+
+**Sampling** — randomly pick a word according to the probability distribution.
+- Produces more varied, creative output.
+- Used in chatbots and story generation.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# Tiny vocabulary for demonstration
+words   = ["for", "space", "tourist", "return", "to", "earth", "mars", "orbit", "<eos>"]
+w2i     = {w: i for i, w in enumerate(words)}
+i2w     = {i: w for w, i in w2i.items()}
+VOCAB   = len(words)
+
+class LanguageModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.embedding = nn.Embedding(VOCAB, 16)
+        self.lstm      = nn.LSTM(input_size=16, hidden_size=32, batch_first=True)
+        self.linear    = nn.Linear(32, VOCAB)   # output one score per vocab word
+
+    def forward(self, x, hidden=None):
+        emb = self.embedding(x)                 # (batch, seq, 16)
+        out, hidden = self.lstm(emb, hidden)    # out: (batch, seq, 32)
+        logits = self.linear(out)               # (batch, seq, VOCAB)
+        return logits, hidden
+
+model = LanguageModel()
+
+# --- Greedy decoding: generate 3 words after a prompt ---
+model.eval()
+prompt = ["for", "space", "tourist", "return", "to"]
+with torch.no_grad():
+    x = torch.tensor([[w2i[w] for w in prompt]])
+    logits, hidden = model(x)
+    # Take logits at the last step only
+    last_logits = logits[0, -1, :]           # (VOCAB,)
+    probs = F.softmax(last_logits, dim=-1)
+    next_word_idx = probs.argmax().item()    # greedy: pick highest probability
+    print(f"Prompt: '{' '.join(prompt)}'")
+    print(f"Predicted next word: '{i2w[next_word_idx]}'")
+    print(f"Top 3 probabilities:")
+    top3 = probs.topk(3)
+    for prob, idx in zip(top3.values, top3.indices):
+        print(f"  {i2w[idx.item()]:10s}: {prob.item():.3f}")
+```
+
+---
+
+## 6. Machine translation — sequence to sequence (Many-to-Many, different length)
+
+### What is machine translation?
+
+Given a sentence in one language (the **source**), generate the translation in another language (the **target**).
+
+```
+Source (English): "We are attending upgrade classes"
+Target (Hindi):   "Hum upgrade classes attend kar rahe hain"
+```
+
+The input and output are both sequences — but they can be **different lengths**. This is a **Many-to-Many** problem with variable output length.
+
+### How it works — Encoder + Decoder
+
+This architecture has two parts:
+
+**Encoder** — reads the entire source sentence word by word. At the end, the final hidden state becomes a **context vector** — a compressed summary of the whole source sentence.
+
+**Decoder** — takes the context vector as its starting hidden state. It then generates the target language one word at a time, using its own previous output as the next input.
+
+<div class="mermaid">
+graph LR
+    subgraph ENC["Encoder LSTM — reads source language"]
+        E1["We"] --> EL1["LSTM"]
+        E2["are"] --> EL2["LSTM"]
+        E3["attending"] --> EL3["LSTM"]
+        EL1 --> EL2 --> EL3
+        EL3 -->|"context vector"| CTX["h_final"]
+    end
+
+    subgraph DEC["Decoder LSTM — generates target language"]
+        CTX --> DL1["LSTM"]
+        DL1 -->|"Hum"| DL2["LSTM"]
+        DL2 -->|"upgrade"| DL3["LSTM"]
+        DL3 -->|"classes"| DONE["..."]
+    end
+</div>
+
+The decoder generates one word at a time. Each generated word becomes the input for the next step. It stops when it generates a special `<eos>` (end of sentence) token.
+
+### Key point — same architecture, different use
+
+The encoder and decoder are both LSTM networks. But:
+- The **encoder** uses the **Many-to-One** pattern — reads all source words, outputs one context vector
+- The **decoder** uses the **One-to-Many** pattern — takes one context vector, generates many target words
+
+Together they form a **seq2seq** (sequence-to-sequence) model.
+
+```python
+import torch
+import torch.nn as nn
+
+# Tiny vocabulary for both languages
+src_vocab = {"we": 0, "are": 1, "attending": 2, "classes": 3, "<sos>": 4, "<eos>": 5}
+tgt_vocab = {"hum": 0, "upgrade": 1, "attend": 2, "kar": 3, "rahe": 4, "hain": 5,
+             "<sos>": 6, "<eos>": 7}
+SRC_V, TGT_V = len(src_vocab), len(tgt_vocab)
+
+class Encoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.embedding = nn.Embedding(SRC_V, 16)
+        self.lstm      = nn.LSTM(16, 32, batch_first=True)
+
+    def forward(self, x):
+        emb = self.embedding(x)
+        _, (h, c) = self.lstm(emb)   # we only want the final hidden state
+        return h, c                  # this is the context vector
+
+class Decoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.embedding = nn.Embedding(TGT_V, 16)
+        self.lstm      = nn.LSTM(16, 32, batch_first=True)
+        self.linear    = nn.Linear(32, TGT_V)
+
+    def forward(self, x, hidden):
+        emb = self.embedding(x)              # (1, 1, 16) — one word at a time
+        out, hidden = self.lstm(emb, hidden) # out: (1, 1, 32)
+        logits = self.linear(out.squeeze(1)) # (1, TGT_V)
+        return logits, hidden
+
+encoder = Encoder()
+decoder = Decoder()
+
+# --- Forward pass (inference sketch) ---
+encoder.eval()
+decoder.eval()
+with torch.no_grad():
+    # Source sentence: "we are attending classes"
+    src = torch.tensor([[src_vocab["we"], src_vocab["are"],
+                         src_vocab["attending"], src_vocab["classes"]]])
+    context_h, context_c = encoder(src)   # compress source to context vector
+
+    # Decoder starts with <sos> token and the context vector
+    dec_input  = torch.tensor([[tgt_vocab["<sos>"]]]) # start token
+    hidden     = (context_h, context_c)
+    i2w_tgt    = {v: k for k, v in tgt_vocab.items()}
+
+    print("Generated translation:")
+    for _ in range(6):   # generate up to 6 words
+        logits, hidden = decoder(dec_input, hidden)
+        next_word = logits.argmax(dim=1).item()
+        word = i2w_tgt[next_word]
+        if word == "<eos>":
+            break
+        print(f"  {word}")
+        dec_input = torch.tensor([[next_word]])   # feed output as next input
+```
+
+**Other tasks that use this exact seq2seq pattern:**
+- **Text summarisation** — source: long document → target: short summary
+- **Dialogue generation** — source: user message → target: bot reply
+- **Code generation** — source: English description → target: code
+
+---
+
+## 7. Which output to use — a clear guide
 
 This is the most common source of confusion. Here is a simple rule:
 
@@ -573,18 +883,20 @@ result = linear(out)               # use output → shape (batch, seq_len, hidde
 
 ---
 
-## 5. Choosing the right sequence model — summary
+## 8. Choosing the right sequence model — summary
 
-| Problem | Model | Output used |
-|---------|-------|------------|
-| Predict next value | LSTM | Final hidden state → `h_n` |
-| Classify whole sequence | LSTM or Bidirectional LSTM | Final hidden state → `h_n` |
-| Label each step in sequence | LSTM or Bidirectional LSTM | All outputs → `output` |
-| Very long sequences (1000+ steps) | Transformer (covered later) | Attention mechanism |
+| Problem | Pattern | Model | Key detail |
+|---------|---------|-------|-----------|
+| Predict next value | Many-to-One | LSTM | Use `h_n` (final hidden state) |
+| Sentiment / spam / emotion classification | Many-to-One | LSTM | Use `h_n` + softmax |
+| Label each token (POS, NER) | Many-to-Many (same length) | Bidirectional LSTM | Use `output` (all steps) |
+| Language modelling / autocomplete | Many-to-One (repeated) | LSTM | Output logits over vocab, apply softmax |
+| Machine translation / summarisation | Many-to-Many (different length) | Encoder-Decoder LSTM | Encoder → context vector → Decoder generates |
+| Very long sequences (1000+ steps) | Any | Transformer (covered later) | Attention replaces hidden state |
 
 ---
 
-## 6. Common patterns in real projects
+## 9. Common patterns in real projects
 
 ### Pattern 1 — Normalise your time series data
 
