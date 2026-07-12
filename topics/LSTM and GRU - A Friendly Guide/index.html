@@ -47,15 +47,75 @@
   <section class="topic-body">
     <h1 id="part-15-lstm-and-gru--solving-the-memory-problem--a-friendly-guide">Part 15: LSTM and GRU — Solving the Memory Problem — A Friendly Guide</h1>
 
-<p>In Part 14, we learned that an RNN reads data step by step and keeps a memory (the hidden state).</p>
+<p>In Part 14, we learned how an RNN reads data step by step and keeps a hidden state — a small memory of what it has seen.</p>
 
-<p>But we also saw one big problem: <strong>RNNs forget things from long ago</strong>.</p>
+<p>We also saw the two gradient problems:</p>
+<ul>
+  <li><strong>Vanishing gradient</strong> — the learning signal fades to zero going back through long sequences</li>
+  <li><strong>Exploding gradient</strong> — the learning signal grows out of control</li>
+</ul>
 
-<p>Imagine you are reading a detective story. The important clue was mentioned on page 3. By page 50, you still remember it — because your brain knows it was important and held onto it.</p>
+<p>In this part we focus on the deeper consequence of vanishing gradients: <strong>RNNs cannot capture long-distance dependencies</strong>. And we will learn how LSTM and GRU were designed to fix exactly this.</p>
 
-<p>A basic RNN cannot do this. Every step, the memory is overwritten a little. After many steps, early information is almost gone.</p>
+<hr />
 
-<p><strong>LSTM</strong> (Long Short-Term Memory) and <strong>GRU</strong> (Gated Recurrent Unit) fix this. They give the network a way to <strong>choose what to remember and what to forget</strong>.</p>
+<h2 id="0-the-core-problem--long-distance-dependencies">0. The core problem — long-distance dependencies</h2>
+
+<p>Imagine an RNN that has read 100 tokens (words or time steps). We are now at step 100 — we call it <strong>h100</strong>.</p>
+
+<p>Ideally, h100 should carry a memory of <strong>everything from step 1 to step 99</strong>. It should know what happened at the very beginning of the sequence.</p>
+
+<p>But in practice, that is <strong>not what happens</strong>.</p>
+
+<p>The RNN memory at step 100 mostly remembers recent steps — steps 95, 96, 97, 98, 99. Anything from the early steps — step 1, 2, 3 — has been overwritten so many times it is effectively gone.</p>
+
+<div class="mermaid">
+graph LR
+    X1["Step 1\ntoken x1"] --&gt; H1["h1"]
+    H1 --&gt; H2["h2"]
+    H2 --&gt; Dots["..."]
+    Dots --&gt; H98["h98"]
+    H98 --&gt; H99["h99"]
+    H99 --&gt; H100["h100\nfinal memory"]
+
+    style X1 fill:#ffcccc
+    style H100 fill:#4CAF50,color:#fff
+</div>
+
+<p>At h100, the early tokens (shown in red) are almost forgotten. The later tokens (green) dominate the memory.</p>
+
+<hr />
+
+<h3 id="why-this-matters--a-real-example">Why this matters — a real example</h3>
+
+<p>Consider this sentence:</p>
+
+<blockquote>
+  <p>“The <strong>trophy</strong> didn’t fit in the suitcase because <strong>it</strong> was too big.”</p>
+</blockquote>
+
+<p>What does “it” refer to? The trophy. But “it” is far from “trophy” in the sentence. A basic RNN reading word by word will have mostly forgotten “trophy” by the time it reaches “it”.</p>
+
+<p>Or in a time series:</p>
+
+<blockquote>
+  <p>Predicting this month’s sales based on 12 months of history — the RNN mostly uses the last 2–3 months and ignores the pattern from a year ago.</p>
+</blockquote>
+
+<p>This is called a <strong>long-distance dependency</strong> — a connection between two things that are far apart in a sequence. Basic RNNs struggle with these. They are designed to handle sequences but fail in practice when sequences are long.</p>
+
+<hr />
+
+<h3 id="what-we-need">What we need</h3>
+
+<p>We need an architecture that can:</p>
+<ol>
+  <li><strong>Explicitly hold information</strong> for a long time — not just a few steps</li>
+  <li><strong>Decide what to keep</strong> — not all information is equally important</li>
+  <li><strong>Pass gradients cleanly</strong> — so even early steps can learn</li>
+</ol>
+
+<p>This is exactly what <strong>LSTM</strong> (Long Short-Term Memory) and <strong>GRU</strong> (Gated Recurrent Unit) provide. They give the network a way to <strong>explicitly choose what to remember and what to forget</strong>.</p>
 
 <hr />
 
@@ -365,6 +425,43 @@ graph LR
 
 <hr />
 
+<h3 id="does-lstm-fully-solve-the-vanishing-gradient-problem">Does LSTM fully solve the vanishing gradient problem?</h3>
+
+<p><strong>No — but it greatly reduces it.</strong></p>
+
+<p>A basic RNN must multiply the gradient by the same weight at every single step. This causes the gradient to shrink to almost zero over long sequences.</p>
+
+<p>LSTM does something clever: it keeps a <strong>cell state</strong> — a separate memory channel that runs straight through the sequence. Crucially, the gradient can flow <strong>along the cell state</strong> without being multiplied aggressively at every step. The gates add and remove information through addition (not multiplication), which keeps the gradient much healthier.</p>
+
+<div class="mermaid">
+graph LR
+    subgraph RNN["Basic RNN — gradient multiplied at every step"]
+        direction LR
+        R1["h1"] --&gt;|"× weight\n× deriv"| R2["h2"]
+        R2 --&gt;|"× weight\n× deriv"| R3["h3"]
+        R3 --&gt;|"× weight\n× deriv → near zero"| R100["h100"]
+        style R100 fill:#ffcccc
+    end
+
+    subgraph LSTM["LSTM — cell state is a gradient highway"]
+        direction LR
+        L1["c1"] --&gt;|"add/forget"| L2["c2"]
+        L2 --&gt;|"add/forget"| L3["c3"]
+        L3 --&gt;|"add/forget → still alive"| L100["c100"]
+        style L100 fill:#4CAF50,color:#fff
+    end
+</div>
+
+<blockquote>
+  <p><strong>Simple way to think about it:</strong> A basic RNN is like a game of telephone — the message degrades at every person. LSTM is like passing a notebook — you can write new things, cross things out, but the notebook itself travels intact.</p>
+</blockquote>
+
+<p><strong>The result:</strong> LSTM can learn dependencies across hundreds of steps. A basic RNN struggles after 10–20 steps.</p>
+
+<p>But LSTM does <strong>not</strong> completely eliminate the vanishing gradient. For extremely long sequences (thousands of steps), even LSTM can struggle. That is why Transformers (covered in a later part) were eventually developed — they use attention, which connects any two positions directly without passing through intermediate steps at all.</p>
+
+<hr />
+
 <h2 id="4-lstm-in-pytorch">4. LSTM in PyTorch</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
@@ -474,46 +571,116 @@ graph LR
 
 <hr />
 
-<h2 id="6-gru--a-simpler-version-of-lstm">6. GRU — a simpler version of LSTM</h2>
+<h2 id="6-why-lstm-is-a-heavy-model">6. Why LSTM is a “heavy” model</h2>
 
-<p>GRU (Gated Recurrent Unit) was invented in 2014 as a <strong>simpler</strong> version of LSTM. It has <strong>two gates</strong> instead of three, and only <strong>one memory stream</strong> instead of two.</p>
+<p>LSTM works very well — but it has a cost.</p>
+
+<p>Each of the three gates (forget, input, output) has its <strong>own set of weights</strong>. These weights are all trained separately during training. This means LSTM has a large number of parameters compared to a basic RNN.</p>
+
+<p>Think of it like this: a basic RNN is a small notebook with one page. LSTM is a three-section binder — much more organised and powerful, but heavier and more expensive to carry.</p>
 
 <table>
   <thead>
     <tr>
-      <th> </th>
-      <th>LSTM</th>
-      <th>GRU</th>
+      <th>Model</th>
+      <th>Gates</th>
+      <th>Weight matrices</th>
+      <th>Relative size</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Gates</td>
+      <td>Basic RNN</td>
+      <td>0</td>
+      <td>2 (input + hidden)</td>
+      <td>Small</td>
+    </tr>
+    <tr>
+      <td>LSTM</td>
       <td>3 (forget, input, output)</td>
-      <td>2 (reset, update)</td>
+      <td>8 (4 for input, 4 for hidden)</td>
+      <td>Large</td>
     </tr>
     <tr>
-      <td>Memory streams</td>
-      <td>2 (hidden state + cell state)</td>
-      <td>1 (hidden state only)</td>
-    </tr>
-    <tr>
-      <td>Parameters</td>
-      <td>More</td>
-      <td>Fewer</td>
-    </tr>
-    <tr>
-      <td>Training speed</td>
-      <td>Slower</td>
-      <td>Faster</td>
-    </tr>
-    <tr>
-      <td>Performance</td>
-      <td>Often slightly better on long sequences</td>
-      <td>Often similar, sometimes better on smaller data</td>
+      <td>GRU</td>
+      <td>2 (update, reset)</td>
+      <td>6 (3 for input, 3 for hidden)</td>
+      <td>Medium</td>
     </tr>
   </tbody>
 </table>
+
+<p>Because LSTM has so many parameters, it needs <strong>more training data</strong> to learn properly. If you train LSTM on a small dataset, it may overfit — it memorises the training examples instead of learning general patterns.</p>
+
+<blockquote>
+  <p><strong>Rule of thumb from research:</strong> If you have a large dataset, LSTM tends to perform better. If you have a smaller dataset, GRU often works just as well and trains more reliably.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="7-gru--a-simpler-version-of-lstm">7. GRU — a simpler version of LSTM</h2>
+
+<p>Researchers asked: “Can we get the same long-term memory benefit as LSTM, but with fewer parameters?”</p>
+
+<p>The answer was <strong>GRU (Gated Recurrent Unit)</strong>, introduced in 2014.</p>
+
+<p>The key idea: instead of three separate gates (forget, input, output), combine the forget gate and input gate into a single gate called the <strong>update gate</strong>. And instead of two memory streams (cell state + hidden state), use just one.</p>
+
+<h3 id="the-two-gru-gates">The two GRU gates</h3>
+
+<p><strong>Gate 1 — Update gate</strong></p>
+
+<p>The update gate combines what LSTM’s forget gate and input gate did separately.</p>
+
+<p>It asks one question: <strong>“How much of the old memory should I keep, and how much should I replace with new information?”</strong></p>
+
+<ul>
+  <li>Close to 1 → keep most of the old memory, add very little new</li>
+  <li>Close to 0 → mostly replace the old memory with new information</li>
+</ul>
+
+<p>Think of it like a mixing knob on a music player — slide it left for more old, right for more new.</p>
+
+<p><strong>Gate 2 — Reset gate</strong></p>
+
+<p>The reset gate asks: <strong>“When I am computing new information to possibly write into memory, how much of the current old memory should I look at?”</strong></p>
+
+<ul>
+  <li>Close to 1 → look at all of the old memory when computing the new info</li>
+  <li>Close to 0 → mostly ignore the old memory — start fresh</li>
+</ul>
+
+<p>Think of it like a “clear history” button for computing new content — if the topic has completely changed, reset and compute the new info without being influenced by the old.</p>
+
+<div class="mermaid">
+graph TD
+    NewInput["New input arrives"] --&gt; UG["Update Gate\nHow much old to keep\nvs new to add?"]
+    NewInput --&gt; RG["Reset Gate\nWhen computing new info\nhow much old memory to look at?"]
+    OldMemory["Old hidden state h"] --&gt; UG
+    OldMemory --&gt; RG
+    RG --&gt; NewCandidate["New candidate memory\ncomputed with reset gate"]
+    UG --&gt; NewCandidate
+    UG --&gt;|"blend old + new"| NewHidden["Updated hidden state h'"]
+    NewCandidate --&gt; NewHidden
+</div>
+
+<h3 id="lstm-vs-gru--what-gets-combined">LSTM vs GRU — what gets combined</h3>
+
+<div class="mermaid">
+graph TD
+    subgraph LSTM_Gates["LSTM — 3 gates"]
+        FG["Forget gate\nerase old cell state"]
+        IG["Input gate\nwrite to cell state"]
+        OG["Output gate\nread from cell state to hidden"]
+    end
+
+    subgraph GRU_Gates["GRU — 2 gates"]
+        UGate["Update gate\ncombines forget + input\ncontrols blend of old and new"]
+        RGate["Reset gate\ncontrols how much old memory\ninfluences new candidate"]
+    end
+</div>
+
+<p>GRU does <strong>exactly the same job</strong> as LSTM — it can hold long-term dependencies — but it does it with fewer moving parts.</p>
 
 <h3 id="gru-in-pytorch">GRU in PyTorch</h3>
 
@@ -528,24 +695,69 @@ graph LR
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">20.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">22.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">24.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">23.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">25.0</span><span class="p">]]])</span>
 
-<span class="n">output</span><span class="p">,</span> <span class="n">h_n</span> <span class="o">=</span> <span class="nf">gru</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>   <span class="c1"># only one hidden state — simpler than LSTM
+<span class="n">output</span><span class="p">,</span> <span class="n">h_n</span> <span class="o">=</span> <span class="nf">gru</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>   <span class="c1"># only one hidden state — no cell state
 </span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Output shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (1, 5, 16)
 </span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">h_n shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">h_n</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>        <span class="c1"># (1, 1, 16)
 </span></code></pre></div></div>
 
-<p>The only difference from <code class="language-plaintext highlighter-rouge">nn.RNN</code>: replace <code class="language-plaintext highlighter-rouge">nn.RNN</code> with <code class="language-plaintext highlighter-rouge">nn.GRU</code>. The rest of your code stays exactly the same.</p>
+<p>The only code change from LSTM: <code class="language-plaintext highlighter-rouge">nn.LSTM</code> → <code class="language-plaintext highlighter-rouge">nn.GRU</code>. Everything else stays the same.</p>
 
-<h3 id="which-should-you-use">Which should you use?</h3>
-
-<ul>
-  <li><strong>Try GRU first</strong> — fewer parameters, trains faster, often similar accuracy</li>
-  <li><strong>Use LSTM</strong> if your sequences are very long (hundreds of steps) or GRU is not good enough</li>
-  <li>In practice, the difference is often small — experiment with both</li>
-</ul>
+<p>Note: GRU returns only <code class="language-plaintext highlighter-rouge">h_n</code> (one hidden state). LSTM returns <code class="language-plaintext highlighter-rouge">(h_n, c_n)</code> (hidden state + cell state).</p>
 
 <hr />
 
-<h2 id="7-stacked-rnns--making-them-deeper">7. Stacked RNNs — making them deeper</h2>
+<h2 id="8-choosing-between-lstm-and-gru">8. Choosing between LSTM and GRU</h2>
+
+<p>There is no single best answer. Both do the same job. Here is the practical guide:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Recommendation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Large dataset</strong> (tens of thousands of examples or more)</td>
+      <td>Use LSTM — more parameters can learn richer patterns</td>
+    </tr>
+    <tr>
+      <td><strong>Small or medium dataset</strong></td>
+      <td>Use GRU — fewer parameters, less risk of overfitting</td>
+    </tr>
+    <tr>
+      <td><strong>Compute is limited</strong> (small GPU, mobile device)</td>
+      <td>Use GRU — trains faster, uses less memory</td>
+    </tr>
+    <tr>
+      <td><strong>Very long sequences</strong> (hundreds of steps)</td>
+      <td>Start with LSTM — slightly better at very long-range dependencies</td>
+    </tr>
+    <tr>
+      <td><strong>You are not sure</strong></td>
+      <td>Try GRU first. If it is not good enough, switch to LSTM</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mermaid">
+graph TD
+    Q1["How much data do you have?"]
+    Q1 --&gt;|"Large dataset\nmany examples"| LSTM_rec["Use LSTM\nmore parameters\nbetter on large data"]
+    Q1 --&gt;|"Small or medium\ndataset"| GRU_rec["Use GRU\nfewer parameters\neasier to train"]
+    Q1 --&gt;|"Not sure"| Try["Start with GRU\nswitch to LSTM\nif needed"]
+    style LSTM_rec fill:#4CAF50,color:#fff
+    style GRU_rec fill:#2196F3,color:#fff
+</div>
+
+<blockquote>
+  <p><strong>Key insight from the syllabus:</strong> The research community has not found definitive evidence that one is always better. The data-size rule of thumb is the most reliable guide in practice.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="9-stacked-rnns--making-them-deeper">9. Stacked RNNs — making them deeper</h2>
 
 <p>Just like CNNs stack many convolutional layers, you can stack multiple LSTM or GRU layers:</p>
 
@@ -568,7 +780,7 @@ graph LR
 
 <hr />
 
-<h2 id="8-bidirectional-rnns">8. Bidirectional RNNs</h2>
+<h2 id="10-bidirectional-rnns">10. Bidirectional RNNs</h2>
 
 <p>A normal RNN reads left to right. But for tasks like understanding a whole sentence, reading in <strong>both directions</strong> helps:</p>
 
@@ -598,7 +810,7 @@ Combined:  [forward summary + backward summary] → final answer
 
 <hr />
 
-<h2 id="9-handling-variable-length-sequences">9. Handling variable-length sequences</h2>
+<h2 id="11-handling-variable-length-sequences">11. Handling variable-length sequences</h2>
 
 <p>Real datasets have sequences of different lengths. A padding token fills the shorter sequences:</p>
 
@@ -628,7 +840,7 @@ Combined:  [forward summary + backward summary] → final answer
 
 <hr />
 
-<h2 id="10-common-mistakes">10. Common mistakes</h2>
+<h2 id="12-common-mistakes">12. Common mistakes</h2>
 
 <table>
   <thead>
@@ -665,18 +877,64 @@ Combined:  [forward summary + backward summary] → final answer
 
 <h2 id="summary">Summary</h2>
 
-<ul>
-  <li>Basic RNNs <strong>forget</strong> information from long ago — the vanishing gradient problem.</li>
-  <li><strong>LSTM</strong> fixes this with three gates (forget, input, output) and two memory streams (hidden state + cell state).</li>
-  <li><strong>GRU</strong> is a simpler version with two gates and one memory stream — faster to train, similar performance.</li>
-  <li>Both use <code class="language-plaintext highlighter-rouge">nn.LSTM</code> and <code class="language-plaintext highlighter-rouge">nn.GRU</code> in PyTorch — just swap the class name.</li>
-  <li><strong>Bidirectional</strong> versions read both forward and backward — useful for understanding whole sentences.</li>
-  <li>For variable-length sequences, use <code class="language-plaintext highlighter-rouge">pad_sequence</code> and <code class="language-plaintext highlighter-rouge">pack_padded_sequence</code>.</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Simple meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Long-distance dependency</strong></td>
+      <td>A connection between two tokens that are far apart — basic RNNs cannot learn these</td>
+    </tr>
+    <tr>
+      <td><strong>h100 problem</strong></td>
+      <td>At step 100, the RNN barely remembers step 1 — memory gets overwritten at every step</td>
+    </tr>
+    <tr>
+      <td><strong>LSTM cell state</strong></td>
+      <td>A protected long-term memory channel — gradients can flow along it without shrinking</td>
+    </tr>
+    <tr>
+      <td><strong>LSTM forget gate</strong></td>
+      <td>Decides what to erase from long-term memory</td>
+    </tr>
+    <tr>
+      <td><strong>LSTM input gate</strong></td>
+      <td>Decides what new info to write into long-term memory</td>
+    </tr>
+    <tr>
+      <td><strong>LSTM output gate</strong></td>
+      <td>Decides what to output from long-term memory as short-term hidden state</td>
+    </tr>
+    <tr>
+      <td><strong>LSTM reduces vanishing gradient</strong></td>
+      <td>Yes — the cell state highway keeps gradients alive. But it does not fully eliminate the problem</td>
+    </tr>
+    <tr>
+      <td><strong>LSTM is heavy</strong></td>
+      <td>Three gates × own weight matrices = many parameters → needs more data to train well</td>
+    </tr>
+    <tr>
+      <td><strong>GRU update gate</strong></td>
+      <td>Combines forget + input: controls how much old memory to keep vs how much new info to add</td>
+    </tr>
+    <tr>
+      <td><strong>GRU reset gate</strong></td>
+      <td>Controls how much old memory to look at when computing new candidate information</td>
+    </tr>
+    <tr>
+      <td><strong>Data-size rule</strong></td>
+      <td>Large dataset → try LSTM. Small/medium dataset → try GRU first</td>
+    </tr>
+  </tbody>
+</table>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Basic RNN:  good for short sequences, forgets long-ago information
-LSTM:       remembers much longer, three gates control what to keep
-GRU:        simpler than LSTM, two gates, usually similar performance
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Basic RNN:  short sequences only — forgets long-ago information
+LSTM:       long-distance dependencies — cell state + 3 gates — heavy, needs more data
+GRU:        same capability — 2 gates — lighter, trains faster, good for smaller datasets
 </code></pre></div></div>
 
   </section>

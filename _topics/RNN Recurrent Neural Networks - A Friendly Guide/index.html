@@ -277,7 +277,257 @@ graph LR
 
 <hr />
 
-<h2 id="8-seeing-the-memory-change--step-by-step">8. Seeing the memory change — step by step</h2>
+<h2 id="8-how-the-rnn-learns--backpropagation-through-time-bptt">8. How the RNN learns — backpropagation through time (BPTT)</h2>
+
+<p>We know how the RNN makes predictions — it reads forward step by step.</p>
+
+<p>But how does it <strong>learn</strong>? How does it know to change its weights?</p>
+
+<p>It uses the same idea as every other neural network: <strong>backpropagation</strong>. Look at the mistake, then go backwards through the network and adjust the weights.</p>
+
+<p>For a normal network, “going backwards” means going backwards through the layers — Layer 3 → Layer 2 → Layer 1.</p>
+
+<p>For an RNN, “going backwards” means going backwards <strong>through time steps</strong> — Step 50 → Step 49 → Step 48 → … → Step 1.</p>
+
+<p>This is called <strong>Backpropagation Through Time (BPTT)</strong>.</p>
+
+<h3 id="what-does-bptt-look-like">What does BPTT look like?</h3>
+
+<p>Here is the unfolded RNN again. This time, let us show both directions — forward and backward:</p>
+
+<div class="mermaid">
+graph LR
+    X1["x1"] --&gt; C1["Step 1"]
+    H0["h0"] --&gt; C1
+    C1 --&gt; H1["h1"]
+
+    X2["x2"] --&gt; C2["Step 2"]
+    H1 --&gt; C2
+    C2 --&gt; H2["h2"]
+
+    X3["x3"] --&gt; C3["Step 3"]
+    H2 --&gt; C3
+    C3 --&gt; H3["h3"]
+
+    H3 --&gt; OUT["Output"]
+    OUT --&gt; LOSS["Loss\nhow wrong?"]
+
+    LOSS --&gt;|"gradient flows back"| C3
+    C3 --&gt;|"gradient flows back"| C2
+    C2 --&gt;|"gradient flows back"| C1
+</div>
+
+<p>The <strong>forward pass</strong> goes left to right — the RNN makes a prediction.
+The <strong>backward pass</strong> goes right to left — the error signal flows backwards to teach the RNN what went wrong.</p>
+
+<h3 id="what-is-a-gradient">What is a gradient?</h3>
+
+<p>A gradient is just a number that tells each weight: <strong>“move this much in this direction to reduce the error”</strong>.</p>
+
+<p>A big gradient = change the weight a lot.
+A small gradient = change the weight a little.
+A gradient of zero = do not change this weight at all — it has stopped learning.</p>
+
+<h3 id="the-chain-of-multiplications">The chain of multiplications</h3>
+
+<p>Here is the important part.</p>
+
+<p>When the error flows backwards from Step 3 to Step 2, it gets <strong>multiplied by a number</strong>.
+When it then flows from Step 2 to Step 1, it gets <strong>multiplied again</strong>.
+And again. And again. All the way back to Step 1.</p>
+
+<p>Each multiplication uses the same weight value — the recurrent weight that connects hidden states.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Gradient at Step 50 = original error
+Gradient at Step 49 = error × weight × activation_derivative
+Gradient at Step 48 = error × weight × weight × activation_derivative × activation_derivative
+Gradient at Step  1 = error × (weight × activation_derivative) × ... × (50 times)
+</code></pre></div></div>
+
+<p>This chain of multiplications is fine for short sequences. It becomes a big problem for long ones.</p>
+
+<hr />
+
+<h2 id="9-the-two-gradient-problems--vanishing-and-exploding">9. The two gradient problems — vanishing and exploding</h2>
+
+<p>Depending on the value being multiplied at each step, one of two things happens:</p>
+
+<hr />
+
+<h3 id="problem-1--vanishing-gradient-the-most-common">Problem 1 — Vanishing gradient (the most common)</h3>
+
+<p>If the number being multiplied at each step is <strong>less than 1</strong>, the gradient shrinks with every step.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Start with:     1.0
+After 1 step:   1.0  × 0.9 = 0.9
+After 2 steps:  0.9  × 0.9 = 0.81
+After 5 steps:  0.59
+After 10 steps: 0.35
+After 20 steps: 0.12
+After 50 steps: 0.000052   ← almost zero
+</code></pre></div></div>
+
+<p>By the time the gradient reaches the early steps, it is so tiny that the weights there barely change. Those early steps <strong>stop learning</strong>.</p>
+
+<div class="mermaid">
+graph RL
+    L["Loss"] --&gt;|"gradient = 1.0"| S50["Step 50\ngradient: 1.0"]
+    S50 --&gt;|"× 0.9"| S49["Step 49\ngradient: 0.9"]
+    S49 --&gt;|"× 0.9"| S48["Step 48\ngradient: 0.81"]
+    S48 --&gt;|"× 0.9 × 0.9 × ..."| S1["Step 1\ngradient: 0.000052"]
+    style S1 fill:#ffcccc
+    style L fill:#4CAF50,color:#fff
+</div>
+
+<blockquote>
+  <p><strong>Real-world effect:</strong> The RNN can only learn from recent steps. Anything said early in a long sentence — or early in a long time series — is completely ignored.</p>
+</blockquote>
+
+<hr />
+
+<h3 id="why-does-this-happen-so-often">Why does this happen so often?</h3>
+
+<p>It is because of the <strong>tanh</strong> and <strong>sigmoid</strong> activation functions that RNNs use.</p>
+
+<p>Both of these functions <strong>squash</strong> their input into a small range:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">tanh</code> squashes to between <strong>-1 and +1</strong></li>
+  <li><code class="language-plaintext highlighter-rouge">sigmoid</code> squashes to between <strong>0 and 1</strong></li>
+</ul>
+
+<p>When you take the derivative (the slope) of these functions, the result is almost always <strong>less than 1</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tanh derivative at 0    = 1.0   (maximum)
+tanh derivative at 1    = 0.42
+tanh derivative at 2    = 0.07
+tanh derivative at 3    = 0.009  ← very small
+</code></pre></div></div>
+
+<p>So in practice, the number being multiplied at every step is usually much less than 1. Vanishing gradients are the <strong>default</strong> outcome for basic RNNs.</p>
+
+<hr />
+
+<h3 id="problem-2--exploding-gradient">Problem 2 — Exploding gradient</h3>
+
+<p>If the number being multiplied at each step is <strong>greater than 1</strong>, the gradient grows with every step.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Start with:     1.0
+After 1 step:   1.0  × 1.1 = 1.1
+After 2 steps:  1.1  × 1.1 = 1.21
+After 5 steps:  1.61
+After 10 steps: 2.59
+After 20 steps: 6.73
+After 50 steps: 117  ← enormous
+</code></pre></div></div>
+
+<p>When the gradient is enormous, the weight update is enormous. The weights jump to extreme values. The model breaks — it starts producing <code class="language-plaintext highlighter-rouge">NaN</code> (not a number) or infinite values.</p>
+
+<div class="mermaid">
+graph RL
+    L2["Loss"] --&gt;|"gradient = 1.0"| S50b["Step 50\ngradient: 1.0"]
+    S50b --&gt;|"× 1.1"| S49b["Step 49\ngradient: 1.1"]
+    S49b --&gt;|"× 1.1"| S48b["Step 48\ngradient: 1.21"]
+    S48b --&gt;|"× 1.1 × 1.1 × ..."| S1b["Step 1\ngradient: 117"]
+    style S1b fill:#ff4444,color:#fff
+    style L2 fill:#4CAF50,color:#fff
+</div>
+
+<blockquote>
+  <p><strong>Real-world effect:</strong> Training becomes completely unstable. The loss jumps all over the place or becomes <code class="language-plaintext highlighter-rouge">NaN</code>. The model never converges.</p>
+</blockquote>
+
+<hr />
+
+<h3 id="summary-of-the-two-problems">Summary of the two problems</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>What multiplier does</th>
+      <th>What happens to gradient</th>
+      <th>Effect on training</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Vanishing</strong></td>
+      <td>Multiplier &lt; 1 (e.g. 0.9)</td>
+      <td>Shrinks to near zero</td>
+      <td>Early steps stop learning — model forgets long-ago info</td>
+    </tr>
+    <tr>
+      <td><strong>Exploding</strong></td>
+      <td>Multiplier &gt; 1 (e.g. 1.1)</td>
+      <td>Grows to huge number</td>
+      <td>Weights update wildly — training crashes</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h3 id="fix-1--gradient-clipping-fixes-exploding">Fix 1 — Gradient clipping (fixes exploding)</h3>
+
+<p>Exploding gradients have a simple fix called <strong>gradient clipping</strong>.</p>
+
+<p>Before updating the weights, we check: is any gradient too large? If yes, we cut it down to a maximum allowed value.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">model</span>     <span class="o">=</span> <span class="nc">TemperatureRNN</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">300</span><span class="p">):</span>
+    <span class="n">prediction</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+    <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+
+    <span class="c1"># Gradient clipping — cut any gradient larger than 1.0
+</span>    <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="n">utils</span><span class="p">.</span><span class="nf">clip_grad_norm_</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">max_norm</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>This is like saying: “No matter how angry the error signal is, I will only listen to it up to a certain volume.”</p>
+
+<p>Gradient clipping is <strong>one line of code</strong> and is commonly used in practice.</p>
+
+<p><strong>But</strong> — gradient clipping does <strong>not</strong> fix the vanishing gradient problem. If the gradient is already near zero, clipping does nothing. The early steps still learn nothing.</p>
+
+<hr />
+
+<h3 id="fix-2--better-architecture-fixes-vanishing">Fix 2 — Better architecture (fixes vanishing)</h3>
+
+<p>To truly fix the vanishing gradient problem, we need to change how the network is designed.</p>
+
+<p>The key insight: instead of multiplying the gradient through every step, we need a path where gradients can flow backwards <strong>without being multiplied by something less than 1</strong> at every step.</p>
+
+<p>This is exactly what <strong>LSTM</strong> and <strong>GRU</strong> were designed to do.</p>
+
+<div class="mermaid">
+graph LR
+    subgraph Basic["Basic RNN — gradient shrinks at every step"]
+        S1r["Step 1\nlearns nothing"] -.-&gt;|"tiny gradient"| S2r["Step 2"] -.-&gt;|"small gradient"| S3r["Step 3"] --&gt;|"normal gradient"| LOSS1["Loss"]
+        style S1r fill:#ffcccc
+    end
+
+    subgraph LSTM_["LSTM — gradient highway stays open"]
+        S1l["Step 1\nlearns correctly"] ==&gt;|"gradient highway"| S2l["Step 2"] ==&gt;|"gradient highway"| S3l["Step 3"] --&gt; LOSS2["Loss"]
+        style S1l fill:#4CAF50,color:#fff
+    end
+</div>
+
+<p>LSTM adds a <strong>cell state</strong> — a separate memory channel that runs straight through time. Gradients can flow along this channel without shrinking. This is how LSTM can learn from events that happened hundreds of steps ago.</p>
+
+<p>That is exactly what Part 15 covers in full detail.</p>
+
+<hr />
+
+<h2 id="10-seeing-the-memory-change--step-by-step">10. Seeing the memory change — step by step</h2>
 
 <p>Let us actually run this in Python and watch the memory change at each step.</p>
 
@@ -511,7 +761,7 @@ graph LR
 
 <hr />
 
-<h2 id="12-real-world-applications">12. Real-world applications</h2>
+<h2 id="13-real-world-applications">13. Real-world applications</h2>
 
 <p>RNNs are used everywhere data has an order:</p>
 
@@ -564,7 +814,11 @@ graph LR
 
 <hr />
 
-<h2 id="13-the-big-limitation--forgetting-long-ago-things">13. The big limitation — forgetting long-ago things</h2>
+<h2 id="14-the-big-limitation--forgetting-long-ago-things">14. The big limitation — forgetting long-ago things</h2>
+
+<blockquote>
+  <p>This section is a quick visual reminder. The full technical explanation of <em>why</em> this happens is in Section 9 above (vanishing gradients).</p>
+</blockquote>
 
 <p>RNNs have one weakness that matters a lot.</p>
 
@@ -590,7 +844,7 @@ graph LR
 
 <hr />
 
-<h2 id="14-quick-recap--test-yourself">14. Quick recap — test yourself</h2>
+<h2 id="15-quick-recap--test-yourself">15. Quick recap — test yourself</h2>
 
 <p>Read each question. Try to answer before looking.</p>
 
@@ -630,7 +884,33 @@ LSTM and GRU fix this — covered in Part 15.</p>
 
 <hr />
 
-<h2 id="summary">Summary</h2>
+<p><strong>Q6: What is BPTT?</strong></p>
+
+<p>Backpropagation Through Time. It is how an RNN learns — the error signal flows backwards through every time step, adjusting weights at each one.</p>
+
+<hr />
+
+<p><strong>Q7: What are the two gradient problems? How are they different?</strong></p>
+
+<p>Vanishing gradient — the error signal shrinks to almost zero as it flows back. Early time steps learn nothing. The RNN forgets long-ago information.</p>
+
+<p>Exploding gradient — the error signal grows to a huge number as it flows back. Weights update wildly and training crashes.</p>
+
+<hr />
+
+<p><strong>Q8: How do you fix exploding gradients?</strong></p>
+
+<p>Gradient clipping — one line of code: <code class="language-plaintext highlighter-rouge">torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)</code>. It cuts the gradient down to a maximum allowed value before the weight update.</p>
+
+<hr />
+
+<p><strong>Q9: Why does vanishing gradient happen so often in basic RNNs?</strong></p>
+
+<p>Because <code class="language-plaintext highlighter-rouge">tanh</code> and <code class="language-plaintext highlighter-rouge">sigmoid</code> activation functions squash their output to small values. Their derivatives are almost always less than 1. Multiply many numbers less than 1 together and the result approaches zero.</p>
+
+<hr />
+
+<h2 id="16-summary">16. Summary</h2>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal network reads everything at once — no concept of order
 RNN reads one step at a time — order matters, memory carries forward
@@ -661,8 +941,24 @@ RNN reads one step at a time — order matters, memory carries forward
       <td>Drawing the RNN stretched out across time — one box per step</td>
     </tr>
     <tr>
-      <td><strong>Limitation</strong></td>
-      <td>Basic RNNs forget things from long ago — fixed by LSTM in Part 15</td>
+      <td><strong>BPTT</strong></td>
+      <td>Backpropagation Through Time — the error flows backwards through every time step to teach the model</td>
+    </tr>
+    <tr>
+      <td><strong>Vanishing gradient</strong></td>
+      <td>Error signal shrinks to zero as it flows back — early steps stop learning</td>
+    </tr>
+    <tr>
+      <td><strong>Exploding gradient</strong></td>
+      <td>Error signal grows huge as it flows back — weights update wildly, training crashes</td>
+    </tr>
+    <tr>
+      <td><strong>Gradient clipping</strong></td>
+      <td>One line of code that caps the gradient so exploding cannot happen</td>
+    </tr>
+    <tr>
+      <td><strong>Fix for vanishing</strong></td>
+      <td>LSTM and GRU — architectures with a protected memory channel so gradients can flow without shrinking</td>
     </tr>
   </tbody>
 </table>
