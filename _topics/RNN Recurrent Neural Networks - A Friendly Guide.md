@@ -265,7 +265,236 @@ Both diagrams mean the same thing. The unfolded view just makes it easier to see
 
 ---
 
-## 8. Seeing the memory change — step by step
+## 8. How the RNN learns — backpropagation through time (BPTT)
+
+We know how the RNN makes predictions — it reads forward step by step.
+
+But how does it **learn**? How does it know to change its weights?
+
+It uses the same idea as every other neural network: **backpropagation**. Look at the mistake, then go backwards through the network and adjust the weights.
+
+For a normal network, "going backwards" means going backwards through the layers — Layer 3 → Layer 2 → Layer 1.
+
+For an RNN, "going backwards" means going backwards **through time steps** — Step 50 → Step 49 → Step 48 → ... → Step 1.
+
+This is called **Backpropagation Through Time (BPTT)**.
+
+### What does BPTT look like?
+
+Here is the unfolded RNN again. This time, let us show both directions — forward and backward:
+
+<div class="mermaid">
+graph LR
+    X1["x1"] --> C1["Step 1"]
+    H0["h0"] --> C1
+    C1 --> H1["h1"]
+
+    X2["x2"] --> C2["Step 2"]
+    H1 --> C2
+    C2 --> H2["h2"]
+
+    X3["x3"] --> C3["Step 3"]
+    H2 --> C3
+    C3 --> H3["h3"]
+
+    H3 --> OUT["Output"]
+    OUT --> LOSS["Loss\nhow wrong?"]
+
+    LOSS -->|"gradient flows back"| C3
+    C3 -->|"gradient flows back"| C2
+    C2 -->|"gradient flows back"| C1
+</div>
+
+The **forward pass** goes left to right — the RNN makes a prediction.
+The **backward pass** goes right to left — the error signal flows backwards to teach the RNN what went wrong.
+
+### What is a gradient?
+
+A gradient is just a number that tells each weight: **"move this much in this direction to reduce the error"**.
+
+A big gradient = change the weight a lot.
+A small gradient = change the weight a little.
+A gradient of zero = do not change this weight at all — it has stopped learning.
+
+### The chain of multiplications
+
+Here is the important part.
+
+When the error flows backwards from Step 3 to Step 2, it gets **multiplied by a number**.
+When it then flows from Step 2 to Step 1, it gets **multiplied again**.
+And again. And again. All the way back to Step 1.
+
+Each multiplication uses the same weight value — the recurrent weight that connects hidden states.
+
+```
+Gradient at Step 50 = original error
+Gradient at Step 49 = error × weight × activation_derivative
+Gradient at Step 48 = error × weight × weight × activation_derivative × activation_derivative
+Gradient at Step  1 = error × (weight × activation_derivative) × ... × (50 times)
+```
+
+This chain of multiplications is fine for short sequences. It becomes a big problem for long ones.
+
+---
+
+## 9. The two gradient problems — vanishing and exploding
+
+Depending on the value being multiplied at each step, one of two things happens:
+
+---
+
+### Problem 1 — Vanishing gradient (the most common)
+
+If the number being multiplied at each step is **less than 1**, the gradient shrinks with every step.
+
+```
+Start with:     1.0
+After 1 step:   1.0  × 0.9 = 0.9
+After 2 steps:  0.9  × 0.9 = 0.81
+After 5 steps:  0.59
+After 10 steps: 0.35
+After 20 steps: 0.12
+After 50 steps: 0.000052   ← almost zero
+```
+
+By the time the gradient reaches the early steps, it is so tiny that the weights there barely change. Those early steps **stop learning**.
+
+<div class="mermaid">
+graph RL
+    L["Loss"] -->|"gradient = 1.0"| S50["Step 50\ngradient: 1.0"]
+    S50 -->|"× 0.9"| S49["Step 49\ngradient: 0.9"]
+    S49 -->|"× 0.9"| S48["Step 48\ngradient: 0.81"]
+    S48 -->|"× 0.9 × 0.9 × ..."| S1["Step 1\ngradient: 0.000052"]
+    style S1 fill:#ffcccc
+    style L fill:#4CAF50,color:#fff
+</div>
+
+> **Real-world effect:** The RNN can only learn from recent steps. Anything said early in a long sentence — or early in a long time series — is completely ignored.
+
+---
+
+### Why does this happen so often?
+
+It is because of the **tanh** and **sigmoid** activation functions that RNNs use.
+
+Both of these functions **squash** their input into a small range:
+- `tanh` squashes to between **-1 and +1**
+- `sigmoid` squashes to between **0 and 1**
+
+When you take the derivative (the slope) of these functions, the result is almost always **less than 1**.
+
+```
+tanh derivative at 0    = 1.0   (maximum)
+tanh derivative at 1    = 0.42
+tanh derivative at 2    = 0.07
+tanh derivative at 3    = 0.009  ← very small
+```
+
+So in practice, the number being multiplied at every step is usually much less than 1. Vanishing gradients are the **default** outcome for basic RNNs.
+
+---
+
+### Problem 2 — Exploding gradient
+
+If the number being multiplied at each step is **greater than 1**, the gradient grows with every step.
+
+```
+Start with:     1.0
+After 1 step:   1.0  × 1.1 = 1.1
+After 2 steps:  1.1  × 1.1 = 1.21
+After 5 steps:  1.61
+After 10 steps: 2.59
+After 20 steps: 6.73
+After 50 steps: 117  ← enormous
+```
+
+When the gradient is enormous, the weight update is enormous. The weights jump to extreme values. The model breaks — it starts producing `NaN` (not a number) or infinite values.
+
+<div class="mermaid">
+graph RL
+    L2["Loss"] -->|"gradient = 1.0"| S50b["Step 50\ngradient: 1.0"]
+    S50b -->|"× 1.1"| S49b["Step 49\ngradient: 1.1"]
+    S49b -->|"× 1.1"| S48b["Step 48\ngradient: 1.21"]
+    S48b -->|"× 1.1 × 1.1 × ..."| S1b["Step 1\ngradient: 117"]
+    style S1b fill:#ff4444,color:#fff
+    style L2 fill:#4CAF50,color:#fff
+</div>
+
+> **Real-world effect:** Training becomes completely unstable. The loss jumps all over the place or becomes `NaN`. The model never converges.
+
+---
+
+### Summary of the two problems
+
+| Problem | What multiplier does | What happens to gradient | Effect on training |
+|---------|---------------------|--------------------------|-------------------|
+| **Vanishing** | Multiplier < 1 (e.g. 0.9) | Shrinks to near zero | Early steps stop learning — model forgets long-ago info |
+| **Exploding** | Multiplier > 1 (e.g. 1.1) | Grows to huge number | Weights update wildly — training crashes |
+
+---
+
+### Fix 1 — Gradient clipping (fixes exploding)
+
+Exploding gradients have a simple fix called **gradient clipping**.
+
+Before updating the weights, we check: is any gradient too large? If yes, we cut it down to a maximum allowed value.
+
+```python
+import torch
+import torch.nn as nn
+
+model     = TemperatureRNN()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+for epoch in range(300):
+    prediction = model(X)
+    loss = loss_fn(prediction, y)
+
+    optimizer.zero_grad()
+    loss.backward()
+
+    # Gradient clipping — cut any gradient larger than 1.0
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+    optimizer.step()
+```
+
+This is like saying: "No matter how angry the error signal is, I will only listen to it up to a certain volume."
+
+Gradient clipping is **one line of code** and is commonly used in practice.
+
+**But** — gradient clipping does **not** fix the vanishing gradient problem. If the gradient is already near zero, clipping does nothing. The early steps still learn nothing.
+
+---
+
+### Fix 2 — Better architecture (fixes vanishing)
+
+To truly fix the vanishing gradient problem, we need to change how the network is designed.
+
+The key insight: instead of multiplying the gradient through every step, we need a path where gradients can flow backwards **without being multiplied by something less than 1** at every step.
+
+This is exactly what **LSTM** and **GRU** were designed to do.
+
+<div class="mermaid">
+graph LR
+    subgraph Basic["Basic RNN — gradient shrinks at every step"]
+        S1r["Step 1\nlearns nothing"] -.->|"tiny gradient"| S2r["Step 2"] -.->|"small gradient"| S3r["Step 3"] -->|"normal gradient"| LOSS1["Loss"]
+        style S1r fill:#ffcccc
+    end
+
+    subgraph LSTM_["LSTM — gradient highway stays open"]
+        S1l["Step 1\nlearns correctly"] ==>|"gradient highway"| S2l["Step 2"] ==>|"gradient highway"| S3l["Step 3"] --> LOSS2["Loss"]
+        style S1l fill:#4CAF50,color:#fff
+    end
+</div>
+
+LSTM adds a **cell state** — a separate memory channel that runs straight through time. Gradients can flow along this channel without shrinking. This is how LSTM can learn from events that happened hundreds of steps ago.
+
+That is exactly what Part 15 covers in full detail.
+
+---
+
+## 10. Seeing the memory change — step by step
 
 Let us actually run this in Python and watch the memory change at each step.
 
@@ -482,7 +711,7 @@ graph LR
 
 ---
 
-## 12. Real-world applications
+## 13. Real-world applications
 
 RNNs are used everywhere data has an order:
 
@@ -498,7 +727,9 @@ RNNs are used everywhere data has an order:
 
 ---
 
-## 13. The big limitation — forgetting long-ago things
+## 14. The big limitation — forgetting long-ago things
+
+> This section is a quick visual reminder. The full technical explanation of *why* this happens is in Section 9 above (vanishing gradients).
 
 RNNs have one weakness that matters a lot.
 
@@ -524,7 +755,7 @@ The solution is **LSTM** and **GRU** — two improved versions of RNN with a muc
 
 ---
 
-## 14. Quick recap — test yourself
+## 15. Quick recap — test yourself
 
 Read each question. Try to answer before looking.
 
@@ -564,7 +795,33 @@ LSTM and GRU fix this — covered in Part 15.
 
 ---
 
-## Summary
+**Q6: What is BPTT?**
+
+Backpropagation Through Time. It is how an RNN learns — the error signal flows backwards through every time step, adjusting weights at each one.
+
+---
+
+**Q7: What are the two gradient problems? How are they different?**
+
+Vanishing gradient — the error signal shrinks to almost zero as it flows back. Early time steps learn nothing. The RNN forgets long-ago information.
+
+Exploding gradient — the error signal grows to a huge number as it flows back. Weights update wildly and training crashes.
+
+---
+
+**Q8: How do you fix exploding gradients?**
+
+Gradient clipping — one line of code: `torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)`. It cuts the gradient down to a maximum allowed value before the weight update.
+
+---
+
+**Q9: Why does vanishing gradient happen so often in basic RNNs?**
+
+Because `tanh` and `sigmoid` activation functions squash their output to small values. Their derivatives are almost always less than 1. Multiply many numbers less than 1 together and the result approaches zero.
+
+---
+
+## 16. Summary
 
 ```
 Normal network reads everything at once — no concept of order
@@ -577,7 +834,11 @@ RNN reads one step at a time — order matters, memory carries forward
 | **Hidden state** | The RNN's memory — a list of numbers updated at every step |
 | **Same weights** | The same calculation is used at every step — works for any length |
 | **Unfolding** | Drawing the RNN stretched out across time — one box per step |
-| **Limitation** | Basic RNNs forget things from long ago — fixed by LSTM in Part 15 |
+| **BPTT** | Backpropagation Through Time — the error flows backwards through every time step to teach the model |
+| **Vanishing gradient** | Error signal shrinks to zero as it flows back — early steps stop learning |
+| **Exploding gradient** | Error signal grows huge as it flows back — weights update wildly, training crashes |
+| **Gradient clipping** | One line of code that caps the gradient so exploding cannot happen |
+| **Fix for vanishing** | LSTM and GRU — architectures with a protected memory channel so gradients can flow without shrinking |
 
 <div class="mermaid">
 graph LR
