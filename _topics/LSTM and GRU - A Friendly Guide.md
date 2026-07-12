@@ -29,82 +29,230 @@ A basic RNN cannot do this. Every step, the memory is overwritten a little. Afte
 
 ---
 
-## 1. The problem — vanishing gradients
+## 1. The problem — RNNs forget things from long ago
 
-When we train an RNN using backpropagation through time (BPTT), we go backwards through the chain:
+Let us start with a simple story before any technical terms.
+
+---
+
+### The telephone game
+
+You have played the telephone game, maybe as a child.
+
+Ten people stand in a line. Person 1 whispers a message to Person 2. Person 2 whispers it to Person 3. And so on.
+
+By the time the message reaches Person 10, it has changed. Some words are lost. Some words are wrong. The further down the line, the worse it gets.
+
+<div class="mermaid">
+graph LR
+    P1["Person 1\n Original message"] -->|whispers| P2["Person 2\n Slightly changed"]
+    P2 -->|whispers| P3["Person 3\n More changed"]
+    P3 -->|whispers| P4["Person 4\n Even more changed"]
+    P4 -->|whispers| P10["Person 10\n Almost nothing left"]
+</div>
+
+A basic RNN has exactly the same problem.
+
+---
+
+### How an RNN reads a long sentence
+
+Imagine this sentence:
+
+> "The cat, which was sitting quietly on the old wooden chair next to the window in the kitchen, **was hungry**."
+
+The important connection is: **"The cat"** at the beginning → **"was hungry"** at the end.
+
+An RNN reads this word by word:
+
+<div class="mermaid">
+graph LR
+    W1["The"] --> M1["memory 1"]
+    M1 --> W2["cat"]
+    W2 --> M2["memory 2"]
+    M2 --> W3["which"]
+    W3 --> M3["memory 3"]
+    M3 --> W4["was"]
+    W4 --> M4["memory 4"]
+    M4 --> Dots["... 10 more words ..."]
+    Dots --> Mlast["memory 15"]
+    Mlast --> Wlast["was hungry"]
+</div>
+
+Each step, the RNN updates its memory. But the update **always mixes in new information**. Old information slowly gets pushed out.
+
+By the time the RNN reaches "was hungry" at step 15, the memory of "The cat" from step 1 has been overwritten many times. It is very faint — or completely gone.
+
+---
+
+### Why does this happen? — the shrinking signal
+
+When we train any neural network, we use a process called **backpropagation**. This is how the model learns from its mistakes.
+
+In simple terms:
+1. The model makes a prediction
+2. We check how wrong it was — this is the **error**
+3. We send that error signal **backwards** through the model
+4. Every layer uses that signal to adjust its weights
+
+For an RNN, "sending the error backwards" means going **backwards through every time step**.
+
+Here is the key problem. At each step backwards, the error signal gets **multiplied** by a number. In most RNNs, that number is less than 1 — for example, 0.8.
 
 ```
-x₁ → [RNN] → h₁ → [RNN] → h₂ → [RNN] → h₃ → ... → h₅₀ → output → loss
-     ←─────────────────────────────────────────────────────────────── gradients flow back
+Start:           error = 1.0
+After 1 step:    1.0 × 0.8 = 0.80
+After 2 steps:   0.8 × 0.8 = 0.64
+After 3 steps:   0.64 × 0.8 = 0.51
+After 5 steps:   0.32
+After 10 steps:  0.11
+After 20 steps:  0.012
+After 50 steps:  0.000001  ← almost zero
 ```
 
-At each step going backwards, the gradient is multiplied by the same weights. If those weights are slightly less than 1 (which they often are), the gradient shrinks at every step:
+<div class="mermaid">
+graph LR
+    E0["Error: 1.0\nstep 50"] -->|"× 0.8"| E1["Error: 0.8\nstep 49"]
+    E1 -->|"× 0.8"| E2["Error: 0.64\nstep 48"]
+    E2 -->|"× 0.8"| E3["Error: 0.51\nstep 47"]
+    E3 -->|"× 0.8"| E4["Error: 0.11\nstep 40"]
+    E4 -->|"× 0.8"| E5["Error: 0.000001\nstep 1"]
+</div>
 
-```
-0.9 × 0.9 × 0.9 × 0.9 × 0.9 × ... (50 times) = almost zero
-```
+By the time this signal reaches the **first time steps**, it is so tiny that the weights there barely change at all. Those early time steps never learn anything useful.
 
-By the time the gradient reaches step 1, it is so small the weights barely update. The network cannot learn from early parts of the sequence.
+This is called the **vanishing gradient problem**.
 
-This is the **vanishing gradient problem**.
+> **In plain English:** The RNN cannot learn connections between words or events that are far apart. It only learns from what happened very recently.
 
-> **Simple analogy:** Imagine passing a whisper along a line of 50 people. Each person hears it slightly quieter. By the 50th person, they hear almost nothing. That is what happens to gradients in a long RNN.
+---
+
+### Why does this matter?
+
+For short sequences (5–10 steps), basic RNNs work fine.
+
+For longer sequences, they fail on exactly the cases that matter most:
+
+| Task | What the RNN misses |
+|------|-------------------|
+| Long sentence sentiment | Forgets the subject by the end |
+| Paragraph summarisation | Forgets the topic sentence |
+| Long time series | Forgets patterns from weeks ago |
+| Dialogue | Forgets what was said at the start of the conversation |
+
+---
+
+### The fix — give the RNN a proper memory
+
+The solution is to give the network a **separate, protected memory channel** that does not get overwritten at every step.
+
+Instead of one stream of memory that gets mixed at every step, we add a second stream — one that flows through mostly unchanged unless the model explicitly decides to update it.
+
+This is what **LSTM** does. It adds **gates** — small switches that control what goes into the memory, what stays, and what gets erased.
+
+Think of it like upgrading from a whiteboard (erased every step) to a notebook (you choose what to write, what to keep, and what to cross out).
 
 ---
 
 ## 2. The solution — gates
 
-LSTM solves this by adding **gates** — small switches that control what information passes through.
+### Think of a gate like a water tap
 
-There are three gates:
+A tap (faucet) can be fully open, fully closed, or anywhere in between.
 
-| Gate | What it does |
-|------|-------------|
-| **Forget gate** | Decides what to erase from memory |
-| **Input gate** | Decides what new information to add to memory |
-| **Output gate** | Decides what part of memory to use as output |
+- **Fully open** → water flows through freely
+- **Fully closed** → no water gets through
+- **Half open** → some water gets through
 
-Each gate is a number between 0 and 1 (produced by a sigmoid function):
-- **0** means "block this completely — forget it"
-- **1** means "let this through completely — remember it"
-- **0.7** means "keep 70% of this"
+LSTM adds three of these taps — called **gates** — to control memory.
 
-The gates are themselves learned during training. The network learns *when* to remember and *when* to forget.
+Each gate produces a number between **0** and **1**:
+- **0** = completely closed → block this information, erase it
+- **1** = completely open → let all of this through, keep it
+- **0.7** = 70% open → keep 70%, erase 30%
+
+The three gates and what each one does:
+
+| Gate | Simple meaning | Real-life analogy |
+|------|---------------|------------------|
+| **Forget gate** | "Should I erase something from memory?" | Crossing out old notes in a notebook |
+| **Input gate** | "Should I write something new into memory?" | Writing a new note in a notebook |
+| **Output gate** | "What part of my memory should I say out loud right now?" | Reading out the relevant part of your notes |
+
+<div class="mermaid">
+graph TD
+    Input["New word arrives"] --> FG["Forget Gate\nShould I erase anything?"]
+    Input --> IG["Input Gate\nShould I write anything new?"]
+    Memory["Long-term memory"] --> FG
+    FG -->|"erase some"| NewMemory["Updated memory"]
+    IG -->|"add new info"| NewMemory
+    NewMemory --> OG["Output Gate\nWhat do I say now?"]
+    OG --> Hidden["Hidden state output\nused for prediction"]
+</div>
+
+The important thing: **the gates are learned**. The model figures out, during training, when to open and close each gate. You do not have to tell it. It learns this automatically from the data.
+
+For example, in a sentiment analysis task ("The food was not bad"), the model learns to:
+- Keep the word "not" in memory (input gate stays open)
+- Remember "not" is still relevant when it sees "bad" later (forget gate stays closed)
+- Reverse the meaning when it sees "bad" (output gate uses the stored "not")
 
 ---
 
-## 3. LSTM — two memory streams
+## 3. LSTM — two types of memory
 
-LSTM has **two separate memory streams**:
+Think about how you remember things as a person.
 
-| Stream | Name | Purpose |
-|--------|------|---------|
-| `h_t` | Hidden state | Short-term working memory (same as basic RNN) |
-| `c_t` | Cell state | Long-term memory — can carry information across many steps |
+You have two types of memory:
 
-The cell state is the key innovation. It flows through the network like a conveyor belt, and the gates decide what to add or remove from it.
+- **Working memory** — what you are thinking about right now. Very short. Changes every second. If someone tells you a phone number, you hold it in your head just long enough to dial it.
+- **Long-term memory** — things you remember for a long time. Your name. Your address. Important events. This does not get erased easily.
 
-```
-Long-term memory (cell state):
-──────────────────────────────────────────────────────►
-        ↑ add new info        ↑ add new info
-    [forget some]         [forget some]
-        ↓ use for output      ↓ use for output
+LSTM gives a neural network exactly these two types:
 
-Short-term memory (hidden state):
-h₀ → [LSTM] → h₁ → [LSTM] → h₂ → [LSTM] → h₃
-```
+| Name in LSTM | What it is | Real-life equivalent |
+|-------------|-----------|---------------------|
+| **Hidden state** (`h`) | Short-term working memory | What you are thinking right now |
+| **Cell state** (`c`) | Long-term protected memory | Important things you remember for a long time |
 
-### How one LSTM step works (conceptually)
+The **cell state** is the key invention of LSTM. It is a separate channel of memory that travels through every step. The gates carefully decide what to add to it, what to erase from it, and what to read from it.
 
-```
-1. Forget gate:  look at (current input + old hidden state) → decide what to erase from cell state
-2. Input gate:   look at (current input + old hidden state) → decide what new info to write to cell state
-3. Update cell:  erase the old info, write the new info
-4. Output gate:  look at (current input + old hidden state) → decide what to output as new hidden state
-```
+<div class="mermaid">
+graph LR
+    subgraph Step1["Step 1 - word: The"]
+        C0["Long-term memory\nbefore step 1"] --> FG1["Forget gate\nErase?"]
+        FG1 --> C1["Long-term memory\nafter step 1"]
+        IG1["Input gate\nWrite?"] --> C1
+        C1 --> OG1["Output gate\nSpeak?"]
+        OG1 --> H1["Short-term memory h1"]
+    end
 
-You do not need to implement this yourself — PyTorch does all of it inside `nn.LSTM`.
+    subgraph Step2["Step 2 - word: cat"]
+        C1 --> FG2["Forget gate\nErase?"]
+        FG2 --> C2["Long-term memory\nafter step 2"]
+        IG2["Input gate\nWrite?"] --> C2
+        C2 --> OG2["Output gate\nSpeak?"]
+        OG2 --> H2["Short-term memory h2"]
+    end
+</div>
+
+### What happens at each step — in plain English
+
+Every time a new word arrives, LSTM does four things in order:
+
+**Step 1 — Forget gate asks: "Should I erase anything from long-term memory?"**
+> Example: The model just read "he" after a story about a woman. The forget gate erases "woman" from memory, because "he" changes the subject.
+
+**Step 2 — Input gate asks: "Should I write anything new into long-term memory?"**
+> Example: The model just read "not". The input gate writes "negation active" into long-term memory.
+
+**Step 3 — Update long-term memory**
+> Erase what the forget gate said to erase. Write what the input gate said to write.
+
+**Step 4 — Output gate asks: "What should I output right now?"**
+> Read the relevant part of long-term memory and produce the short-term memory `h` that goes to the next layer.
+
+You do not need to code any of this. PyTorch does all four steps automatically when you use `nn.LSTM`.
 
 ---
 
