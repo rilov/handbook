@@ -423,79 +423,177 @@ graph LR
 
 <hr />
 
-<h2 id="2-sequence-classification--one-label-for-the-whole-sequence-many-to-one">2. Sequence classification — one label for the whole sequence (Many-to-One)</h2>
+<h2 id="2-rnns-and-language--understanding-text-as-a-sequence">2. RNNs and language — understanding text as a sequence</h2>
+
+<p>Before we look at specific NLP tasks, it helps to understand <em>why</em> RNNs are a natural fit for language.</p>
+
+<h3 id="language-is-temporal--order-changes-meaning">Language is temporal — order changes meaning</h3>
+
+<p>Human language unfolds over time. When you read or listen, words arrive one after another. Each word builds on what came before.</p>
+
+<p>The <strong>order</strong> of words is what creates meaning:</p>
+
+<blockquote>
+  <p>“The dog chased the cat” — the dog is the one doing the chasing.
+“The cat chased the dog” — completely different meaning. Same words, different order.</p>
+</blockquote>
+
+<p>This means a model that processes all words at once — ignoring order — cannot understand language properly. An RNN processes words <strong>one at a time, left to right</strong>, building memory as it goes. That matches how humans read.</p>
+
+<hr />
+
+<h3 id="the-hidden-state-as-evolving-context">The hidden state as evolving context</h3>
+
+<p>As the RNN reads each word, its hidden state is updated. Think of the hidden state as a <strong>running summary</strong> of everything read so far.</p>
+
+<div class="mermaid">
+graph LR
+    W1["The"] --&gt; H1["memory:\nsaw 'The'"] 
+    H1 --&gt; W2["movie"]
+    W2 --&gt; H2["memory:\nsaw 'The movie'"]
+    H2 --&gt; W3["was"]
+    W3 --&gt; H3["memory:\nsaw 'The movie was'"]
+    H3 --&gt; W4["amazing"]
+    W4 --&gt; H4["memory:\npositive sentiment building"]
+    H4 --&gt; W5["but"]
+    W5 --&gt; H5["memory:\ncontrast word — expect reversal"]
+    H5 --&gt; W6["disappointing"]
+    W6 --&gt; H6["memory:\nmixed — positive then negative"]
+</div>
+
+<p>The hidden state at the end contains context from the <strong>whole sentence</strong>. This is what gets passed to the classification layer.</p>
+
+<hr />
+
+<h3 id="short-range-vs-long-range-dependencies">Short-range vs long-range dependencies</h3>
+
+<p>RNNs can capture two kinds of relationships in text:</p>
+
+<p><strong>Short-range</strong> — words that are close together and must be read as a unit.</p>
+<blockquote>
+  <p>“New York City” — “New” and “York” only make sense together. Without remembering “New”, “York” means nothing.</p>
+</blockquote>
+
+<p><strong>Long-range</strong> — a word near the end depends on something said much earlier.</p>
+<blockquote>
+  <p>“The book that I borrowed from the library last week <strong>was fascinating</strong>.” — “was fascinating” describes “book”, even though many words come between them.</p>
+</blockquote>
+
+<p>Basic RNNs struggle with long-range dependencies (the vanishing gradient problem from Part 14). LSTM and GRU handle them much better, which is why they are used for most NLP tasks.</p>
+
+<hr />
+
+<h2 id="3-sequence-classification--one-label-for-the-whole-sequence-many-to-one">3. Sequence classification — one label for the whole sequence (Many-to-One)</h2>
 
 <p><strong>The task:</strong> Read a whole sequence and output <strong>one single label</strong>.</p>
 
 <p><strong>Examples:</strong></p>
 <ul>
+  <li>Read all words in a review → positive or negative (sentiment analysis)</li>
   <li>Read all words in an email → spam or not spam</li>
-  <li>Read all words in a review → positive or negative</li>
-  <li>Read all values in a sensor recording → fault or no fault</li>
   <li>Read all words in a support ticket → which department to route to</li>
+  <li>Read a sentence → detect emotion (happy, sad, angry)</li>
+  <li>Read a sentence → detect sarcasm or humour</li>
 </ul>
 
-<h3 id="how-it-works">How it works</h3>
+<h3 id="how-it-works--sentiment-analysis-in-detail">How it works — sentiment analysis in detail</h3>
 
 <p>Same as forecasting — the RNN reads the whole sequence. You take the <strong>final hidden state</strong> and classify it.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>word₁ → word₂ → word₃ → ... → wordₙ → [final memory] → [Linear + Sigmoid] → label
+<p>But for classification there are multiple possible classes (positive, negative, neutral), so we use a <strong>softmax</strong> layer to get a probability for each class:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>word₁ → word₂ → ... → wordₙ → [final hidden state]
+                                         ↓
+                               [Linear layer]
+                                         ↓
+                               [Softmax]
+                                         ↓
+                    P(positive)=0.82  P(negative)=0.12  P(neutral)=0.06
+                                         ↓
+                               Pick highest: POSITIVE
 </code></pre></div></div>
 
-<h3 id="step-by-step-example--email-routing">Step by step example — email routing</h3>
+<div class="mermaid">
+graph LR
+    W1["The"] --&gt; L1["LSTM step 1"]
+    W2["food"] --&gt; L2["LSTM step 2"]
+    W3["was"] --&gt; L3["LSTM step 3"]
+    W4["not"] --&gt; L4["LSTM step 4"]
+    W5["bad"] --&gt; L5["LSTM step 5"]
+    L1 --&gt; L2 --&gt; L3 --&gt; L4 --&gt; L5
+    L5 --&gt;|"final hidden state"| FC["Linear layer"]
+    FC --&gt; SM["Softmax"]
+    SM --&gt; POS["Positive: 0.82"]
+    SM --&gt; NEG["Negative: 0.12"]
+    SM --&gt; NEU["Neutral: 0.06"]
+    style POS fill:#4CAF50,color:#fff
+</div>
+
+<p>The LSTM remembers the word “not” when it reaches “bad”, so it correctly classifies “not bad” as positive — something a bag-of-words model would get wrong.</p>
+
+<p><strong>Other tasks that use this exact same pattern:</strong></p>
+<ul>
+  <li>Emotion recognition (happy / sad / angry / surprised)</li>
+  <li>Humour detection (funny / not funny)</li>
+  <li>Sarcasm detection</li>
+  <li>Topic classification (sports / politics / technology)</li>
+</ul>
+
+<h3 id="step-by-step-example--sentiment-classification">Step by step example — sentiment classification</h3>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
 
-<span class="c1"># Simple vocabulary
-</span><span class="n">vocab</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="sh">"</span><span class="s">invoice</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">payment</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">billing</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">charge</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">login</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="sh">"</span><span class="s">password</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="sh">"</span><span class="s">access</span><span class="sh">"</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">broken</span><span class="sh">"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="sh">"</span><span class="s">working</span><span class="sh">"</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">:</span> <span class="mi">14</span><span class="p">,</span> <span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span> <span class="sh">"</span><span class="s">cannot</span><span class="sh">"</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">&lt;pad&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">17</span>
+<span class="c1"># Vocabulary — every word the model knows
+</span><span class="n">word_to_idx</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">good</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="sh">"</span><span class="s">really</span><span class="sh">"</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="sh">"</span><span class="s">very</span><span class="sh">"</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="sh">"</span><span class="s">great</span><span class="sh">"</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">awful</span><span class="sh">"</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="sh">"</span><span class="s">excellent</span><span class="sh">"</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span> <span class="sh">"</span><span class="s">ok</span><span class="sh">"</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="sh">"</span><span class="s">terrible</span><span class="sh">"</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">&lt;pad&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">14</span>
 <span class="p">}</span>
-<span class="n">VOCAB_SIZE</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
+<span class="n">VOCAB_SIZE</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">word_to_idx</span><span class="p">)</span>
 
-<span class="c1"># Department labels: 0=billing, 1=account, 2=technical
-</span><span class="n">tickets</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">([</span><span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">invoice</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">wrong</span><span class="sh">"</span><span class="p">],</span>                   <span class="mi">0</span><span class="p">),</span>  <span class="c1"># billing
-</span>    <span class="p">([</span><span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cannot</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">access</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">],</span>         <span class="mi">1</span><span class="p">),</span>  <span class="c1"># account
-</span>    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">login</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">working</span><span class="sh">"</span><span class="p">],</span>           <span class="mi">2</span><span class="p">),</span>  <span class="c1"># technical
-</span>    <span class="p">([</span><span class="sh">"</span><span class="s">billing</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">charge</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">],</span>                     <span class="mi">0</span><span class="p">),</span>  <span class="c1"># billing
-</span>    <span class="p">([</span><span class="sh">"</span><span class="s">password</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">access</span><span class="sh">"</span><span class="p">],</span>                  <span class="mi">1</span><span class="p">),</span>  <span class="c1"># account
-</span>    <span class="p">([</span><span class="sh">"</span><span class="s">broken</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">working</span><span class="sh">"</span><span class="p">],</span>              <span class="mi">2</span><span class="p">),</span>  <span class="c1"># technical
+<span class="c1"># Sentiment labels: 0 = negative, 1 = positive
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">great</span><span class="sh">"</span><span class="p">],</span>          <span class="mi">1</span><span class="p">),</span>  <span class="c1"># positive
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">terrible</span><span class="sh">"</span><span class="p">],</span>       <span class="mi">0</span><span class="p">),</span>  <span class="c1"># negative
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">],</span>     <span class="mi">1</span><span class="p">),</span>  <span class="c1"># positive (tricky!)
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">excellent</span><span class="sh">"</span><span class="p">],</span>   <span class="mi">1</span><span class="p">),</span>  <span class="c1"># positive
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">good</span><span class="sh">"</span><span class="p">],</span> <span class="mi">0</span><span class="p">),</span>  <span class="c1"># negative (tricky!)
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">really</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">awful</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">],</span>              <span class="mi">0</span><span class="p">),</span>  <span class="c1"># negative
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">very</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">good</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">],</span>              <span class="mi">1</span><span class="p">),</span>  <span class="c1"># positive
 </span><span class="p">]</span>
 
 <span class="k">def</span> <span class="nf">encode</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">vocab</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]])</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">word_to_idx</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]])</span>
 
-<span class="n">X</span> <span class="o">=</span> <span class="p">[</span><span class="nf">encode</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tickets</span><span class="p">]</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tickets</span><span class="p">])</span>
+<span class="n">X</span> <span class="o">=</span> <span class="p">[</span><span class="nf">encode</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sentences</span><span class="p">]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sentences</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
 
-<span class="c1"># Model
-</span><span class="k">class</span> <span class="nc">TicketRouter</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="c1"># Model: word → embedding → LSTM → final hidden state → Linear → Sigmoid → probability
+</span><span class="k">class</span> <span class="nc">SentimentClassifier</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
         <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">VOCAB_SIZE</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-        <span class="n">self</span><span class="p">.</span><span class="n">linear</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>   <span class="c1"># 3 departments
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">VOCAB_SIZE</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>   <span class="c1"># each word → 16 numbers
+</span>        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>               <span class="c1"># hidden state → 1 score
+</span>        <span class="n">self</span><span class="p">.</span><span class="n">sigmoid</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>                   <span class="c1"># score → probability (0 to 1)
 </span>
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">emb</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">emb</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">emb</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>              <span class="c1"># (1, seq_len, 16)
+</span>        <span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">emb</span><span class="p">)</span>         <span class="c1"># h: (1, 1, 32)
+</span>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))).</span><span class="nf">squeeze</span><span class="p">()</span>
 
-<span class="n">model</span>     <span class="o">=</span> <span class="nc">TicketRouter</span><span class="p">()</span>
-<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">CrossEntropyLoss</span><span class="p">()</span>
-<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="n">model</span>     <span class="o">=</span> <span class="nc">SentimentClassifier</span><span class="p">()</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>   <span class="c1"># binary cross-entropy for two-class problem
+</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
 
 <span class="c1"># Train
 </span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">400</span><span class="p">):</span>
     <span class="n">total_loss</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">yi</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
         <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>
-        <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">yi</span><span class="p">.</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span>
         <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
         <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
         <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
@@ -503,26 +601,32 @@ graph LR
     <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s">  loss: </span><span class="si">{</span><span class="n">total_loss</span><span class="o">/</span><span class="nf">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 
-<span class="c1"># Test
-</span><span class="n">departments</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">Billing</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Account</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Technical</span><span class="sh">"</span><span class="p">]</span>
-<span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
-<span class="n">test_tickets</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">[</span><span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">billing</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">charge</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">wrong</span><span class="sh">"</span><span class="p">],</span>
-    <span class="p">[</span><span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cannot</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">login</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">],</span>
-<span class="p">]</span>
+<span class="c1"># Test — including tricky cases
+</span><span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="n">test</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">],</span>    <span class="c1"># tricky positive
+</span>    <span class="p">[</span><span class="sh">"</span><span class="s">really</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">terrible</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">],</span>       <span class="c1"># negative
+</span>    <span class="p">[</span><span class="sh">"</span><span class="s">very</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">good</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">],</span>                <span class="c1"># positive
+</span><span class="p">]</span>
 <span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
-    <span class="k">for</span> <span class="n">words</span> <span class="ow">in</span> <span class="n">test_tickets</span><span class="p">:</span>
-        <span class="c1"># Filter to known words only
-</span>        <span class="n">known</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">vocab</span><span class="p">]</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="nf">encode</span><span class="p">(</span><span class="n">known</span><span class="p">)</span>
-        <span class="n">logits</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">pred</span> <span class="o">=</span> <span class="n">logits</span><span class="p">.</span><span class="nf">argmax</span><span class="p">().</span><span class="nf">item</span><span class="p">()</span>
-        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="si">{</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">words</span><span class="p">)</span><span class="si">}</span><span class="sh">'</span><span class="s"> → Route to: </span><span class="si">{</span><span class="n">departments</span><span class="p">[</span><span class="n">pred</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">words</span> <span class="ow">in</span> <span class="n">test</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nf">encode</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+        <span class="n">prob</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">).</span><span class="nf">item</span><span class="p">()</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">POSITIVE</span><span class="sh">"</span> <span class="k">if</span> <span class="n">prob</span> <span class="o">&gt;=</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="sh">"</span><span class="s">NEGATIVE</span><span class="sh">"</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="si">{</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">words</span><span class="p">)</span><span class="si">}</span><span class="sh">'</span><span class="s"> → </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s">  (confidence: </span><span class="si">{</span><span class="n">prob</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
+
+<p>Expected output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>'the food was not bad' → POSITIVE  (confidence: 0.78)
+'really terrible service' → NEGATIVE  (confidence: 0.08)
+'very good food' → POSITIVE  (confidence: 0.91)
+</code></pre></div></div>
+
+<p>The LSTM correctly handles “not bad” as positive because it remembers “not” when it reads “bad”.</p>
 
 <hr />
 
-<h2 id="3-sequence-labelling--one-label-per-step-many-to-many-same-length">3. Sequence labelling — one label per step (Many-to-Many, same length)</h2>
+<h2 id="4-sequence-labelling--one-label-per-step-many-to-many-same-length">4. Sequence labelling — one label per step (Many-to-Many, same length)</h2>
 
 <p><strong>The task:</strong> Read a sequence and output <strong>one label at every position</strong>.</p>
 
@@ -534,7 +638,7 @@ graph LR
   <li>Read each frame in a video → label each frame as “action” or “no action”</li>
 </ul>
 
-<h3 id="how-it-works-1">How it works</h3>
+<h3 id="how-it-works">How it works</h3>
 
 <p>For labelling, you do not take just the final hidden state. You take the <strong>output at every step</strong>.</p>
 
@@ -627,7 +731,226 @@ word₃ → [LSTM] → output₃ → [Linear] → label₃
 
 <hr />
 
-<h2 id="4-which-output-to-use--a-clear-guide">4. Which output to use — a clear guide</h2>
+<h2 id="5-language-modelling--predicting-the-next-word-many-to-one-repeated">5. Language modelling — predicting the next word (Many-to-One repeated)</h2>
+
+<h3 id="what-is-a-language-model">What is a language model?</h3>
+
+<p>A <strong>language model</strong> is a model that understands natural language well enough to predict what word comes next.</p>
+
+<p>Given an input sequence of words, it outputs a <strong>probability distribution over every word in the vocabulary</strong> — a score for each possible next word.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  "For space tourist return to"
+Output: P(Earth)=0.61  P(Mars)=0.18  P(space)=0.09  P(orbit)=0.07  ...
+→ Pick highest: "Earth"
+</code></pre></div></div>
+
+<p>This is how autocomplete works. The model reads what you have typed so far and predicts the most likely next word.</p>
+
+<div class="mermaid">
+graph LR
+    W1["For"] --&gt; L1["LSTM"]
+    W2["space"] --&gt; L2["LSTM"]
+    W3["tourist"] --&gt; L3["LSTM"]
+    W4["return"] --&gt; L4["LSTM"]
+    W5["to"] --&gt; L5["LSTM"]
+    L1 --&gt; L2 --&gt; L3 --&gt; L4 --&gt; L5
+    L5 --&gt;|"final hidden state"| FC["Linear layer\n(vocab size output)"]
+    FC --&gt; SM["Softmax"]
+    SM --&gt; E1["Earth: 0.61"]
+    SM --&gt; E2["Mars: 0.18"]
+    SM --&gt; E3["space: 0.09"]
+    SM --&gt; E4["...": 0.12]
+    style E1 fill:#4CAF50,color:#fff
+</div>
+
+<h3 id="decoding-strategies--how-to-pick-the-next-word">Decoding strategies — how to pick the next word</h3>
+
+<p>Once the model produces probabilities, how do we choose the next word?</p>
+
+<p><strong>Greedy decoding</strong> — always pick the word with the highest probability.</p>
+<ul>
+  <li>Fast and simple.</li>
+  <li>Can get stuck in repetitive or dull outputs.</li>
+</ul>
+
+<p><strong>Beam search</strong> — keep the top-K most likely sequences at each step, explore all of them, then pick the best overall.</p>
+<ul>
+  <li>More expensive but produces better, more coherent text.</li>
+  <li>Used in machine translation and text summarisation.</li>
+</ul>
+
+<p><strong>Sampling</strong> — randomly pick a word according to the probability distribution.</p>
+<ul>
+  <li>Produces more varied, creative output.</li>
+  <li>Used in chatbots and story generation.</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="n">torch.nn.functional</span> <span class="k">as</span> <span class="n">F</span>
+
+<span class="c1"># Tiny vocabulary for demonstration
+</span><span class="n">words</span>   <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">for</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">space</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">tourist</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">return</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">to</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">earth</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mars</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">orbit</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">&lt;eos&gt;</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">w2i</span>     <span class="o">=</span> <span class="p">{</span><span class="n">w</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">)}</span>
+<span class="n">i2w</span>     <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">w</span> <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">w2i</span><span class="p">.</span><span class="nf">items</span><span class="p">()}</span>
+<span class="n">VOCAB</span>   <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">LanguageModel</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">VOCAB</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">VOCAB</span><span class="p">)</span>   <span class="c1"># output one score per vocab word
+</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">hidden</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">emb</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                 <span class="c1"># (batch, seq, 16)
+</span>        <span class="n">out</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">emb</span><span class="p">,</span> <span class="n">hidden</span><span class="p">)</span>    <span class="c1"># out: (batch, seq, 32)
+</span>        <span class="n">logits</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>               <span class="c1"># (batch, seq, VOCAB)
+</span>        <span class="k">return</span> <span class="n">logits</span><span class="p">,</span> <span class="n">hidden</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">LanguageModel</span><span class="p">()</span>
+
+<span class="c1"># --- Greedy decoding: generate 3 words after a prompt ---
+</span><span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">for</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">space</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">tourist</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">return</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">to</span><span class="sh">"</span><span class="p">]</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">w2i</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">prompt</span><span class="p">]])</span>
+    <span class="n">logits</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="c1"># Take logits at the last step only
+</span>    <span class="n">last_logits</span> <span class="o">=</span> <span class="n">logits</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>           <span class="c1"># (VOCAB,)
+</span>    <span class="n">probs</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">last_logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">next_word_idx</span> <span class="o">=</span> <span class="n">probs</span><span class="p">.</span><span class="nf">argmax</span><span class="p">().</span><span class="nf">item</span><span class="p">()</span>    <span class="c1"># greedy: pick highest probability
+</span>    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Prompt: </span><span class="sh">'</span><span class="si">{</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span><span class="si">}</span><span class="sh">'"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Predicted next word: </span><span class="sh">'</span><span class="si">{</span><span class="n">i2w</span><span class="p">[</span><span class="n">next_word_idx</span><span class="p">]</span><span class="si">}</span><span class="sh">'"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Top 3 probabilities:</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">top3</span> <span class="o">=</span> <span class="n">probs</span><span class="p">.</span><span class="nf">topk</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">prob</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">top3</span><span class="p">.</span><span class="n">values</span><span class="p">,</span> <span class="n">top3</span><span class="p">.</span><span class="n">indices</span><span class="p">):</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">i2w</span><span class="p">[</span><span class="n">idx</span><span class="p">.</span><span class="nf">item</span><span class="p">()]</span><span class="si">:</span><span class="mi">10</span><span class="n">s</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">prob</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="6-machine-translation--sequence-to-sequence-many-to-many-different-length">6. Machine translation — sequence to sequence (Many-to-Many, different length)</h2>
+
+<h3 id="what-is-machine-translation">What is machine translation?</h3>
+
+<p>Given a sentence in one language (the <strong>source</strong>), generate the translation in another language (the <strong>target</strong>).</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source (English): "We are attending upgrade classes"
+Target (Hindi):   "Hum upgrade classes attend kar rahe hain"
+</code></pre></div></div>
+
+<p>The input and output are both sequences — but they can be <strong>different lengths</strong>. This is a <strong>Many-to-Many</strong> problem with variable output length.</p>
+
+<h3 id="how-it-works--encoder--decoder">How it works — Encoder + Decoder</h3>
+
+<p>This architecture has two parts:</p>
+
+<p><strong>Encoder</strong> — reads the entire source sentence word by word. At the end, the final hidden state becomes a <strong>context vector</strong> — a compressed summary of the whole source sentence.</p>
+
+<p><strong>Decoder</strong> — takes the context vector as its starting hidden state. It then generates the target language one word at a time, using its own previous output as the next input.</p>
+
+<div class="mermaid">
+graph LR
+    subgraph ENC["Encoder LSTM — reads source language"]
+        E1["We"] --&gt; EL1["LSTM"]
+        E2["are"] --&gt; EL2["LSTM"]
+        E3["attending"] --&gt; EL3["LSTM"]
+        EL1 --&gt; EL2 --&gt; EL3
+        EL3 --&gt;|"context vector"| CTX["h_final"]
+    end
+
+    subgraph DEC["Decoder LSTM — generates target language"]
+        CTX --&gt; DL1["LSTM"]
+        DL1 --&gt;|"Hum"| DL2["LSTM"]
+        DL2 --&gt;|"upgrade"| DL3["LSTM"]
+        DL3 --&gt;|"classes"| DONE["..."]
+    end
+</div>
+
+<p>The decoder generates one word at a time. Each generated word becomes the input for the next step. It stops when it generates a special <code class="language-plaintext highlighter-rouge">&lt;eos&gt;</code> (end of sentence) token.</p>
+
+<h3 id="key-point--same-architecture-different-use">Key point — same architecture, different use</h3>
+
+<p>The encoder and decoder are both LSTM networks. But:</p>
+<ul>
+  <li>The <strong>encoder</strong> uses the <strong>Many-to-One</strong> pattern — reads all source words, outputs one context vector</li>
+  <li>The <strong>decoder</strong> uses the <strong>One-to-Many</strong> pattern — takes one context vector, generates many target words</li>
+</ul>
+
+<p>Together they form a <strong>seq2seq</strong> (sequence-to-sequence) model.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Tiny vocabulary for both languages
+</span><span class="n">src_vocab</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">we</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">are</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">attending</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">classes</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">&lt;sos&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="sh">"</span><span class="s">&lt;eos&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+<span class="n">tgt_vocab</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">hum</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">upgrade</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">attend</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">kar</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">rahe</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="sh">"</span><span class="s">hain</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+             <span class="sh">"</span><span class="s">&lt;sos&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="sh">"</span><span class="s">&lt;eos&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">7</span><span class="p">}</span>
+<span class="n">SRC_V</span><span class="p">,</span> <span class="n">TGT_V</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">src_vocab</span><span class="p">),</span> <span class="nf">len</span><span class="p">(</span><span class="n">tgt_vocab</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Encoder</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">SRC_V</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">emb</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">emb</span><span class="p">)</span>   <span class="c1"># we only want the final hidden state
+</span>        <span class="k">return</span> <span class="n">h</span><span class="p">,</span> <span class="n">c</span>                  <span class="c1"># this is the context vector
+</span>
+<span class="k">class</span> <span class="nc">Decoder</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">TGT_V</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">TGT_V</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">hidden</span><span class="p">):</span>
+        <span class="n">emb</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>              <span class="c1"># (1, 1, 16) — one word at a time
+</span>        <span class="n">out</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">emb</span><span class="p">,</span> <span class="n">hidden</span><span class="p">)</span> <span class="c1"># out: (1, 1, 32)
+</span>        <span class="n">logits</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="c1"># (1, TGT_V)
+</span>        <span class="k">return</span> <span class="n">logits</span><span class="p">,</span> <span class="n">hidden</span>
+
+<span class="n">encoder</span> <span class="o">=</span> <span class="nc">Encoder</span><span class="p">()</span>
+<span class="n">decoder</span> <span class="o">=</span> <span class="nc">Decoder</span><span class="p">()</span>
+
+<span class="c1"># --- Forward pass (inference sketch) ---
+</span><span class="n">encoder</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="n">decoder</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="c1"># Source sentence: "we are attending classes"
+</span>    <span class="n">src</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">src_vocab</span><span class="p">[</span><span class="sh">"</span><span class="s">we</span><span class="sh">"</span><span class="p">],</span> <span class="n">src_vocab</span><span class="p">[</span><span class="sh">"</span><span class="s">are</span><span class="sh">"</span><span class="p">],</span>
+                         <span class="n">src_vocab</span><span class="p">[</span><span class="sh">"</span><span class="s">attending</span><span class="sh">"</span><span class="p">],</span> <span class="n">src_vocab</span><span class="p">[</span><span class="sh">"</span><span class="s">classes</span><span class="sh">"</span><span class="p">]]])</span>
+    <span class="n">context_h</span><span class="p">,</span> <span class="n">context_c</span> <span class="o">=</span> <span class="nf">encoder</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>   <span class="c1"># compress source to context vector
+</span>
+    <span class="c1"># Decoder starts with &lt;sos&gt; token and the context vector
+</span>    <span class="n">dec_input</span>  <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">tgt_vocab</span><span class="p">[</span><span class="sh">"</span><span class="s">&lt;sos&gt;</span><span class="sh">"</span><span class="p">]]])</span> <span class="c1"># start token
+</span>    <span class="n">hidden</span>     <span class="o">=</span> <span class="p">(</span><span class="n">context_h</span><span class="p">,</span> <span class="n">context_c</span><span class="p">)</span>
+    <span class="n">i2w_tgt</span>    <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tgt_vocab</span><span class="p">.</span><span class="nf">items</span><span class="p">()}</span>
+
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Generated translation:</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">6</span><span class="p">):</span>   <span class="c1"># generate up to 6 words
+</span>        <span class="n">logits</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="nf">decoder</span><span class="p">(</span><span class="n">dec_input</span><span class="p">,</span> <span class="n">hidden</span><span class="p">)</span>
+        <span class="n">next_word</span> <span class="o">=</span> <span class="n">logits</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">).</span><span class="nf">item</span><span class="p">()</span>
+        <span class="n">word</span> <span class="o">=</span> <span class="n">i2w_tgt</span><span class="p">[</span><span class="n">next_word</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">word</span> <span class="o">==</span> <span class="sh">"</span><span class="s">&lt;eos&gt;</span><span class="sh">"</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="n">dec_input</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">next_word</span><span class="p">]])</span>   <span class="c1"># feed output as next input
+</span></code></pre></div></div>
+
+<p><strong>Other tasks that use this exact seq2seq pattern:</strong></p>
+<ul>
+  <li><strong>Text summarisation</strong> — source: long document → target: short summary</li>
+  <li><strong>Dialogue generation</strong> — source: user message → target: bot reply</li>
+  <li><strong>Code generation</strong> — source: English description → target: code</li>
+</ul>
+
+<hr />
+
+<h2 id="7-which-output-to-use--a-clear-guide">7. Which output to use — a clear guide</h2>
 
 <p>This is the most common source of confusion. Here is a simple rule:</p>
 
@@ -672,43 +995,60 @@ word₃ → [LSTM] → output₃ → [Linear] → label₃
 
 <hr />
 
-<h2 id="5-choosing-the-right-sequence-model--summary">5. Choosing the right sequence model — summary</h2>
+<h2 id="8-choosing-the-right-sequence-model--summary">8. Choosing the right sequence model — summary</h2>
 
 <table>
   <thead>
     <tr>
       <th>Problem</th>
+      <th>Pattern</th>
       <th>Model</th>
-      <th>Output used</th>
+      <th>Key detail</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>Predict next value</td>
+      <td>Many-to-One</td>
       <td>LSTM</td>
-      <td>Final hidden state → <code class="language-plaintext highlighter-rouge">h_n</code></td>
+      <td>Use <code class="language-plaintext highlighter-rouge">h_n</code> (final hidden state)</td>
     </tr>
     <tr>
-      <td>Classify whole sequence</td>
-      <td>LSTM or Bidirectional LSTM</td>
-      <td>Final hidden state → <code class="language-plaintext highlighter-rouge">h_n</code></td>
+      <td>Sentiment / spam / emotion classification</td>
+      <td>Many-to-One</td>
+      <td>LSTM</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">h_n</code> + softmax</td>
     </tr>
     <tr>
-      <td>Label each step in sequence</td>
-      <td>LSTM or Bidirectional LSTM</td>
-      <td>All outputs → <code class="language-plaintext highlighter-rouge">output</code></td>
+      <td>Label each token (POS, NER)</td>
+      <td>Many-to-Many (same length)</td>
+      <td>Bidirectional LSTM</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">output</code> (all steps)</td>
+    </tr>
+    <tr>
+      <td>Language modelling / autocomplete</td>
+      <td>Many-to-One (repeated)</td>
+      <td>LSTM</td>
+      <td>Output logits over vocab, apply softmax</td>
+    </tr>
+    <tr>
+      <td>Machine translation / summarisation</td>
+      <td>Many-to-Many (different length)</td>
+      <td>Encoder-Decoder LSTM</td>
+      <td>Encoder → context vector → Decoder generates</td>
     </tr>
     <tr>
       <td>Very long sequences (1000+ steps)</td>
+      <td>Any</td>
       <td>Transformer (covered later)</td>
-      <td>Attention mechanism</td>
+      <td>Attention replaces hidden state</td>
     </tr>
   </tbody>
 </table>
 
 <hr />
 
-<h2 id="6-common-patterns-in-real-projects">6. Common patterns in real projects</h2>
+<h2 id="9-common-patterns-in-real-projects">9. Common patterns in real projects</h2>
 
 <h3 id="pattern-1--normalise-your-time-series-data">Pattern 1 — Normalise your time series data</h3>
 
