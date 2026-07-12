@@ -51,56 +51,330 @@
 
 <p>Now let us use them on real problems.</p>
 
-<p>There are three main ways to use an RNN:</p>
+<p>But before we dive into specific tasks, we need to understand something important: <strong>there are different patterns for how sequences can go in and come out of an RNN</strong>.</p>
+
+<hr />
+
+<h2 id="0-sequence-modeling-patterns--what-goes-in-what-comes-out">0. Sequence modeling patterns — what goes in, what comes out</h2>
+
+<p>An RNN takes a sequence as input. But what it outputs can be very different depending on the task.</p>
+
+<p>There are three main patterns:</p>
 
 <table>
   <thead>
     <tr>
-      <th>Use</th>
-      <th>What you give it</th>
-      <th>What you get back</th>
+      <th>Pattern</th>
+      <th>Input</th>
+      <th>Output</th>
+      <th>Example tasks</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Time series forecasting</strong></td>
-      <td>A sequence of past values</td>
-      <td>One predicted future value</td>
+      <td><strong>Many-to-One</strong></td>
+      <td>Many tokens</td>
+      <td>One answer</td>
+      <td>Sentiment analysis, spam detection, time series forecast</td>
     </tr>
     <tr>
-      <td><strong>Sequence classification</strong></td>
-      <td>A whole sequence</td>
-      <td>One label for the whole thing</td>
+      <td><strong>Many-to-Many</strong></td>
+      <td>Many tokens</td>
+      <td>Many tokens</td>
+      <td>POS tagging, NER, summarization, translation</td>
     </tr>
     <tr>
-      <td><strong>Sequence labelling</strong></td>
-      <td>A whole sequence</td>
-      <td>One label <strong>per step</strong></td>
+      <td><strong>One-to-Many</strong></td>
+      <td>One input</td>
+      <td>Many tokens</td>
+      <td>Image captioning, music generation</td>
     </tr>
   </tbody>
 </table>
 
-<p>Each one is slightly different in how you feed data in and how you read the output.</p>
+<hr />
+
+<h3 id="pattern-1--many-to-one">Pattern 1 — Many to One</h3>
+
+<p><strong>Input:</strong> a sequence of many tokens (many steps)
+<strong>Output:</strong> a single answer for the whole sequence</p>
+
+<p>The RNN reads every step and builds memory. At the very last step, you take the final memory (the final hidden state) and pass it through a linear layer to get <strong>one answer</strong>.</p>
+
+<div class="mermaid">
+graph LR
+    X1["token 1"] --&gt; RNN1["RNN step 1"]
+    RNN1 --&gt; RNN2["RNN step 2"]
+    X2["token 2"] --&gt; RNN2
+    RNN2 --&gt; RNN3["RNN step 3"]
+    X3["token 3"] --&gt; RNN3
+    RNN3 --&gt; RNN4["RNN step 4"]
+    X4["token 4"] --&gt; RNN4
+    RNN4 --&gt;|"final hidden state"| LIN["Linear layer"]
+    LIN --&gt; OUT["One output\ne.g. Positive / Negative"]
+</div>
+
+<p><strong>Real examples:</strong></p>
+
+<ul>
+  <li><strong>Sentiment analysis</strong> — input: “The food was not bad at all” (7 words) → output: Positive</li>
+  <li><strong>Spam detection</strong> — input: email words → output: Spam or Not Spam</li>
+  <li><strong>Time series forecasting</strong> — input: last 7 days of temperature → output: tomorrow’s temperature</li>
+  <li><strong>Document classification</strong> — input: article → output: Sports / Politics / Tech</li>
+</ul>
+
+<blockquote>
+  <p>All <strong>classification tasks</strong> where you want one label for the whole sequence fall into Many-to-One.</p>
+</blockquote>
 
 <hr />
 
-<h2 id="1-time-series-forecasting--predicting-what-comes-next">1. Time series forecasting — predicting what comes next</h2>
+<h3 id="pattern-2--many-to-many">Pattern 2 — Many to Many</h3>
 
-<p><strong>The task:</strong> Given past values (numbers over time), predict the next value.</p>
+<p><strong>Input:</strong> a sequence of many tokens
+<strong>Output:</strong> a sequence of many tokens (one per input step, or a different-length output sequence)</p>
 
-<p><strong>Examples:</strong></p>
+<p>There are two sub-types:</p>
+
+<p><strong>Sub-type A — Same length output (one tag per input token)</strong></p>
+
+<p>The RNN produces an output at <strong>every step</strong>, not just the last one. You take the hidden state at each step and pass it through a linear layer to get a tag for that position.</p>
+
+<div class="mermaid">
+graph LR
+    X1["The"] --&gt; RNN1["step 1"]
+    X2["cat"] --&gt; RNN2["step 2"]
+    X3["sat"] --&gt; RNN3["step 3"]
+    RNN1 --&gt; RNN2
+    RNN2 --&gt; RNN3
+    RNN1 --&gt; T1["DET"]
+    RNN2 --&gt; T2["NOUN"]
+    RNN3 --&gt; T3["VERB"]
+</div>
+
+<p><strong>Real examples (same-length):</strong></p>
+
 <ul>
-  <li>Given last 7 days of temperature → predict tomorrow</li>
-  <li>Given last 30 days of sales → predict next month’s sales</li>
-  <li>Given last 10 seconds of a patient’s heart rate → predict the next value</li>
+  <li><strong>Part-of-speech (POS) tagging</strong> — input: “The cat sat” → output: “DET NOUN VERB” (one tag per word)</li>
+  <li><strong>Named entity recognition (NER)</strong> — input: “Barack Obama visited Paris” → output: “PERSON PERSON O LOCATION”</li>
+  <li><strong>Sequence labelling</strong> — any task where every input token gets its own label</li>
 </ul>
 
-<h3 id="how-it-works">How it works</h3>
+<p><strong>Sub-type B — Different length output (encoder-decoder / seq2seq)</strong></p>
 
-<p>You feed the whole sequence in. The RNN reads it step by step and builds up a memory. At the end, you take the <strong>final hidden state</strong> and pass it through a linear layer to get your prediction.</p>
+<p>The input sequence and output sequence can be <strong>different lengths</strong>. You encode the whole input into a final memory vector, then use a separate decoder RNN to generate the output sequence one token at a time.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x₁ → x₂ → x₃ → x₄ → x₅ → [final memory] → [Linear] → predicted x₆
+<div class="mermaid">
+graph LR
+    subgraph Encoder["Encoder RNN — reads input"]
+        E1["Bonjour"] --&gt; E2["le"] --&gt; E3["monde"]
+        E3 --&gt; MEM["Memory\nvector"]
+    end
+
+    subgraph Decoder["Decoder RNN — generates output"]
+        MEM --&gt; D1["Hello"]
+        D1 --&gt; D2["world"]
+    end
+</div>
+
+<p><strong>Real examples (different-length):</strong></p>
+
+<ul>
+  <li><strong>Machine translation</strong> — input: “Bonjour le monde” (French, 3 words) → output: “Hello world” (English, 2 words)</li>
+  <li><strong>Text summarization</strong> — input: long document (500 words) → output: summary (50 words)</li>
+  <li><strong>Dialogue generation</strong> — input: “How are you?” → output: “I am doing well, thank you.”</li>
+</ul>
+
+<blockquote>
+  <p>Both sub-types fall into <strong>Many-to-Many</strong>. The difference is whether output length equals input length or not.</p>
+</blockquote>
+
+<hr />
+
+<h3 id="pattern-3--one-to-many">Pattern 3 — One to Many</h3>
+
+<p><strong>Input:</strong> a single item (not a sequence)
+<strong>Output:</strong> a sequence of many tokens generated one at a time</p>
+
+<p>There is no sequence coming in — just one thing (an image, a number, a label). The decoder RNN generates output step by step, using its own previous output as input to the next step.</p>
+
+<div class="mermaid">
+graph LR
+    IMG["One input\ne.g. an image"] --&gt; H0["Initial hidden state"]
+    H0 --&gt; D1["a"]
+    D1 --&gt; D2["cat"]
+    D2 --&gt; D3["sitting"]
+    D3 --&gt; D4["on"]
+    D4 --&gt; D5["a chair"]
+</div>
+
+<p><strong>Real examples:</strong></p>
+
+<ul>
+  <li><strong>Image captioning</strong> — input: one photo → output: “A cat sitting on a wooden chair” (many words)</li>
+  <li><strong>Music generation</strong> — input: one starting note → output: a sequence of notes</li>
+  <li><strong>Story generation</strong> — input: one prompt word → output: many sentences</li>
+</ul>
+
+<blockquote>
+  <p>The key: <strong>the input is not a sequence</strong>. The model generates the output sequence from scratch, conditioned on just one thing.</p>
+</blockquote>
+
+<hr />
+
+<h3 id="all-three-patterns-at-a-glance">All three patterns at a glance</h3>
+
+<div class="mermaid">
+graph TD
+    subgraph M1["Many-to-One"]
+        direction LR
+        A1["x1 → x2 → x3 → x4"] --&gt; B1["one answer"]
+    end
+
+    subgraph M2["Many-to-Many (same length)"]
+        direction LR
+        A2["x1 → x2 → x3 → x4"] --&gt; B2["y1   y2   y3   y4"]
+    end
+
+    subgraph M3["Many-to-Many (different length)"]
+        direction LR
+        A3["x1 → x2 → x3"] --&gt; B3["y1 → y2 → y3 → y4 → y5"]
+    end
+
+    subgraph M4["One-to-Many"]
+        direction LR
+        A4["one input"] --&gt; B4["y1 → y2 → y3 → y4"]
+    end
+</div>
+
+<hr />
+
+<p>Now let us look at how to implement each pattern in PyTorch, starting with the most common ones.</p>
+
+<hr />
+
+<h2 id="1-time-series-forecasting--predicting-what-comes-next-many-to-one">1. Time series forecasting — predicting what comes next (Many-to-One)</h2>
+
+<h3 id="what-is-time-series-forecasting">What is time series forecasting?</h3>
+
+<p><strong>Time series forecasting</strong> means predicting future values based on data collected over time.</p>
+
+<p>Unlike regular data — where each row is independent — time series data is <strong>sequential</strong>. Each value depends on what came before. The order matters.</p>
+
+<p>Examples of time series data:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Time step</th>
+      <th>What you want to predict</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Daily stock prices</td>
+      <td>One day</td>
+      <td>Tomorrow’s price</td>
+    </tr>
+    <tr>
+      <td>Hourly temperatures</td>
+      <td>One hour</td>
+      <td>Next hour’s temperature</td>
+    </tr>
+    <tr>
+      <td>Monthly sales</td>
+      <td>One month</td>
+      <td>Next month’s sales</td>
+    </tr>
+    <tr>
+      <td>Website traffic</td>
+      <td>One day</td>
+      <td>Tomorrow’s visitor count</td>
+    </tr>
+    <tr>
+      <td>Patient heart rate</td>
+      <td>One second</td>
+      <td>Next second’s reading</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="why-sequential-order-matters">Why sequential order matters</h3>
+
+<p>Imagine you shuffle the daily temperatures for the past month randomly. The numbers are still there — but the pattern is destroyed. You can no longer tell if temperatures are rising, falling, or cycling. A model trained on shuffled data would learn nothing useful.</p>
+
+<p>This is exactly why a normal neural network cannot do time series forecasting well — it sees all inputs at once without any sense of order. An RNN reads values <strong>one at a time, in order</strong>, building memory as it goes. That is what makes it suitable.</p>
+
+<hr />
+
+<h3 id="what-patterns-does-a-time-series-contain">What patterns does a time series contain?</h3>
+
+<p>Good forecasting comes from recognising the patterns hidden in past data. There are four main types:</p>
+
+<p><strong>1 — Trend</strong>: a long-term direction, either rising or falling.</p>
+<blockquote>
+  <p>Example: Monthly sales slowly increasing over a year as the business grows.</p>
+</blockquote>
+
+<p><strong>2 — Seasonality</strong>: a repeating pattern at regular intervals.</p>
+<blockquote>
+  <p>Example: Electricity usage spikes every summer (air conditioning) and every winter (heating). It repeats at the same time every year.</p>
+</blockquote>
+
+<p><strong>3 — Cycles and fluctuations</strong>: irregular rises and falls caused by external factors.</p>
+<blockquote>
+  <p>Example: Sales jumping unexpectedly after a news story, or dipping during an economic downturn. Less regular than seasonality.</p>
+</blockquote>
+
+<p><strong>4 — Anomalies</strong>: unusual values that do not fit the pattern at all.</p>
+<blockquote>
+  <p>Example: A sudden spike in server traffic that indicates a security incident or a viral post.</p>
+</blockquote>
+
+<div class="mermaid">
+graph LR
+    subgraph Trend["Trend — steady upward direction"]
+        T1["Jan\n100"] --&gt; T2["Feb\n110"] --&gt; T3["Mar\n122"] --&gt; T4["Apr\n135"]
+    end
+    subgraph Season["Seasonality — repeating pattern"]
+        S1["Jan\nlow"] --&gt; S2["Jul\nhigh"] --&gt; S3["Jan\nlow"] --&gt; S4["Jul\nhigh"]
+    end
+    subgraph Anomaly["Anomaly — sudden unexpected spike"]
+        A1["Mon\n50"] --&gt; A2["Tue\n52"] --&gt; A3["Wed\n200 ⚠️"] --&gt; A4["Thu\n51"]
+        style A3 fill:#ff4444,color:#fff
+    end
+</div>
+
+<p>An RNN can learn to recognise all four of these patterns from the sequence of past values — because it processes them in order and remembers what it has seen.</p>
+
+<hr />
+
+<h3 id="why-rnns-are-good-at-this">Why RNNs are good at this</h3>
+
+<p>A simple model (like linear regression) can follow a straight trend. But it cannot capture:</p>
+<ul>
+  <li>Patterns that depend on what happened 7 steps ago (weekly seasonality)</li>
+  <li>Patterns that change over time (an upward trend that accelerates)</li>
+  <li>Interactions between trend and anomaly</li>
+</ul>
+
+<p>An RNN remembers past steps. Its hidden state at step 30 contains information about steps 1–29. This lets it capture complex, time-dependent relationships that simpler models miss.</p>
+
+<hr />
+
+<h3 id="the-task-in-one-line">The task in one line</h3>
+
+<blockquote>
+  <p>Given the last N values in a sequence, predict the next value.</p>
+</blockquote>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x₁ → x₂ → x₃ → x₄ → x₅ → [final hidden state] → [Linear] → predicted x₆
 </code></pre></div></div>
+
+<p>This is a <strong>Many-to-One</strong> pattern: many input steps, one output prediction.</p>
+
+<hr />
 
 <h3 id="step-by-step-example--weekly-sales-forecasting">Step by step example — weekly sales forecasting</h3>
 
@@ -196,7 +470,7 @@
 
 <hr />
 
-<h2 id="2-sequence-classification--one-label-for-the-whole-sequence">2. Sequence classification — one label for the whole sequence</h2>
+<h2 id="2-sequence-classification--one-label-for-the-whole-sequence-many-to-one">2. Sequence classification — one label for the whole sequence (Many-to-One)</h2>
 
 <p><strong>The task:</strong> Read a whole sequence and output <strong>one single label</strong>.</p>
 
@@ -208,7 +482,7 @@
   <li>Read all words in a support ticket → which department to route to</li>
 </ul>
 
-<h3 id="how-it-works-1">How it works</h3>
+<h3 id="how-it-works">How it works</h3>
 
 <p>Same as forecasting — the RNN reads the whole sequence. You take the <strong>final hidden state</strong> and classify it.</p>
 
@@ -295,7 +569,7 @@
 
 <hr />
 
-<h2 id="3-sequence-labelling--one-label-per-step">3. Sequence labelling — one label per step</h2>
+<h2 id="3-sequence-labelling--one-label-per-step-many-to-many-same-length">3. Sequence labelling — one label per step (Many-to-Many, same length)</h2>
 
 <p><strong>The task:</strong> Read a sequence and output <strong>one label at every position</strong>.</p>
 
@@ -307,7 +581,7 @@
   <li>Read each frame in a video → label each frame as “action” or “no action”</li>
 </ul>
 
-<h3 id="how-it-works-2">How it works</h3>
+<h3 id="how-it-works-1">How it works</h3>
 
 <p>For labelling, you do not take just the final hidden state. You take the <strong>output at every step</strong>.</p>
 
