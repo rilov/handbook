@@ -641,33 +641,203 @@ Bidirectional LSTMs are very common in NLP tasks like named entity recognition, 
 
 ---
 
-## 11. Handling variable-length sequences
+## 11. Padding, Masking, and Variable-Length Sequences
 
-Real datasets have sequences of different lengths. A padding token fills the shorter sequences:
+### Why is this a problem?
+
+RNNs and LSTMs are designed to handle sequences of different lengths. A sentence can be 5 words. Another sentence can be 20 words. That is fine — the same RNN cell can process any number of steps.
+
+But there is a problem when you train the model.
+
+During training we use **mini-batches** — we pick, say, 32 sentences at a time and train on all 32 together. This is much faster than training one sentence at a time.
+
+The problem: to process 32 sentences together, they must all be the **same length**. Computer hardware (GPU/CPU) processes data in rectangular grids — rows and columns. You cannot have one row with 5 columns and another row with 20 columns in the same grid.
+
+<div class="mermaid">
+graph TD
+    subgraph Problem["The problem — sequences in a batch have different lengths"]
+        S1["Sentence 1: The cat sat → 3 tokens"]
+        S2["Sentence 2: I went to the shop yesterday → 6 tokens"]
+        S3["Sentence 3: Hi → 1 token"]
+        S1 --> BAD["Cannot fit in one\nrectangular grid ❌"]
+        S2 --> BAD
+        S3 --> BAD
+    end
+</div>
+
+So how do we fix this? There are two main approaches: **padding** and **truncation**.
+
+---
+
+### Approach 1 — Padding
+
+**Padding** means: find the longest sequence in the batch, then add zeros to all shorter sequences until they are the same length.
+
+```
+Sentence 1:  [the]  [cat]  [sat]  [0]    [0]    [0]    ← padded with 3 zeros
+Sentence 2:  [I]    [went] [to]   [the]  [shop] [yest.] ← longest — no padding needed
+Sentence 3:  [Hi]   [0]    [0]    [0]    [0]    [0]    ← padded with 5 zeros
+```
+
+Now all three sentences have length 6. They fit in a rectangular grid.
+
+<div class="mermaid">
+graph LR
+    subgraph After["After padding — all same length"]
+        R1["the | cat | sat | 0 | 0 | 0"]
+        R2["I | went | to | the | shop | yest"]
+        R3["Hi | 0 | 0 | 0 | 0 | 0"]
+    end
+</div>
+
+The `0` values are called **padding tokens**. They carry no real information — they are just placeholders to make the shape rectangular.
+
+---
+
+### The problem with padding — wasted computation
+
+Padding works, but it has a cost.
+
+Imagine your dataset has 10,000 sentences. Most sentences are 50 tokens long. But one sentence is 200 tokens long.
+
+If you pad to the maximum length, **every single sentence** gets padded to 200 tokens. That means 150 zeros added to 9,999 sentences — most of the data is now fake zeros.
+
+```
+Dataset of 10,000 sentences
+Average length: 50 tokens
+Longest sentence: 200 tokens
+
+After padding:
+  9,999 sentences × 150 fake zeros each = enormous amount of wasted computation
+```
+
+The LSTM will waste time processing all those zeros. Training becomes slow and memory usage grows.
+
+---
+
+### Approach 2 — Truncation
+
+Instead of padding everything to the longest sequence, you can **truncate** the outlier long sequences down to a sensible length.
+
+```
+Maximum sentence you allow: 50 tokens
+Sentence with 200 tokens → keep only the first 50 tokens, discard the rest
+```
+
+Yes — you lose some information from that one very long sentence. But you avoid padding 9,999 other sentences with 150 zeros each.
+
+<div class="mermaid">
+graph TD
+    Q["One sentence: 200 tokens\nEveryone else: ~50 tokens"]
+    Q -->|"Option A: Padding"| PA["Pad all 9999 sentences\nto 200 tokens\n→ huge waste"]
+    Q -->|"Option B: Truncation"| PB["Cut the 200-token sentence\nto 50 tokens\n→ small information loss"]
+    style PA fill:#ffcccc
+    style PB fill:#4CAF50,color:#fff
+</div>
+
+**When to truncate:** When one or a few sequences are much longer than the rest. Losing 50% of one sentence is usually acceptable if it saves padding 10,000 other sentences.
+
+---
+
+### Approach 3 — Masking (tell the model to ignore the zeros)
+
+Even with padding, there is another problem: the LSTM does not automatically know which positions are real data and which are padding zeros. It will process all the zeros and let them influence the memory — which we do not want.
+
+**Masking** solves this. A mask is a list of `True`/`False` values that tells the model: "these positions are real, these positions are padding — ignore them."
+
+```
+Sequence:   [the]  [cat]  [sat]  [0]   [0]   [0]
+Mask:       [True] [True] [True] [False][False][False]
+```
+
+The LSTM processes positions marked `True` normally. For positions marked `False` (padding), it stops updating the memory — the hidden state is frozen at the last real token.
+
+---
+
+### Putting it together — full PyTorch example
+
+PyTorch provides three functions to handle this properly:
+
+| Function | What it does |
+|----------|-------------|
+| `pad_sequence` | Pads a list of different-length tensors to the same length |
+| `pack_padded_sequence` | Packs the padded data + tells LSTM which positions are real |
+| `pad_packed_sequence` | Unpacks the output back to a regular padded tensor |
 
 ```python
+import torch
+import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
 
-# Sequences of different lengths
-seq1 = torch.tensor([[1.0], [2.0], [3.0]])          # length 3
-seq2 = torch.tensor([[1.0], [2.0], [3.0], [4.0]])   # length 4
-seq3 = torch.tensor([[1.0], [2.0]])                  # length 2
+# --- Three sentences of different lengths ---
+# Each token is represented as a single number (in real NLP it would be an embedding)
+sentence1 = torch.tensor([[1.0], [2.0], [3.0]])             # 3 tokens
+sentence2 = torch.tensor([[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]])  # 6 tokens
+sentence3 = torch.tensor([[1.0]])                            # 1 token
 
-# Pad to the same length
-padded = pad_sequence([seq1, seq2, seq3], batch_first=True, padding_value=0.0)
-lengths = torch.tensor([3, 4, 2])
+print("Lengths before padding:", 3, 6, 1)
 
-print("Padded shape:", padded.shape)  # (3, 4, 1) — 3 sequences, max length 4
+# --- Step 1: Pad to the same length ---
+# pad_sequence pads all to the length of the longest (6)
+padded = pad_sequence(
+    [sentence1, sentence2, sentence3],
+    batch_first=True,    # shape: (batch, seq_len, features)
+    padding_value=0.0    # fill with zeros
+)
+lengths = torch.tensor([3, 6, 1])  # real length of each sequence
 
-# Pack — tells LSTM to ignore the padding
-packed = pack_padded_sequence(padded, lengths, batch_first=True, enforce_sorted=False)
+print("\nAfter padding:")
+print(padded)
+# tensor([[[1.], [2.], [3.], [0.], [0.], [0.]],   ← sentence1 padded
+#         [[1.], [2.], [3.], [4.], [5.], [6.]],    ← sentence2 (longest, no padding)
+#         [[1.], [0.], [0.], [0.], [0.], [0.]]])   ← sentence3 padded
+print("Shape:", padded.shape)  # (3, 6, 1) — 3 sentences, length 6, 1 feature
 
+# --- Step 2: Pack — tell LSTM which positions are real ---
+# This creates a compact form that skips the padding during computation
+packed = pack_padded_sequence(
+    padded,
+    lengths,
+    batch_first=True,
+    enforce_sorted=False  # sequences do not need to be sorted by length
+)
+
+# --- Step 3: Run through LSTM ---
 lstm = nn.LSTM(input_size=1, hidden_size=8, batch_first=True)
 packed_output, (h_n, c_n) = lstm(packed)
 
-# Unpack back to padded format
-output, lengths_out = pad_packed_sequence(packed_output, batch_first=True)
-print("Output shape:", output.shape)
+# h_n holds the final hidden state for each sequence
+# Crucially: for sentence1, it is the state after token 3 (NOT after the zeros)
+# For sentence3, it is the state after token 1 (NOT after the zeros)
+print("\nh_n shape:", h_n.shape)  # (1, 3, 8) — 1 layer, 3 sequences, 8 hidden units
+
+# --- Step 4: Unpack back to padded format (if you need per-step outputs) ---
+output, output_lengths = pad_packed_sequence(packed_output, batch_first=True)
+print("Output shape:", output.shape)  # (3, 6, 8) — padded positions have all zeros
+```
+
+The key benefit of packing: **the LSTM's final hidden state `h_n` correctly reflects only the real tokens**. Without packing, the LSTM would process the zeros too, and `h_n` would be corrupted by the padding.
+
+---
+
+### Summary — which approach to use
+
+| Situation | Recommended approach |
+|-----------|---------------------|
+| All sequences are similar length | Simple padding — easy to implement |
+| One or few very long outlier sequences | Truncate the outliers, then pad |
+| Small differences in length | Padding + packing (standard approach) |
+| Large differences in length | Truncate to a max length, then pad + pack |
+
+```python
+# Practical rule for text data
+MAX_LENGTH = 100   # decide a max length based on your data
+
+def prepare_sequence(tokens, max_length=MAX_LENGTH):
+    if len(tokens) > max_length:
+        tokens = tokens[:max_length]          # truncate
+    return tokens
+    # Then pad_sequence handles the rest
 ```
 
 ---
