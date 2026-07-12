@@ -1,0 +1,440 @@
+<h1 id="part-15-lstm-and-gru--solving-the-memory-problem--a-friendly-guide">Part 15: LSTM and GRU — Solving the Memory Problem — A Friendly Guide</h1>
+
+<p>In Part 14, we learned that an RNN reads data step by step and keeps a memory (the hidden state).</p>
+
+<p>But we also saw one big problem: <strong>RNNs forget things from long ago</strong>.</p>
+
+<p>Imagine you are reading a detective story. The important clue was mentioned on page 3. By page 50, you still remember it — because your brain knows it was important and held onto it.</p>
+
+<p>A basic RNN cannot do this. Every step, the memory is overwritten a little. After many steps, early information is almost gone.</p>
+
+<p><strong>LSTM</strong> (Long Short-Term Memory) and <strong>GRU</strong> (Gated Recurrent Unit) fix this. They give the network a way to <strong>choose what to remember and what to forget</strong>.</p>
+
+<hr />
+
+<h2 id="1-the-problem--vanishing-gradients">1. The problem — vanishing gradients</h2>
+
+<p>When we train an RNN using backpropagation through time (BPTT), we go backwards through the chain:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x₁ → [RNN] → h₁ → [RNN] → h₂ → [RNN] → h₃ → ... → h₅₀ → output → loss
+     ←─────────────────────────────────────────────────────────────── gradients flow back
+</code></pre></div></div>
+
+<p>At each step going backwards, the gradient is multiplied by the same weights. If those weights are slightly less than 1 (which they often are), the gradient shrinks at every step:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.9 × 0.9 × 0.9 × 0.9 × 0.9 × ... (50 times) = almost zero
+</code></pre></div></div>
+
+<p>By the time the gradient reaches step 1, it is so small the weights barely update. The network cannot learn from early parts of the sequence.</p>
+
+<p>This is the <strong>vanishing gradient problem</strong>.</p>
+
+<blockquote>
+  <p><strong>Simple analogy:</strong> Imagine passing a whisper along a line of 50 people. Each person hears it slightly quieter. By the 50th person, they hear almost nothing. That is what happens to gradients in a long RNN.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-the-solution--gates">2. The solution — gates</h2>
+
+<p>LSTM solves this by adding <strong>gates</strong> — small switches that control what information passes through.</p>
+
+<p>There are three gates:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Gate</th>
+      <th>What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Forget gate</strong></td>
+      <td>Decides what to erase from memory</td>
+    </tr>
+    <tr>
+      <td><strong>Input gate</strong></td>
+      <td>Decides what new information to add to memory</td>
+    </tr>
+    <tr>
+      <td><strong>Output gate</strong></td>
+      <td>Decides what part of memory to use as output</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each gate is a number between 0 and 1 (produced by a sigmoid function):</p>
+<ul>
+  <li><strong>0</strong> means “block this completely — forget it”</li>
+  <li><strong>1</strong> means “let this through completely — remember it”</li>
+  <li><strong>0.7</strong> means “keep 70% of this”</li>
+</ul>
+
+<p>The gates are themselves learned during training. The network learns <em>when</em> to remember and <em>when</em> to forget.</p>
+
+<hr />
+
+<h2 id="3-lstm--two-memory-streams">3. LSTM — two memory streams</h2>
+
+<p>LSTM has <strong>two separate memory streams</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Stream</th>
+      <th>Name</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">h_t</code></td>
+      <td>Hidden state</td>
+      <td>Short-term working memory (same as basic RNN)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">c_t</code></td>
+      <td>Cell state</td>
+      <td>Long-term memory — can carry information across many steps</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The cell state is the key innovation. It flows through the network like a conveyor belt, and the gates decide what to add or remove from it.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Long-term memory (cell state):
+──────────────────────────────────────────────────────►
+        ↑ add new info        ↑ add new info
+    [forget some]         [forget some]
+        ↓ use for output      ↓ use for output
+
+Short-term memory (hidden state):
+h₀ → [LSTM] → h₁ → [LSTM] → h₂ → [LSTM] → h₃
+</code></pre></div></div>
+
+<h3 id="how-one-lstm-step-works-conceptually">How one LSTM step works (conceptually)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Forget gate:  look at (current input + old hidden state) → decide what to erase from cell state
+2. Input gate:   look at (current input + old hidden state) → decide what new info to write to cell state
+3. Update cell:  erase the old info, write the new info
+4. Output gate:  look at (current input + old hidden state) → decide what to output as new hidden state
+</code></pre></div></div>
+
+<p>You do not need to implement this yourself — PyTorch does all of it inside <code class="language-plaintext highlighter-rouge">nn.LSTM</code>.</p>
+
+<hr />
+
+<h2 id="4-lstm-in-pytorch">4. LSTM in PyTorch</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>    <span class="c1"># one number per time step
+</span>    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>  <span class="c1"># size of hidden state AND cell state
+</span>    <span class="n">num_layers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Input: 1 sequence, 5 time steps, 1 feature
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">20.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">22.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">24.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">23.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">25.0</span><span class="p">]]])</span>
+
+<span class="c1"># LSTM returns: output, (hidden_state, cell_state)
+</span><span class="n">output</span><span class="p">,</span> <span class="p">(</span><span class="n">h_n</span><span class="p">,</span> <span class="n">c_n</span><span class="p">)</span> <span class="o">=</span> <span class="nf">lstm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Output shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (1, 5, 16) — hidden state at every step
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">h_n shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">h_n</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>        <span class="c1"># (1, 1, 16) — final hidden state
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">c_n shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">c_n</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>        <span class="c1"># (1, 1, 16) — final cell state (long-term memory)
+</span></code></pre></div></div>
+
+<p>The main difference from <code class="language-plaintext highlighter-rouge">nn.RNN</code>: LSTM returns <strong>two</strong> hidden states — <code class="language-plaintext highlighter-rouge">h_n</code> (short-term) and <code class="language-plaintext highlighter-rouge">c_n</code> (long-term cell state).</p>
+
+<hr />
+
+<h2 id="5-full-lstm-example--sentiment-analysis">5. Full LSTM example — sentiment analysis</h2>
+
+<p>We read a sentence word by word and predict if it is positive or negative.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Simple vocabulary
+</span><span class="n">word_to_idx</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">good</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="sh">"</span><span class="s">really</span><span class="sh">"</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="sh">"</span><span class="s">very</span><span class="sh">"</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="sh">"</span><span class="s">great</span><span class="sh">"</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">&lt;pad&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">10</span>
+<span class="p">}</span>
+<span class="n">VOCAB_SIZE</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">word_to_idx</span><span class="p">)</span>
+
+<span class="c1"># Training sentences and labels
+</span><span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">good</span><span class="sh">"</span><span class="p">],</span>       <span class="c1"># positive = 1
+</span>    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">],</span>        <span class="c1"># negative = 0
+</span>    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">],</span> <span class="c1"># positive = 1  (tricky!)
+</span>    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">great</span><span class="sh">"</span><span class="p">],</span>   <span class="c1"># positive = 1
+</span>    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">good</span><span class="sh">"</span><span class="p">],</span> <span class="c1"># negative = 0 (tricky!)
+</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Convert words to numbers
+</span><span class="k">def</span> <span class="nf">encode</span><span class="p">(</span><span class="n">sentence</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">word_to_idx</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">sentence</span><span class="p">]])</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="p">[</span><span class="nf">encode</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sentences</span><span class="p">]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="c1"># Model
+</span><span class="k">class</span> <span class="nc">SentimentLSTM</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">VOCAB_SIZE</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>  <span class="c1"># each word → 8 numbers
+</span>        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">sigmoid</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sigmoid</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">embedded</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>           <span class="c1"># words → vectors
+</span>        <span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">embedded</span><span class="p">)</span>      <span class="c1"># process sequence
+</span>        <span class="n">last_h</span> <span class="o">=</span> <span class="n">h</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>                  <span class="c1"># final hidden state
+</span>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">sigmoid</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">last_h</span><span class="p">)).</span><span class="nf">squeeze</span><span class="p">()</span>
+
+<span class="n">model</span>     <span class="o">=</span> <span class="nc">SentimentLSTM</span><span class="p">()</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">BCELoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="c1"># Train
+</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">300</span><span class="p">):</span>
+    <span class="n">total_loss</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">yi</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span>
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+        <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+        <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s">  loss: </span><span class="si">{</span><span class="n">total_loss</span><span class="o">/</span><span class="nf">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Test
+</span><span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="n">test_sentences</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">food</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">service</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">was</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">bad</span><span class="sh">"</span><span class="p">],</span>
+<span class="p">]</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">test_sentences</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nf">encode</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="n">prob</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">).</span><span class="nf">item</span><span class="p">()</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">POSITIVE</span><span class="sh">"</span> <span class="k">if</span> <span class="n">prob</span> <span class="o">&gt;=</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="sh">"</span><span class="s">NEGATIVE</span><span class="sh">"</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="si">{</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="si">}</span><span class="sh">'</span><span class="s"> → </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">prob</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Notice the tricky sentences: “not bad” should be positive. LSTM can learn this because it remembers the word “not” when it reaches “bad”.</p>
+
+<hr />
+
+<h2 id="6-gru--a-simpler-version-of-lstm">6. GRU — a simpler version of LSTM</h2>
+
+<p>GRU (Gated Recurrent Unit) was invented in 2014 as a <strong>simpler</strong> version of LSTM. It has <strong>two gates</strong> instead of three, and only <strong>one memory stream</strong> instead of two.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>LSTM</th>
+      <th>GRU</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Gates</td>
+      <td>3 (forget, input, output)</td>
+      <td>2 (reset, update)</td>
+    </tr>
+    <tr>
+      <td>Memory streams</td>
+      <td>2 (hidden state + cell state)</td>
+      <td>1 (hidden state only)</td>
+    </tr>
+    <tr>
+      <td>Parameters</td>
+      <td>More</td>
+      <td>Fewer</td>
+    </tr>
+    <tr>
+      <td>Training speed</td>
+      <td>Slower</td>
+      <td>Faster</td>
+    </tr>
+    <tr>
+      <td>Performance</td>
+      <td>Often slightly better on long sequences</td>
+      <td>Often similar, sometimes better on smaller data</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="gru-in-pytorch">GRU in PyTorch</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">gru</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">GRU</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+    <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">20.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">22.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">24.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">23.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">25.0</span><span class="p">]]])</span>
+
+<span class="n">output</span><span class="p">,</span> <span class="n">h_n</span> <span class="o">=</span> <span class="nf">gru</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>   <span class="c1"># only one hidden state — simpler than LSTM
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Output shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (1, 5, 16)
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">h_n shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">h_n</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>        <span class="c1"># (1, 1, 16)
+</span></code></pre></div></div>
+
+<p>The only difference from <code class="language-plaintext highlighter-rouge">nn.RNN</code>: replace <code class="language-plaintext highlighter-rouge">nn.RNN</code> with <code class="language-plaintext highlighter-rouge">nn.GRU</code>. The rest of your code stays exactly the same.</p>
+
+<h3 id="which-should-you-use">Which should you use?</h3>
+
+<ul>
+  <li><strong>Try GRU first</strong> — fewer parameters, trains faster, often similar accuracy</li>
+  <li><strong>Use LSTM</strong> if your sequences are very long (hundreds of steps) or GRU is not good enough</li>
+  <li>In practice, the difference is often small — experiment with both</li>
+</ul>
+
+<hr />
+
+<h2 id="7-stacked-rnns--making-them-deeper">7. Stacked RNNs — making them deeper</h2>
+
+<p>Just like CNNs stack many convolutional layers, you can stack multiple LSTM or GRU layers:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">lstm_stacked</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+    <span class="n">num_layers</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>      <span class="c1"># two LSTM layers stacked
+</span>    <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+    <span class="n">dropout</span><span class="o">=</span><span class="mf">0.2</span>        <span class="c1"># dropout between layers to prevent overfitting
+</span><span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">20.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">22.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">24.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">23.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">25.0</span><span class="p">]]])</span>
+<span class="n">output</span><span class="p">,</span> <span class="p">(</span><span class="n">h_n</span><span class="p">,</span> <span class="n">c_n</span><span class="p">)</span> <span class="o">=</span> <span class="nf">lstm_stacked</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># h_n shape: (2, 1, 32) — one hidden state per layer
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">h_n shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">h_n</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Layer 1 learns low-level patterns. Layer 2 learns higher-level patterns from layer 1’s output. More layers = more capacity, but also more data and compute needed.</p>
+
+<hr />
+
+<h2 id="8-bidirectional-rnns">8. Bidirectional RNNs</h2>
+
+<p>A normal RNN reads left to right. But for tasks like understanding a whole sentence, reading in <strong>both directions</strong> helps:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The food was not bad at all."
+
+Forward:   The → food → was → not → bad → at → all → [summary]
+Backward:  all → at  → bad → not → was → food → The → [summary]
+
+Combined:  [forward summary + backward summary] → final answer
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">lstm_bi</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+    <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+    <span class="n">bidirectional</span><span class="o">=</span><span class="bp">True</span>   <span class="c1"># reads forward AND backward
+</span><span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">20.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">22.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">24.0</span><span class="p">]]])</span>
+<span class="n">output</span><span class="p">,</span> <span class="p">(</span><span class="n">h_n</span><span class="p">,</span> <span class="n">c_n</span><span class="p">)</span> <span class="o">=</span> <span class="nf">lstm_bi</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># output shape: (1, 3, 32) — 32 because 16 forward + 16 backward
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Output shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Bidirectional LSTMs are very common in NLP tasks like named entity recognition, where knowing what comes after a word is as important as what came before.</p>
+
+<hr />
+
+<h2 id="9-handling-variable-length-sequences">9. Handling variable-length sequences</h2>
+
+<p>Real datasets have sequences of different lengths. A padding token fills the shorter sequences:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">torch.nn.utils.rnn</span> <span class="kn">import</span> <span class="n">pad_sequence</span><span class="p">,</span> <span class="n">pack_padded_sequence</span><span class="p">,</span> <span class="n">pad_packed_sequence</span>
+
+<span class="c1"># Sequences of different lengths
+</span><span class="n">seq1</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.0</span><span class="p">]])</span>          <span class="c1"># length 3
+</span><span class="n">seq2</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">4.0</span><span class="p">]])</span>   <span class="c1"># length 4
+</span><span class="n">seq3</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">]])</span>                  <span class="c1"># length 2
+</span>
+<span class="c1"># Pad to the same length
+</span><span class="n">padded</span> <span class="o">=</span> <span class="nf">pad_sequence</span><span class="p">([</span><span class="n">seq1</span><span class="p">,</span> <span class="n">seq2</span><span class="p">,</span> <span class="n">seq3</span><span class="p">],</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">padding_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+<span class="n">lengths</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Padded shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">padded</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (3, 4, 1) — 3 sequences, max length 4
+</span>
+<span class="c1"># Pack — tells LSTM to ignore the padding
+</span><span class="n">packed</span> <span class="o">=</span> <span class="nf">pack_padded_sequence</span><span class="p">(</span><span class="n">padded</span><span class="p">,</span> <span class="n">lengths</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">enforce_sorted</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">packed_output</span><span class="p">,</span> <span class="p">(</span><span class="n">h_n</span><span class="p">,</span> <span class="n">c_n</span><span class="p">)</span> <span class="o">=</span> <span class="nf">lstm</span><span class="p">(</span><span class="n">packed</span><span class="p">)</span>
+
+<span class="c1"># Unpack back to padded format
+</span><span class="n">output</span><span class="p">,</span> <span class="n">lengths_out</span> <span class="o">=</span> <span class="nf">pad_packed_sequence</span><span class="p">(</span><span class="n">packed_output</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Output shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="10-common-mistakes">10. Common mistakes</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mistake</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Using RNN for very long sequences (100+ steps)</td>
+      <td>Use LSTM or GRU instead</td>
+    </tr>
+    <tr>
+      <td>Forgetting LSTM returns <code class="language-plaintext highlighter-rouge">(h_n, c_n)</code> not just <code class="language-plaintext highlighter-rouge">h_n</code></td>
+      <td>Unpack correctly: <code class="language-plaintext highlighter-rouge">output, (h, c) = lstm(x)</code></td>
+    </tr>
+    <tr>
+      <td>Not resetting hidden state between batches</td>
+      <td>Start each batch with <code class="language-plaintext highlighter-rouge">h = None</code> or a fresh zero tensor</td>
+    </tr>
+    <tr>
+      <td>Input shape wrong</td>
+      <td>Always check: <code class="language-plaintext highlighter-rouge">(batch_size, seq_length, input_size)</code> when <code class="language-plaintext highlighter-rouge">batch_first=True</code></td>
+    </tr>
+    <tr>
+      <td>Forgetting to sort sequences by length for packing</td>
+      <td>Use <code class="language-plaintext highlighter-rouge">enforce_sorted=False</code> in <code class="language-plaintext highlighter-rouge">pack_padded_sequence</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Basic RNNs <strong>forget</strong> information from long ago — the vanishing gradient problem.</li>
+  <li><strong>LSTM</strong> fixes this with three gates (forget, input, output) and two memory streams (hidden state + cell state).</li>
+  <li><strong>GRU</strong> is a simpler version with two gates and one memory stream — faster to train, similar performance.</li>
+  <li>Both use <code class="language-plaintext highlighter-rouge">nn.LSTM</code> and <code class="language-plaintext highlighter-rouge">nn.GRU</code> in PyTorch — just swap the class name.</li>
+  <li><strong>Bidirectional</strong> versions read both forward and backward — useful for understanding whole sentences.</li>
+  <li>For variable-length sequences, use <code class="language-plaintext highlighter-rouge">pad_sequence</code> and <code class="language-plaintext highlighter-rouge">pack_padded_sequence</code>.</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Basic RNN:  good for short sequences, forgets long-ago information
+LSTM:       remembers much longer, three gates control what to keep
+GRU:        simpler than LSTM, two gates, usually similar performance
+</code></pre></div></div>

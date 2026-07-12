@@ -1,0 +1,504 @@
+<h1 id="part-16-rnn-use-cases--time-series-sequence-classification-and-labelling--a-friendly-guide">Part 16: RNN Use Cases — Time Series, Sequence Classification, and Labelling — A Friendly Guide</h1>
+
+<p>In Parts 14 and 15, you learned how RNNs and LSTMs work.</p>
+
+<p>Now let us use them on real problems.</p>
+
+<p>There are three main ways to use an RNN:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Use</th>
+      <th>What you give it</th>
+      <th>What you get back</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Time series forecasting</strong></td>
+      <td>A sequence of past values</td>
+      <td>One predicted future value</td>
+    </tr>
+    <tr>
+      <td><strong>Sequence classification</strong></td>
+      <td>A whole sequence</td>
+      <td>One label for the whole thing</td>
+    </tr>
+    <tr>
+      <td><strong>Sequence labelling</strong></td>
+      <td>A whole sequence</td>
+      <td>One label <strong>per step</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each one is slightly different in how you feed data in and how you read the output.</p>
+
+<hr />
+
+<h2 id="1-time-series-forecasting--predicting-what-comes-next">1. Time series forecasting — predicting what comes next</h2>
+
+<p><strong>The task:</strong> Given past values (numbers over time), predict the next value.</p>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li>Given last 7 days of temperature → predict tomorrow</li>
+  <li>Given last 30 days of sales → predict next month’s sales</li>
+  <li>Given last 10 seconds of a patient’s heart rate → predict the next value</li>
+</ul>
+
+<h3 id="how-it-works">How it works</h3>
+
+<p>You feed the whole sequence in. The RNN reads it step by step and builds up a memory. At the end, you take the <strong>final hidden state</strong> and pass it through a linear layer to get your prediction.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x₁ → x₂ → x₃ → x₄ → x₅ → [final memory] → [Linear] → predicted x₆
+</code></pre></div></div>
+
+<h3 id="step-by-step-example--weekly-sales-forecasting">Step by step example — weekly sales forecasting</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">torch</span><span class="p">.</span><span class="nf">manual_seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Fake weekly sales data (units sold)
+</span><span class="n">sales</span> <span class="o">=</span> <span class="p">[</span><span class="mi">120</span><span class="p">,</span> <span class="mi">135</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">142</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">145</span><span class="p">,</span> <span class="mi">160</span><span class="p">,</span> <span class="mi">155</span><span class="p">,</span> <span class="mi">170</span><span class="p">,</span> <span class="mi">165</span><span class="p">,</span>
+         <span class="mi">180</span><span class="p">,</span> <span class="mi">175</span><span class="p">,</span> <span class="mi">190</span><span class="p">,</span> <span class="mi">185</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">195</span><span class="p">,</span> <span class="mi">210</span><span class="p">,</span> <span class="mi">205</span><span class="p">,</span> <span class="mi">220</span><span class="p">,</span> <span class="mi">215</span><span class="p">]</span>
+
+<span class="c1"># Step 1 — Create sequences
+# Input: 4 weeks. Target: week 5.
+</span><span class="n">SEQ_LEN</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">sales</span><span class="p">)</span> <span class="o">-</span> <span class="n">SEQ_LEN</span><span class="p">):</span>
+    <span class="n">X</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">sales</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="n">SEQ_LEN</span><span class="p">])</span>
+    <span class="n">y</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">sales</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">SEQ_LEN</span><span class="p">])</span>
+
+<span class="c1"># Step 2 — Convert to tensors
+# Normalise: divide by 200 so numbers are between 0 and 1
+</span><span class="n">scale</span> <span class="o">=</span> <span class="mf">200.0</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">).</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">scale</span>  <span class="c1"># (N, 4, 1)
+</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">).</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">scale</span>  <span class="c1"># (N, 1)
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Training samples: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">X shape: </span><span class="si">{</span><span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="s">  y shape: </span><span class="si">{</span><span class="n">y</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 3 — Build the model
+</span><span class="k">class</span> <span class="nc">SalesForecaster</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>  <span class="c1"># use final hidden state
+</span>
+<span class="n">model</span>     <span class="o">=</span> <span class="nc">SalesForecaster</span><span class="p">()</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">MSELoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.005</span><span class="p">)</span>
+
+<span class="c1"># Step 4 — Train
+</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">500</span><span class="p">):</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+    <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s">  loss: </span><span class="si">{</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">6</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Step 5 — Predict next week
+</span><span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">last_4</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">205.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">220.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">215.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">225.0</span><span class="p">]]])</span> <span class="o">/</span> <span class="n">scale</span>
+    <span class="n">predicted</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">last_4</span><span class="p">).</span><span class="nf">item</span><span class="p">()</span> <span class="o">*</span> <span class="n">scale</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Given sales: 205, 220, 215, 225</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Predicted next week: </span><span class="si">{</span><span class="n">predicted</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="n">f</span><span class="si">}</span><span class="s"> units</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="key-decisions-for-time-series">Key decisions for time series</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Decision</th>
+      <th>Recommendation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Sequence length</td>
+      <td>Start with 4–10 steps. Try longer if the model is bad.</td>
+    </tr>
+    <tr>
+      <td>Normalise data</td>
+      <td>Always divide by a scale factor. Values between 0 and 1 train much better.</td>
+    </tr>
+    <tr>
+      <td>Use LSTM not RNN</td>
+      <td>LSTM remembers longer patterns — almost always better.</td>
+    </tr>
+    <tr>
+      <td>Loss function</td>
+      <td>MSELoss for continuous values (temperature, sales, prices)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="2-sequence-classification--one-label-for-the-whole-sequence">2. Sequence classification — one label for the whole sequence</h2>
+
+<p><strong>The task:</strong> Read a whole sequence and output <strong>one single label</strong>.</p>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li>Read all words in an email → spam or not spam</li>
+  <li>Read all words in a review → positive or negative</li>
+  <li>Read all values in a sensor recording → fault or no fault</li>
+  <li>Read all words in a support ticket → which department to route to</li>
+</ul>
+
+<h3 id="how-it-works-1">How it works</h3>
+
+<p>Same as forecasting — the RNN reads the whole sequence. You take the <strong>final hidden state</strong> and classify it.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>word₁ → word₂ → word₃ → ... → wordₙ → [final memory] → [Linear + Sigmoid] → label
+</code></pre></div></div>
+
+<h3 id="step-by-step-example--email-routing">Step by step example — email routing</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Simple vocabulary
+</span><span class="n">vocab</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">invoice</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">payment</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">billing</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">charge</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">login</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="sh">"</span><span class="s">password</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="sh">"</span><span class="s">access</span><span class="sh">"</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">broken</span><span class="sh">"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="sh">"</span><span class="s">working</span><span class="sh">"</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">:</span> <span class="mi">14</span><span class="p">,</span> <span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span> <span class="sh">"</span><span class="s">cannot</span><span class="sh">"</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">&lt;pad&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">17</span>
+<span class="p">}</span>
+<span class="n">VOCAB_SIZE</span> <span class="o">=</span> <span class="nf">len</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
+
+<span class="c1"># Department labels: 0=billing, 1=account, 2=technical
+</span><span class="n">tickets</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">([</span><span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">invoice</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">wrong</span><span class="sh">"</span><span class="p">],</span>                   <span class="mi">0</span><span class="p">),</span>  <span class="c1"># billing
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cannot</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">access</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">],</span>         <span class="mi">1</span><span class="p">),</span>  <span class="c1"># account
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">login</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">working</span><span class="sh">"</span><span class="p">],</span>           <span class="mi">2</span><span class="p">),</span>  <span class="c1"># technical
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">billing</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">charge</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">],</span>                     <span class="mi">0</span><span class="p">),</span>  <span class="c1"># billing
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">password</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">access</span><span class="sh">"</span><span class="p">],</span>                  <span class="mi">1</span><span class="p">),</span>  <span class="c1"># account
+</span>    <span class="p">([</span><span class="sh">"</span><span class="s">broken</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">not</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">working</span><span class="sh">"</span><span class="p">],</span>              <span class="mi">2</span><span class="p">),</span>  <span class="c1"># technical
+</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">encode</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">vocab</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]])</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="p">[</span><span class="nf">encode</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tickets</span><span class="p">]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tickets</span><span class="p">])</span>
+
+<span class="c1"># Model
+</span><span class="k">class</span> <span class="nc">TicketRouter</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">VOCAB_SIZE</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>   <span class="c1"># 3 departments
+</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">emb</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">emb</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="n">model</span>     <span class="o">=</span> <span class="nc">TicketRouter</span><span class="p">()</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">CrossEntropyLoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="c1"># Train
+</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">400</span><span class="p">):</span>
+    <span class="n">total_loss</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">yi</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">yi</span><span class="p">.</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+        <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+        <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s">  loss: </span><span class="si">{</span><span class="n">total_loss</span><span class="o">/</span><span class="nf">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Test
+</span><span class="n">departments</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">Billing</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Account</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Technical</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="n">test_tickets</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">my</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">billing</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">charge</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">is</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">wrong</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">[</span><span class="sh">"</span><span class="s">i</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cannot</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">login</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">account</span><span class="sh">"</span><span class="p">],</span>
+<span class="p">]</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">words</span> <span class="ow">in</span> <span class="n">test_tickets</span><span class="p">:</span>
+        <span class="c1"># Filter to known words only
+</span>        <span class="n">known</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">vocab</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nf">encode</span><span class="p">(</span><span class="n">known</span><span class="p">)</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="n">logits</span><span class="p">.</span><span class="nf">argmax</span><span class="p">().</span><span class="nf">item</span><span class="p">()</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"'</span><span class="si">{</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">words</span><span class="p">)</span><span class="si">}</span><span class="sh">'</span><span class="s"> → Route to: </span><span class="si">{</span><span class="n">departments</span><span class="p">[</span><span class="n">pred</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-sequence-labelling--one-label-per-step">3. Sequence labelling — one label per step</h2>
+
+<p><strong>The task:</strong> Read a sequence and output <strong>one label at every position</strong>.</p>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li>Read each word in a sentence → label each word as Noun, Verb, Adjective, etc. (POS tagging)</li>
+  <li>Read each word in a sentence → label each word as Person, Location, Organisation, or Other (Named Entity Recognition)</li>
+  <li>Read each character in a DNA sequence → label each position as coding or non-coding</li>
+  <li>Read each frame in a video → label each frame as “action” or “no action”</li>
+</ul>
+
+<h3 id="how-it-works-2">How it works</h3>
+
+<p>For labelling, you do not take just the final hidden state. You take the <strong>output at every step</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>word₁ → [LSTM] → output₁ → [Linear] → label₁
+word₂ → [LSTM] → output₂ → [Linear] → label₂
+word₃ → [LSTM] → output₃ → [Linear] → label₃
+</code></pre></div></div>
+
+<p>In PyTorch, <code class="language-plaintext highlighter-rouge">nn.LSTM</code> returns <code class="language-plaintext highlighter-rouge">output</code> — the hidden state at every step. Use this for sequence labelling.</p>
+
+<h3 id="step-by-step-example--part-of-speech-tagging">Step by step example — part-of-speech tagging</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Vocabulary and tags
+</span><span class="n">word_to_idx</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="sh">"</span><span class="s">ran</span><span class="sh">"</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="sh">"</span><span class="s">fast</span><span class="sh">"</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="sh">"</span><span class="s">a</span><span class="sh">"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="sh">"</span><span class="s">big</span><span class="sh">"</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">&lt;pad&gt;</span><span class="sh">"</span><span class="p">:</span> <span class="mi">10</span>
+<span class="p">}</span>
+<span class="n">tag_to_idx</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">DET</span><span class="sh">"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">"</span><span class="s">NOUN</span><span class="sh">"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">"</span><span class="s">VERB</span><span class="sh">"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">"</span><span class="s">PREP</span><span class="sh">"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">"</span><span class="s">ADJ</span><span class="sh">"</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+<span class="n">IDX_TO_TAG</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tag_to_idx</span><span class="p">.</span><span class="nf">items</span><span class="p">()}</span>
+
+<span class="c1"># Training data: (sentence, tags)  — one tag per word
+</span><span class="n">training_data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">],</span>    <span class="p">[</span><span class="sh">"</span><span class="s">DET</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NOUN</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">VERB</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">PREP</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NOUN</span><span class="sh">"</span><span class="p">]),</span>
+    <span class="p">([</span><span class="sh">"</span><span class="s">a</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ran</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">fast</span><span class="sh">"</span><span class="p">],</span>           <span class="p">[</span><span class="sh">"</span><span class="s">DET</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NOUN</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">VERB</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ADJ</span><span class="sh">"</span><span class="p">]),</span>
+    <span class="p">([</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">big</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ran</span><span class="sh">"</span><span class="p">],</span>          <span class="p">[</span><span class="sh">"</span><span class="s">DET</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">ADJ</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NOUN</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">VERB</span><span class="sh">"</span><span class="p">]),</span>
+    <span class="p">([</span><span class="sh">"</span><span class="s">a</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">on</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">mat</span><span class="sh">"</span><span class="p">],</span>      <span class="p">[</span><span class="sh">"</span><span class="s">DET</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NOUN</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">VERB</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">PREP</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">NOUN</span><span class="sh">"</span><span class="p">]),</span>
+<span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">encode_sentence</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="n">word_to_idx</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">])</span>
+
+<span class="k">def</span> <span class="nf">encode_tags</span><span class="p">(</span><span class="n">tags</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="n">tag_to_idx</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">])</span>
+
+<span class="c1"># Model
+</span><span class="k">class</span> <span class="nc">POSTagger</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">word_to_idx</span><span class="p">),</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">lstm</span>      <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="nf">len</span><span class="p">(</span><span class="n">tag_to_idx</span><span class="p">))</span>   <span class="c1"># one score per tag
+</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">emb</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>  <span class="c1"># (1, seq_len, 16)
+</span>        <span class="n">output</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">lstm</span><span class="p">(</span><span class="n">emb</span><span class="p">)</span>            <span class="c1"># (1, seq_len, 32)
+</span>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="c1"># (seq_len, num_tags)
+</span>
+<span class="n">model</span>     <span class="o">=</span> <span class="nc">POSTagger</span><span class="p">()</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">CrossEntropyLoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="c1"># Train
+</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">300</span><span class="p">):</span>
+    <span class="n">total_loss</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">words</span><span class="p">,</span> <span class="n">tags</span> <span class="ow">in</span> <span class="n">training_data</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nf">encode_sentence</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="nf">encode_tags</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>          <span class="c1"># shape: (seq_len, num_tags)
+</span>        <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>  <span class="c1"># compare each position
+</span>        <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+        <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+        <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+        <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s">  loss: </span><span class="si">{</span><span class="n">total_loss</span><span class="o">/</span><span class="nf">len</span><span class="p">(</span><span class="n">training_data</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Test — tag a new sentence
+</span><span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+<span class="n">test_sentence</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">the</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">big</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">sat</span><span class="sh">"</span><span class="p">]</span>
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="nf">encode_sentence</span><span class="p">(</span><span class="n">test_sentence</span><span class="p">)</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">predicted_tags</span> <span class="o">=</span> <span class="n">pred</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">).</span><span class="nf">tolist</span><span class="p">()</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Word-by-word tagging:</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">tag_idx</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">test_sentence</span><span class="p">,</span> <span class="n">predicted_tags</span><span class="p">):</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">:</span><span class="mi">10</span><span class="n">s</span><span class="si">}</span><span class="s"> → </span><span class="si">{</span><span class="n">IDX_TO_TAG</span><span class="p">[</span><span class="n">tag_idx</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Word-by-word tagging:
+  the        → DET
+  big        → ADJ
+  cat        → NOUN
+  sat        → VERB
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-which-output-to-use--a-clear-guide">4. Which output to use — a clear guide</h2>
+
+<p>This is the most common source of confusion. Here is a simple rule:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">output</span><span class="p">,</span> <span class="p">(</span><span class="n">h_n</span><span class="p">,</span> <span class="n">c_n</span><span class="p">)</span> <span class="o">=</span> <span class="nf">lstm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Which output to use</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Time series forecasting</td>
+      <td><code class="language-plaintext highlighter-rouge">h_n</code> — the final hidden state</td>
+      <td>You want one number at the end</td>
+    </tr>
+    <tr>
+      <td>Sequence classification</td>
+      <td><code class="language-plaintext highlighter-rouge">h_n</code> — the final hidden state</td>
+      <td>You want one label at the end</td>
+    </tr>
+    <tr>
+      <td>Sequence labelling</td>
+      <td><code class="language-plaintext highlighter-rouge">output</code> — hidden state at every step</td>
+      <td>You want one label at every position</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># For forecasting or classification:
+</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">h_n</span><span class="p">,</span> <span class="n">c_n</span><span class="p">)</span> <span class="o">=</span> <span class="nf">lstm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="nf">linear</span><span class="p">(</span><span class="n">h_n</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>    <span class="c1"># use h_n → shape (batch, hidden)
+</span>
+<span class="c1"># For labelling:
+</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">h_n</span><span class="p">,</span> <span class="n">c_n</span><span class="p">)</span> <span class="o">=</span> <span class="nf">lstm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="nf">linear</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>               <span class="c1"># use output → shape (batch, seq_len, hidden)
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="5-choosing-the-right-sequence-model--summary">5. Choosing the right sequence model — summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Model</th>
+      <th>Output used</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Predict next value</td>
+      <td>LSTM</td>
+      <td>Final hidden state → <code class="language-plaintext highlighter-rouge">h_n</code></td>
+    </tr>
+    <tr>
+      <td>Classify whole sequence</td>
+      <td>LSTM or Bidirectional LSTM</td>
+      <td>Final hidden state → <code class="language-plaintext highlighter-rouge">h_n</code></td>
+    </tr>
+    <tr>
+      <td>Label each step in sequence</td>
+      <td>LSTM or Bidirectional LSTM</td>
+      <td>All outputs → <code class="language-plaintext highlighter-rouge">output</code></td>
+    </tr>
+    <tr>
+      <td>Very long sequences (1000+ steps)</td>
+      <td>Transformer (covered later)</td>
+      <td>Attention mechanism</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="6-common-patterns-in-real-projects">6. Common patterns in real projects</h2>
+
+<h3 id="pattern-1--normalise-your-time-series-data">Pattern 1 — Normalise your time series data</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Always normalise time series before feeding to LSTM
+</span><span class="n">mean</span> <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="nf">mean</span><span class="p">()</span>
+<span class="n">std</span>  <span class="o">=</span> <span class="n">X</span><span class="p">.</span><span class="nf">std</span><span class="p">()</span>
+<span class="n">X_normalised</span> <span class="o">=</span> <span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span>   <span class="c1"># values centred around 0
+</span>
+<span class="c1"># After predicting, scale back
+</span><span class="n">prediction_real</span> <span class="o">=</span> <span class="n">prediction_normalised</span> <span class="o">*</span> <span class="n">std</span> <span class="o">+</span> <span class="n">mean</span>
+</code></pre></div></div>
+
+<h3 id="pattern-2--use-a-dataloader-for-sequences">Pattern 2 — Use a DataLoader for sequences</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DataLoader</span>
+
+<span class="k">class</span> <span class="nc">SequenceDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">X</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nf">len</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">self</span><span class="p">.</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="nc">SequenceDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">loader</span>  <span class="o">=</span> <span class="nc">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">X_batch</span><span class="p">,</span> <span class="n">y_batch</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X_batch</span><span class="p">)</span>
+    <span class="c1"># ...
+</span></code></pre></div></div>
+
+<h3 id="pattern-3--add-dropout-to-prevent-overfitting">Pattern 3 — Add dropout to prevent overfitting</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">LSTM</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="n">num_layers</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">dropout</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>        <span class="c1"># 30% dropout between layers
+</span>    <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<p>Three main RNN use cases, each slightly different:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Time series forecasting:
+  past values → LSTM → final hidden state → Linear → next value
+
+Sequence classification:
+  all words → LSTM → final hidden state → Linear → one label
+
+Sequence labelling:
+  all words → LSTM → output at every step → Linear → label per word
+</code></pre></div></div>
+
+<ul>
+  <li>Always <strong>normalise</strong> time series data before training.</li>
+  <li>Use <strong><code class="language-plaintext highlighter-rouge">h_n</code></strong> (final hidden state) for forecasting and classification.</li>
+  <li>Use <strong><code class="language-plaintext highlighter-rouge">output</code></strong> (all hidden states) for sequence labelling.</li>
+  <li>For tasks where context from both directions matters, use <strong>Bidirectional LSTM</strong>.</li>
+  <li>Stack 2 LSTM layers and add <strong>dropout</strong> for better generalisation on real datasets.</li>
+</ul>

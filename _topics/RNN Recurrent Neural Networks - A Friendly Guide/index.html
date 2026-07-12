@@ -1,0 +1,402 @@
+<h1 id="part-14-rnn--recurrent-neural-networks--a-friendly-guide">Part 14: RNN — Recurrent Neural Networks — A Friendly Guide</h1>
+
+<p>In Parts 1 to 13, every model we built read the <strong>whole input at once</strong>.</p>
+
+<p>You gave it 5 numbers — it gave back one answer. You gave it a 32×32 image — it gave back a label. The order of the input did not matter. You could shuffle the pixels and the model would still try to process them.</p>
+
+<p>But some data is different. Some data has <strong>order</strong> — and the order is the whole point.</p>
+
+<ul>
+  <li>“The food was <strong>not</strong> bad.” → positive or negative?</li>
+  <li>“The food was bad, <strong>not</strong> good.” → positive or negative?</li>
+</ul>
+
+<p>The same words. Very different meaning — because of <strong>order</strong>.</p>
+
+<p>A normal neural network cannot tell the difference. An <strong>RNN</strong> can.</p>
+
+<hr />
+
+<h2 id="1-what-is-sequential-data">1. What is sequential data?</h2>
+
+<p>Sequential data is data where <strong>position matters</strong>. Each piece depends on what came before.</p>
+
+<p>Here are real examples:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Why order matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A sentence</td>
+      <td>Word 3 changes meaning based on word 1 and 2</td>
+    </tr>
+    <tr>
+      <td>Daily temperatures</td>
+      <td>Today’s temperature depends on yesterday’s</td>
+    </tr>
+    <tr>
+      <td>Stock prices</td>
+      <td>Tomorrow’s price depends on today and last week</td>
+    </tr>
+    <tr>
+      <td>Audio</td>
+      <td>Each sound depends on the sounds just before it</td>
+    </tr>
+    <tr>
+      <td>Video</td>
+      <td>Each frame depends on the frames before it</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Think of reading a book. You read word by word, left to right. Each word you read changes your understanding of what comes next. If you read the words in random order, the story makes no sense.</p>
+
+<p>A normal neural network reads all words at once, like taking a photo of the whole page and looking at it without reading order. An RNN reads <strong>one word at a time, left to right, remembering what it read before</strong>.</p>
+
+<hr />
+
+<h2 id="2-why-normal-neural-networks-struggle-with-sequences">2. Why normal neural networks struggle with sequences</h2>
+
+<p>Let us use a simple example. You want to predict the <strong>next temperature</strong> given the last 3 days:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day 1: 20°C
+Day 2: 22°C
+Day 3: 24°C
+→ Predict Day 4
+</code></pre></div></div>
+
+<p>A normal neural network (MLP) takes all three numbers and tries to find the answer:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Normal network — takes all 3 days at once
+</span><span class="n">mlp</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">ReLU</span><span class="p">(),</span>
+    <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">22.0</span><span class="p">,</span> <span class="mf">24.0</span><span class="p">]])</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">mlp</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>   <span class="c1"># some prediction
+</span></code></pre></div></div>
+
+<p>This works for 3 days. But what if sometimes you have 3 days of data and sometimes 7 days? The network has a fixed input size — it cannot handle different length sequences.</p>
+
+<p>More importantly: a normal network <strong>does not know that day 3 comes after day 2</strong>. It just sees three numbers. It has no concept of “earlier” or “later”.</p>
+
+<blockquote>
+  <p><strong>Simple way to think about it:</strong> A normal network is like looking at 3 numbers on a piece of paper all at once. An RNN is like reading a diary — one entry at a time, remembering what you read on the previous page.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-the-key-idea-of-rnn--memory">3. The key idea of RNN — memory</h2>
+
+<p>An RNN processes data <strong>one step at a time</strong>. After each step, it keeps a small memory called the <strong>hidden state</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: Read "20°C" → update memory → memory now holds info about day 1
+Step 2: Read "22°C" → update memory (using old memory + new input) → memory now holds info about days 1 and 2
+Step 3: Read "24°C" → update memory → memory now holds info about all 3 days
+Step 4: Use memory to predict day 4
+</code></pre></div></div>
+
+<p>The hidden state is just a small list of numbers — but those numbers carry a summary of everything the RNN has seen so far.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hidden state = memory of the past
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-how-one-rnn-step-works">4. How one RNN step works</h2>
+
+<p>At each step, the RNN does a very simple calculation:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new memory = tanh( (input × weight_input) + (old memory × weight_memory) + bias )
+</code></pre></div></div>
+
+<p>In plain English:</p>
+<ul>
+  <li>Take the <strong>current input</strong> (e.g. today’s temperature)</li>
+  <li>Take the <strong>old memory</strong> (what we remember from previous steps)</li>
+  <li>Multiply each by their own weights</li>
+  <li>Add them together</li>
+  <li>Pass through <code class="language-plaintext highlighter-rouge">tanh</code> (squashes the result between -1 and +1)</li>
+  <li>This gives the <strong>new memory</strong></li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># One RNN cell — manual version to understand it
+</span><span class="n">input_size</span>  <span class="o">=</span> <span class="mi">1</span>    <span class="c1"># one number per step (temperature)
+</span><span class="n">hidden_size</span> <span class="o">=</span> <span class="mi">4</span>    <span class="c1"># memory has 4 numbers
+</span>
+<span class="c1"># Weights
+</span><span class="n">W_input</span>  <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span>  <span class="n">hidden_size</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">W_hidden</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># One step
+</span><span class="k">def</span> <span class="nf">rnn_step</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">h_prev</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tanh</span><span class="p">(</span><span class="nc">W_input</span><span class="p">(</span><span class="n">x_t</span><span class="p">)</span> <span class="o">+</span> <span class="nc">W_hidden</span><span class="p">(</span><span class="n">h_prev</span><span class="p">))</span>
+
+<span class="c1"># Starting memory = all zeros (no memory yet)
+</span><span class="n">h</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">)</span>
+
+<span class="c1"># Process 3 days one step at a time
+</span><span class="k">for</span> <span class="n">temp</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">22.0</span><span class="p">,</span> <span class="mf">24.0</span><span class="p">]:</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">temp</span><span class="p">]])</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="nf">rnn_step</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">After </span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s">°C → memory: </span><span class="si">{</span><span class="n">h</span><span class="p">.</span><span class="nf">detach</span><span class="p">().</span><span class="nf">numpy</span><span class="p">().</span><span class="nf">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>After 20.0°C → memory: [[ 0.999  0.891 -0.723  0.445]]
+After 22.0°C → memory: [[ 1.000  0.997 -0.912  0.781]]
+After 24.0°C → memory: [[ 1.000  0.999 -0.961  0.893]]
+</code></pre></div></div>
+
+<p>The memory updates at every step. By the end, it holds a compressed summary of all three days.</p>
+
+<hr />
+
+<h2 id="5-the-same-weights-at-every-step">5. The same weights at every step</h2>
+
+<p>This is very important: <strong>the RNN uses the exact same weights at every single step</strong>.</p>
+
+<p>Whether you are processing step 1, step 5, or step 100 — the same <code class="language-plaintext highlighter-rouge">W_input</code> and <code class="language-plaintext highlighter-rouge">W_hidden</code> are used.</p>
+
+<p>This is why RNNs can handle sequences of <strong>any length</strong>. You do not need different weights for different positions. The same small set of weights is applied over and over.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1:  x₁ + h₀  →  [same weights]  →  h₁
+Step 2:  x₂ + h₁  →  [same weights]  →  h₂
+Step 3:  x₃ + h₂  →  [same weights]  →  h₃
+...
+Step N:  xₙ + hₙ₋₁ → [same weights]  →  hₙ
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Think of a person reading a book. They use the same brain (same weights) to understand every word. The brain does not change for page 1 vs page 100. What changes is their memory of what they have read so far.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="6-unfolding--seeing-the-rnn-across-time">6. Unfolding — seeing the RNN across time</h2>
+
+<p>When we draw an RNN “unfolded” across time steps, it looks like a chain:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x₁ → [RNN] → h₁ → [RNN] → h₂ → [RNN] → h₃ → output
+        ↑               ↑               ↑
+    same weights    same weights    same weights
+</code></pre></div></div>
+
+<p>Each box in the chain is the <strong>same RNN cell</strong> applied again. The hidden state <code class="language-plaintext highlighter-rouge">h</code> flows from left to right, carrying memory forward.</p>
+
+<p>This unfolded view is also how PyTorch trains the RNN — it calculates gradients by going backwards through the chain (called <strong>Backpropagation Through Time</strong> or BPTT).</p>
+
+<hr />
+
+<h2 id="7-using-pytorchs-built-in-rnn">7. Using PyTorch’s built-in RNN</h2>
+
+<p>You do not need to write the step function yourself. PyTorch has <code class="language-plaintext highlighter-rouge">nn.RNN</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="c1"># Build a simple RNN
+</span><span class="n">rnn</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">RNN</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>    <span class="c1"># one number per time step
+</span>    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>   <span class="c1"># memory has 8 numbers
+</span>    <span class="n">num_layers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>    <span class="c1"># one layer of RNN cells
+</span>    <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span> <span class="c1"># input shape: (batch, time_steps, features)
+</span><span class="p">)</span>
+
+<span class="c1"># Simulate a sequence: batch of 1, 5 time steps, 1 feature per step
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">20.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">22.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">24.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">23.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">25.0</span><span class="p">]]])</span>
+<span class="c1"># Shape: (1, 5, 1) — 1 sequence, 5 steps, 1 number per step
+</span>
+<span class="c1"># Run through RNN
+</span><span class="n">output</span><span class="p">,</span> <span class="n">h_final</span> <span class="o">=</span> <span class="nf">rnn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Output shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">output</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>    <span class="c1"># (1, 5, 8) — 8 hidden values at every step
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Final hidden shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">h_final</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (1, 1, 8) — final memory
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Final memory:</span><span class="sh">"</span><span class="p">,</span> <span class="n">h_final</span><span class="p">.</span><span class="nf">detach</span><span class="p">().</span><span class="nf">numpy</span><span class="p">().</span><span class="nf">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">output</code> — the hidden state at <strong>every</strong> time step (useful for sequence labelling)</li>
+  <li><code class="language-plaintext highlighter-rouge">h_final</code> — the hidden state at the <strong>last</strong> step only (useful for classification)</li>
+</ul>
+
+<hr />
+
+<h2 id="8-full-example--temperature-prediction">8. Full example — temperature prediction</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Make fake temperature data
+# Input: 3 days. Output: next day's temperature.
+</span><span class="n">torch</span><span class="p">.</span><span class="nf">manual_seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="n">temperatures</span> <span class="o">=</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">26</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">27</span><span class="p">]</span>
+
+<span class="c1"># Create sequences of length 3
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">temperatures</span><span class="p">)</span> <span class="o">-</span> <span class="mi">3</span><span class="p">):</span>
+    <span class="n">X</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">temperatures</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">3</span><span class="p">])</span>
+    <span class="n">y</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">temperatures</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">3</span><span class="p">])</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">).</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (N, 3, 1)
+</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span><span class="p">).</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (N, 1)
+</span>
+<span class="c1"># Model: RNN → Linear layer to predict one number
+</span><span class="k">class</span> <span class="nc">TempPredictor</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">rnn</span>    <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">RNN</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">linear</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">output</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">rnn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">last_hidden</span> <span class="o">=</span> <span class="n">h</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># take the final memory
+</span>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">linear</span><span class="p">(</span><span class="n">last_hidden</span><span class="p">)</span>
+
+<span class="n">model</span>     <span class="o">=</span> <span class="nc">TempPredictor</span><span class="p">()</span>
+<span class="n">loss_fn</span>   <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">MSELoss</span><span class="p">()</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="c1"># Train
+</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">200</span><span class="p">):</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+    <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s">  loss: </span><span class="si">{</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Predict
+</span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">test</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[[</span><span class="mf">23.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">25.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">27.0</span><span class="p">]]])</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Given: 23, 25, 27°C → Predicted next: </span><span class="si">{</span><span class="nf">model</span><span class="p">(</span><span class="n">test</span><span class="p">).</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">1</span><span class="n">f</span><span class="si">}</span><span class="s">°C</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="9-practical-applications-of-rnns">9. Practical applications of RNNs</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Application</th>
+      <th>What the sequence is</th>
+      <th>What the RNN predicts</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Weather forecasting</strong></td>
+      <td>Past temperatures</td>
+      <td>Next day’s temperature</td>
+    </tr>
+    <tr>
+      <td><strong>Spam detection</strong></td>
+      <td>Words in an email, one by one</td>
+      <td>Spam or not spam</td>
+    </tr>
+    <tr>
+      <td><strong>Stock price prediction</strong></td>
+      <td>Daily prices</td>
+      <td>Tomorrow’s price</td>
+    </tr>
+    <tr>
+      <td><strong>Speech recognition</strong></td>
+      <td>Audio frames</td>
+      <td>Words being spoken</td>
+    </tr>
+    <tr>
+      <td><strong>Text generation</strong></td>
+      <td>Previous words</td>
+      <td>Next word</td>
+    </tr>
+    <tr>
+      <td><strong>Sentiment analysis</strong></td>
+      <td>Words in a review</td>
+      <td>Positive or negative</td>
+    </tr>
+    <tr>
+      <td><strong>Music generation</strong></td>
+      <td>Previous notes</td>
+      <td>Next note</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-what-rnns-are-not-good-at">10. What RNNs are not good at</h2>
+
+<p>RNNs have one big weakness: <strong>they forget things that happened a long time ago</strong>.</p>
+
+<p>Imagine reading a very long book. By chapter 20, you may have forgotten a small detail from chapter 1. An RNN has the same problem — its memory fades as the sequence gets longer.</p>
+
+<p>For example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The cat, which was sitting on the old wooden chair by the window, was hungry."
+</code></pre></div></div>
+
+<p>By the time the RNN reaches “was hungry”, it may have partly forgotten “The cat” from the beginning.</p>
+
+<p>This is called the <strong>vanishing gradient problem</strong>. It is why LSTM and GRU were invented — and that is exactly what Part 15 covers.</p>
+
+<hr />
+
+<h2 id="11-quick-recap-quiz">11. Quick recap quiz</h2>
+
+<p>Before moving on, check your understanding:</p>
+
+<p><strong>Q1:</strong> You have weather data for 10 days. Each day has one temperature reading. What is the input shape for an RNN?</p>
+<ul>
+  <li>Answer: <code class="language-plaintext highlighter-rouge">(1, 10, 1)</code> — 1 sequence, 10 time steps, 1 feature per step</li>
+</ul>
+
+<p><strong>Q2:</strong> Does an RNN use different weights for step 1 and step 10?</p>
+<ul>
+  <li>Answer: No — the same weights are used at every step</li>
+</ul>
+
+<p><strong>Q3:</strong> What does the hidden state hold?</p>
+<ul>
+  <li>Answer: A memory summary of everything the RNN has seen so far</li>
+</ul>
+
+<p><strong>Q4:</strong> Why can RNNs handle sequences of any length?</p>
+<ul>
+  <li>Answer: Because the same weights are reused at every step — there is no fixed input size</li>
+</ul>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<ul>
+  <li>Some data has <strong>order</strong> — changing the order changes the meaning. Normal networks cannot handle this.</li>
+  <li>An RNN reads data <strong>one step at a time</strong> and keeps a <strong>hidden state</strong> (memory) that is updated at every step.</li>
+  <li>The <strong>same weights</strong> are used at every time step — this is why RNNs work on sequences of any length.</li>
+  <li>After processing all steps, the final hidden state holds a summary of the whole sequence.</li>
+  <li>RNNs struggle with <strong>long sequences</strong> because memory fades — this is fixed by LSTM and GRU in Part 15.</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal network:  [x₁, x₂, x₃] → model → answer
+                  (all at once, no order)
+
+RNN:             x₁ → memory → x₂ → memory → x₃ → memory → answer
+                  (one at a time, order matters, memory carries forward)
+</code></pre></div></div>
