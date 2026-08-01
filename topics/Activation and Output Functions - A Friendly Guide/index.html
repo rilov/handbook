@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Part 17: Activation and Output Functions — A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/deep-learning">Deep Learning</a> &mdash;
+    </nav>
+    <h2>Part 17: Activation and Output Functions — A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/deep-learning">Deep Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="part-17-activation-and-output-functions--a-friendly-guide">Part 17: Activation and Output Functions — A Friendly Guide</h1>
+
+<p>A neural network is just a long chain of calculations. At the end of each part, we need a function that turns numbers into useful outputs.</p>
+
+<p>These functions are called <strong>activation functions</strong>.</p>
+
+<p>Some are used inside the network to help it learn complicated patterns. Others are used at the very end to produce the final answer: a class, a probability, or a class index.</p>
+
+<p>This lesson shows the most common functions you will meet in PyTorch and other deep learning libraries.</p>
+
+<hr />
+
+<h2 id="1-common-output-and-activation-functions">1. Common output and activation functions</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Formula</th>
+      <th>Output range</th>
+      <th>Adds to 1?</th>
+      <th>Main use</th>
+      <th>Example output</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Softmax</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">P_i = e^(z_i) / Σ_j e^(z_j)</code></td>
+      <td>0 to 1</td>
+      <td>Yes</td>
+      <td>Multiclass classification where only one class is correct</td>
+      <td><code class="language-plaintext highlighter-rouge">[0.10, 0.75, 0.15]</code></td>
+    </tr>
+    <tr>
+      <td><strong>Sigmoid</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">σ(z) = 1 / (1 + e^(-z))</code></td>
+      <td>0 to 1</td>
+      <td>No</td>
+      <td>Binary classification and multi-label classification</td>
+      <td><code class="language-plaintext highlighter-rouge">[0.80, 0.70, 0.10]</code></td>
+    </tr>
+    <tr>
+      <td><strong>Log-Softmax</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">log(P_i) = z_i - log(Σ_j e^(z_j))</code></td>
+      <td>Usually negative</td>
+      <td>No</td>
+      <td>Stable multiclass training</td>
+      <td><code class="language-plaintext highlighter-rouge">[-0.36, -1.61, -2.30]</code></td>
+    </tr>
+    <tr>
+      <td><strong>Sparsemax</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">sparsemax(z)_i = max(z_i - τ, 0)</code></td>
+      <td>0 to 1</td>
+      <td>Yes</td>
+      <td>Produces probabilities with exact zeros</td>
+      <td><code class="language-plaintext highlighter-rouge">[0.85, 0.15, 0]</code></td>
+    </tr>
+    <tr>
+      <td><strong>Argmax</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">argmax_i(z_i)</code></td>
+      <td>Class index</td>
+      <td>Not applicable</td>
+      <td>Selects the position with the largest value</td>
+      <td><code class="language-plaintext highlighter-rouge">[0.1, 0.7, 0.2] → class 2</code></td>
+    </tr>
+    <tr>
+      <td><strong>ReLU</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">f(z) = max(0, z)</code></td>
+      <td>0 to infinity</td>
+      <td>No</td>
+      <td>Hidden layers</td>
+      <td><code class="language-plaintext highlighter-rouge">[-2, 3, 5] → [0, 3, 5]</code></td>
+    </tr>
+    <tr>
+      <td><strong>Tanh</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z))</code></td>
+      <td>-1 to 1</td>
+      <td>No</td>
+      <td>Hidden layers and recurrent networks</td>
+      <td><code class="language-plaintext highlighter-rouge">tanh(2) ≈ 0.96</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="2-what-each-function-does">2. What each function does</h2>
+
+<h3 id="softmax">Softmax</h3>
+
+<p>Softmax turns a list of raw scores into a list of probabilities that add to 1.</p>
+
+<p><strong>Formula:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P_i = e^(z_i) / (e^(z_1) + e^(z_2) + ... + e^(z_K))
+</code></pre></div></div>
+
+<p><strong>Simple example:</strong></p>
+
+<p>Your model gives three scores: <code class="language-plaintext highlighter-rouge">z = [2.0, 1.0, 0.1]</code>.</p>
+
+<p>Softmax turns this into probabilities:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P ≈ [0.70, 0.26, 0.04]
+</code></pre></div></div>
+
+<p>These add to 1, and the largest score becomes the largest probability.</p>
+
+<h3 id="sigmoid">Sigmoid</h3>
+
+<p>Sigmoid takes one number and squeezes it between 0 and 1.</p>
+
+<p><strong>Formula:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>σ(z) = 1 / (1 + e^(-z))
+</code></pre></div></div>
+
+<p>For a very large positive <code class="language-plaintext highlighter-rouge">z</code>, the result is close to 1. For a very large negative <code class="language-plaintext highlighter-rouge">z</code>, the result is close to 0.</p>
+
+<p>Each output is separate. If you have three classes, you can have three separate sigmoid outputs: <code class="language-plaintext highlighter-rouge">[0.80, 0.70, 0.10]</code>. This is useful when one item can belong to more than one class at the same time.</p>
+
+<h3 id="log-softmax">Log-Softmax</h3>
+
+<p>Log-Softmax is simply the logarithm of the Softmax result.</p>
+
+<p><strong>Formula:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>log(P_i) = z_i - log(e^(z_1) + e^(z_2) + ... + e^(z_K))
+</code></pre></div></div>
+
+<p>It is used during training because the math is more stable and more accurate than writing Softmax followed by <code class="language-plaintext highlighter-rouge">log</code>. In PyTorch, <code class="language-plaintext highlighter-rouge">nn.CrossEntropyLoss</code> expects raw scores, but <code class="language-plaintext highlighter-rouge">nn.NLLLoss</code> expects log-softmax outputs.</p>
+
+<h3 id="sparsemax">Sparsemax</h3>
+
+<p>Sparsemax is like Softmax, but it can produce exact zeros.</p>
+
+<p><strong>Formula:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sparsemax(z)_i = max(z_i - τ, 0)
+</code></pre></div></div>
+
+<p>The value <code class="language-plaintext highlighter-rouge">τ</code> is chosen so the non-zero results add to 1. This means some classes can receive probability 0 while others share the full probability.</p>
+
+<p>Useful when you want the model to clearly ignore some classes.</p>
+
+<h3 id="argmax">Argmax</h3>
+
+<p>Argmax does not produce a probability. It only tells you which position has the biggest value.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>argmax([0.1, 0.7, 0.2]) = 1
+</code></pre></div></div>
+
+<p>The answer is <code class="language-plaintext highlighter-rouge">1</code> because the largest value <code class="language-plaintext highlighter-rouge">0.7</code> is at index 1.</p>
+
+<p>Argmax is used at prediction time. After the model produces probabilities, you pick the class with the highest score.</p>
+
+<h3 id="relu">ReLU</h3>
+
+<p>ReLU is the most common activation for hidden layers.</p>
+
+<p><strong>Formula:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>f(z) = max(0, z)
+</code></pre></div></div>
+
+<p>If the input is positive, pass it through. If the input is negative, replace it with 0.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[-2, 3, 5] → [0, 3, 5]
+</code></pre></div></div>
+
+<p>It is fast, simple, and helps the network learn quickly.</p>
+
+<h3 id="tanh">Tanh</h3>
+
+<p>Tanh squeezes a number between -1 and 1.</p>
+
+<p><strong>Formula:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z))
+</code></pre></div></div>
+
+<p>Values near 0 stay near 0. Large positive numbers become close to 1. Large negative numbers become close to -1.</p>
+
+<p>Tanh is used in hidden layers and in older recurrent networks because its output is centered around 0, which can help training.</p>
+
+<hr />
+
+<h2 id="3-which-one-should-you-use">3. Which one should you use?</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Output function</th>
+      <th>Formula</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Spam or not spam</td>
+      <td><strong>Sigmoid</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">σ(z) = 1 / (1 + e^(-z))</code></td>
+    </tr>
+    <tr>
+      <td>Cat, dog, or horse — exactly one</td>
+      <td><strong>Softmax</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">P_i = e^(z_i) / Σ_j e^(z_j)</code></td>
+    </tr>
+    <tr>
+      <td>Image may contain both cat and dog</td>
+      <td><strong>Sigmoid for each class</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">σ(z_i) = 1 / (1 + e^(-z_i))</code> for each class separately</td>
+    </tr>
+    <tr>
+      <td>Choose the class with highest probability</td>
+      <td><strong>Argmax</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">argmax_i(P_i)</code></td>
+    </tr>
+    <tr>
+      <td>Hidden-layer activation</td>
+      <td><strong>ReLU</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">f(z) = max(0, z)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="4-important-symbols">4. Important symbols</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Symbol</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">z_i</code></td>
+      <td>Raw score, or logit, for class <code class="language-plaintext highlighter-rouge">i</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">e</code></td>
+      <td>Exponential number, approximately <code class="language-plaintext highlighter-rouge">2.718</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">K</code></td>
+      <td>Total number of classes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">P_i</code></td>
+      <td>Probability of class <code class="language-plaintext highlighter-rouge">i</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Σ</code></td>
+      <td>Add all the values together</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">i</code></td>
+      <td>Current class being calculated</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">j</code></td>
+      <td>Used to go through all classes</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="5-softmax-example-for-three-classes">5. Softmax example for three classes</h2>
+
+<p>For three classes, Softmax takes raw scores and turns them into three probabilities:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[z_1, z_2, z_3] → [P_1, P_2, P_3]
+</code></pre></div></div>
+
+<p>Where:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P_1 = e^(z_1) / (e^(z_1) + e^(z_2) + e^(z_3))
+P_2 = e^(z_2) / (e^(z_1) + e^(z_2) + e^(z_3))
+P_3 = e^(z_3) / (e^(z_1) + e^(z_2) + e^(z_3))
+</code></pre></div></div>
+
+<p>Because they are all divided by the same total, they always add to 1:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P_1 + P_2 + P_3 = 1
+</code></pre></div></div>
+
+<h3 id="worked-example">Worked example</h3>
+
+<p>Raw scores: <code class="language-plaintext highlighter-rouge">z = [2.0, 1.0, 0.1]</code></p>
+
+<p>Step 1: Calculate <code class="language-plaintext highlighter-rouge">e^(z_i)</code> for each class:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>e^2.0  ≈ 7.39
+e^1.0  ≈ 2.72
+e^0.1  ≈ 1.11
+</code></pre></div></div>
+
+<p>Step 2: Add them up:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>total = 7.39 + 2.72 + 1.11 = 11.22
+</code></pre></div></div>
+
+<p>Step 3: Divide each by the total:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P_1 = 7.39 / 11.22 ≈ 0.66
+P_2 = 2.72 / 11.22 ≈ 0.24
+P_3 = 1.11 / 11.22 ≈ 0.10
+</code></pre></div></div>
+
+<p>Result:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[0.66, 0.24, 0.10]
+</code></pre></div></div>
+
+<p>This adds to exactly 1. The class with the biggest raw score becomes the most likely class.</p>
+
+<p>In PyTorch, this is one line:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">scores</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+<span class="n">softmax</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">probabilities</span> <span class="o">=</span> <span class="nf">softmax</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">probabilities</span><span class="p">)</span>
+<span class="c1"># tensor([0.6590, 0.2424, 0.0986])
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="6-a-simple-memory-rule">6. A simple memory rule</h2>
+
+<ul>
+  <li><strong>Inside the network</strong> — use ReLU or Tanh.</li>
+  <li><strong>At the end, one correct class</strong> — use Softmax.</li>
+  <li><strong>At the end, yes/no or multiple labels per item</strong> — use Sigmoid.</li>
+  <li><strong>At prediction time, pick a class</strong> — use Argmax.</li>
+</ul>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Where to use it</th>
+      <th>Output adds to 1?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Softmax</td>
+      <td>Last layer for multiclass (cat, dog, horse)</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>Sigmoid</td>
+      <td>Binary or multi-label problems</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>Log-Softmax</td>
+      <td>Training with <code class="language-plaintext highlighter-rouge">NLLLoss</code></td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>Sparsemax</td>
+      <td>When some classes should be exactly 0</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>Argmax</td>
+      <td>Pick the most likely class</td>
+      <td>Not a probability</td>
+    </tr>
+    <tr>
+      <td>ReLU</td>
+      <td>Hidden layers</td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>Tanh</td>
+      <td>Hidden layers and RNNs</td>
+      <td>No</td>
+    </tr>
+  </tbody>
+</table>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">deep-learning</span>, <span class="tag">activation-functions</span>, <span class="tag">softmax</span>, <span class="tag">sigmoid</span>, <span class="tag">relu</span>, <span class="tag">tanh</span>, <span class="tag">beginners</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
