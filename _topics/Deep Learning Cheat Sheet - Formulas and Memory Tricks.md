@@ -2,6 +2,7 @@
 title: "Part 8: Deep Learning Cheat Sheet - Formulas and Memory Tricks"
 category: Deep Learning
 order: 8
+permalink: /topics/deep-learning-cheat-sheet/
 tags:
   - deep-learning
   - cheat-sheet
