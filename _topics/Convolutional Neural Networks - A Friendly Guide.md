@@ -183,31 +183,267 @@ That sliding operation is called **convolution**.
 
 Before learning the word convolution, learn the simple idea behind it.
 
-Imagine you are trying to find vertical edges in an image. You do not need to look at the entire image at once. You can use a small detector that checks one tiny patch at a time.
+Imagine a CNN is looking at a picture using a small magnifying glass.
 
-This small detector is called a **kernel** or **filter**.
+- The **input** is the picture.
+- The **filter** is the magnifying glass.
+- The **padding** is the extra border around the picture.
+- The **stride** is how far the magnifying glass jumps each time.
 
-A kernel is just a small grid of learned numbers, usually `3 × 3`:
+---
 
-```text
-3 × 3 kernel = 9 weights
-```
+### 3.1 Input: the picture
 
-The kernel slides over the image. At each position, it asks:
-
-> Does this small patch look like the pattern I am searching for?
-
-If the patch matches, the output number becomes high. If it does not match, the output number stays low.
-
-<img src="{{ site.baseurl }}/assets/img/convolution-kernel-sliding.svg" alt="A 3x3 kernel scanning a 5x5 image, multiplying and summing values in the receptive field to produce one scalar in the feature map" width="100%" />
-
-At each position, the kernel does the same calculation you already saw in earlier neural network parts:
+The input is the image given to the CNN. A small grayscale image might look like this:
 
 ```text
-multiply inputs by weights → add them → produce one score
+1   2   3   4   5
+6   7   8   9  10
+11 12 13 14 15
+16 17 18 19 20
+21 22 23 24 25
 ```
 
-The only difference is that now the inputs are pixels from a small image patch.
+This is a `5 × 5` image:
+
+```text
+5 rows
+5 columns
+```
+
+Think of each number as one tiny pixel. A real photo has many more pixels and usually three color channels — red, green, and blue — but the idea is the same.
+
+---
+
+### 3.2 Filter: the small magnifying glass
+
+A filter is a small box that looks at only part of the image at one time.
+
+A common filter size is `3 × 3`. It can look at 9 pixels at once:
+
+```text
+[ 1  0 -1 ]
+[ 1  0 -1 ]
+[ 1  0 -1 ]
+```
+
+This filter is good at detecting a **vertical edge**. It compares the left side of the patch to the right side.
+
+Now place it on the top-left of a small image:
+
+```text
+Image patch          Filter
+[ 1  2  3 ]          [ 1  0 -1 ]
+[ 0  1  2 ]    ×     [ 1  0 -1 ]
+[ 3  1  0 ]          [ 1  0 -1 ]
+```
+
+Multiply each image value by the matching filter value:
+
+```text
+(1 × 1) + (2 × 0) + (3 × -1)
++ (0 × 1) + (1 × 0) + (2 × -1)
++ (3 × 1) + (1 × 0) + (0 × -1)
+```
+
+Add all the results:
+
+```text
+1 + 0 - 3 + 0 + 0 - 2 + 3 + 0 + 0 = -1
+```
+
+That single number `-1` becomes one value in the **output feature map**.
+
+A filter may learn to detect:
+
+| Pattern | What it finds |
+|---|---|
+| Vertical edges | Sides of an object |
+| Horizontal edges | Top or bottom boundary |
+| Corners | Where two edges meet |
+| Curves | Circular shapes |
+| Textures | Fur, grass, or fabric |
+| Complex features | Eyes, wheels, or faces |
+
+The programmer does not usually choose the filter values by hand. During training, the CNN learns values such as:
+
+```text
+[ 0.2  0.7  0.1]
+[-0.4  0.3  0.6]
+[ 0.1 -0.5 -0.2]
+```
+
+These numbers are **weights**. Backpropagation adjusts them so the filter becomes useful.
+
+---
+
+### 3.3 Stride: how far the filter moves
+
+Stride tells us how many pixels the filter moves each time.
+
+**Stride = 1**
+
+The filter moves one pixel at a time:
+
+```text
+Position 1:  [F F F . .]
+             [F F F . .]
+             [F F F . .]
+
+Position 2:  [. F F F .]
+             [. F F F .]
+             [. F F F .]
+
+Position 3:  [. . F F F]
+             [. . F F F]
+             [. . F F F]
+```
+
+It checks many positions, so the output is larger.
+
+**Stride = 2**
+
+The filter jumps two pixels at a time:
+
+```text
+Position 1:  [F F F . .]
+             [F F F . .]
+             [F F F . .]
+
+Position 2:  [. . F F F]
+             [. . F F F]
+             [. . F F F]
+```
+
+It checks fewer positions, so the output is smaller.
+
+| Stride | Movement | Output size |
+|---|---|---|
+| `S = 1` | Move 1 pixel | Larger |
+| `S = 2` | Jump 2 pixels | Smaller |
+| `S = 3` | Jump 3 pixels | Much smaller |
+
+---
+
+### 3.4 Padding: adding a border
+
+Padding means adding extra pixels around the outside of the image. Usually the extra pixels are zeros.
+
+A `3 × 3` image:
+
+```text
+1 2 3
+4 5 6
+7 8 9
+```
+
+With `padding = 1`:
+
+```text
+0 0 0 0 0
+0 1 2 3 0
+0 4 5 6 0
+0 7 8 9 0
+0 0 0 0 0
+```
+
+Padding gives the filter space to look at the edge pixels. Without padding, the filter cannot place its centre on the outside edge, and the output becomes smaller after every convolution.
+
+| Padding | What happens |
+|---|---|
+| `padding = 0` | No extra border. Output shrinks. |
+| `padding = 1` | Add 1 pixel border. Output can stay the same size with a `3 × 3` filter. |
+| `padding = 2` | Add 2 pixel border. Used for larger filters. |
+
+---
+
+### 3.5 Put everything together
+
+Suppose we have:
+
+```text
+Input:   5 × 5
+Filter:  3 × 3
+Padding: 0
+Stride:  1
+```
+
+The filter starts here:
+
+```text
+[F F F . .]
+[F F F . .]
+[F F F . .]
+[. . . . .]
+[. . . . .]
+```
+
+Then moves right:
+
+```text
+[. F F F .]
+[. F F F .]
+[. F F F .]
+[. . . . .]
+[. . . . .]
+```
+
+Then right again:
+
+```text
+[. . F F F]
+[. . F F F]
+[. . F F F]
+[. . . . .]
+[. . . . .]
+```
+
+There are 3 horizontal positions. The filter also moves downward into 3 vertical positions. So the output is:
+
+```text
+3 × 3
+```
+
+This matches the exact formula you will see later:
+
+```text
+Output size = ((N - F + 2P) / S) + 1
+```
+
+For this example:
+
+```text
+Output size = ((5 - 3 + 2×0) / 1) + 1
+            = (2 / 1) + 1
+            = 3
+```
+
+### Example from your question
+
+For a `32 × 32` image, a `3 × 3` filter, `padding = 0`, and `stride = 1`:
+
+```text
+Output size = ((32 - 3 + 2×0) / 1) + 1
+            = 29 + 1
+            = 30
+```
+
+So the output feature map is `30 × 30`.
+
+---
+
+### 3.6 Simple memory table
+
+| Term | Kid-friendly meaning |
+|---|---|
+| **Input** | The whole picture |
+| **Filter** | A small magnifying glass looking for patterns |
+| **Padding** | An extra border around the picture |
+| **Stride** | How far the magnifying glass moves |
+
+**Easy sentence:**
+
+> The filter moves across the input using a stride, while padding protects the edges.
 
 The patch currently being looked at is called the **receptive field**.
 
