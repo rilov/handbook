@@ -219,6 +219,8 @@ Think of each number as one tiny pixel. A real photo has many more pixels and us
 
 A filter is a small box that looks at only part of the image at one time.
 
+A filter is also called a **kernel**. The two words mean the same thing. We will keep using both because PyTorch uses the word `kernel` in code, but in plain English they are identical.
+
 A common filter size is `3 × 3`. It can look at 9 pixels at once:
 
 ```text
@@ -451,22 +453,22 @@ The patch currently being looked at is called the **receptive field**.
 
 ## 4. What is convolution?
 
-**Convolution** means sliding a kernel across an image and producing a score at every location.
+**Convolution** means sliding a filter — also called a kernel — across an image and producing a score at every location.
 
 The process is:
 
 ```text
 Take a small patch
-→ multiply patch values by kernel weights
+→ multiply patch values by filter (kernel) weights
 → add the results
 → write one output number
 → slide to the next patch
 → repeat
 ```
 
-One kernel produces one new grid of numbers. That grid is called a **feature map**.
+One filter (kernel) produces one new grid of numbers. That grid is called a **feature map**.
 
-If the kernel detects vertical edges, the feature map becomes bright where vertical edges exist. If the kernel detects curves, the feature map becomes bright where curves exist.
+If the filter (kernel) detects vertical edges, the feature map becomes bright where vertical edges exist. If it detects curves, the feature map becomes bright where curves exist.
 
 ### In PyTorch
 
@@ -498,16 +500,16 @@ Here is what each part means:
 | `3` | Three color channels: red, green, blue |
 | `224, 224` | Image height and width |
 | `in_channels=3` | The input has 3 channels |
-| `out_channels=64` | Learn 64 different kernels |
-| `kernel_size=3` | Each kernel looks at a `3 × 3` area |
+| `out_channels=64` | Learn 64 different filters (kernels) |
+| `kernel_size=3` | Each filter (kernel) looks at a `3 × 3` area |
 | `padding=1` | Add a small border so the output size stays controlled |
-| `stride=1` | Move the kernel one pixel at a time |
+| `stride=1` | Move the filter (kernel) one pixel at a time |
 
 ### Why 64 output channels?
 
-`out_channels=64` means the layer has 64 different kernels.
+`out_channels=64` means the layer has 64 different filters (kernels).
 
-Each kernel learns to detect a different visual pattern. One might detect vertical edges. Another might detect horizontal edges. Another might detect color changes. Another might detect small curves.
+Each filter (kernel) learns to detect a different visual pattern. One might detect vertical edges. Another might detect horizontal edges. Another might detect color changes. Another might detect small curves.
 
 So one image goes in, but 64 feature maps come out:
 
@@ -515,13 +517,13 @@ So one image goes in, but 64 feature maps come out:
 1 image → 64 pattern maps
 ```
 
-For a color image, each kernel must look through all 3 input channels. So a `3 × 3` kernel over an RGB image actually has:
+For a color image, each filter (kernel) must look through all 3 input channels. So a `3 × 3` filter (kernel) over an RGB image actually has:
 
 ```text
 3 × 3 × 3 = 27 weights
 ```
 
-One kernel produces one feature map. Sixty-four kernels produce sixty-four feature maps.
+One filter (kernel) produces one feature map. Sixty-four filters (kernels) produce sixty-four feature maps.
 
 ### Recap
 
@@ -576,15 +578,15 @@ ReLU acts like a switch. If a pattern is useful, let the signal continue. If the
 
 ## 6. What is a feature map?
 
-A **feature map** is the output produced by one kernel after it scans the image.
+A **feature map** is the output produced by one filter (kernel) after it scans the image.
 
 Think of it like a highlighted copy of the image.
 
-If the kernel searches for vertical edges, the feature map highlights places where vertical edges were found. If the kernel searches for curves, the feature map highlights curves.
+If the filter (kernel) searches for vertical edges, the feature map highlights places where vertical edges were found. If it searches for curves, the feature map highlights curves.
 
-A CNN does not use just one kernel. It uses many kernels.
+A CNN does not use just one filter (kernel). It uses many filters (kernels).
 
-| Kernel may learn to detect | Feature map lights up where |
+| Filter (kernel) may learn to detect | Feature map lights up where |
 |---|---|
 | Vertical edge | Vertical lines appear |
 | Horizontal edge | Horizontal lines appear |
@@ -608,9 +610,9 @@ Later layers: object parts like eyes, ears, wheels, faces
 
 ## 7. Padding: why add a border around the image?
 
-When a kernel slides over an image, it has trouble at the edges.
+When a filter (kernel) slides over an image, it has trouble at the edges.
 
-A `3 × 3` kernel needs a full `3 × 3` patch. At the border, there are not enough surrounding pixels unless we do something special.
+A `3 × 3` filter (kernel) needs a full `3 × 3` patch. At the border, there are not enough surrounding pixels unless we do something special.
 
 Without padding, the output becomes smaller after each convolution.
 
@@ -626,7 +628,7 @@ This helps control the output size.
 
 VGG16 uses `padding=1` for its `3 × 3` convolutions. That keeps the height and width the same after convolution. The image only shrinks later during pooling.
 
-> **Memory trick:** Padding is like adding a blank picture frame around the image so the kernel can scan the edges too.
+> **Memory trick:** Padding is like adding a blank picture frame around the image so the filter (kernel) can scan the edges too.
 
 ---
 
@@ -770,15 +772,15 @@ If you understand those two questions, the formulas become less scary.
 
 ### Formula 1: output size
 
-When a kernel slides across an image, it creates a new grid of numbers.
+When a filter (kernel) slides across an image, it creates a new grid of numbers.
 
 That new grid is the **output feature map**.
 
-The size of this new grid depends on how the kernel moves:
+The size of this new grid depends on how the filter (kernel) moves:
 
-- **No padding:** the kernel cannot fully cover the border pixels, so the output usually becomes smaller.
+- **No padding:** the filter (kernel) cannot fully cover the border pixels, so the output usually becomes smaller.
 - **With padding:** we add a border around the image, so the output can stay the same size.
-- **Bigger stride:** the kernel jumps more pixels at a time, so the output becomes smaller faster.
+- **Bigger stride:** the filter (kernel) jumps more pixels at a time, so the output becomes smaller faster.
 
 So this formula answers one simple question:
 
@@ -797,7 +799,7 @@ Read the formula like this:
 | `N` | Original input size | `224` pixels wide |
 | `F` | Filter/kernel size | `3 × 3` kernel means `F = 3` |
 | `P` | Padding added on each side | `1` pixel border |
-| `S` | Stride, how far the kernel moves | `1` pixel at a time |
+| `S` | Stride, how far the filter (kernel) moves | `1` pixel at a time |
 
 Why `+ 2P`? Padding is added to both sides. If `P = 1`, we add 1 pixel on the left and 1 pixel on the right, so the total added width is `2`.
 
@@ -830,10 +832,10 @@ A convolution layer stores learned numbers. These are the model's memory.
 Each filter has:
 
 ```text
-kernel height × kernel width × input channels
+filter (kernel) height × filter (kernel) width × input channels
 ```
 
-For example, one `3 × 3` filter looking at an RGB image has:
+For example, one `3 × 3` filter (kernel) looking at an RGB image has:
 
 ```text
 3 × 3 × 3 = 27 weights
@@ -854,8 +856,8 @@ The final `+ number of filters` means one bias per filter.
 The first VGG16 convolution uses:
 
 ```text
-64 filters
-3 × 3 kernel
+64 filters (kernels)
+3 × 3 filter (kernel)
 3 input channels: red, green, blue
 ```
 
@@ -888,8 +890,8 @@ Total:
 A deeper VGG16 layer may use:
 
 ```text
-512 filters
-3 × 3 kernel
+512 filters (kernels)
+3 × 3 filter (kernel)
 512 input channels
 ```
 
