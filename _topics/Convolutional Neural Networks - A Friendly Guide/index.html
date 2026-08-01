@@ -202,6 +202,8 @@ curves and textures together    → maybe an ear or eye
 
 <p>A filter is a small box that looks at only part of the image at one time.</p>
 
+<p>A filter is also called a <strong>kernel</strong>. The two words mean the same thing. We will keep using both because PyTorch uses the word <code class="language-plaintext highlighter-rouge">kernel</code> in code, but in plain English they are identical.</p>
+
 <p>A common filter size is <code class="language-plaintext highlighter-rouge">3 × 3</code>. It can look at 9 pixels at once:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[ 1  0 -1 ]
@@ -503,21 +505,21 @@ Stride:  1
 
 <h2 id="4-what-is-convolution">4. What is convolution?</h2>
 
-<p><strong>Convolution</strong> means sliding a kernel across an image and producing a score at every location.</p>
+<p><strong>Convolution</strong> means sliding a filter — also called a kernel — across an image and producing a score at every location.</p>
 
 <p>The process is:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Take a small patch
-→ multiply patch values by kernel weights
+→ multiply patch values by filter (kernel) weights
 → add the results
 → write one output number
 → slide to the next patch
 → repeat
 </code></pre></div></div>
 
-<p>One kernel produces one new grid of numbers. That grid is called a <strong>feature map</strong>.</p>
+<p>One filter (kernel) produces one new grid of numbers. That grid is called a <strong>feature map</strong>.</p>
 
-<p>If the kernel detects vertical edges, the feature map becomes bright where vertical edges exist. If the kernel detects curves, the feature map becomes bright where curves exist.</p>
+<p>If the filter (kernel) detects vertical edges, the feature map becomes bright where vertical edges exist. If it detects curves, the feature map becomes bright where curves exist.</p>
 
 <h3 id="in-pytorch">In PyTorch</h3>
 
@@ -568,11 +570,11 @@ Stride:  1
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">out_channels=64</code></td>
-      <td>Learn 64 different kernels</td>
+      <td>Learn 64 different filters (kernels)</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">kernel_size=3</code></td>
-      <td>Each kernel looks at a <code class="language-plaintext highlighter-rouge">3 × 3</code> area</td>
+      <td>Each filter (kernel) looks at a <code class="language-plaintext highlighter-rouge">3 × 3</code> area</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">padding=1</code></td>
@@ -580,28 +582,28 @@ Stride:  1
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">stride=1</code></td>
-      <td>Move the kernel one pixel at a time</td>
+      <td>Move the filter (kernel) one pixel at a time</td>
     </tr>
   </tbody>
 </table>
 
 <h3 id="why-64-output-channels">Why 64 output channels?</h3>
 
-<p><code class="language-plaintext highlighter-rouge">out_channels=64</code> means the layer has 64 different kernels.</p>
+<p><code class="language-plaintext highlighter-rouge">out_channels=64</code> means the layer has 64 different filters (kernels).</p>
 
-<p>Each kernel learns to detect a different visual pattern. One might detect vertical edges. Another might detect horizontal edges. Another might detect color changes. Another might detect small curves.</p>
+<p>Each filter (kernel) learns to detect a different visual pattern. One might detect vertical edges. Another might detect horizontal edges. Another might detect color changes. Another might detect small curves.</p>
 
 <p>So one image goes in, but 64 feature maps come out:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1 image → 64 pattern maps
 </code></pre></div></div>
 
-<p>For a color image, each kernel must look through all 3 input channels. So a <code class="language-plaintext highlighter-rouge">3 × 3</code> kernel over an RGB image actually has:</p>
+<p>For a color image, each filter (kernel) must look through all 3 input channels. So a <code class="language-plaintext highlighter-rouge">3 × 3</code> filter (kernel) over an RGB image actually has:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3 × 3 × 3 = 27 weights
 </code></pre></div></div>
 
-<p>One kernel produces one feature map. Sixty-four kernels produce sixty-four feature maps.</p>
+<p>One filter (kernel) produces one feature map. Sixty-four filters (kernels) produce sixty-four feature maps.</p>
 
 <h3 id="recap">Recap</h3>
 
@@ -677,18 +679,18 @@ negative number → change it to 0
 
 <h2 id="6-what-is-a-feature-map">6. What is a feature map?</h2>
 
-<p>A <strong>feature map</strong> is the output produced by one kernel after it scans the image.</p>
+<p>A <strong>feature map</strong> is the output produced by one filter (kernel) after it scans the image.</p>
 
 <p>Think of it like a highlighted copy of the image.</p>
 
-<p>If the kernel searches for vertical edges, the feature map highlights places where vertical edges were found. If the kernel searches for curves, the feature map highlights curves.</p>
+<p>If the filter (kernel) searches for vertical edges, the feature map highlights places where vertical edges were found. If it searches for curves, the feature map highlights curves.</p>
 
-<p>A CNN does not use just one kernel. It uses many kernels.</p>
+<p>A CNN does not use just one filter (kernel). It uses many filters (kernels).</p>
 
 <table>
   <thead>
     <tr>
-      <th>Kernel may learn to detect</th>
+      <th>Filter (kernel) may learn to detect</th>
       <th>Feature map lights up where</th>
     </tr>
   </thead>
@@ -733,9 +735,9 @@ Later layers: object parts like eyes, ears, wheels, faces
 
 <h2 id="7-padding-why-add-a-border-around-the-image">7. Padding: why add a border around the image?</h2>
 
-<p>When a kernel slides over an image, it has trouble at the edges.</p>
+<p>When a filter (kernel) slides over an image, it has trouble at the edges.</p>
 
-<p>A <code class="language-plaintext highlighter-rouge">3 × 3</code> kernel needs a full <code class="language-plaintext highlighter-rouge">3 × 3</code> patch. At the border, there are not enough surrounding pixels unless we do something special.</p>
+<p>A <code class="language-plaintext highlighter-rouge">3 × 3</code> filter (kernel) needs a full <code class="language-plaintext highlighter-rouge">3 × 3</code> patch. At the border, there are not enough surrounding pixels unless we do something special.</p>
 
 <p>Without padding, the output becomes smaller after each convolution.</p>
 
@@ -751,7 +753,7 @@ Later layers: object parts like eyes, ears, wheels, faces
 <p>VGG16 uses <code class="language-plaintext highlighter-rouge">padding=1</code> for its <code class="language-plaintext highlighter-rouge">3 × 3</code> convolutions. That keeps the height and width the same after convolution. The image only shrinks later during pooling.</p>
 
 <blockquote>
-  <p><strong>Memory trick:</strong> Padding is like adding a blank picture frame around the image so the kernel can scan the edges too.</p>
+  <p><strong>Memory trick:</strong> Padding is like adding a blank picture frame around the image so the filter (kernel) can scan the edges too.</p>
 </blockquote>
 
 <hr />
@@ -910,16 +912,16 @@ class 1 = dog
 
 <h3 id="formula-1-output-size">Formula 1: output size</h3>
 
-<p>When a kernel slides across an image, it creates a new grid of numbers.</p>
+<p>When a filter (kernel) slides across an image, it creates a new grid of numbers.</p>
 
 <p>That new grid is the <strong>output feature map</strong>.</p>
 
-<p>The size of this new grid depends on how the kernel moves:</p>
+<p>The size of this new grid depends on how the filter (kernel) moves:</p>
 
 <ul>
-  <li><strong>No padding:</strong> the kernel cannot fully cover the border pixels, so the output usually becomes smaller.</li>
+  <li><strong>No padding:</strong> the filter (kernel) cannot fully cover the border pixels, so the output usually becomes smaller.</li>
   <li><strong>With padding:</strong> we add a border around the image, so the output can stay the same size.</li>
-  <li><strong>Bigger stride:</strong> the kernel jumps more pixels at a time, so the output becomes smaller faster.</li>
+  <li><strong>Bigger stride:</strong> the filter (kernel) jumps more pixels at a time, so the output becomes smaller faster.</li>
 </ul>
 
 <p>So this formula answers one simple question:</p>
@@ -960,7 +962,7 @@ class 1 = dog
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">S</code></td>
-      <td>Stride, how far the kernel moves</td>
+      <td>Stride, how far the filter (kernel) moves</td>
       <td><code class="language-plaintext highlighter-rouge">1</code> pixel at a time</td>
     </tr>
   </tbody>
@@ -994,10 +996,10 @@ S = 1
 
 <p>Each filter has:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kernel height × kernel width × input channels
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>filter (kernel) height × filter (kernel) width × input channels
 </code></pre></div></div>
 
-<p>For example, one <code class="language-plaintext highlighter-rouge">3 × 3</code> filter looking at an RGB image has:</p>
+<p>For example, one <code class="language-plaintext highlighter-rouge">3 × 3</code> filter (kernel) looking at an RGB image has:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3 × 3 × 3 = 27 weights
 </code></pre></div></div>
@@ -1014,8 +1016,8 @@ S = 1
 
 <p>The first VGG16 convolution uses:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>64 filters
-3 × 3 kernel
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>64 filters (kernels)
+3 × 3 filter (kernel)
 3 input channels: red, green, blue
 </code></pre></div></div>
 
@@ -1043,8 +1045,8 @@ S = 1
 
 <p>A deeper VGG16 layer may use:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>512 filters
-3 × 3 kernel
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>512 filters (kernels)
+3 × 3 filter (kernel)
 512 input channels
 </code></pre></div></div>
 
