@@ -20,6 +20,7 @@ Learn machine learning fundamentals and practical algorithms from scratch. The t
 10. Hierarchical Clustering
 11. K-Nearest Neighbours
 12. ML Quick Reference - Libraries, Metrics, and Cheat Sheet
+13. **[Advanced Machine Learning: SVM and Naive Bayes]({{ site.baseurl }}/topics/advanced-machine-learning-svm-and-naive-bayes)** — Margins, support vectors, the kernel trick, Bayes' theorem, the naive assumption, and how to choose between SVM and Naive Bayes for classification tasks.
 
 **Beginner-friendly companions:**
 
