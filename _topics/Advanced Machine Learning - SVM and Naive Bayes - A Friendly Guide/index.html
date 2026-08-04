@@ -1,0 +1,501 @@
+<h1 id="advanced-machine-learning-svm-and-naive-bayes">Advanced Machine Learning: SVM and Naive Bayes</h1>
+
+<p>This guide covers two classic machine learning algorithms used for classification:</p>
+
+<ul>
+  <li><strong>Support Vector Machine (SVM)</strong> — finds the best boundary between classes.</li>
+  <li><strong>Naive Bayes</strong> — classifies using probability and Bayes’ theorem.</li>
+</ul>
+
+<p>Both are simple to explain, powerful in practice, and still used in real applications today.</p>
+
+<hr />
+
+<h2 id="1-what-is-a-margin-classifier">1. What is a margin classifier?</h2>
+
+<p>Imagine you have two groups of emails on a graph:</p>
+
+<ul>
+  <li><strong>Not spam</strong> emails: few suspicious words, few links</li>
+  <li><strong>Spam</strong> emails: many suspicious words, many links</li>
+</ul>
+
+<p>You can draw a line that separates them. But many lines can work.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Line A: very close to the spam emails
+Line B: right in the middle of the gap           ← best choice
+Line C: very close to the normal emails
+</code></pre></div></div>
+
+<p><strong>Line B</strong> is best because it leaves the largest empty space on both sides. This empty space is called the <strong>margin</strong>.</p>
+
+<p>A classifier that tries to maximise the margin is called a <strong>margin classifier</strong>.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Think of the margin as a safety zone. A wider safety zone means fewer mistakes when new data arrives.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-support-vector-machines-svm">2. Support Vector Machines (SVM)</h2>
+
+<p>SVM is a margin classifier. It finds the boundary that has the biggest possible gap between the two classes.</p>
+
+<h3 id="21-support-vectors--the-important-points">2.1 Support vectors — the important points</h3>
+
+<p>Most training points do not affect the boundary. Only the points closest to the boundary matter. These special points are called <strong>support vectors</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal:  ●  ●  [●]  |  [■]  ■  ■  : Spam
+                    ↑    ↑
+              support vectors
+</code></pre></div></div>
+
+<p>If you remove the other points and keep only the support vectors, the boundary stays the same.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Support vectors are like the fence posts that hold the boundary line in place.</p>
+</blockquote>
+
+<h3 id="22-soft-margin--real-life-is-messy">2.2 Soft margin — real life is messy</h3>
+
+<p>Real data is rarely perfectly separable. Some spam emails look normal, and some normal emails look spammy.</p>
+
+<p>SVM handles this with a <strong>soft margin</strong>. The parameter <code class="language-plaintext highlighter-rouge">C</code> controls how strict the model is:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>C value</th>
+      <th>What happens</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Large C</strong></td>
+      <td>Tries hard to classify every training point correctly. Can overfit.</td>
+    </tr>
+    <tr>
+      <td><strong>Small C</strong></td>
+      <td>Allows some mistakes. Usually generalises better.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">strict</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">C</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>      <span class="c1"># large C, tight margin
+</span><span class="n">relaxed</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">C</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>     <span class="c1"># small C, wide margin
+</span></code></pre></div></div>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> C is the cost of being wrong. A high C means mistakes are expensive, so the model becomes strict.</p>
+</blockquote>
+
+<h3 id="23-the-kernel-trick--when-a-straight-line-is-not-enough">2.3 The kernel trick — when a straight line is not enough</h3>
+
+<p>Some data cannot be separated by a straight line. For example, imagine one class surrounded by another class in a circle.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>       ●  ●  ●
+    ●           ●
+  ●    ■  ■  ■    ●
+  ●   ■  ■  ■  ■  ●
+    ●           ●
+       ●  ●  ●
+</code></pre></div></div>
+
+<p>No straight line separates the circles from the squares. But if we move the data into a higher-dimensional space, it becomes separable.</p>
+
+<p>A <strong>kernel</strong> does this transformation without actually moving the data. It only changes the way distances are measured. This is called the <strong>kernel trick</strong>.</p>
+
+<p>Common kernels:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Kernel</th>
+      <th>Use case</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Linear</strong></td>
+      <td>Data can be separated by a straight line. Fast.</td>
+    </tr>
+    <tr>
+      <td><strong>Polynomial</strong></td>
+      <td>Data needs a curved boundary.</td>
+    </tr>
+    <tr>
+      <td><strong>RBF (Radial Basis Function)</strong></td>
+      <td>Complex boundaries. Most common non-linear choice.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">linear</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">)</span>       <span class="c1"># straight boundary
+</span><span class="n">rbf</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">)</span>             <span class="c1"># flexible boundary
+</span><span class="n">poly</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">poly</span><span class="sh">'</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>   <span class="c1"># curved boundary
+</span></code></pre></div></div>
+
+<h3 id="24-svm-demonstration-in-python">2.4 SVM demonstration in Python</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">load_iris</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="c1"># Load data
+</span><span class="n">iris</span> <span class="o">=</span> <span class="nf">load_iris</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">iris</span><span class="p">.</span><span class="n">data</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">iris</span><span class="p">.</span><span class="n">target</span>
+
+<span class="c1"># Split into train and test
+</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="c1"># Train an SVM with RBF kernel
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1"># Predict and evaluate
+</span><span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">))</span>
+</code></pre></div></div>
+
+<h3 id="25-when-to-use-svm">2.5 When to use SVM</h3>
+
+<ul>
+  <li>Small to medium datasets</li>
+  <li>When the number of features is large</li>
+  <li>When you need a clear decision boundary</li>
+  <li>When you want control over overfitting through <code class="language-plaintext highlighter-rouge">C</code> and the kernel</li>
+</ul>
+
+<p>SVMs are slower on very large datasets. For millions of rows, algorithms like Random Forest or Gradient Boosting are usually better.</p>
+
+<hr />
+
+<h2 id="3-naive-bayes">3. Naive Bayes</h2>
+
+<p>Naive Bayes classifies by asking:</p>
+
+<blockquote>
+  <p>Given the evidence I see, which class is most likely?</p>
+</blockquote>
+
+<h3 id="31-the-intuition">3.1 The intuition</h3>
+
+<p>You receive an email:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Congratulations! You won a free iPhone."
+</code></pre></div></div>
+
+<p>From past experience, you know:</p>
+
+<ul>
+  <li>The word “free” appears in 80% of spam but only 5% of normal emails.</li>
+  <li>The word “won” appears in 60% of spam but only 2% of normal emails.</li>
+  <li>The word “Congratulations” appears in 55% of spam but 10% of normal emails.</li>
+</ul>
+
+<p>Naive Bayes combines these clues to estimate the probability that the email is spam.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Naive Bayes is like a detective who weighs each clue and reaches a verdict.</p>
+</blockquote>
+
+<h3 id="32-bayes-theorem">3.2 Bayes’ theorem</h3>
+
+<p>Bayes’ theorem tells us how to update a belief when we see new evidence.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(class | evidence) = P(evidence | class) × P(class)
+                    ─────────────────────────────────
+                              P(evidence)
+</code></pre></div></div>
+
+<p>Read it as:</p>
+
+<blockquote>
+  <p>The probability of a class given the evidence depends on how likely the evidence is for that class, how common the class is overall, and how common the evidence is overall.</p>
+</blockquote>
+
+<p>For spam detection:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(spam | words) = P(words | spam) × P(spam)
+                  ───────────────────────────
+                        P(words)
+</code></pre></div></div>
+
+<h3 id="33-the-naive-assumption">3.3 The “naive” assumption</h3>
+
+<p>The word <strong>naive</strong> means the model assumes each feature is independent of the others. In spam detection, it assumes the word “free” does not affect the word “won”.</p>
+
+<p>This assumption is usually wrong in real life. Words often appear together. But the model still works well because it only needs to pick the most likely class, not calculate exact probabilities.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Naive Bayes pretends each clue is independent. It is a simple lie that makes the math easy and often gives the right answer.</p>
+</blockquote>
+
+<h3 id="34-types-of-naive-bayes">3.4 Types of Naive Bayes</h3>
+
+<p>Different types exist for different kinds of data.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Best for</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Multinomial</strong></td>
+      <td>Count data, especially text</td>
+      <td>Word counts in emails</td>
+    </tr>
+    <tr>
+      <td><strong>Bernoulli</strong></td>
+      <td>Binary features</td>
+      <td>Word present or absent in email</td>
+    </tr>
+    <tr>
+      <td><strong>Gaussian</strong></td>
+      <td>Continuous numerical features</td>
+      <td>Height, weight, temperature</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">MultinomialNB</span><span class="p">,</span> <span class="n">BernoulliNB</span><span class="p">,</span> <span class="n">GaussianNB</span>
+
+<span class="n">multinomial</span> <span class="o">=</span> <span class="nc">MultinomialNB</span><span class="p">()</span>   <span class="c1"># word counts
+</span><span class="n">bernoulli</span> <span class="o">=</span> <span class="nc">BernoulliNB</span><span class="p">()</span>       <span class="c1"># word present / absent
+</span><span class="n">gaussian</span> <span class="o">=</span> <span class="nc">GaussianNB</span><span class="p">()</span>         <span class="c1"># continuous numbers
+</span></code></pre></div></div>
+
+<h3 id="35-numerical-stability-and-log-space">3.5 Numerical stability and log-space</h3>
+
+<p>When you multiply many small probabilities, computers can round them to zero. To avoid this, Naive Bayes works in <strong>log space</strong>.</p>
+
+<p>Instead of multiplying probabilities:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(words | spam) = P(word1 | spam) × P(word2 | spam) × ...
+</code></pre></div></div>
+
+<p>It adds their logarithms:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>log P(words | spam) = log P(word1 | spam) + log P(word2 | spam) + ...
+</code></pre></div></div>
+
+<p>Adding small numbers is safer than multiplying tiny numbers. The class with the highest log score still wins.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Logs turn multiplication into addition. It is the same answer, but the computer does not lose precision.</p>
+</blockquote>
+
+<h3 id="36-choosing-the-right-naive-bayes-model">3.6 Choosing the right Naive Bayes model</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Data type</th>
+      <th>Choose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Text word counts</td>
+      <td>Multinomial Naive Bayes</td>
+    </tr>
+    <tr>
+      <td>Binary features</td>
+      <td>Bernoulli Naive Bayes</td>
+    </tr>
+    <tr>
+      <td>Continuous numbers</td>
+      <td>Gaussian Naive Bayes</td>
+    </tr>
+    <tr>
+      <td>Mixed data</td>
+      <td>Try Gaussian or preprocess first</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="37-advantages-and-disadvantages">3.7 Advantages and disadvantages</h3>
+
+<p><strong>Advantages:</strong></p>
+
+<ul>
+  <li>Very fast to train and predict</li>
+  <li>Works well with many features, especially text</li>
+  <li>Needs little training data to start</li>
+  <li>Easy to understand and explain</li>
+</ul>
+
+<p><strong>Disadvantages:</strong></p>
+
+<ul>
+  <li>The independence assumption is rarely true</li>
+  <li>Can give overconfident probabilities</li>
+  <li>Struggles with features that are highly correlated</li>
+</ul>
+
+<h3 id="38-naive-bayes-demonstration-in-python">3.8 Naive Bayes demonstration in Python</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">MultinomialNB</span>
+<span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">CountVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="n">emails</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">Win a free prize now</span><span class="sh">"</span><span class="p">,</span>      <span class="c1"># spam
+</span>    <span class="sh">"</span><span class="s">Free offer for you</span><span class="sh">"</span><span class="p">,</span>         <span class="c1"># spam
+</span>    <span class="sh">"</span><span class="s">Meeting tomorrow at 10</span><span class="sh">"</span><span class="p">,</span>     <span class="c1"># not spam
+</span>    <span class="sh">"</span><span class="s">Lunch today?</span><span class="sh">"</span><span class="p">,</span>               <span class="c1"># not spam
+</span>    <span class="sh">"</span><span class="s">Congratulations free gift</span><span class="sh">"</span><span class="p">,</span>  <span class="c1"># spam
+</span>    <span class="sh">"</span><span class="s">Can you send the report?</span><span class="sh">"</span><span class="p">,</span>   <span class="c1"># not spam
+</span><span class="p">]</span>
+
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># 1 = spam, 0 = not spam
+</span>
+<span class="c1"># Convert text to word counts
+</span><span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">CountVectorizer</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
+
+<span class="c1"># Split and train
+</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">MultinomialNB</span><span class="p">()</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">))</span>
+</code></pre></div></div>
+
+<h3 id="39-comparison-with-other-classification-models">3.9 Comparison with other classification models</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Best for</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Naive Bayes</strong></td>
+      <td>Text, fast baseline</td>
+      <td>Assumes features are independent</td>
+    </tr>
+    <tr>
+      <td><strong>Logistic Regression</strong></td>
+      <td>Linearly separable data</td>
+      <td>Gives calibrated probabilities</td>
+    </tr>
+    <tr>
+      <td><strong>SVM</strong></td>
+      <td>Medium datasets, clear margins</td>
+      <td>Good with kernels for complex boundaries</td>
+    </tr>
+    <tr>
+      <td><strong>Decision Tree</strong></td>
+      <td>Interpretable rules</td>
+      <td>Can overfit easily</td>
+    </tr>
+    <tr>
+      <td><strong>Random Forest</strong></td>
+      <td>General-purpose</td>
+      <td>Often strongest for tabular data</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="4-svm-vs-naive-bayes--quick-decision-guide">4. SVM vs Naive Bayes — quick decision guide</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Question</th>
+      <th>Use SVM</th>
+      <th>Use Naive Bayes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Is the data mostly text?</td>
+      <td>Sometimes</td>
+      <td>Very often</td>
+    </tr>
+    <tr>
+      <td>Do you need probabilities?</td>
+      <td>Not directly</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>Is the dataset small?</td>
+      <td>Yes, great</td>
+      <td>Yes, works with little data</td>
+    </tr>
+    <tr>
+      <td>Is the dataset huge?</td>
+      <td>Maybe too slow</td>
+      <td>Fast</td>
+    </tr>
+    <tr>
+      <td>Is the boundary complex?</td>
+      <td>Use RBF kernel</td>
+      <td>Try a different model</td>
+    </tr>
+    <tr>
+      <td>Do you need an explainable result?</td>
+      <td>Less explainable</td>
+      <td>Easy to explain</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="5-summary">5. Summary</h2>
+
+<ul>
+  <li><strong>SVM</strong> finds the boundary with the largest margin. It uses support vectors and can handle non-linear data with the kernel trick.</li>
+  <li><strong>Naive Bayes</strong> uses probability and Bayes’ theorem. It assumes features are independent, which makes the math simple.</li>
+  <li><strong>SVM</strong> is strong for clear boundaries and medium datasets.</li>
+  <li><strong>Naive Bayes</strong> is fast and works especially well for text classification.</li>
+</ul>
+
+<hr />
+
+<h2 id="6-practice-questions">6. Practice questions</h2>
+
+<ol>
+  <li>Why is Line B better than Line A or Line C in the margin example?</li>
+  <li>What are support vectors, and why do they matter?</li>
+  <li>What does a large <code class="language-plaintext highlighter-rouge">C</code> value do in an SVM?</li>
+  <li>When would you use an RBF kernel instead of a linear kernel?</li>
+  <li>What is the “naive” assumption in Naive Bayes?</li>
+  <li>Which type of Naive Bayes is best for text word counts?</li>
+  <li>Why does Naive Bayes use log probabilities instead of multiplying probabilities directly?</li>
+</ol>
+
+<h3 id="answers">Answers</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Line B has the largest margin, so it generalises better to new data.
+2. Support vectors are the closest points to the boundary. They define the boundary.
+3. A large C makes the model strict and tries to avoid training errors. It can overfit.
+4. Use RBF when the classes cannot be separated by a straight line.
+5. It assumes each feature is independent of the others.
+6. Multinomial Naive Bayes is best for text word counts.
+7. Multiplying many tiny probabilities can underflow to zero. Adding logs avoids this.
+</code></pre></div></div>
