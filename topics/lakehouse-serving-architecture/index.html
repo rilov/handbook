@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lakehouse Serving Architecture: Bronze, Silver, Gold, and Serving Projections</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/data">Data</a> &mdash;
+    </nav>
+    <h2>Lakehouse Serving Architecture: Bronze, Silver, Gold, and Serving Projections</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/data">Data</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="lakehouse-serving-architecture-bronze-silver-gold-and-serving-projections">Lakehouse Serving Architecture: Bronze, Silver, Gold, and Serving Projections</h1>
+
+<blockquote>
+  <p><strong>Core idea:</strong> Bronze → Silver → Gold describes <strong>data quality</strong>. Serving describes <strong>how the data is consumed</strong>. These are two different axes, and conflating them leads to a weaker architecture.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-the-mistake-to-avoid">1. The mistake to avoid</h2>
+
+<p>A tempting but flawed design looks like this:</p>
+
+<div class="mermaid">
+flowchart LR
+    A[Bronze Iceberg] --&gt; B[Silver Iceberg]
+    B --&gt; C[Gold Iceberg]
+    C --&gt; D[Serving Iceberg]
+</div>
+
+<p>This treats <strong>Serving</strong> as just another data-quality stage, like a “Platinum” tier. But serving is not about quality — Gold is already clean, governed, and business-ready. Serving is about <strong>physically optimizing</strong> that same Gold data for a specific consumer’s latency and concurrency requirements.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Bronze/Silver/Gold answers “how trustworthy is this data?” Serving answers “how fast do I need to read it, and in what shape?”</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-recommended-architecture">2. Recommended architecture</h2>
+
+<p>Keep Gold in Iceberg as the governed analytical source of truth. Then <strong>publish</strong> workload-specific serving projections from Gold — do not make Serving another Iceberg tier.</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph LAKEHOUSE["Data Lakehouse"]
+        BZ[Bronze Iceberg<br />Raw] --&gt; SV[Silver Iceberg<br />Clean]
+        SV --&gt; GD[Gold Iceberg<br />Business-ready Data Products]
+        GD -.-&gt; OBJ[Pure Object Storage<br />Gravitino Catalog]
+    end
+
+    GD --&gt;|Publish / Materialize| PUB[Serving Publisher]
+
+    PUB --&gt; AS[Analytical Serving<br />Trino over Iceberg Gold]
+    PUB --&gt; OLAP[Low-Latency OLAP Serving<br />StarRocks / ClickHouse / Pinot]
+    PUB --&gt; OPS[Operational Serving<br />Redis / Scylla / Cassandra / PostgreSQL]
+
+    AS --&gt; BI[BI / Analysts<br />Ad-hoc SQL / Data Science]
+    OLAP --&gt; DASH[Dashboards / Analytics APIs<br />High concurrency]
+    OPS --&gt; API[REST APIs / Applications<br />Point lookup]
+</div>
+
+<hr />
+
+<h2 id="3-keep-gold-in-iceberg">3. Keep Gold in Iceberg</h2>
+
+<p>Gold should remain the single authoritative business representation of your data.</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph Bronze
+        B1[customer_raw]
+        B2[transaction_raw]
+    end
+    subgraph Silver
+        S1[customer_clean]
+        S2[transaction_clean]
+    end
+    subgraph Gold
+        G1[customer_360]
+        G2[account_position]
+        G3[customer_balance]
+        G4[transaction_summary]
+    end
+    B1 --&gt; S1 --&gt; G1
+    B2 --&gt; S2 --&gt; G4
+    S1 --&gt; G2
+    S1 --&gt; G3
+</div>
+
+<p>Iceberg is well suited for Gold because it provides:</p>
+
+<ul>
+  <li><strong>Snapshots</strong> — point-in-time, reproducible views of a table</li>
+  <li><strong>Schema evolution</strong> — add, drop, or rename columns without rewriting data</li>
+  <li><strong>Partition evolution</strong> — change partitioning strategy over time</li>
+  <li><strong>Metadata pruning</strong> — skip irrelevant files using metadata, not full scans</li>
+  <li><strong>File-level statistics</strong> — eliminate files before reading them</li>
+</ul>
+
+<p>These optimizations make large analytical scans efficient. But even with them, two very different query shapes emerge:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Point lookup — latency-sensitive</span>
+<span class="k">SELECT</span> <span class="n">balance</span>
+<span class="k">FROM</span> <span class="n">customer_account</span>
+<span class="k">WHERE</span> <span class="n">account_id</span> <span class="o">=</span> <span class="s1">'A123456'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Analytical aggregation — the Iceberg/lakehouse sweet spot</span>
+<span class="k">SELECT</span> <span class="n">region</span><span class="p">,</span> <span class="k">SUM</span><span class="p">(</span><span class="n">balance</span><span class="p">)</span>
+<span class="k">FROM</span> <span class="n">customer_account</span>
+<span class="k">WHERE</span> <span class="n">business_date</span> <span class="o">=</span> <span class="nb">DATE</span> <span class="s1">'2026-08-08'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> <span class="n">region</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>The aggregation query is what Iceberg and lakehouse engines excel at. The point lookup belongs in a serving database when strict latency matters.</p>
+
+<hr />
+
+<h2 id="4-three-serving-classes">4. Three serving classes</h2>
+
+<p>This distinction is the key design principle: <strong>Serving Zone is not one database — it is a publishing architecture.</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Requirement</th>
+      <th>Serving technology</th>
+      <th>Source</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Seconds, large analytical queries</td>
+      <td>Trino → Iceberg</td>
+      <td>Gold Iceberg</td>
+    </tr>
+    <tr>
+      <td>100 ms–1 sec, high-concurrency analytics</td>
+      <td>StarRocks / ClickHouse</td>
+      <td>Gold Iceberg</td>
+    </tr>
+    <tr>
+      <td>1–20 ms point lookup</td>
+      <td>Redis / Scylla / Cassandra / PostgreSQL</td>
+      <td>Projection from Gold</td>
+    </tr>
+    <tr>
+      <td>Full-text / search</td>
+      <td>OpenSearch</td>
+      <td>Projection from Gold</td>
+    </tr>
+    <tr>
+      <td>ML / vector retrieval</td>
+      <td>Vector index / store</td>
+      <td>Projection from Gold</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mermaid">
+flowchart LR
+    GD[Gold Iceberg] --&gt; T[Trino<br />Seconds]
+    GD --&gt; SR[StarRocks / ClickHouse<br />100ms - 1s]
+    GD --&gt; KV[Redis / Scylla<br />1-20ms]
+    GD --&gt; OS[OpenSearch<br />Search]
+    GD --&gt; VEC[Vector Store<br />ML / RAG]
+</div>
+
+<hr />
+
+<h2 id="5-architecture-for-iceberg--gravitino--trino-platforms">5. Architecture for Iceberg + Gravitino + Trino platforms</h2>
+
+<div class="mermaid">
+flowchart TB
+    APP[Applications] --&gt; SQL[SQL / BI]
+    APP --&gt; AAPI[Analytics API]
+    APP --&gt; RAPI[REST API]
+
+    SQL --&gt; TRINO[Trino]
+    AAPI --&gt; SRK[StarRocks<br />Hot OLAP]
+    RAPI --&gt; KV[Redis / Scylla]
+
+    TRINO --&gt; PUB[Serving Publisher<br />Snapshot detection / CDC<br />transformations / projection<br />indexing / materialization]
+    SRK -.-&gt;|reads or is refreshed from| PUB
+    KV -.-&gt;|reads or is refreshed from| PUB
+
+    PUB --&gt; GOLD[Gold Data Products<br />Apache Iceberg]
+    GOLD --&gt; GRAV[Gravitino / IRC]
+    GRAV --&gt; OBJ[Pure Object Storage]
+</div>
+
+<p><strong>Gravitino</strong> continues to be the catalog and governance control point for Iceberg datasets. Its Iceberg REST service exposes the standard Iceberg REST API and includes capabilities such as credential vending, audit logging, and access control.</p>
+
+<p><strong>Trino</strong> remains the general-purpose lakehouse query engine. It can query Iceberg directly and supports metadata/file caching and Iceberg materialized views.</p>
+
+<hr />
+
+<h2 id="6-starrocks-as-the-analytical-serving-zone">6. StarRocks as the analytical serving zone</h2>
+
+<p>StarRocks is worth evaluating seriously for the analytical serving tier because it offers two modes.</p>
+
+<h3 id="mode-a--query-iceberg-directly">Mode A — query Iceberg directly</h3>
+
+<div class="mermaid">
+flowchart TB
+    APP[Application] --&gt; SR[StarRocks]
+    SR --&gt; GREST[Gravitino REST Catalog]
+    GREST --&gt; GOLD[Iceberg Gold]
+    GOLD --&gt; OBJ[Pure Object Storage]
+</div>
+
+<p>StarRocks can query external Iceberg catalogs and supports the Iceberg REST catalog interface. Gravitino exposes an Iceberg REST catalog, so this pairing is worth testing against your specific Gravitino/StarRocks versions.</p>
+
+<p>This mode still ultimately reads lake/object-storage data — it is not the right choice for the most latency-sensitive workloads.</p>
+
+<h3 id="mode-b--materialize-hot-gold-data">Mode B — materialize hot Gold data</h3>
+
+<div class="mermaid">
+flowchart TB
+    GOLD["Gold.customer_360<br />(20 billion rows)"] --&gt;|incremental materialization| SR[StarRocks]
+    SR --&gt; C1[customer_summary]
+    SR --&gt; C2[customer_position]
+    SR --&gt; C3[daily_balance]
+    C1 --&gt; Q[100ms-1s queries]
+    C2 --&gt; Q
+    C3 --&gt; Q
+</div>
+
+<p>Once materialized, StarRocks owns an optimized copy and can add:</p>
+
+<ul>
+  <li>Indexes</li>
+  <li>Distribution / bucketing</li>
+  <li>Materialized views</li>
+  <li>Local cache / storage</li>
+  <li>Pre-aggregations</li>
+</ul>
+
+<p>StarRocks explicitly supports asynchronous materialized views over Iceberg tables, incrementally refreshes partitions when underlying Iceberg data changes, and can rewrite queries to use those materialized views automatically. StarRocks describes its engine as targeting sub-second, high-concurrency analytical queries.</p>
+
+<hr />
+
+<h2 id="7-dont-use-starrocks-for-everything">7. Don’t use StarRocks for everything</h2>
+
+<p>Consider an API with strict SLAs:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET /customers/12345/balance
+
+P50 = 2 ms
+P99 = 8 ms
+20,000 requests/sec
+</code></pre></div></div>
+
+<p>Neither <code class="language-plaintext highlighter-rouge">API → Trino → Iceberg</code> nor a distributed analytical database is the right first choice here. Instead, publish a specialized projection:</p>
+
+<div class="mermaid">
+flowchart LR
+    GOLD[Gold Iceberg] --&gt; PUB[Serving Publisher]
+    PUB --&gt; KV["Scylla / Redis<br />Key: customer_id<br />Value: balance, status, timestamp"]
+    KV --&gt; API[API]
+</div>
+
+<p>The stored record is intentionally tiny:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"customer_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"12345"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"balance"</span><span class="p">:</span><span class="w"> </span><span class="mf">12540.32</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"currency"</span><span class="p">:</span><span class="w"> </span><span class="s2">"CAD"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"as_of"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-08-08T07:30:00"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>You do not copy the entire Gold dataset — you publish only the serving projection required by that specific service.</p>
+
+<hr />
+
+<h2 id="8-one-gold-product-multiple-projections">8. One Gold product, multiple projections</h2>
+
+<div class="mermaid">
+flowchart TB
+    GOLD["Gold Iceberg<br />CUSTOMER_360"] --&gt; TRINO[Trino<br />Full data analytical access]
+    GOLD --&gt; SRK[StarRocks<br />Analytics projection]
+    GOLD --&gt; SCY[Scylla<br />Keyed projection]
+    GOLD --&gt; OS[OpenSearch<br />Search]
+    GOLD --&gt; VEC[Vector Index<br />AI / RAG]
+
+    TRINO --&gt; AN[Analyst]
+    SRK --&gt; DASH[Dashboard]
+    SCY --&gt; API[API]
+</div>
+
+<p>This is a stronger model than a linear <code class="language-plaintext highlighter-rouge">Bronze → Silver → Gold → Serving</code> Iceberg chain, because Serving is not a data-quality stage — it is <strong>a physical optimization of Gold for a consumer SLA</strong>.</p>
+
+<hr />
+
+<h2 id="9-avoid-dual-writes">9. Avoid dual writes</h2>
+
+<p>Never let applications or pipelines independently write to two stores without a consistency strategy:</p>
+
+<div class="mermaid">
+flowchart LR
+    SRC[Source] --&gt;|write| ICE[Iceberg]
+    SRC --&gt;|write, uncoordinated| RED[Redis]
+</div>
+
+<p>Without coordination you can easily end up with:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Iceberg = balance $100
+Redis   = balance $90
+</code></pre></div></div>
+
+<p>Instead, create an explicit publishing mechanism with checkpoints:</p>
+
+<div class="mermaid">
+flowchart TB
+    COMMIT[Iceberg Commit] --&gt; SNAP["Snapshot 105"]
+    SNAP --&gt; PUB[Serving Publisher]
+    PUB --&gt; SR2[StarRocks]
+    PUB --&gt; SC2[Scylla]
+    PUB --&gt; OS2[OpenSearch]
+    PUB --&gt; CP["Checkpoint:<br />Snapshot 105 published successfully"]
+</div>
+
+<p>If the publisher crashes partway through:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Snapshot 104 ✓
+Snapshot 105 ✕
+
+restart → 105 → replay
+</code></pre></div></div>
+
+<p>This gives you <strong>idempotency</strong> and <strong>recoverability</strong>.</p>
+
+<hr />
+
+<h2 id="10-real-time-freshness">10. Real-time freshness</h2>
+
+<p>If you require seconds or milliseconds of freshness, don’t wait for large Iceberg batch commits.</p>
+
+<div class="mermaid">
+flowchart TB
+    KAFKA[Kafka / Event Stream] --&gt; ICEP[Iceberg pipeline]
+    KAFKA --&gt; SVP[Serving pipeline]
+    ICEP --&gt; BSG[Bronze / Silver / Gold]
+    SVP --&gt; SRSC[StarRocks / Scylla]
+    BSG -.-&gt;|periodic reconciliation| SRSC
+</div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>FAST PATH
+Kafka ─────────────────────► Serving DB
+
+DURABLE / TRUTH PATH
+Kafka ──► Iceberg ──────────► reconciliation
+</code></pre></div></div>
+
+<p>This dual-path approach is particularly useful when the API requires very fresh data, while Iceberg remains the eventual source of truth for reconciliation.</p>
+
+<hr />
+
+<h2 id="11-preferred-end-to-end-architecture">11. Preferred end-to-end architecture</h2>
+
+<div class="mermaid">
+flowchart TB
+    subgraph Consumption
+        SQLBI[SQL / BI]
+        AAPI[Analytical API]
+        OAPI[Operational API]
+    end
+
+    SQLBI --&gt; TRINO[Trino]
+    AAPI --&gt; SRK[StarRocks]
+    OAPI --&gt; KV[Redis / Scylla]
+
+    TRINO --&gt; GOLD[Gold Iceberg<br />Data Products]
+    SRK -.-&gt;|Serving Projections| GOLD
+    KV -.-&gt;|Serving Projections| GOLD
+
+    GOLD --&gt; SILVER[Silver Iceberg]
+    SILVER --&gt; BRONZE[Bronze Iceberg]
+
+    GOLD -.-&gt; GRAV["Gravitino / IRC<br />Governance, Classification,<br />Authorization, Metadata,<br />Credential Vending"]
+    GRAV -.-&gt; OBJ[Pure Object Storage]
+</div>
+
+<p><strong>Architectural rule:</strong> <em>Iceberg Gold is authoritative. Serving stores are disposable, rebuildable projections optimized for consumer SLAs.</em></p>
+
+<p>The major benefit: you never create a second system of record. If StarRocks, Redis, or Scylla is lost or corrupted, rebuild it from Gold Iceberg.</p>
+
+<hr />
+
+<h2 id="12-summary">12. Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Purpose</th>
+      <th>Technology</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Bronze</td>
+      <td>Raw ingestion</td>
+      <td>Iceberg</td>
+    </tr>
+    <tr>
+      <td>Silver</td>
+      <td>Cleaned, conformed</td>
+      <td>Iceberg</td>
+    </tr>
+    <tr>
+      <td>Gold</td>
+      <td>Business-ready, governed source of truth</td>
+      <td>Iceberg</td>
+    </tr>
+    <tr>
+      <td>Analytical serving</td>
+      <td>Ad-hoc SQL, large scans</td>
+      <td>Trino over Gold</td>
+    </tr>
+    <tr>
+      <td>Sub-second OLAP serving</td>
+      <td>Dashboards, high concurrency</td>
+      <td>StarRocks / ClickHouse materializations</td>
+    </tr>
+    <tr>
+      <td>Operational serving</td>
+      <td>Point lookups, strict SLAs</td>
+      <td>Redis / Scylla projections from Gold</td>
+    </tr>
+    <tr>
+      <td>Search serving</td>
+      <td>Full-text queries</td>
+      <td>OpenSearch projections</td>
+    </tr>
+    <tr>
+      <td>ML serving</td>
+      <td>Vector retrieval / RAG</td>
+      <td>Vector store projections</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Default choices for an on-prem Iceberg + Gravitino platform:</strong></p>
+
+<ul>
+  <li><strong>Trino + Iceberg</strong> for normal analytical serving</li>
+  <li><strong>StarRocks materializations</strong> for high-concurrency, sub-second analytical serving</li>
+  <li><strong>Redis / Scylla-style projections</strong> only for true point-lookup APIs</li>
+</ul>
+
+<p>This keeps the architecture open while avoiding the mistake of forcing Iceberg to behave like an OLTP or key-value store.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">data-lakehouse</span>, <span class="tag">iceberg</span>, <span class="tag">bronze-silver-gold</span>, <span class="tag">serving-layer</span>, <span class="tag">starrocks</span>, <span class="tag">trino</span>, <span class="tag">gravitino</span>, <span class="tag">redis</span>, <span class="tag">scylla</span>, <span class="tag">clickhouse</span>, <span class="tag">architecture</span>, <span class="tag">mermaid</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
