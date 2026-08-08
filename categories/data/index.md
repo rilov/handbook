@@ -15,3 +15,4 @@ Data engineering, modeling, and storage notes.
 - [Apache Iceberg — A Simple Guide]({{ site.baseurl }}{% link _topics/apache-iceberg-simple-guide.md %})
 - [Iceberg Query Engine Internals]({{ site.baseurl }}{% link _topics/iceberg-query-engine-internals.md %})
 - [LTAP, the IRC Catalog, and the Hidden Layers of Apache Iceberg]({{ site.baseurl }}{% link _topics/ltap-irc-iceberg-explained.md %}) - A plain-English guide to LTAP, the REST catalog, and how a query travels through the Iceberg stack
+- [Lakehouse Serving Architecture: Bronze, Silver, Gold, and Serving Projections]({{ site.baseurl }}/topics/lakehouse-serving-architecture) - Why Serving is a publishing architecture, not another Iceberg tier — Trino, StarRocks/ClickHouse, and Redis/Scylla projections from a single Gold source of truth, with Mermaid diagrams throughout
