@@ -27,6 +27,10 @@ date: 2026-08-08
 
 > **Core idea:** Bronze → Silver → Gold describes **data quality**. Serving describes **how the data is consumed**. These are two different axes, and conflating them leads to a weaker architecture.
 
+<img src="{{ site.baseurl }}/assets/img/lakehoust.png" alt="Modern Lakehouse Architecture: data sources feed Bronze/Silver/Gold Iceberg zones, Gold is served through Trino, StarRocks, and Redis/Scylla, an Agentic Semantic Layer sits in front of consumption, and Gravitino/IRC governs everything end-to-end" width="100%" />
+
+*The full picture: data sources feed Bronze (raw) → Silver (clean) → Gold (curated) Iceberg zones, Gold is served through Trino, StarRocks, and Redis/Scylla, an Agentic Semantic Layer sits in front of consumption, and Gravitino/IRC governs everything end-to-end.*
+
 ---
 
 ## 1. The mistake to avoid
