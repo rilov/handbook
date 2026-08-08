@@ -424,7 +424,107 @@ flowchart TB
 
 <hr />
 
-<h2 id="12-summary">12. Summary</h2>
+<h2 id="12-agentic--semantic-serving">12. Agentic / semantic serving</h2>
+
+<p>AI agents are a fifth kind of consumer, and they need something none of the other serving classes provide: a <strong>governed vocabulary of business meaning</strong>, not raw table access.</p>
+
+<h3 id="121-why-raw-icebergtrino-access-is-the-wrong-interface-for-agents">12.1 Why raw Iceberg/Trino access is the wrong interface for agents</h3>
+
+<p>An LLM-based agent asked “what was our Q2 churn rate in the West region?” cannot be handed a live SQL editor against Gold and be trusted to get it right every time. Three things go wrong:</p>
+
+<ul>
+  <li><strong>Join and grain errors</strong> — the agent may join <code class="language-plaintext highlighter-rouge">customer_360</code> to <code class="language-plaintext highlighter-rouge">transaction_summary</code> on the wrong key, or aggregate at the wrong grain, and produce a confident but incorrect number.</li>
+  <li><strong>Metric drift</strong> — “churn rate” might be defined three different ways across three different generated queries, even though there is one correct definition.</li>
+  <li><strong>Ungoverned access</strong> — a free-text SQL agent can accidentally read columns or rows a human requester was never authorized to see.</li>
+</ul>
+
+<div class="mermaid">
+flowchart LR
+    A[Agent generates raw SQL] --&gt; B[Trino / StarRocks]
+    B --&gt; C[Gold Iceberg]
+    A -.-&gt;|risk| D["Wrong joins<br />Inconsistent metric logic<br />No row/column governance"]
+</div>
+
+<h3 id="122-insert-a-semantic-layer-between-agents-and-gold">12.2 Insert a semantic layer between agents and Gold</h3>
+
+<p>A <strong>semantic layer</strong> (also called a metrics layer — tools like dbt Semantic Layer, Cube, AtScale, or LookML) sits between agents and Gold. It exposes pre-defined, governed <strong>metrics and dimensions</strong> — not tables and columns — as the only interface agents are allowed to call.</p>
+
+<div class="mermaid">
+flowchart TB
+    AGENT[AI Agent / LLM] --&gt;|natural language| ORCH[Agent Orchestrator]
+    ORCH --&gt;|tool call: get_metric| MCP[MCP Server<br />Semantic Layer Tools]
+    MCP --&gt; SEM[Semantic Layer<br />dbt Semantic Layer / Cube / AtScale]
+    SEM --&gt;|compiled, governed SQL| TRINO[Trino / StarRocks]
+    TRINO --&gt; GOLD[Gold Iceberg]
+</div>
+
+<p>The agent never writes SQL against Gold directly. It calls a <strong>named, versioned metric</strong> — e.g. <code class="language-plaintext highlighter-rouge">churn_rate(region="West", quarter="2026-Q2")</code> — and the semantic layer compiles that request into the one correct, pre-approved query.</p>
+
+<h3 id="123-the-model-context-protocol-mcp-as-the-agent-facing-contract">12.3 The Model Context Protocol (MCP) as the agent-facing contract</h3>
+
+<p>MCP gives the agent a discoverable, typed set of tools instead of an open SQL socket:</p>
+
+<ul>
+  <li><strong>Tool discovery</strong> — the agent lists available metrics/dimensions (<code class="language-plaintext highlighter-rouge">list_metrics</code>, <code class="language-plaintext highlighter-rouge">describe_metric</code>) instead of guessing table names.</li>
+  <li><strong>Typed calls</strong> — <code class="language-plaintext highlighter-rouge">get_metric(name, filters, grain)</code> replaces free-text SQL, so malformed or out-of-scope requests fail fast instead of returning a wrong answer.</li>
+  <li><strong>Guardrails at the boundary</strong> — row-level security, column masking, per-metric access control, and query cost/row limits are enforced once, in the MCP/semantic layer, rather than trusted to prompt engineering.</li>
+</ul>
+
+<div class="mermaid">
+flowchart TB
+    subgraph MCP["MCP Server"]
+        T1[list_metrics]
+        T2[describe_metric]
+        T3[get_metric]
+    end
+    AGENT[Agent] --&gt; T1
+    AGENT --&gt; T2
+    AGENT --&gt; T3
+    T3 --&gt; GUARD[Guardrails<br />RLS / column masking /<br />row &amp; cost limits]
+    GUARD --&gt; SEM[Semantic Layer]
+    SEM --&gt; GOLD[Gold Iceberg]
+</div>
+
+<h3 id="124-agenticsemantic-serving-as-a-fourth-serving-class">12.4 Agentic/semantic serving as a fourth serving class</h3>
+
+<p>This slots directly into the serving-class table from Section 4 — it is not a replacement for Trino, StarRocks, or Redis, it sits <strong>in front of</strong> them for a specific consumer type:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Requirement</th>
+      <th>Serving technology</th>
+      <th>Source</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Natural-language question → governed metric</td>
+      <td>Semantic layer + MCP → Trino/StarRocks</td>
+      <td>Gold Iceberg</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mermaid">
+flowchart TB
+    GOLD[Gold Iceberg] --&gt; TRINO2[Trino / StarRocks]
+    TRINO2 --&gt; SEM2[Semantic Layer<br />Metrics + Dimensions]
+    SEM2 --&gt; MCP2[MCP Server]
+    MCP2 --&gt; AGENTS["Agents<br />(chat, autonomous workflows, RAG)"]
+    GOLD --&gt; TRINO3[Trino]
+    GOLD --&gt; SRK3[StarRocks / ClickHouse]
+    GOLD --&gt; KV3[Redis / Scylla]
+    TRINO3 --&gt; BI2[BI / Analysts]
+    SRK3 --&gt; DASH2[Dashboards]
+    KV3 --&gt; API2[APIs]
+</div>
+
+<p>The same principle from the rest of this guide still holds: <strong>the semantic layer and MCP server are stateless and rebuildable.</strong> They hold no data of their own — only metric definitions and a mapping to Gold. If they are lost, redeploy them from source control; Gold Iceberg remains the only system of record.</p>
+
+<hr />
+
+<h2 id="13-summary">13. Summary</h2>
 
 <table>
   <thead>
@@ -475,6 +575,11 @@ flowchart TB
       <td>Vector retrieval / RAG</td>
       <td>Vector store projections</td>
     </tr>
+    <tr>
+      <td>Agentic / semantic serving</td>
+      <td>Governed metrics for AI agents</td>
+      <td>Semantic layer + MCP over Trino/StarRocks</td>
+    </tr>
   </tbody>
 </table>
 
@@ -484,6 +589,7 @@ flowchart TB
   <li><strong>Trino + Iceberg</strong> for normal analytical serving</li>
   <li><strong>StarRocks materializations</strong> for high-concurrency, sub-second analytical serving</li>
   <li><strong>Redis / Scylla-style projections</strong> only for true point-lookup APIs</li>
+  <li><strong>Semantic layer + MCP server</strong> as the only interface AI agents use to reach Gold — never raw SQL</li>
 </ul>
 
 <p>This keeps the architecture open while avoiding the mistake of forcing Iceberg to behave like an OLTP or key-value store.</p>
@@ -492,7 +598,7 @@ flowchart TB
 
   
   <footer class="topic-footer">
-    <p>Tags: <span class="tag">data-lakehouse</span>, <span class="tag">iceberg</span>, <span class="tag">bronze-silver-gold</span>, <span class="tag">serving-layer</span>, <span class="tag">starrocks</span>, <span class="tag">trino</span>, <span class="tag">gravitino</span>, <span class="tag">redis</span>, <span class="tag">scylla</span>, <span class="tag">clickhouse</span>, <span class="tag">architecture</span>, <span class="tag">mermaid</span></p>
+    <p>Tags: <span class="tag">data-lakehouse</span>, <span class="tag">iceberg</span>, <span class="tag">bronze-silver-gold</span>, <span class="tag">serving-layer</span>, <span class="tag">starrocks</span>, <span class="tag">trino</span>, <span class="tag">gravitino</span>, <span class="tag">redis</span>, <span class="tag">scylla</span>, <span class="tag">clickhouse</span>, <span class="tag">architecture</span>, <span class="tag">mermaid</span>, <span class="tag">agentic-ai</span>, <span class="tag">semantic-layer</span>, <span class="tag">mcp</span></p>
   </footer>
   
 </article>
