@@ -123,7 +123,70 @@ This is the exact formula the Maximal Margin Classifier tries to maximize — bu
 
 ---
 
-## 5. Step 4: The maximal margin hyperplane
+## 5. Step 4: A more concise notation via rescaling
+
+The distance formula above works, but the `||W||` in the denominator makes every formula involving it a little clumsy. There's a neat simplification worth knowing, because you'll see it again when the margin is formalized in Step 6.
+
+**The trick:** a hyperplane equation can be multiplied (or divided) by any non-zero constant and still describe the exact same line. For example, `2x1 + 3x2 + 4 = 0` and `x1 + 1.5x2 + 2 = 0` are the same line — one is just the other multiplied by 2.
+
+So, take the original equation and divide *every* coefficient — including `W0` — by `||W|| = √(W1² + ... + Wd²)`:
+
+```
+W0' = W0 / ||W||     W1' = W1 / ||W||     ...     Wd' = Wd / ||W||
+```
+
+After this rescaling, the new coefficients satisfy `W1'² + ... + Wd'² = 1` by construction — the denominator has been "absorbed" into the coefficients themselves. Plugging the rescaled coefficients back into the distance formula, the `||W'||` in the denominator is now just 1, so it disappears:
+
+```
+distance = | W0' + W1'·x1 + ... + Wd'·xd |
+```
+
+Now go one step further: define an **augmented data vector** `Y` that has a `1` stitched onto the front of the feature vector, and an **augmented weight vector** `W` that includes `W0'` as its first entry:
+
+```
+Y = [1, x1, x2, ..., xd]
+W = [W0', W1', ..., Wd']
+```
+
+With this notation, the distance from any point to the hyperplane is simply:
+
+```
+distance = W · Y
+```
+
+No division, no separate bias term to track — just a single dot product.
+
+```python
+import numpy as np
+
+# Original hyperplane: 4 + 2*x1 + 3*x2 = 0
+W0, W1, W2 = 4, 2, 3
+norm = np.sqrt(W1**2 + W2**2)
+
+# Rescale so that W1'^2 + W2'^2 = 1
+W0r, W1r, W2r = W0 / norm, W1 / norm, W2 / norm
+print("Check W1'^2 + W2'^2 =", W1r**2 + W2r**2)   # should be 1.0
+
+# Augmented vectors
+W = np.array([W0r, W1r, W2r])   # [W0', W1', W2']
+
+def distance_concise(x1, x2):
+    Y = np.array([1, x1, x2])   # augmented data point
+    return abs(np.dot(W, Y))
+
+# Compare against the original (unrescaled) formula
+def distance_standard(x1, x2):
+    return abs(W0 + W1 * x1 + W2 * x2) / norm
+
+print("Standard formula:", distance_standard(5, -1))
+print("Concise formula: ", distance_concise(5, -1))
+```
+
+Both give the same answer — the concise version is just a cleaner way of writing the same computation. This `W · Y` notation generalizes to any number of dimensions without changing shape, which is exactly why it becomes the standard way the margin is written once we formalize the optimization in the next step.
+
+---
+
+## 6. Step 5: The maximal margin hyperplane
 
 Now combine the pieces. Maximizing the margin means: **find the `W` and `W0` that make the distance from the hyperplane to the nearest point of either class as large as possible.**
 
@@ -167,7 +230,7 @@ print(model.support_vectors_)
 
 ---
 
-## 6. Step 5: Why they're called "support vectors"
+## 7. Step 6: Why they're called "support vectors"
 
 Notice something in the code above: only a handful of points — `model.support_vectors_` — actually determine the margin. These are the points **closest to the hyperplane on each side**.
 
@@ -183,7 +246,7 @@ This is why the algorithm is called a **Support Vector** Machine — the boundar
 
 ---
 
-## 7. Step 6: Why the maximal margin classifier is fragile
+## 8. Step 7: Why the maximal margin classifier is fragile
 
 The Maximal Margin Classifier has a serious weakness: it requires the two classes to be **perfectly separable**, and it is extremely sensitive to the exact position of the support vectors.
 
@@ -209,12 +272,13 @@ Real-world data is almost never perfectly separable — there are always some am
 
 ---
 
-## 8. Practice questions
+## 9. Practice questions
 
 1. What does "margin" mean in the context of SVM?
 2. Why is the weight vector standardized (`∑Wi² = 1`) before maximizing the margin?
 3. If you remove a training point that is *not* a support vector and retrain the model, does the hyperplane change? Why or why not?
 4. What is the main weakness of the Maximal Margin Classifier on real-world data?
+5. After rescaling `W` so that `W1'² + ... + Wd'² = 1`, why does the distance formula simplify to `W · Y` instead of `|W·X + W0| / ||W||`?
 
 **Answers:**
 
@@ -222,14 +286,16 @@ Real-world data is almost never perfectly separable — there are always some am
 2. Because a hyperplane equation can be scaled by any constant and still describe the same line. Without standardizing, "distance" would be ambiguous. Standardizing fixes this so the optimization is well-defined.
 3. No — non-support-vector points do not affect the hyperplane at all. Only the closest points (support vectors) determine its position.
 4. It requires the data to be perfectly linearly separable and is extremely sensitive to outliers — a single noisy point can shrink the margin drastically or make separation impossible.
+5. Because after rescaling, `||W'|| = 1` by construction, so the denominator in the distance formula disappears. Folding `W0'` into `W` as its first entry and prepending a `1` to `X` (giving `Y`) lets the whole numerator be written as a single dot product `W · Y`.
 
 ---
 
-## 9. Summary
+## 10. Summary
 
 - The **margin** is the empty gap between the hyperplane and the nearest points of each class.
 - The **Maximal Margin Classifier** picks the hyperplane that makes this margin as wide as possible.
 - The hyperplane is measured using the dot product `W·X + W0`, and distance to it uses `|W·X + W0| / ||W||`.
+- Rescaling `W` so `∑Wi² = 1` and augmenting the point with a leading `1` simplifies this to a single dot product, `W · Y`.
 - Only the closest points — the **support vectors** — determine where the boundary goes.
 - This approach is fragile: it requires perfectly separable data and is very sensitive to outliers.
 
