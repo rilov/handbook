@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SVM Part 4: Kernels and the Kernel Trick</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>SVM Part 4: Kernels and the Kernel Trick</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="svm-part-4-kernels-and-the-kernel-trick">SVM Part 4: Kernels and the Kernel Trick</h1>
+
+<blockquote>
+  <p>This is Part 4, the final topic in the SVM mini-series. It assumes you’ve read <a href="/handbook/topics/svm-soft-margin-and-cost">Part 3: Soft Margin Classifier and Cost</a>.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-the-problem-left-over-from-part-3">1. The problem left over from Part 3</h2>
+
+<p>Every SVM variant so far — Maximal Margin, Soft Margin — draws a <strong>straight line</strong> (or flat hyperplane). But some data simply cannot be separated by any straight line:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        ●  ●  ●
+      ●           ●
+    ●    ■  ■  ■    ●
+      ●           ●
+        ●  ●  ●
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">■</code> points are surrounded on all sides by <code class="language-plaintext highlighter-rouge">●</code> points. No matter how you rotate or shift a straight line, you cannot separate the inner cluster from the outer ring. We need a genuinely new idea, not just a tolerance adjustment.</p>
+
+<hr />
+
+<h2 id="2-step-1-map-the-data-to-a-new-space">2. Step 1: Map the data to a new space</h2>
+
+<p>The key insight: data that is <strong>not linearly separable</strong> in its original form can become linearly separable if you transform it into a different space.</p>
+
+<p>Call the original space the <strong>attribute space</strong> <code class="language-plaintext highlighter-rouge">(X, Y)</code>, and the transformed space the <strong>feature space</strong> <code class="language-plaintext highlighter-rouge">(X', Y')</code>.</p>
+
+<p>Example: classify emails into spam/ham using two attributes — <code class="language-plaintext highlighter-rouge">word_freq_office</code> (X) and <code class="language-plaintext highlighter-rouge">word_freq_lottery</code> (Y). Suppose the data is arranged in a circle: spam emails cluster in the center, ham emails surround them.</p>
+
+<p>You don’t need to know the exact transformation formula to follow the idea — just know that <em>some</em> transformation exists that can turn a circular pattern into a linear one. As one example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X' = (X - a)²
+Y' = (Y - b)²
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Simulate a circular pattern: inner cluster (spam), outer ring (ham)
+</span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nc">RandomState</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Inner cluster near the center
+</span><span class="n">inner_r</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">inner_theta</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="p">.</span><span class="n">pi</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">X_inner</span> <span class="o">=</span> <span class="n">inner_r</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">cos</span><span class="p">(</span><span class="n">inner_theta</span><span class="p">)</span>
+<span class="n">Y_inner</span> <span class="o">=</span> <span class="n">inner_r</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">sin</span><span class="p">(</span><span class="n">inner_theta</span><span class="p">)</span>
+
+<span class="c1"># Outer ring farther from the center
+</span><span class="n">outer_r</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">outer_theta</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="p">.</span><span class="n">pi</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">X_outer</span> <span class="o">=</span> <span class="n">outer_r</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">cos</span><span class="p">(</span><span class="n">outer_theta</span><span class="p">)</span>
+<span class="n">Y_outer</span> <span class="o">=</span> <span class="n">outer_r</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">sin</span><span class="p">(</span><span class="n">outer_theta</span><span class="p">)</span>
+
+<span class="c1"># Transform: square the distance from the center
+</span><span class="n">inner_transformed</span> <span class="o">=</span> <span class="n">X_inner</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">Y_inner</span><span class="o">**</span><span class="mi">2</span>
+<span class="n">outer_transformed</span> <span class="o">=</span> <span class="n">X_outer</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">Y_outer</span><span class="o">**</span><span class="mi">2</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Inner cluster transformed range:</span><span class="sh">"</span><span class="p">,</span> <span class="n">inner_transformed</span><span class="p">.</span><span class="nf">min</span><span class="p">(),</span> <span class="sh">"</span><span class="s">to</span><span class="sh">"</span><span class="p">,</span> <span class="n">inner_transformed</span><span class="p">.</span><span class="nf">max</span><span class="p">())</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Outer ring transformed range:  </span><span class="sh">"</span><span class="p">,</span> <span class="n">outer_transformed</span><span class="p">.</span><span class="nf">min</span><span class="p">(),</span> <span class="sh">"</span><span class="s">to</span><span class="sh">"</span><span class="p">,</span> <span class="n">outer_transformed</span><span class="p">.</span><span class="nf">max</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p>After the transformation, the inner cluster’s values and the outer ring’s values fall into two <strong>non-overlapping ranges</strong> — meaning a single threshold (a linear boundary in the new 1D feature) now separates them perfectly.</p>
+
+<hr />
+
+<h2 id="3-step-2-feature-transformation-gets-expensive-fast">3. Step 2: Feature transformation gets expensive fast</h2>
+
+<p>The transformation above used two attributes. But as the number of original attributes grows, the number of transformed features can explode.</p>
+
+<p>For example, with 4 original attributes and a degree-2 polynomial transformation, you end up with 15 new features (all pairwise products, squares, and originals):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original attributes:  x1, x2, x3, x4                      (4 features)
+
+Degree-2 transformed:
+  x1, x2, x3, x4,                                          (4)
+  x1², x2², x3², x4²,                                       (4)
+  x1x2, x1x3, x1x4, x2x3, x2x4, x3x4                        (6)
+  ────────────────────────────────────────
+  Total: 15 features
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">PolynomialFeatures</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]])</span>
+<span class="n">poly</span> <span class="o">=</span> <span class="nc">PolynomialFeatures</span><span class="p">(</span><span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># include_bias=True by default, adds the constant term
+</span><span class="n">X_transformed</span> <span class="o">=</span> <span class="n">poly</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Original number of features:</span><span class="sh">"</span><span class="p">,</span> <span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Transformed number of features:</span><span class="sh">"</span><span class="p">,</span> <span class="n">X_transformed</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>With many original attributes and a higher degree, this transformation becomes computationally very expensive — sometimes practically impossible (imagine 1,000 attributes transformed to millions of features). This is the problem the <strong>kernel trick</strong> solves.</p>
+
+<hr />
+
+<h2 id="4-step-3-the-kernel-trick--never-actually-transform-the-data">4. Step 3: The kernel trick — never actually transform the data</h2>
+
+<p>Here is the key mathematical fact that makes the kernel trick possible:</p>
+
+<blockquote>
+  <p>To fit an SVM, the learning algorithm never needs the individual data points on their own. It only ever needs the <strong>inner (dot) products</strong> between pairs of points: <code class="language-plaintext highlighter-rouge">Xi · Xj</code>.</p>
+</blockquote>
+
+<p>A <strong>kernel function</strong> computes what the inner product <em>would be</em> in the transformed feature space — <strong>without ever actually computing the transformation</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                    ┌─────────────┐
+   Original         │             │      Result: as if the data
+   attributes  ───▶ │ Kernel      │ ───▶ had been transformed,
+   (Xi, Xj)         │ "black box" │      compared, and separated
+                    │             │      by a linear boundary
+                    └─────────────┘
+</code></pre></div></div>
+
+<p>This means you get all the benefit of transforming into a huge, complex feature space, while paying only the computational cost of the <em>original</em>, much smaller feature space. This is why it’s called a “trick” — it bypasses the expensive step entirely.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_circles</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="c1"># Generate the exact "ring" pattern that a straight line cannot separate
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_circles</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="n">linear_model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">linear_model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">linear_acc</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">linear_model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+
+<span class="n">rbf_model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">rbf_model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">rbf_acc</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">rbf_model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Linear kernel accuracy: </span><span class="si">{</span><span class="n">linear_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">RBF kernel accuracy:    </span><span class="si">{</span><span class="n">rbf_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>You should see the linear kernel perform close to random guessing (around 50%) on this ring-shaped data, while the RBF kernel separates it almost perfectly.</p>
+
+<hr />
+
+<h2 id="5-step-4-the-three-common-kernel-types">5. Step 4: The three common kernel types</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Kernel</th>
+      <th>What it does</th>
+      <th>When to use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Linear</strong></td>
+      <td>No transformation — the plain hyperplane from Parts 1–3</td>
+      <td>Data is already roughly linearly separable, or you have very high-dimensional data (e.g. text)</td>
+    </tr>
+    <tr>
+      <td><strong>Polynomial</strong></td>
+      <td>Creates curved, polynomial-shaped boundaries</td>
+      <td>Moderate non-linearity</td>
+    </tr>
+    <tr>
+      <td><strong>RBF</strong> (Radial Basis Function)</td>
+      <td>Creates highly flexible, even circular/elliptical boundaries</td>
+      <td>Most common default for non-linear data</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">model_linear</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">model_poly</span>   <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">poly</span><span class="sh">'</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">model_rbf</span>    <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Linear kernel:              Polynomial kernel:          RBF kernel:
+   ●●●   |   ■■■              ●●●  ╱‾╲  ■■■               ●●● ( ■■■ ) ●●●
+  straight boundary        curved polynomial          flexible, even circular
+                                boundary                    boundary
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="6-step-5-the-kernel-parameter-gamma--sigma">6. Step 5: The kernel parameter (gamma / sigma)</h2>
+
+<p>For non-linear kernels like RBF, a parameter called <strong>gamma</strong> (sometimes written <strong>sigma</strong>) controls how much non-linearity (how “wiggly”) the boundary can become.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Low gamma                Medium gamma              High gamma
+(smooth, simple           (moderate                (highly wiggly,
+ boundary)                 flexibility)              memorizes noise)
+
+   ●●●●●                    ●●●○●                    ●○●●○
+   ┄┄┄┄┄                    ┄┄╱‾╲┄                   ┄╱╲╱╲╱╲
+   ■■■■■                    ■■●■■                    ■●■■●
+</code></pre></div></div>
+
+<ul>
+  <li><strong>High gamma</strong> → each training point’s influence reaches only a very short distance, creating a highly localized, wiggly boundary. This can perfectly separate training data but is prone to overfitting.</li>
+  <li><strong>Low gamma</strong> → each point’s influence reaches farther, creating a smoother, simpler boundary. This can underfit if the true pattern needs more flexibility.</li>
+</ul>
+
+<p>This is, once again, the exact same bias-variance tradeoff introduced in <a href="/handbook/topics/bias-and-variance">Bias and Variance</a> — now controlled by <code class="language-plaintext highlighter-rouge">gamma</code> instead of (or alongside) <code class="language-plaintext highlighter-rouge">C</code>.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_circles</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_circles</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">gamma</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">]:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="n">gamma</span><span class="p">)</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="n">train_acc</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">))</span>
+    <span class="n">test_acc</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">gamma=</span><span class="si">{</span><span class="n">gamma</span><span class="si">:</span><span class="mf">6.2</span><span class="n">f</span><span class="si">}</span><span class="s">  train_acc=</span><span class="si">{</span><span class="n">train_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">  test_acc=</span><span class="si">{</span><span class="n">test_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="7-step-6-choosing-a-kernel-in-practice">7. Step 6: Choosing a kernel in practice</h2>
+
+<p>There is no formula that tells you the “correct” kernel just by looking at raw data with many features. The practical approach:</p>
+
+<ol>
+  <li>Start with <code class="language-plaintext highlighter-rouge">kernel='rbf'</code> — it works well as a general-purpose default.</li>
+  <li>If your data is very high-dimensional and sparse (e.g. text with TF-IDF features), try <code class="language-plaintext highlighter-rouge">kernel='linear'</code> first — it is much faster and often just as accurate.</li>
+  <li>Use cross-validation to compare kernels and tune <code class="language-plaintext highlighter-rouge">C</code> and <code class="language-plaintext highlighter-rouge">gamma</code> together, since they interact.</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">'</span><span class="s">kernel</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">],</span>
+    <span class="sh">'</span><span class="s">C</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+    <span class="sh">'</span><span class="s">gamma</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="sh">'</span><span class="s">scale</span><span class="sh">'</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="nc">SVC</span><span class="p">(),</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">'</span><span class="s">accuracy</span><span class="sh">'</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best combination:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="8-practice-questions">8. Practice questions</h2>
+
+<ol>
+  <li>What is the key mathematical fact that makes the kernel trick computationally efficient?</li>
+  <li>Why does feature transformation become expensive as the number of original attributes grows?</li>
+  <li>Which kernel would you try first for a text classification problem with thousands of TF-IDF features? Why?</li>
+  <li>What happens to the decision boundary when <code class="language-plaintext highlighter-rouge">gamma</code> is set very high? What risk does this create?</li>
+</ol>
+
+<p><strong>Answers:</strong></p>
+
+<ol>
+  <li>The SVM optimization only ever needs inner (dot) products between pairs of points, never the individual transformed points themselves. Kernels compute this dot product directly, skipping the expensive transformation step.</li>
+  <li>Because a full polynomial (or similar) transformation creates a combinatorial explosion of new features — pairwise products, squares, etc. — that grows extremely fast with the number of original attributes.</li>
+  <li>Linear kernel — high-dimensional, sparse text data is often already close to linearly separable, and the linear kernel is far faster to train at that scale.</li>
+  <li>The boundary becomes highly localized and “wiggly,” fitting the training data very tightly. This increases the risk of overfitting (low bias, high variance).</li>
+</ol>
+
+<hr />
+
+<h2 id="9-summary--the-full-svm-series">9. Summary — the full SVM series</h2>
+
+<ul>
+  <li><strong>Part 1:</strong> SVM is a linear model that separates classes with a hyperplane: <code class="language-plaintext highlighter-rouge">∑(Wi·Xi) + W0 = 0</code>.</li>
+  <li><strong>Part 2:</strong> The Maximal Margin Classifier picks the hyperplane with the widest margin, defined by the closest points (support vectors) — but it is fragile on noisy, non-separable data.</li>
+  <li><strong>Part 3:</strong> The Soft Margin Classifier tolerates some misclassification using slack variables (ε), controlled by the cost parameter <code class="language-plaintext highlighter-rouge">C</code> — a direct expression of the bias-variance tradeoff.</li>
+  <li><strong>Part 4 (this topic):</strong> Kernels let SVM separate non-linear data by implicitly working in a transformed feature space, without ever computing that transformation explicitly. <code class="language-plaintext highlighter-rouge">gamma</code> controls how flexible/wiggly the resulting boundary is.</li>
+</ul>
+
+<p>Together, these four ideas — hyperplanes, margins, soft margins, and kernels — are the complete foundation of how Support Vector Machines work.</p>
+
+<p><strong>Related reading:</strong> <a href="/handbook/topics/bias-and-variance">Bias and Variance</a> (prerequisite), <a href="/handbook/handbook/_topics/Naive%20Bayes%20-%20A%20Friendly%20Guide/">Naive Bayes — A Friendly Guide</a> (a complementary classification algorithm often compared with SVM).</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">svm</span>, <span class="tag">support-vector-machines</span>, <span class="tag">kernels</span>, <span class="tag">kernel-trick</span>, <span class="tag">rbf</span>, <span class="tag">gamma</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

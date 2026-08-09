@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SVM Part 1: Hyperplanes and Linear Classification</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>SVM Part 1: Hyperplanes and Linear Classification</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="svm-part-1-hyperplanes-and-linear-classification">SVM Part 1: Hyperplanes and Linear Classification</h1>
+
+<blockquote>
+  <p>This is Part 1 of the SVM mini-series. If you have not read <a href="/handbook/topics/bias-and-variance">Bias and Variance</a> yet, start there first — it explains the tradeoff that SVM’s <code class="language-plaintext highlighter-rouge">C</code> parameter controls, which we’ll need in Part 3.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-what-problem-is-svm-trying-to-solve">1. What problem is SVM trying to solve?</h2>
+
+<p>A <strong>Support Vector Machine (SVM)</strong> is a classification algorithm — it looks at labeled examples and learns to draw a boundary that separates one class from another.</p>
+
+<p>What makes SVM special is <em>how it chooses that boundary</em>, and later, <em>how it handles data that no straight boundary can separate</em> (via kernels). We will build up to both ideas slowly. This first topic covers only the boundary itself: the <strong>hyperplane</strong>.</p>
+
+<blockquote>
+  <p><strong>Important fact to remember:</strong> SVM is a <strong>linear model</strong>. Just like linear regression or logistic regression, at its core it works with an equation of the form <code class="language-plaintext highlighter-rouge">weight × feature + weight × feature + ... = 0</code>. Everything else we learn later (margins, kernels) is built on top of this simple linear equation.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="2-step-1-the-hyperplane-in-2d">2. Step 1: The hyperplane in 2D</h2>
+
+<p>Suppose you want to classify emails as spam or not spam using two features:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">x1</code> = word_freq_technology (how often the word “technology” appears)</li>
+  <li><code class="language-plaintext highlighter-rouge">x2</code> = word_freq_money (how often the word “money” appears)</li>
+</ul>
+
+<p>A <strong>hyperplane</strong> in 2D is just a line that separates the two classes:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x2 (word_freq_money)
+  │
+  │      ● spam           ← above the line
+  │    ●
+  │  ────────────────       ← the hyperplane (the line itself)
+  │        ■  not spam    ← below the line
+  │      ■
+  └──────────────────────── x1 (word_freq_technology)
+</code></pre></div></div>
+
+<p>The standard equation of a line is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>a·x + b·y + c = 0
+</code></pre></div></div>
+
+<p>We generalize this using weights (<code class="language-plaintext highlighter-rouge">W</code>) instead of <code class="language-plaintext highlighter-rouge">a, b, c</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>W0 + W1·x1 + W2·x2 = 0
+</code></pre></div></div>
+
+<p>Here, <code class="language-plaintext highlighter-rouge">x1</code> and <code class="language-plaintext highlighter-rouge">x2</code> are the features, and <code class="language-plaintext highlighter-rouge">W1</code>, <code class="language-plaintext highlighter-rouge">W2</code> are the coefficients the model learns. <code class="language-plaintext highlighter-rouge">W0</code> is a constant (the bias/intercept term).</p>
+
+<h3 id="how-the-line-classifies-a-point">How the line classifies a point</h3>
+
+<p>Take any point <code class="language-plaintext highlighter-rouge">(x1, x2)</code> and plug it into the left-hand side of the equation:</p>
+
+<ul>
+  <li>If the result is <strong>positive</strong> → the point is on one side (say, spam)</li>
+  <li>If the result is <strong>negative</strong> → the point is on the other side (not spam)</li>
+  <li>If the result is <strong>exactly zero</strong> → the point sits exactly on the line</li>
+</ul>
+
+<p>This is the entire classification rule for a linear model: <strong>compute a weighted sum, check its sign.</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Example hyperplane: 2 - x1 + 3*x2 = 0  →  W0=2, W1=-1, W2=3
+</span><span class="k">def</span> <span class="nf">classify_2d</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">W0</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">W1</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">W2</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">W0</span> <span class="o">+</span> <span class="n">W1</span> <span class="o">*</span> <span class="n">x1</span> <span class="o">+</span> <span class="n">W2</span> <span class="o">*</span> <span class="n">x2</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span><span class="p">,</span> <span class="n">value</span>
+    <span class="k">elif</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span><span class="p">,</span> <span class="n">value</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">on the boundary</span><span class="sh">"</span><span class="p">,</span> <span class="n">value</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">classify_2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>   <span class="c1"># W0 + (-1)(1) + 3(1) = 2 - 1 + 3 = 4  → spam
+</span><span class="nf">print</span><span class="p">(</span><span class="nf">classify_2d</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>   <span class="c1"># 2 - 5 + 0 = -3                       → not spam
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="3-step-2-the-hyperplane-in-3d">3. Step 2: The hyperplane in 3D</h2>
+
+<p>Now add a third feature, <code class="language-plaintext highlighter-rouge">x3</code> (for example, <code class="language-plaintext highlighter-rouge">word_freq_free</code>). The hyperplane is no longer a line — it becomes a <strong>flat plane</strong> cutting through 3D space:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                z (x3)
+                │      ● spam (above the plane)
+                │   ╱‾‾‾‾‾‾╱
+                │ ╱ plane ╱
+                │╱_______╱
+                │      ■ not spam (below the plane)
+                └──────────────── y (x2)
+               ╱
+              x (x1)
+</code></pre></div></div>
+
+<p>The equation generalizes in exactly the same way:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>a·x + b·y + c·z + d = 0
+</code></pre></div></div>
+
+<p>Points above the plane belong to one class; points below belong to the other. The math is unchanged — only the number of dimensions grew from 2 to 3.</p>
+
+<hr />
+
+<h2 id="4-step-3-the-hyperplane-in-d-dimensions">4. Step 3: The hyperplane in d dimensions</h2>
+
+<p>Here is the powerful part: this idea keeps working no matter how many features (dimensions) you have. You can’t draw a picture of a 20-dimensional hyperplane, but the equation is just a longer sum:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        d
+        ∑ (Wi · Xi) + W0 = 0
+       i=1
+</code></pre></div></div>
+
+<p>This is called a <strong>linear discriminator</strong> — a single equation that separates all your data points into two classes, no matter how many features you’re using.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="k">def</span> <span class="nf">classify_nd</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">W0</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    x  : feature vector, e.g. [x1, x2, ..., xd]
+    W  : weight vector,  e.g. [W1, W2, ..., Wd]
+    W0 : bias/intercept term
+    </span><span class="sh">"""</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">W0</span>
+    <span class="k">return</span> <span class="sh">"</span><span class="s">class A</span><span class="sh">"</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sh">"</span><span class="s">class B</span><span class="sh">"</span><span class="p">,</span> <span class="n">value</span>
+
+<span class="c1"># 5-dimensional example
+</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.1</span><span class="p">])</span>
+<span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">0.4</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.1</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">])</span>
+<span class="n">W0</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">classify_nd</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">W0</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>The rule never changes: <strong>compute the dot product of weights and features, add the bias, check the sign.</strong></p>
+
+<hr />
+
+<h2 id="5-step-4-why-linear-matters">5. Step 4: Why “linear” matters</h2>
+
+<p>SVM belongs to the same family as <strong>logistic regression</strong> — both are linear models. In logistic regression, the log-odds of an outcome is a linear function of the inputs. In SVM, the hyperplane itself is a linear function of the inputs.</p>
+
+<p>This matters because a purely linear boundary can only separate data that is arranged in a way a straight line (or flat plane) can divide. Some data isn’t shaped like that at all:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        ●  ●  ●
+      ●    ■  ■  ■    ●
+        ●  ●  ●
+   (■ points are surrounded by ● points — no straight line works)
+</code></pre></div></div>
+
+<p>We are not equipped to solve this yet — that requires the <strong>kernel trick</strong>, covered in Part 4. For now, remember: <strong>SVM starts life as a linear model, and every advanced trick we add later is a way of making a linear model work on non-linear data, without abandoning the linear math underneath.</strong></p>
+
+<hr />
+
+<h2 id="6-step-5-from-a-hyperplane-to-the-best-hyperplane">6. Step 5: From “a” hyperplane to “the best” hyperplane</h2>
+
+<p>Notice something important: for a dataset that is separable by a straight line, there isn’t just <em>one</em> possible hyperplane — there are infinitely many:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>      ●  ●  ●
+   ╲    ╲     ╲          ← three different valid separating lines
+    ╲    ╲     ╲
+      ■  ■  ■
+</code></pre></div></div>
+
+<p>All three lines above correctly separate the two classes on the training data. So which one should the model choose? This is exactly the question the next topic answers.</p>
+
+<hr />
+
+<h2 id="7-practice-questions">7. Practice questions</h2>
+
+<ol>
+  <li>Write the equation of a hyperplane in 2D using weights <code class="language-plaintext highlighter-rouge">W0</code>, <code class="language-plaintext highlighter-rouge">W1</code>, <code class="language-plaintext highlighter-rouge">W2</code>.</li>
+  <li>A point plugged into a hyperplane equation gives a result of exactly 0. What does that mean?</li>
+  <li>Why is SVM called a “linear model” even though it can eventually create curved decision boundaries (as you’ll see in Part 4)?</li>
+  <li>If you have 50 features in your dataset, how many weights (<code class="language-plaintext highlighter-rouge">Wi</code>) will your hyperplane equation need (not counting <code class="language-plaintext highlighter-rouge">W0</code>)?</li>
+</ol>
+
+<p><strong>Answers:</strong></p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">W0 + W1·x1 + W2·x2 = 0</code></li>
+  <li>The point lies exactly on the hyperplane — it is on the boundary between the two classes.</li>
+  <li>Because the core boundary equation is always a linear (weighted sum) function. Curved boundaries come from transforming the <em>features</em> first (via kernels), not from changing the linear nature of the boundary equation itself.</li>
+  <li>50 — one weight per feature, plus the separate <code class="language-plaintext highlighter-rouge">W0</code> bias term.</li>
+</ol>
+
+<hr />
+
+<h2 id="8-summary">8. Summary</h2>
+
+<ul>
+  <li>A <strong>hyperplane</strong> is the boundary an SVM uses to separate classes: a line in 2D, a plane in 3D, and a linear equation in higher dimensions.</li>
+  <li>The general form is <code class="language-plaintext highlighter-rouge">∑(Wi · Xi) + W0 = 0</code>.</li>
+  <li>Plugging a point into this equation and checking the <strong>sign</strong> of the result tells you which class it belongs to.</li>
+  <li>SVM is fundamentally a <strong>linear model</strong> — just like logistic regression.</li>
+  <li>For a separable dataset, many different hyperplanes can work. The next topic explains how SVM picks the <em>best</em> one.</li>
+</ul>
+
+<p><strong>Next topic:</strong> <a href="/handbook/topics/svm-maximal-margin-classifier">Maximal Margin Classifier</a> — how SVM chooses the single best hyperplane out of infinitely many options.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">svm</span>, <span class="tag">support-vector-machines</span>, <span class="tag">hyperplane</span>, <span class="tag">linear-classification</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

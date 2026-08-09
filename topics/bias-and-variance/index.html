@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bias and Variance - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Bias and Variance - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="bias-and-variance">Bias and Variance</h1>
+
+<blockquote>
+  <p>This is the first topic in the Advanced Machine Learning series. Before learning Support Vector Machines, it helps to understand the two basic ways a model can go wrong: it can be <strong>too simple</strong> (bias) or <strong>too sensitive</strong> (variance).</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-why-models-make-mistakes">1. Why models make mistakes</h2>
+
+<p>Every model you train will make some errors on new, unseen data. There are exactly two reasons this happens:</p>
+
+<ol>
+  <li>The model is <strong>too simple</strong> to capture the real pattern. This is called <strong>bias</strong>.</li>
+  <li>The model is <strong>too sensitive</strong> to the exact training data it saw. This is called <strong>variance</strong>.</li>
+</ol>
+
+<p>Understanding these two error sources is the single most useful mental model in machine learning — it explains overfitting, underfitting, and why some models need more data than others.</p>
+
+<hr />
+
+<h2 id="2-step-1-what-is-bias">2. Step 1: What is bias?</h2>
+
+<p><strong>Bias</strong> is the error that comes from a model making overly simple assumptions about the data.</p>
+
+<p>Imagine you are trying to predict house prices, and the true relationship between size and price is curved (bigger houses get disproportionately more expensive). If you fit a <strong>straight line</strong> to this curved pattern, the line can never bend to match the curve — no matter how much data you give it.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Price
+  │           actual data (curved pattern)
+  │        ●        ●
+  │     ●        ●
+  │  ●    straight line (the model)
+  │________________________ Size
+</code></pre></div></div>
+
+<p>The straight line has <strong>high bias</strong> — it is systematically wrong in the same way, everywhere, because it is not flexible enough to represent the true pattern.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Bias is like wearing the wrong prescription glasses. No matter how carefully you look, everything is blurry in the same way.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-step-2-what-is-variance">3. Step 2: What is variance?</h2>
+
+<p><strong>Variance</strong> is the error that comes from a model being <em>too</em> sensitive to the specific training data it happened to see.</p>
+
+<p>Imagine the opposite extreme: instead of a straight line, you fit a wiggly curve that passes through every single training point exactly.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Price
+  │        ●
+  │      ╱   ╲    ●
+  │    ●       ╲ ╱  ╲
+  │  ╱           ●    ╲
+  │________________________ Size
+        (wiggly curve threads through every point)
+</code></pre></div></div>
+
+<p>This curve fits the training data perfectly. But if you trained it again on a slightly different sample of houses, you would get a <em>completely different</em> wiggly curve. The model’s predictions swing wildly depending on which exact data points it happened to see.</p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Variance is like a shaky camera. Every photo (every new training sample) comes out looking different, even of the same subject.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="4-step-3-underfitting-vs-overfitting">4. Step 3: Underfitting vs overfitting</h2>
+
+<p>These two error types map directly onto two familiar terms:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>Cause</th>
+      <th>Symptom</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Underfitting</strong></td>
+      <td>High bias</td>
+      <td>Model is too simple. Performs poorly on training data <em>and</em> new data.</td>
+    </tr>
+    <tr>
+      <td><strong>Overfitting</strong></td>
+      <td>High variance</td>
+      <td>Model is too complex. Performs great on training data, poorly on new data.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Underfitting          Just right           Overfitting
+(high bias)         (low bias, low var)    (high variance)
+
+  ────────             ╱‾╲___╱‾╲              ╱╲╱╲╱╲╱╲
+straight line       gentle curve            wiggly mess
+misses the         follows the real       memorizes noise
+real pattern            pattern           in the training data
+</code></pre></div></div>
+
+<p>The tell-tale sign of each:</p>
+
+<ul>
+  <li><strong>Underfitting:</strong> training accuracy is low, test accuracy is also low. The model never learned the pattern.</li>
+  <li><strong>Overfitting:</strong> training accuracy is very high, test accuracy is much lower. The model memorized the training data instead of learning the general pattern.</li>
+</ul>
+
+<hr />
+
+<h2 id="5-step-4-a-concrete-python-example">5. Step 4: A concrete Python example</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LinearRegression</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">PolynomialFeatures</span>
+<span class="kn">from</span> <span class="n">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">make_pipeline</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">mean_squared_error</span>
+
+<span class="c1"># Generate a curved true relationship with noise
+</span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nc">RandomState</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sort</span><span class="p">(</span><span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">60</span><span class="p">)).</span><span class="nf">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">X</span><span class="p">).</span><span class="nf">ravel</span><span class="p">()</span> <span class="o">+</span> <span class="n">rng</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="c1"># Try three levels of model complexity
+</span><span class="k">for</span> <span class="n">degree</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">15</span><span class="p">]:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nf">make_pipeline</span><span class="p">(</span><span class="nc">PolynomialFeatures</span><span class="p">(</span><span class="n">degree</span><span class="p">),</span> <span class="nc">LinearRegression</span><span class="p">())</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+    <span class="n">train_error</span> <span class="o">=</span> <span class="nf">mean_squared_error</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">))</span>
+    <span class="n">test_error</span> <span class="o">=</span> <span class="nf">mean_squared_error</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Degree </span><span class="si">{</span><span class="n">degree</span><span class="si">:</span><span class="mi">2</span><span class="n">d</span><span class="si">}</span><span class="s">: train MSE=</span><span class="si">{</span><span class="n">train_error</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">  test MSE=</span><span class="si">{</span><span class="n">test_error</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Typical output pattern:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Degree  1: train MSE=0.229  test MSE=0.251   ← underfitting: both errors high
+Degree  4: train MSE=0.035  test MSE=0.031   ← just right: both errors low
+Degree 15: train MSE=0.024  test MSE=0.168   ← overfitting: train low, test much higher
+</code></pre></div></div>
+
+<p>Notice the degree-15 model has almost zero training error, but a much higher test error — a classic overfitting signature.</p>
+
+<hr />
+
+<h2 id="6-step-5-the-bias-variance-tradeoff">6. Step 5: The bias-variance tradeoff</h2>
+
+<p>Here is the important part: <strong>you cannot reduce bias and variance at the same time by adjusting model complexity alone.</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Error
+  │  ╲                              ╱
+  │   ╲  bias (decreases with      ╱  variance (increases with
+  │    ╲  more complexity)        ╱   more complexity)
+  │     ╲                        ╱
+  │      ╲____total error_______╱
+  │            ╲       ╱
+  │             ╲_____╱  ← sweet spot (lowest total error)
+  │________________________________ Model complexity →
+   simple                          complex
+</code></pre></div></div>
+
+<ul>
+  <li>As a model becomes <strong>more complex</strong> (more features, deeper trees, higher polynomial degree), <strong>bias goes down</strong> but <strong>variance goes up</strong>.</li>
+  <li>As a model becomes <strong>simpler</strong>, <strong>bias goes up</strong> but <strong>variance goes down</strong>.</li>
+</ul>
+
+<p>The goal of model selection is not to eliminate bias or variance — it is to find the complexity level where their <em>combined</em> effect on test error is smallest.</p>
+
+<hr />
+
+<h2 id="7-step-6-how-to-fix-each-problem">7. Step 6: How to fix each problem</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Signal</th>
+      <th>Fixes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>High bias (underfitting)</td>
+      <td>Both train and test error are high</td>
+      <td>Use a more flexible model, add features, reduce regularization, train longer</td>
+    </tr>
+    <tr>
+      <td>High variance (overfitting)</td>
+      <td>Train error low, test error much higher</td>
+      <td>Get more training data, simplify the model, add regularization, use cross-validation</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example: controlling variance with regularization strength
+</span><span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">Ridge</span>
+
+<span class="n">model_low_variance</span> <span class="o">=</span> <span class="nc">Ridge</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>   <span class="c1"># strong regularization → less overfitting
+</span><span class="n">model_high_variance</span> <span class="o">=</span> <span class="nc">Ridge</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>  <span class="c1"># weak regularization → more overfitting risk
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="8-why-this-matters-before-learning-svm">8. Why this matters before learning SVM</h2>
+
+<p>Support Vector Machines have their own version of this exact tradeoff, controlled by a parameter called <strong>C</strong> (and, for non-linear kernels, a parameter called <strong>gamma</strong>):</p>
+
+<ul>
+  <li>A <strong>very strict</strong> SVM (high C) tries hard to classify every training point correctly → <strong>low bias, high variance</strong> → risk of overfitting.</li>
+  <li>A <strong>very relaxed</strong> SVM (low C) allows more misclassifications on training data → <strong>high bias, low variance</strong> → risk of underfitting.</li>
+</ul>
+
+<p>Keep this mental model in mind. Every time you see the letter <code class="language-plaintext highlighter-rouge">C</code> in the next few topics, think back to this section: it is the exact same bias-variance tradeoff, just wearing an SVM costume.</p>
+
+<hr />
+
+<h2 id="9-practice-questions">9. Practice questions</h2>
+
+<ol>
+  <li>A model has 2% training error and 25% test error. Is this underfitting or overfitting? What would you do about it?</li>
+  <li>A model has 30% training error and 31% test error. Is this underfitting or overfitting? What would you do about it?</li>
+  <li>If you increase the degree of a polynomial regression model, does bias go up or down? What about variance?</li>
+  <li>Why can’t you simply make a model as complex as possible to minimize all error?</li>
+</ol>
+
+<p><strong>Answers:</strong></p>
+
+<ol>
+  <li>Overfitting (huge gap between train and test error). Fix: simplify the model, add regularization, or get more data.</li>
+  <li>Underfitting (both errors are high and close together). Fix: use a more flexible/complex model.</li>
+  <li>Bias goes down (the model can fit more complex patterns); variance goes up (the model becomes more sensitive to the specific training data).</li>
+  <li>Because past a certain point, added complexity increases variance faster than it decreases bias, so total error on <em>new</em> data starts rising even though training error keeps falling.</li>
+</ol>
+
+<hr />
+
+<h2 id="10-summary">10. Summary</h2>
+
+<ul>
+  <li><strong>Bias</strong> = error from a model being too simple to capture the real pattern → <strong>underfitting</strong>.</li>
+  <li><strong>Variance</strong> = error from a model being too sensitive to the exact training data → <strong>overfitting</strong>.</li>
+  <li>You can spot each by comparing training error to test error.</li>
+  <li>Model complexity trades one for the other — the goal is the sweet spot with the lowest combined error.</li>
+  <li>SVM’s <code class="language-plaintext highlighter-rouge">C</code> parameter (covered later in this series) is a direct expression of this same tradeoff.</li>
+</ul>
+
+<p><strong>Next topic:</strong> <a href="/handbook/topics/svm-hyperplanes-and-linear-classification">Hyperplanes and Linear Classification</a> — the first building block of Support Vector Machines.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">bias-variance</span>, <span class="tag">overfitting</span>, <span class="tag">underfitting</span>, <span class="tag">model-complexity</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

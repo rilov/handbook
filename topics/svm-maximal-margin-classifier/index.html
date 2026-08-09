@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SVM Part 2: Maximal Margin Classifier</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>SVM Part 2: Maximal Margin Classifier</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="svm-part-2-maximal-margin-classifier">SVM Part 2: Maximal Margin Classifier</h1>
+
+<blockquote>
+  <p>This is Part 2 of the SVM mini-series. It assumes you’ve read <a href="/handbook/topics/svm-hyperplanes-and-linear-classification">Part 1: Hyperplanes and Linear Classification</a>.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-the-problem-left-over-from-part-1">1. The problem left over from Part 1</h2>
+
+<p>In Part 1 we saw that for separable data, there isn’t just one valid hyperplane — there can be many:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>      ●  ●  ●
+   ╲    ╲     ╲          ← three different valid separating lines
+    ╲    ╲     ╲
+      ■  ■  ■
+</code></pre></div></div>
+
+<p>All three lines classify the training data perfectly. So which is best?</p>
+
+<hr />
+
+<h2 id="2-step-1-introducing-the-margin">2. Step 1: Introducing the margin</h2>
+
+<p>Look closely at the three lines above. Some lines pass very close to the data points; others leave more breathing room on both sides.</p>
+
+<p>The <strong>margin</strong> is the width of empty space around the hyperplane before it touches the nearest data point of either class:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        ●   ●    ●
+      ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄     ← margin boundary (upper edge)
+      ─────────────────   ← the hyperplane itself
+      ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄     ← margin boundary (lower edge)
+        ■   ■    ■
+
+      ←──── margin width ────→
+</code></pre></div></div>
+
+<p>The <strong>Maximal Margin Classifier</strong> is the rule: <strong>choose the hyperplane that makes this margin as wide as possible.</strong></p>
+
+<blockquote>
+  <p><strong>Memory trick:</strong> Think of building a road between two neighboring towns. You don’t build the road hugging one town’s fence — you build it exactly in the middle, giving maximum safety distance to both sides.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-step-2-refresher--hyperplane-as-a-dot-product">3. Step 2: Refresher — hyperplane as a dot product</h2>
+
+<p>Before measuring distance to the hyperplane, it helps to rewrite the hyperplane equation from Part 1 using vector notation, since this is what the distance formula will need.</p>
+
+<p>Recall the hyperplane equation:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>W0 + W1·x1 + W2·x2 + ... + Wd·xd = 0
+</code></pre></div></div>
+
+<p>This is exactly the <strong>dot product</strong> of a weight vector <code class="language-plaintext highlighter-rouge">W = [W1, W2, ..., Wd]</code> and a feature vector <code class="language-plaintext highlighter-rouge">X = [x1, x2, ..., xd]</code>, plus the bias <code class="language-plaintext highlighter-rouge">W0</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>W · X + W0 = 0
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>     <span class="c1"># weight vector
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>      <span class="c1"># feature vector
+</span><span class="n">W0</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span> <span class="o">+</span> <span class="n">W0</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>   <span class="c1"># same computation as Part 1: 2 - 1 + 3 = 4
+</span></code></pre></div></div>
+
+<p>This dot-product form is what lets the same distance formula work in 2D, 3D, or 100D without changing shape.</p>
+
+<hr />
+
+<h2 id="4-step-3-refresher--distance-from-a-point-to-a-hyperplane">4. Step 3: Refresher — distance from a point to a hyperplane</h2>
+
+<p>The (perpendicular) distance from any point <code class="language-plaintext highlighter-rouge">X</code> to the hyperplane <code class="language-plaintext highlighter-rouge">W·X + W0 = 0</code> is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>distance = | W·X + W0 |  /  ||W||
+</code></pre></div></div>
+
+<p>where <code class="language-plaintext highlighter-rouge">||W||</code> is the <strong>length</strong> (magnitude) of the weight vector:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>||W|| = √(W1² + W2² + ... + Wd²)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="k">def</span> <span class="nf">distance_to_hyperplane</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">W0</span><span class="p">):</span>
+    <span class="n">numerator</span> <span class="o">=</span> <span class="nf">abs</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span> <span class="o">+</span> <span class="n">W0</span><span class="p">)</span>
+    <span class="n">denominator</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nf">norm</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>   <span class="c1"># this computes ||W||
+</span>    <span class="k">return</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span>
+
+<span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">W0</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">distance_to_hyperplane</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">W0</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>This is the exact formula the Maximal Margin Classifier tries to maximize — but specifically for the <em>closest</em> points of each class.</p>
+
+<hr />
+
+<h2 id="5-step-4-the-maximal-margin-hyperplane">5. Step 4: The maximal margin hyperplane</h2>
+
+<p>Now combine the pieces. Maximizing the margin means: <strong>find the <code class="language-plaintext highlighter-rouge">W</code> and <code class="language-plaintext highlighter-rouge">W0</code> that make the distance from the hyperplane to the nearest point of either class as large as possible.</strong></p>
+
+<p>Mathematically, this optimization has two important constraints:</p>
+
+<p><strong>Constraint 1 — standardize the weights.</strong> The sum of squares of all coefficients must equal 1:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        d
+        ∑ (Wi²) = 1
+       i=1
+</code></pre></div></div>
+
+<p>This constraint exists because a hyperplane equation can be scaled by any constant and still represent the same line (e.g. <code class="language-plaintext highlighter-rouge">2x + 2y = 0</code> is the same line as <code class="language-plaintext highlighter-rouge">x + y = 0</code>). Standardizing removes this ambiguity so “distance” is measured consistently.</p>
+
+<p><strong>Constraint 2 — every point must be correctly classified and outside the margin.</strong> Once the weights are standardized, this becomes an optimization: maximize the margin width, subject to every training point being on the correct side of its margin boundary.</p>
+
+<p>You will almost never need to solve this optimization by hand — <code class="language-plaintext highlighter-rouge">scikit-learn</code> does it for you — but understanding the two constraints explains <em>why</em> this is a well-defined optimization problem, not just “eyeball the widest gap.”</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># A simple, cleanly separable 2D dataset
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>     <span class="c1"># class 1 (upper right)
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>     <span class="c1"># class 0 (lower left)
+</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># A hard-margin SVM: extremely high C forces near-zero tolerance
+# for misclassification, which approximates a Maximal Margin Classifier
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1e6</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Weights (W):</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">coef_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Bias (W0):</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Support vectors (the closest points that define the margin):</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="n">support_vectors_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="6-step-5-why-theyre-called-support-vectors">6. Step 5: Why they’re called “support vectors”</h2>
+
+<p>Notice something in the code above: only a handful of points — <code class="language-plaintext highlighter-rouge">model.support_vectors_</code> — actually determine the margin. These are the points <strong>closest to the hyperplane on each side</strong>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Class 1 (upper right):  ●  ●  [●]  ← closest point "supports" the margin
+                                       ↕ margin
+Class 0 (lower left):  [■]  ■  ■   ← closest point "supports" the margin
+</code></pre></div></div>
+
+<p>If you deleted every other point and re-trained the model using only these support vectors, you would get <strong>the exact same hyperplane</strong>. The other points could move around freely (as long as they don’t cross into the margin) and the boundary would not change at all.</p>
+
+<p>This is why the algorithm is called a <strong>Support Vector</strong> Machine — the boundary is “supported” by a small subset of the data, not by all of it.</p>
+
+<hr />
+
+<h2 id="7-step-6-why-the-maximal-margin-classifier-is-fragile">7. Step 6: Why the maximal margin classifier is fragile</h2>
+
+<p>The Maximal Margin Classifier has a serious weakness: it requires the two classes to be <strong>perfectly separable</strong>, and it is extremely sensitive to the exact position of the support vectors.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before adding one noisy point:          After adding one noisy point:
+
+      ●  ●  ●                                 ●  ●  ●
+   ╲                                        ╲
+    ╲   wide margin                          ╲    (margin collapses,
+     ╲                                         ╲    or classifier fails
+      ■  ■  ■                             ■  ■ ●■   entirely — no line
+                                                       can separate them)
+</code></pre></div></div>
+
+<p>A single mislabeled or unusual training point — a single “outlier” — can:</p>
+
+<ol>
+  <li>Force the margin to shrink dramatically, or</li>
+  <li>Make it <em>impossible</em> to find any separating hyperplane at all.</li>
+</ol>
+
+<p>This is exactly the <strong>high-variance</strong> problem described in <a href="/handbook/topics/bias-and-variance">Bias and Variance</a>: the Maximal Margin Classifier fits its training data extremely tightly and can perform poorly when new, unseen data doesn’t look exactly like the training set.</p>
+
+<p>Real-world data is almost never perfectly separable — there are always some ambiguous or noisy points. The Maximal Margin Classifier, as described in this topic, cannot handle that. The next topic fixes this.</p>
+
+<hr />
+
+<h2 id="8-practice-questions">8. Practice questions</h2>
+
+<ol>
+  <li>What does “margin” mean in the context of SVM?</li>
+  <li>Why is the weight vector standardized (<code class="language-plaintext highlighter-rouge">∑Wi² = 1</code>) before maximizing the margin?</li>
+  <li>If you remove a training point that is <em>not</em> a support vector and retrain the model, does the hyperplane change? Why or why not?</li>
+  <li>What is the main weakness of the Maximal Margin Classifier on real-world data?</li>
+</ol>
+
+<p><strong>Answers:</strong></p>
+
+<ol>
+  <li>The margin is the width of the empty space between the hyperplane and the closest training points of each class. SVM chooses the hyperplane that makes this width as large as possible.</li>
+  <li>Because a hyperplane equation can be scaled by any constant and still describe the same line. Without standardizing, “distance” would be ambiguous. Standardizing fixes this so the optimization is well-defined.</li>
+  <li>No — non-support-vector points do not affect the hyperplane at all. Only the closest points (support vectors) determine its position.</li>
+  <li>It requires the data to be perfectly linearly separable and is extremely sensitive to outliers — a single noisy point can shrink the margin drastically or make separation impossible.</li>
+</ol>
+
+<hr />
+
+<h2 id="9-summary">9. Summary</h2>
+
+<ul>
+  <li>The <strong>margin</strong> is the empty gap between the hyperplane and the nearest points of each class.</li>
+  <li>The <strong>Maximal Margin Classifier</strong> picks the hyperplane that makes this margin as wide as possible.</li>
+  <li>The hyperplane is measured using the dot product <code class="language-plaintext highlighter-rouge">W·X + W0</code>, and distance to it uses <code class="language-plaintext highlighter-rouge">|W·X + W0| / ||W||</code>.</li>
+  <li>Only the closest points — the <strong>support vectors</strong> — determine where the boundary goes.</li>
+  <li>This approach is fragile: it requires perfectly separable data and is very sensitive to outliers.</li>
+</ul>
+
+<p><strong>Next topic:</strong> <a href="/handbook/topics/svm-soft-margin-and-cost">Soft Margin Classifier and the Cost Parameter</a> — how SVM handles real, noisy, imperfectly separable data.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">svm</span>, <span class="tag">support-vector-machines</span>, <span class="tag">margin</span>, <span class="tag">maximal-margin-classifier</span>, <span class="tag">support-vectors</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
