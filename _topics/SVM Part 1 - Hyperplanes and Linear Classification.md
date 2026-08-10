@@ -71,6 +71,8 @@ So the same equation, `W0 + W1·x1 + W2·x2 = 0`, is doing two very different jo
 
 This is the key mental shift for this whole topic: **stop thinking of the hyperplane as something whose height you read off, and start thinking of it purely as a wall that splits your feature space into two sides.** Everything from here on builds on that one idea.
 
+> **So can SVM predict house prices too?** Yes — but not the *classification* SVM covered in this series. There's a sibling algorithm, **Support Vector Regression (SVR)**, that puts the hyperplane back to work as a value predictor (like the house-price line above), while still reusing the margin/slack/`C`/kernel machinery from this series. In scikit-learn it's `sklearn.svm.SVR` instead of `SVC`. This series focuses on classification (`SVC`); SVR is a different topic built on the same foundation.
+
 ---
 
 ## 1.5 The simplest possible version: one feature
