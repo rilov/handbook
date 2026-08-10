@@ -71,7 +71,72 @@ So the same equation, `W0 + W1·x1 + W2·x2 = 0`, is doing two very different jo
 
 This is the key mental shift for this whole topic: **stop thinking of the hyperplane as something whose height you read off, and start thinking of it purely as a wall that splits your feature space into two sides.** Everything from here on builds on that one idea.
 
-> **So can SVM predict house prices too?** Yes — but not the *classification* SVM covered in this series. There's a sibling algorithm, **Support Vector Regression (SVR)**, that puts the hyperplane back to work as a value predictor (like the house-price line above), while still reusing the margin/slack/`C`/kernel machinery from this series. In scikit-learn it's `sklearn.svm.SVR` instead of `SVC`. This series focuses on classification (`SVC`); SVR is a different topic built on the same foundation.
+### So can SVM predict house prices too?
+
+Yes — through a sibling algorithm called **Support Vector Regression (SVR)**. But it's important to understand *why* this isn't a contradiction of everything just said about "only the sign matters."
+
+**The mechanism is genuinely different, not just relabeled:**
+
+```
+Classification (SVC):  prediction = sign(W·X + b)     →  a category (spam / not spam)
+Regression      (SVR):  prediction = W·X + b           →  the actual number (e.g. price)
+```
+
+In SVR, there is **no sign check at all**. The raw output of the line *is* the answer — exactly like ordinary linear regression. So SVR isn't "classifying and somehow producing a price." It's simply reading the line's value directly, the same way the house-price example at the top of this section works.
+
+**So what makes it "SVM" rather than plain linear regression, then?** The difference is *how the line gets chosen*, not what it predicts. Ordinary linear regression fits a line by minimizing the error on every single point. SVR instead draws an **ε-tube** (epsilon tube) — a band of width `±ε` running alongside the line — and only cares about points that fall **outside** that tube:
+
+```
+price
+  │                                    ●  ← outside the tube: this point
+  │                ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄     pulls the line (a "support vector")
+  │             ●──────line───────●
+  │        ●   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │     ●
+  └───────────────────────────────── square footage
+        (the shaded band is the ε-tube: points inside it cost zero error)
+```
+
+Points **inside** the tube are considered "close enough" and contribute nothing to the loss — only points outside it (the actual **support vectors**) pull the line into its final position, and `C` still controls how harshly those violations are penalized, exactly like the soft-margin `C` from Part 3.
+
+**A verified worked example.** Seven houses, `sqft` in thousands vs. `price` in $100k's:
+
+```python
+import numpy as np
+from sklearn.svm import SVR
+
+X = np.array([[1.0], [1.5], [2.0], [2.5], [3.0], [3.5], [4.0]])
+y = np.array([2.0, 2.4, 3.1, 3.4, 4.1, 4.4, 5.2])
+
+model = SVR(kernel='linear', C=100, epsilon=0.1)
+model.fit(X, y)
+
+W, b = model.coef_[0], model.intercept_[0]
+print("W:", W, "b:", b)
+
+for sqft, price in zip(X, y):
+    pred = np.dot(W, sqft) + b
+    print(f"sqft={sqft[0]}k  price={price}  predicted={pred:.3f}  error={abs(pred-price):.3f}")
+
+new_house = np.array([2.8])
+print("Predicted price for 2.8k sqft:", model.predict([new_house]))
+```
+
+Running this gives the line `price = 1.0 · sqft + 1.0`. Checking each point's error against the tube width `ε=0.1`:
+
+```
+sqft=1.0k  price=2.0  predicted=2.000  error=0.000   ← inside tube
+sqft=1.5k  price=2.4  predicted=2.500  error=0.100   ← right at the tube edge
+sqft=2.0k  price=3.1  predicted=3.000  error=0.100
+sqft=2.5k  price=3.4  predicted=3.500  error=0.100
+sqft=3.0k  price=4.1  predicted=4.000  error=0.100
+sqft=3.5k  price=4.4  predicted=4.500  error=0.100
+sqft=4.0k  price=5.2  predicted=5.000  error=0.200   ← outside tube → a support vector
+```
+
+For a brand-new house at `sqft=2.8k`, the prediction is `1.0(2.8) + 1.0 = 3.8` (i.e. $380k) — computed by plugging straight into the line, with **no classification step whatsoever**.
+
+This series is scoped to classification (`sklearn.svm.SVC`); SVR (`sklearn.svm.SVR`) is a separate, dedicated topic — but it's built from the exact same pieces you're about to learn: a hyperplane, a margin-like tolerance region, slack for points that break the tolerance, a `C` to control that tradeoff, and (for non-linear relationships) the same kernels from Part 4.
 
 ---
 
