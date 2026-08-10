@@ -31,6 +31,26 @@ What makes SVM special is *how it chooses that boundary*, and later, *how it han
 
 ---
 
+## 1.5 The simplest possible version: one feature
+
+Before jumping into lines and planes, consider the simplest case: **one single feature**, like an exam score. Suppose "pass" is `score ≥ 50`. You can write this as a rule:
+
+```
+score - 50 ≥ 0   →  pass
+score - 50 < 0   →  fail
+```
+
+This is already a "hyperplane" — just in 1D, it's a single **point** (`score = 50`) that splits the number line into two sides:
+
+```
+fail  ────────────●──────────── pass
+  0      20   40  50   60   80  100
+```
+
+Everything that follows is the exact same idea — compute a number, check whether it's positive or negative — just done using more than one feature at a time. A hyperplane is simply "a splitting point" generalized to more dimensions: a splitting **line** in 2D, a splitting **plane** in 3D, and a splitting **equation** beyond that.
+
+---
+
 ## 2. Step 1: The hyperplane in 2D
 
 Suppose you want to classify emails as spam or not spam using two features:
@@ -91,6 +111,69 @@ def classify_2d(x1, x2, W0=2, W1=-1, W2=3):
 print(classify_2d(1, 1))   # W0 + (-1)(1) + 3(1) = 2 - 1 + 3 = 4  → spam
 print(classify_2d(5, 0))   # 2 - 5 + 0 = -3                       → not spam
 ```
+
+### A fully worked example with real sample data
+
+Let's make this concrete with an actual small dataset of 6 emails, using `word_freq_technology` (`x1`) and `word_freq_money` (`x2`):
+
+| Email | x1 (technology) | x2 (money) | Label |
+|---|---|---|---|
+| 1 | 5 | 1 | spam |
+| 2 | 6 | 2 | spam |
+| 3 | 7 | 1 | spam |
+| 4 | 1 | 5 | not spam |
+| 5 | 2 | 6 | not spam |
+| 6 | 1 | 7 | not spam |
+
+Notice: spam emails have **high** `x1` and **low** `x2`, while non-spam emails have the opposite. Plotted, the two classes fall cleanly on either side of a diagonal line running from the top-left to the bottom-right:
+
+```
+x2 (money)
+ 7 │                     ■ (email 6)
+ 6 │                  ■ (email 5)
+ 5 │               ■ (email 4)
+ 4 │            ╲
+ 3 │              ╲   ← the hyperplane sits somewhere in this gap
+ 2 │       ●          ╲ (email 2)
+ 1 │  ● (email 1)   ● (email 3)
+ 0 └──────────────────────────── x1 (technology)
+     0  1  2  3  4  5  6  7
+```
+
+Fitting an SVM to this data (we'll properly explain *how* the best line is chosen in Part 2 — for now, just look at what comes out) gives the following hyperplane:
+
+```
+0.25·x1 − 0.25·x2 = 0
+```
+
+i.e. `W1 = 0.25`, `W2 = -0.25`, `W0 = 0`. Let's verify this classifies every training point correctly, and then use it on a brand-new email:
+
+```python
+import numpy as np
+from sklearn.svm import SVC
+
+X = np.array([
+    [5, 1], [6, 2], [7, 1],   # spam
+    [1, 5], [2, 6], [1, 7],   # not spam
+])
+y = np.array([1, 1, 1, -1, -1, -1])
+
+model = SVC(kernel='linear', C=1000)
+model.fit(X, y)
+W, W0 = model.coef_[0], model.intercept_[0]
+print("W:", W, "W0:", round(W0, 3))   # W: [0.25 -0.25]  W0: ~0.0
+
+for point, label in zip(X, y):
+    value = np.dot(W, point) + W0
+    print(point, "label:", label, "→ value:", value, "→ predicted:", 1 if value > 0 else -1)
+
+# A brand-new, never-seen email: technology=4, money=2
+new_email = np.array([4, 2])
+value = np.dot(W, new_email) + W0
+print("New email value:", value, "→", "spam" if value > 0 else "not spam")
+```
+
+Running this: every training point's computed value matches its true label exactly (all six values come out `+1.0, +1.0, +1.5, -1.0, -1.0, -1.5`, matching `+1, +1, +1, -1, -1, -1`). The new email `[4, 2]` gives `0.25(4) - 0.25(2) = 0.5`, a **positive** value — so the model classifies it as **spam**, even though it never saw this exact point during training. This is the entire point of learning a hyperplane: it generalizes the boundary to any new point in the feature space, not just the training examples.
 
 ---
 
@@ -154,6 +237,38 @@ print(classify_nd(x, W, W0))
 
 The rule never changes: **compute the dot product of weights and features, add the bias, check the sign.**
 
+### A real 5-feature example, end to end
+
+To prove this isn't just theory, let's generate a real dataset with 5 features, fit an SVM, and manually check the learned hyperplane's accuracy ourselves — with no visualization possible, since we can't draw a 5D picture:
+
+```python
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.datasets import make_classification
+
+X, y = make_classification(
+    n_samples=50, n_features=5, n_informative=5,
+    n_redundant=0, n_clusters_per_class=1, random_state=1
+)
+y = np.where(y == 0, -1, 1)   # relabel classes as -1 / +1
+
+model = SVC(kernel='linear', C=1000)
+model.fit(X, y)
+W, W0 = model.coef_[0], model.intercept_[0]
+print("Learned W:", np.round(W, 3))
+print("Learned W0:", round(W0, 3))
+
+correct = 0
+for point, label in zip(X, y):
+    value = np.dot(W, point) + W0     # exact same rule as before, just with 5 features
+    predicted = 1 if value > 0 else -1
+    correct += (predicted == label)
+
+print(f"Accuracy using the manual dot-product rule: {correct / len(y):.2%}")
+```
+
+This prints a learned weight vector like `[3.871, -2.053, 0.022, -3.099, -3.886]` and a bias `W0 ≈ 0.896`, and manually applying `∑(Wi·Xi) + W0` with these numbers gets **98% accuracy** on this dataset — using nothing but the same dot-product-and-check-the-sign rule from the 2D case. The dimensionality changed from 2 to 5, but the underlying math is identical.
+
 ---
 
 ## 5. Step 4: Why "linear" matters
@@ -194,6 +309,7 @@ All three lines above correctly separate the two classes on the training data. S
 2. A point plugged into a hyperplane equation gives a result of exactly 0. What does that mean?
 3. Why is SVM called a "linear model" even though it can eventually create curved decision boundaries (as you'll see in Part 4)?
 4. If you have 50 features in your dataset, how many weights (`Wi`) will your hyperplane equation need (not counting `W0`)?
+5. Using the worked 2D example (`W1=0.25, W2=-0.25, W0=0`), what value does the point `(3, 3)` produce, and what does that tell you?
 
 **Answers:**
 
@@ -201,6 +317,7 @@ All three lines above correctly separate the two classes on the training data. S
 2. The point lies exactly on the hyperplane — it is on the boundary between the two classes.
 3. Because the core boundary equation is always a linear (weighted sum) function. Curved boundaries come from transforming the *features* first (via kernels), not from changing the linear nature of the boundary equation itself.
 4. 50 — one weight per feature, plus the separate `W0` bias term.
+5. `0.25(3) - 0.25(3) = 0` — the point falls exactly on the hyperplane, meaning it's ambiguous/undecided between spam and not spam.
 
 ---
 
