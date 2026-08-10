@@ -278,7 +278,27 @@ Running this shows every point satisfies `li·(W·Yi) ≥ M`, and the three poin
 
 ## 7. Step 6: Why they're called "support vectors"
 
-Notice something in the code above: only a handful of points — `model.support_vectors_` — actually determine the margin. These are the points **closest to the hyperplane on each side**.
+### Intuition first: distance from the boundary = difficulty of the decision
+
+Before defining support vectors formally, it helps to notice something about how confident you'd be classifying a point, just based on how far it sits from the separator.
+
+Imagine classifying animals as "small" or "large" based on weight, and your SVM finds the discriminating boundary at 50 kg. If you're handed an animal that weighs 200 kg, you don't need the model at all — it's obviously "large," no matter where exactly the boundary sits. The same is true for a 2 kg animal — obviously "small." These far-away points are "no-brainers."
+
+Now you're handed an animal that weighs 49 kg. This is where it gets tricky — it's right on the edge, and small shifts in the boundary could flip its classification. Points like this, sitting close to the separator, are the ones that actually determine *where* the boundary should go.
+
+```
+Far from boundary          Close to boundary          Far from boundary
+(easy: obviously  ●)      (hard: could go       )      (easy: obviously  ■)
+                            either way, ● or ■)
+
+  ●───●───●   ...   ●   ┄┄┄┄┄┄┄ margin ┄┄┄┄┄┄┄   ■   ...   ■───■───■
+```
+
+The farther a point is from the separator, the *easier* and more obvious its classification is. The closer it is, the *harder* — and it's precisely these hard, boundary-hugging points that the model needs to pay attention to.
+
+### The formal definition
+
+Only a handful of points — `model.support_vectors_` — actually determine the margin. These are the points **closest to the hyperplane on each side**.
 
 ```
 Class 1 (upper right):  ●  ●  [●]  ← closest point "supports" the margin
@@ -286,7 +306,37 @@ Class 1 (upper right):  ●  ●  [●]  ← closest point "supports" the margin
 Class 0 (lower left):  [■]  ■  ■   ← closest point "supports" the margin
 ```
 
-If you deleted every other point and re-trained the model using only these support vectors, you would get **the exact same hyperplane**. The other points could move around freely (as long as they don't cross into the margin) and the boundary would not change at all.
+### Proof: retraining on only the support vectors gives the same hyperplane
+
+This isn't just a claim — you can verify it directly. Train on the full dataset, extract only the support vectors, then retrain using *just* those points and compare:
+
+```python
+import numpy as np
+from sklearn.svm import SVC
+
+X = np.array([
+    [3, 3], [4, 3], [4, 4], [5, 5], [6, 3],    # class +1: some far, some close to the boundary
+    [1, 1], [1, 2], [2, 1], [0, 0], [-1, 2],   # class -1: some far, some close to the boundary
+])
+y = np.array([1, 1, 1, 1, 1, -1, -1, -1, -1, -1])
+
+# Train on the full dataset
+full_model = SVC(kernel='linear', C=1e6)
+full_model.fit(X, y)
+print("Full dataset  -> W:", full_model.coef_, " W0:", full_model.intercept_)
+
+# Keep only the support vectors, throw away every other point
+sv_idx = full_model.support_
+X_sv, y_sv = X[sv_idx], y[sv_idx]
+print("Support vectors kept:", X_sv.tolist())
+
+# Retrain using only those points
+sv_model = SVC(kernel='linear', C=1e6)
+sv_model.fit(X_sv, y_sv)
+print("SV-only dataset -> W:", sv_model.coef_, " W0:", sv_model.intercept_)
+```
+
+Both models produce essentially identical weights — the seven points that weren't support vectors were completely **redundant** for finding the separator. Only the points closest to the boundary — the tricky, ambiguous ones from the intuition above — actually determine where the hyperplane goes.
 
 This is why the algorithm is called a **Support Vector** Machine — the boundary is "supported" by a small subset of the data, not by all of it.
 
@@ -326,6 +376,7 @@ Real-world data is almost never perfectly separable — there are always some am
 4. What is the main weakness of the Maximal Margin Classifier on real-world data?
 5. After rescaling `W` so that `W1'² + ... + Wd'² = 1`, why does the distance formula simplify to `W · Y` instead of `|W·X + W0| / ||W||`?
 6. Why does multiplying by the label `li` (`+1` or `-1`) turn `W · Yi` into a value that is always positive for a correctly classified point?
+7. Why do points that are *far* from the separating hyperplane matter less than points close to it, when it comes to determining where the hyperplane goes?
 
 **Answers:**
 
@@ -335,6 +386,7 @@ Real-world data is almost never perfectly separable — there are always some am
 4. It requires the data to be perfectly linearly separable and is extremely sensitive to outliers — a single noisy point can shrink the margin drastically or make separation impossible.
 5. Because after rescaling, `||W'|| = 1` by construction, so the denominator in the distance formula disappears. Folding `W0'` into `W` as its first entry and prepending a `1` to `X` (giving `Y`) lets the whole numerator be written as a single dot product `W · Y`.
 6. For a point on the `-L` side (`li = -1`), the raw dot product `W · Yi` is negative; multiplying by `-1` flips it positive. For a point on the `+L` side (`li = +1`), the dot product is already positive, and multiplying by `+1` leaves it unchanged. Either way, correct classification always produces a positive `li · (W · Yi)`, which is why the constraint `li · (W · Yi) ≥ M` can require this value to be at least the margin `M` for every point.
+7. A point far from the hyperplane is classified with obvious confidence — no matter small shifts to the boundary, it stays on the same side. A point close to the hyperplane is ambiguous — a small shift in the boundary's position could flip its predicted class. Since the optimization is choosing the boundary's exact position, only the close, ambiguous points (the support vectors) actually constrain that choice; far-away points impose no real constraint and could be removed without changing the result.
 
 ---
 
