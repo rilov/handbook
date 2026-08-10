@@ -277,6 +277,40 @@ for C in [0.01, 1, 100]:
 
 You will typically see: very small `C` gives more support vectors (a wider, looser margin), and very large `C` gives fewer support vectors (a narrower, tighter margin) — with test accuracy often peaking somewhere in between.
 
+### Visualizing the bias-variance curve across C
+
+The pattern is much easier to see by plotting train and test accuracy across a wide range of `C` values:
+
+```python
+import matplotlib.pyplot as plt
+
+Cs = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
+train_accs, test_accs = [], []
+
+for C in Cs:
+    model = SVC(kernel='linear', C=C)
+    model.fit(X_train_s, y_train)
+    train_accs.append(accuracy_score(y_train, model.predict(X_train_s)))
+    test_accs.append(accuracy_score(y_test, model.predict(X_test_s)))
+
+plt.plot(Cs, train_accs, marker='o', label='Train accuracy')
+plt.plot(Cs, test_accs, marker='o', label='Test accuracy')
+plt.xscale('log')
+plt.xlabel('C')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.title('Train vs. test accuracy across C')
+plt.show()
+```
+
+Reading the resulting curve tells the whole story of the bias-variance tradeoff:
+
+- **Very small `C`** (left side): both train and test accuracy are low — the model is too simple to even fit the training data well (**high bias / underfitting**).
+- **A middle range of `C`**: both accuracies rise together and test accuracy peaks — this is the **best generalizing** region.
+- **Very large `C`** (right side): train accuracy keeps climbing toward 100%, but test accuracy plateaus or drops — the growing gap between the two curves is the signature of **overfitting (high variance)**.
+
+This single plot is often the fastest way to sanity-check whether a chosen `C` is in a sensible range, before running a full `GridSearchCV`.
+
 ---
 
 ## 6. Step 5: How to choose C in practice
@@ -295,6 +329,19 @@ print("Best cross-validated accuracy:", grid.best_score_)
 ```
 
 This connects directly back to the practical fix from [Bias and Variance]({{ site.baseurl }}/topics/bias-and-variance): when you suspect overfitting (train accuracy much higher than test accuracy), try **lowering C**. When you suspect underfitting (both accuracies low), try **raising C**.
+
+### Optimizing for something other than accuracy
+
+`GridSearchCV`'s `scoring` argument doesn't have to be `'accuracy'`. If the two types of mistakes aren't equally costly — for example, letting a spam email through to the inbox is far less costly than accidentally sending a legitimate email to spam — you can optimize `C` for a different metric entirely, such as `'recall'`:
+
+```python
+grid_recall = GridSearchCV(SVC(kernel='linear'), param_grid, cv=5, scoring='recall')
+grid_recall.fit(X_train_s, y_train)
+
+print("Best C for recall:", grid_recall.best_params_)
+```
+
+The `C` that maximizes plain accuracy is not necessarily the same `C` that maximizes recall (or any other metric) — always pick the scoring metric that reflects what actually matters for your problem.
 
 ---
 
