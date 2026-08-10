@@ -149,7 +149,55 @@ This is once again the equation of an ellipse (or circle) — but now it's expre
 
 ## 3. Step 2: Feature transformation gets expensive fast
 
-The transformation above used two attributes. But as the number of original attributes grows, the number of transformed features can explode.
+### You usually don't know the exact functional form
+
+The circle/ellipse example in Step 1 was convenient because we *guessed* the exact shape of the boundary in advance, and that guess happened to be correct. In practice, you rarely know the precise functional form of the separator — you can often tell from the data that it's *not* linear, and that it's probably not wildly complicated (not some jagged, arbitrary shape), but you usually can't be sure whether it's exactly a circle, an ellipse, or some other quadratic curve.
+
+To handle this uncertainty, write out the **most general quadratic equation** possible, rather than assuming the specific `X²/a + Y²/b = C` form:
+
+```
+A·X² + B·Y² + C·XY + D·X + E·Y + F = 0
+```
+
+This general form includes every possible quadratic curve — circles, ellipses, parabolas, hyperbolas, and skewed/rotated versions of all of them — because it keeps the cross-term `XY` and the linear terms `X`, `Y`, which the earlier circle-specific example conveniently assumed were zero.
+
+### Mapping 2 attributes to 6 features
+
+To make this general quadratic become a linear equation, you now need **six** transformed features instead of two — one for every term in the equation above:
+
+```
+X², Y², XY, X, Y, 1     (6 features, extracted from the original 2)
+```
+
+Every point `(X, Y)` gets mapped to a point in this 6-dimensional feature space. The general quadratic equation above is now exactly a **linear equation** in these 6 coordinates — confirmed below with a skewed quadratic curve that a simple `X²/a + Y²/b = C` guess would have missed entirely:
+
+```python
+import numpy as np
+
+# A general (skewed) quadratic: A*x^2 + B*y^2 + C*x*y + D*x + E*y + F = 0
+A, B, C, D, E, F = 1, 2, 1.5, -3, 2, -5
+
+def on_curve(x, y):
+    return abs(A*x**2 + B*y**2 + C*x*y + D*x + E*y + F) < 1e-9
+
+def on_hyperplane_6d(x_sq, y_sq, xy, x, y):
+    return abs(A*x_sq + B*y_sq + C*xy + D*x + E*y + F) < 1e-9
+
+# Find a few points that lie exactly on this curve, then check the 6D features
+for x in np.linspace(-1.1, -0.5, 3):
+    b_, c_ = B, C*x + E
+    disc = c_**2 - 4*b_*(A*x**2 + D*x + F)
+    y = (-c_ + np.sqrt(disc)) / (2*b_)
+    x_sq, y_sq, xy = x**2, y**2, x*y
+    print(f"(x,y)=({x:.2f},{y:.2f})  on_curve={on_curve(x,y)}  ->  "
+          f"6D features satisfy linear eq: {on_hyperplane_6d(x_sq, y_sq, xy, x, y)}")
+```
+
+Once you're in this 6D feature space, run any linear method (SVM, logistic regression) on the transformed points, get back a linear separator, then substitute `X²`, `Y²`, `XY` back in to recover the actual quadratic curve in the original 2D attribute space — exactly the same "transform, solve linearly, map back" workflow from Step 1, just with more features.
+
+### The blowup problem
+
+This already reveals the core issue: transforming just **2** attributes into a general quadratic feature space required **6** dimensions — a 3x blowup. And it gets much worse as the number of original attributes grows.
 
 For example, with 4 original attributes and a degree-2 polynomial transformation, you end up with 15 new features (all pairwise products, squares, and originals):
 
