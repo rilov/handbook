@@ -31,6 +31,48 @@ What makes SVM special is *how it chooses that boundary*, and later, *how it han
 
 ---
 
+## 1.1 Wait — isn't a "line" what linear regression already uses?
+
+If you've seen **linear regression** before (e.g. predicting house price from square footage), you already know a line can be fit through data:
+
+```
+price
+  │                              ● ●
+  │                        ●  ●
+  │                  ● ●
+  │            ●  ●
+  │      ● ●
+  │   ●
+  └───────────────────────────────── square footage
+```
+
+Here, the line is the **prediction itself**. To predict the price of a 1,800 sq. ft. house, you find `x = 1800` on the horizontal axis and read off the `y` value where the line crosses it — that `y` value *is* your predicted price. The line's job is to tell you **where along it** a point should be.
+
+SVM uses the same kind of equation, but gives the line a **completely different job**. In classification, we don't care where a point lands *on* the line — we don't even need it to touch the line at all. Instead, we only care **which side** of the line a point falls on:
+
+```
+x2 (word_freq_money)
+  │      ● spam            ← this whole region = "spam"
+  │    ●
+  │  ────────────────       ← the line does not predict a value here —
+  │        ■  not spam        it just divides the plane into two halves
+  │      ■
+  └──────────────────────── x1 (word_freq_technology)
+```
+
+So the same equation, `W0 + W1·x1 + W2·x2 = 0`, is doing two very different jobs depending on the problem:
+
+| | Linear regression (house price) | SVM (spam classification) |
+|---|---|---|
+| What the line represents | The predicted output value itself | A **divider** between two regions |
+| What you read off | The `y`-value where the line crosses your `x` | Which **side** of the line your point lands on |
+| The number you compute | `W0 + W1·x1` is directly your prediction (e.g. price) | `W0 + W1·x1 + W2·x2` is only used for its **sign** (+/−), not its size |
+| Points exactly on the line | Impossible unless the model is a perfect fit | Perfectly normal — that's the undecided boundary case |
+
+This is the key mental shift for this whole topic: **stop thinking of the hyperplane as something whose height you read off, and start thinking of it purely as a wall that splits your feature space into two sides.** Everything from here on builds on that one idea.
+
+---
+
 ## 1.5 The simplest possible version: one feature
 
 Before jumping into lines and planes, consider the simplest case: **one single feature**, like an exam score. Suppose "pass" is `score ≥ 50`. You can write this as a rule:
