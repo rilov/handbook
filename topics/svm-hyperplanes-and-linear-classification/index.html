@@ -128,9 +128,68 @@
 
 <p>This is the key mental shift for this whole topic: <strong>stop thinking of the hyperplane as something whose height you read off, and start thinking of it purely as a wall that splits your feature space into two sides.</strong> Everything from here on builds on that one idea.</p>
 
-<blockquote>
-  <p><strong>So can SVM predict house prices too?</strong> Yes — but not the <em>classification</em> SVM covered in this series. There’s a sibling algorithm, <strong>Support Vector Regression (SVR)</strong>, that puts the hyperplane back to work as a value predictor (like the house-price line above), while still reusing the margin/slack/<code class="language-plaintext highlighter-rouge">C</code>/kernel machinery from this series. In scikit-learn it’s <code class="language-plaintext highlighter-rouge">sklearn.svm.SVR</code> instead of <code class="language-plaintext highlighter-rouge">SVC</code>. This series focuses on classification (<code class="language-plaintext highlighter-rouge">SVC</code>); SVR is a different topic built on the same foundation.</p>
-</blockquote>
+<h3 id="so-can-svm-predict-house-prices-too">So can SVM predict house prices too?</h3>
+
+<p>Yes — through a sibling algorithm called <strong>Support Vector Regression (SVR)</strong>. But it’s important to understand <em>why</em> this isn’t a contradiction of everything just said about “only the sign matters.”</p>
+
+<p><strong>The mechanism is genuinely different, not just relabeled:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Classification (SVC):  prediction = sign(W·X + b)     →  a category (spam / not spam)
+Regression      (SVR):  prediction = W·X + b           →  the actual number (e.g. price)
+</code></pre></div></div>
+
+<p>In SVR, there is <strong>no sign check at all</strong>. The raw output of the line <em>is</em> the answer — exactly like ordinary linear regression. So SVR isn’t “classifying and somehow producing a price.” It’s simply reading the line’s value directly, the same way the house-price example at the top of this section works.</p>
+
+<p><strong>So what makes it “SVM” rather than plain linear regression, then?</strong> The difference is <em>how the line gets chosen</em>, not what it predicts. Ordinary linear regression fits a line by minimizing the error on every single point. SVR instead draws an <strong>ε-tube</strong> (epsilon tube) — a band of width <code class="language-plaintext highlighter-rouge">±ε</code> running alongside the line — and only cares about points that fall <strong>outside</strong> that tube:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>price
+  │                                    ●  ← outside the tube: this point
+  │                ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄     pulls the line (a "support vector")
+  │             ●──────line───────●
+  │        ●   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │     ●
+  └───────────────────────────────── square footage
+        (the shaded band is the ε-tube: points inside it cost zero error)
+</code></pre></div></div>
+
+<p>Points <strong>inside</strong> the tube are considered “close enough” and contribute nothing to the loss — only points outside it (the actual <strong>support vectors</strong>) pull the line into its final position, and <code class="language-plaintext highlighter-rouge">C</code> still controls how harshly those violations are penalized, exactly like the soft-margin <code class="language-plaintext highlighter-rouge">C</code> from Part 3.</p>
+
+<p><strong>A verified worked example.</strong> Seven houses, <code class="language-plaintext highlighter-rouge">sqft</code> in thousands vs. <code class="language-plaintext highlighter-rouge">price</code> in $100k’s:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVR</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">4.0</span><span class="p">]])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.4</span><span class="p">,</span> <span class="mf">3.1</span><span class="p">,</span> <span class="mf">3.4</span><span class="p">,</span> <span class="mf">4.1</span><span class="p">,</span> <span class="mf">4.4</span><span class="p">,</span> <span class="mf">5.2</span><span class="p">])</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">SVR</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="n">W</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">W:</span><span class="sh">"</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="sh">"</span><span class="s">b:</span><span class="sh">"</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">sqft</span><span class="p">,</span> <span class="n">price</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">sqft</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">sqft=</span><span class="si">{</span><span class="n">sqft</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s">k  price=</span><span class="si">{</span><span class="n">price</span><span class="si">}</span><span class="s">  predicted=</span><span class="si">{</span><span class="n">pred</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">  error=</span><span class="si">{</span><span class="nf">abs</span><span class="p">(</span><span class="n">pred</span><span class="o">-</span><span class="n">price</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">new_house</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">2.8</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Predicted price for 2.8k sqft:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">([</span><span class="n">new_house</span><span class="p">]))</span>
+</code></pre></div></div>
+
+<p>Running this gives the line <code class="language-plaintext highlighter-rouge">price = 1.0 · sqft + 1.0</code>. Checking each point’s error against the tube width <code class="language-plaintext highlighter-rouge">ε=0.1</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sqft=1.0k  price=2.0  predicted=2.000  error=0.000   ← inside tube
+sqft=1.5k  price=2.4  predicted=2.500  error=0.100   ← right at the tube edge
+sqft=2.0k  price=3.1  predicted=3.000  error=0.100
+sqft=2.5k  price=3.4  predicted=3.500  error=0.100
+sqft=3.0k  price=4.1  predicted=4.000  error=0.100
+sqft=3.5k  price=4.4  predicted=4.500  error=0.100
+sqft=4.0k  price=5.2  predicted=5.000  error=0.200   ← outside tube → a support vector
+</code></pre></div></div>
+
+<p>For a brand-new house at <code class="language-plaintext highlighter-rouge">sqft=2.8k</code>, the prediction is <code class="language-plaintext highlighter-rouge">1.0(2.8) + 1.0 = 3.8</code> (i.e. $380k) — computed by plugging straight into the line, with <strong>no classification step whatsoever</strong>.</p>
+
+<p>This series is scoped to classification (<code class="language-plaintext highlighter-rouge">sklearn.svm.SVC</code>); SVR (<code class="language-plaintext highlighter-rouge">sklearn.svm.SVR</code>) is a separate, dedicated topic — but it’s built from the exact same pieces you’re about to learn: a hyperplane, a margin-like tolerance region, slack for points that break the tolerance, a <code class="language-plaintext highlighter-rouge">C</code> to control that tradeoff, and (for non-linear relationships) the same kernels from Part 4.</p>
 
 <hr />
 
