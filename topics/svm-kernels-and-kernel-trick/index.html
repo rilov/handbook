@@ -53,6 +53,16 @@
 
 <hr />
 
+<h2 id="0-kernels-are-bigger-than-just-svm">0. Kernels are bigger than just SVM</h2>
+
+<p>Before diving in, it’s worth knowing that <strong>kernel methods are not an SVM-only trick</strong>. They’re a general set of principles that show up across many algorithms — kernel ridge regression, kernel PCA, Gaussian processes, and more all reuse the same idea. SVM is simply the most common place you’ll encounter kernels first.</p>
+
+<p>The key conceptual insight — one that makes kernels feel almost like magic — is this: <strong>the underlying algorithm never changes.</strong> Whether you’re doing SVM or regression, the core method stays a purely <em>linear</em> technique the entire time. A kernel is not a modification to the algorithm itself; it’s a substitution slotted in on top of it — a “topping,” so to speak — that lets a linear method behave as if it were fitting a highly non-linear boundary.</p>
+
+<p>This is exactly why kernels are so powerful: you keep all the simplicity, speed, and mathematical elegance of linear methods, while getting the flexibility of arbitrarily non-linear models. The rest of this topic walks through <em>how</em> that substitution works for SVM specifically.</p>
+
+<hr />
+
 <h2 id="1-the-problem-left-over-from-part-3">1. The problem left over from Part 3</h2>
 
 <p>Every SVM variant so far — Maximal Margin, Soft Margin — draws a <strong>straight line</strong> (or flat hyperplane). But some data simply cannot be separated by any straight line:</p>
@@ -74,9 +84,43 @@
 
 <p>Call the original space the <strong>attribute space</strong> <code class="language-plaintext highlighter-rouge">(X, Y)</code>, and the transformed space the <strong>feature space</strong> <code class="language-plaintext highlighter-rouge">(X', Y')</code>.</p>
 
+<h3 id="why-squaring-turns-a-circleellipse-into-a-straight-line">Why squaring turns a circle/ellipse into a straight line</h3>
+
+<p>If you suspect the boundary between two classes looks like a circle or an ellipse, recall the equation of an ellipse from analytic geometry:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X² / a  +  Y² / b  =  C
+</code></pre></div></div>
+
+<p>(when <code class="language-plaintext highlighter-rouge">a = b</code>, this is a circle). Now define new coordinates <code class="language-plaintext highlighter-rouge">X' = X²</code> and <code class="language-plaintext highlighter-rouge">Y' = Y²</code>, and substitute directly into the equation:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X' / a  +  Y' / b  =  C
+</code></pre></div></div>
+
+<p>This is exactly the equation of a <strong>straight line</strong> in <code class="language-plaintext highlighter-rouge">(X', Y')</code> coordinates! A quadratic (curved) boundary in the original attribute space becomes a perfectly linear boundary once you plot <code class="language-plaintext highlighter-rouge">X²</code> and <code class="language-plaintext highlighter-rouge">Y²</code> instead of <code class="language-plaintext highlighter-rouge">X</code> and <code class="language-plaintext highlighter-rouge">Y</code>.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">1</span>  <span class="c1"># example ellipse: X^2/4 + Y^2/9 = 1
+</span>
+<span class="c1"># Sample a few points that sit exactly on this ellipse
+</span><span class="n">thetas</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="p">.</span><span class="n">pi</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">a</span><span class="o">*</span><span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">cos</span><span class="p">(</span><span class="n">thetas</span><span class="p">)</span>
+<span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">b</span><span class="o">*</span><span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">sin</span><span class="p">(</span><span class="n">thetas</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">):</span>
+    <span class="n">on_ellipse</span> <span class="o">=</span> <span class="nf">abs</span><span class="p">(</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">a</span> <span class="o">+</span> <span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">b</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-9</span>
+    <span class="n">x_prime</span><span class="p">,</span> <span class="n">y_prime</span> <span class="o">=</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">on_line</span> <span class="o">=</span> <span class="nf">abs</span><span class="p">(</span><span class="n">x_prime</span><span class="o">/</span><span class="n">a</span> <span class="o">+</span> <span class="n">y_prime</span><span class="o">/</span><span class="n">b</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-9</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">(x,y)=(</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">,</span><span class="si">{</span><span class="n">y</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)  on ellipse: </span><span class="si">{</span><span class="n">on_ellipse</span><span class="si">}</span><span class="s">   -&gt;   (x</span><span class="sh">'</span><span class="s">,y</span><span class="sh">'</span><span class="s">)=(</span><span class="si">{</span><span class="n">x_prime</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">,</span><span class="si">{</span><span class="n">y_prime</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)  on line: </span><span class="si">{</span><span class="n">on_line</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Every point that satisfies the ellipse equation in <code class="language-plaintext highlighter-rouge">(X, Y)</code> also satisfies the <em>linear</em> equation in <code class="language-plaintext highlighter-rouge">(X', Y')</code> — confirmed above.</p>
+
+<h3 id="applying-this-to-a-real-example">Applying this to a real example</h3>
+
 <p>Example: classify emails into spam/ham using two attributes — <code class="language-plaintext highlighter-rouge">word_freq_office</code> (X) and <code class="language-plaintext highlighter-rouge">word_freq_lottery</code> (Y). Suppose the data is arranged in a circle: spam emails cluster in the center, ham emails surround them.</p>
 
-<p>You don’t need to know the exact transformation formula to follow the idea — just know that <em>some</em> transformation exists that can turn a circular pattern into a linear one. As one example:</p>
+<p>Following the same idea, here’s a slightly more general transformation (squaring the distance from some center point <code class="language-plaintext highlighter-rouge">(a, b)</code> rather than the origin):</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X' = (X - a)²
 Y' = (Y - b)²
@@ -108,6 +152,20 @@ Y' = (Y - b)²
 </code></pre></div></div>
 
 <p>After the transformation, the inner cluster’s values and the outer ring’s values fall into two <strong>non-overlapping ranges</strong> — meaning a single threshold (a linear boundary in the new 1D feature) now separates them perfectly.</p>
+
+<h3 id="mapping-the-separator-back-to-the-original-space">Mapping the separator back to the original space</h3>
+
+<p>Once you run a linear method (SVM, logistic regression, or plain linear regression — any of them work, since the transformation did all the hard work) in the transformed <code class="language-plaintext highlighter-rouge">(X', Y')</code> space, it will hand you back a straight-line equation like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X'/a' + Y'/b' = C'
+</code></pre></div></div>
+
+<p>To interpret this boundary in terms of the <em>original</em> attributes, simply substitute <code class="language-plaintext highlighter-rouge">X' = X²</code> and <code class="language-plaintext highlighter-rouge">Y' = Y²</code> back in:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X²/a' + Y²/b' = C'
+</code></pre></div></div>
+
+<p>This is once again the equation of an ellipse (or circle) — but now it’s expressed back in the original <code class="language-plaintext highlighter-rouge">(X, Y)</code> attribute space, giving you the actual curved decision boundary you wanted all along. You never had to search for a circular/elliptical separator directly; you found an easy linear one in the transformed space, then substituted back to recover the non-linear one.</p>
 
 <hr />
 

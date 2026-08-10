@@ -325,6 +325,41 @@ underfitting risk                      overfitting risk
 
 <p>You will typically see: very small <code class="language-plaintext highlighter-rouge">C</code> gives more support vectors (a wider, looser margin), and very large <code class="language-plaintext highlighter-rouge">C</code> gives fewer support vectors (a narrower, tighter margin) — with test accuracy often peaking somewhere in between.</p>
 
+<h3 id="visualizing-the-bias-variance-curve-across-c">Visualizing the bias-variance curve across C</h3>
+
+<p>The pattern is much easier to see by plotting train and test accuracy across a wide range of <code class="language-plaintext highlighter-rouge">C</code> values:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="n">Cs</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1000</span><span class="p">]</span>
+<span class="n">train_accs</span><span class="p">,</span> <span class="n">test_accs</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">C</span> <span class="ow">in</span> <span class="n">Cs</span><span class="p">:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="n">C</span><span class="p">)</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="n">train_accs</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">)))</span>
+    <span class="n">test_accs</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_s</span><span class="p">)))</span>
+
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">Cs</span><span class="p">,</span> <span class="n">train_accs</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">'</span><span class="s">o</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Train accuracy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">Cs</span><span class="p">,</span> <span class="n">test_accs</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="sh">'</span><span class="s">o</span><span class="sh">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">Test accuracy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xscale</span><span class="p">(</span><span class="sh">'</span><span class="s">log</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">C</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Accuracy</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Train vs. test accuracy across C</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>Reading the resulting curve tells the whole story of the bias-variance tradeoff:</p>
+
+<ul>
+  <li><strong>Very small <code class="language-plaintext highlighter-rouge">C</code></strong> (left side): both train and test accuracy are low — the model is too simple to even fit the training data well (<strong>high bias / underfitting</strong>).</li>
+  <li><strong>A middle range of <code class="language-plaintext highlighter-rouge">C</code></strong>: both accuracies rise together and test accuracy peaks — this is the <strong>best generalizing</strong> region.</li>
+  <li><strong>Very large <code class="language-plaintext highlighter-rouge">C</code></strong> (right side): train accuracy keeps climbing toward 100%, but test accuracy plateaus or drops — the growing gap between the two curves is the signature of <strong>overfitting (high variance)</strong>.</li>
+</ul>
+
+<p>This single plot is often the fastest way to sanity-check whether a chosen <code class="language-plaintext highlighter-rouge">C</code> is in a sensible range, before running a full <code class="language-plaintext highlighter-rouge">GridSearchCV</code>.</p>
+
 <hr />
 
 <h2 id="6-step-5-how-to-choose-c-in-practice">6. Step 5: How to choose C in practice</h2>
@@ -342,6 +377,18 @@ underfitting risk                      overfitting risk
 </code></pre></div></div>
 
 <p>This connects directly back to the practical fix from <a href="/handbook/topics/bias-and-variance">Bias and Variance</a>: when you suspect overfitting (train accuracy much higher than test accuracy), try <strong>lowering C</strong>. When you suspect underfitting (both accuracies low), try <strong>raising C</strong>.</p>
+
+<h3 id="optimizing-for-something-other-than-accuracy">Optimizing for something other than accuracy</h3>
+
+<p><code class="language-plaintext highlighter-rouge">GridSearchCV</code>’s <code class="language-plaintext highlighter-rouge">scoring</code> argument doesn’t have to be <code class="language-plaintext highlighter-rouge">'accuracy'</code>. If the two types of mistakes aren’t equally costly — for example, letting a spam email through to the inbox is far less costly than accidentally sending a legitimate email to spam — you can optimize <code class="language-plaintext highlighter-rouge">C</code> for a different metric entirely, such as <code class="language-plaintext highlighter-rouge">'recall'</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">grid_recall</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">),</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">'</span><span class="s">recall</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">grid_recall</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best C for recall:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid_recall</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">C</code> that maximizes plain accuracy is not necessarily the same <code class="language-plaintext highlighter-rouge">C</code> that maximizes recall (or any other metric) — always pick the scoring metric that reflects what actually matters for your problem.</p>
 
 <hr />
 
