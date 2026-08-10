@@ -85,14 +85,14 @@ score - 50 &lt; 0   →  fail
 
 <h2 id="2-step-1-the-hyperplane-in-2d">2. Step 1: The hyperplane in 2D</h2>
 
-<p>Suppose you want to classify emails as spam or not spam using two features:</p>
+<p>Suppose you want to classify emails as spam or not spam. Every email gets converted into numbers first — this is a very common approach (used, for example, in the classic UCI Spambase dataset), where each feature is a <strong>word frequency</strong>: the percentage of words in the email that match a specific keyword. So:</p>
 
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">x1</code> = word_freq_technology (how often the word “technology” appears)</li>
-  <li><code class="language-plaintext highlighter-rouge">x2</code> = word_freq_money (how often the word “money” appears)</li>
+  <li><code class="language-plaintext highlighter-rouge">x1</code> = word_freq_technology → e.g. if “technology” makes up 2% of the words in an email, <code class="language-plaintext highlighter-rouge">x1 = 2.0</code></li>
+  <li><code class="language-plaintext highlighter-rouge">x2</code> = word_freq_money → e.g. if “money” makes up 5% of the words in an email, <code class="language-plaintext highlighter-rouge">x2 = 5.0</code></li>
 </ul>
 
-<p>A <strong>hyperplane</strong> in 2D is just a line that separates the two classes:</p>
+<p>The intuition is that legitimate technology-related emails tend to use words like “technology” a lot but rarely mention “money,” while spam emails (offers, prizes, financial scams) tend to do the opposite — mention “money” heavily and “technology” rarely. So plotting every email as a point <code class="language-plaintext highlighter-rouge">(x1, x2)</code>, you’d expect spam and non-spam emails to cluster in different regions:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x2 (word_freq_money)
   │
@@ -104,17 +104,24 @@ score - 50 &lt; 0   →  fail
   └──────────────────────── x1 (word_freq_technology)
 </code></pre></div></div>
 
-<p>The standard equation of a line is:</p>
+<p>A <strong>hyperplane</strong> in 2D is just a line that separates the two classes. You’ve almost certainly seen the <em>slope-intercept</em> form of a line before:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y = m·x + c
+</code></pre></div></div>
+
+<p>This works fine for drawing lines, but it breaks down for a vertical line (where the slope <code class="language-plaintext highlighter-rouge">m</code> is undefined) and doesn’t generalize cleanly to 3D or beyond. So instead, we use the more general <strong>standard form</strong> of a line, which has no such restriction:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>a·x + b·y + c = 0
 </code></pre></div></div>
 
-<p>We generalize this using weights (<code class="language-plaintext highlighter-rouge">W</code>) instead of <code class="language-plaintext highlighter-rouge">a, b, c</code>:</p>
+<p>Any line — no matter its orientation — can be written this way. We now relabel the constants using weights (<code class="language-plaintext highlighter-rouge">W</code>) instead of <code class="language-plaintext highlighter-rouge">a, b, c</code>, and rename <code class="language-plaintext highlighter-rouge">x, y</code> to <code class="language-plaintext highlighter-rouge">x1, x2</code> (since we’ll soon have far more than 2 features):</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>W0 + W1·x1 + W2·x2 = 0
 </code></pre></div></div>
 
-<p>Here, <code class="language-plaintext highlighter-rouge">x1</code> and <code class="language-plaintext highlighter-rouge">x2</code> are the features, and <code class="language-plaintext highlighter-rouge">W1</code>, <code class="language-plaintext highlighter-rouge">W2</code> are the coefficients the model learns. <code class="language-plaintext highlighter-rouge">W0</code> is a constant (the bias/intercept term).</p>
+<p>Here, <code class="language-plaintext highlighter-rouge">x1</code> and <code class="language-plaintext highlighter-rouge">x2</code> are the <strong>features</strong> — the actual data values for one email. <code class="language-plaintext highlighter-rouge">W1</code> and <code class="language-plaintext highlighter-rouge">W2</code> are the <strong>weights</strong> (coefficients) that the SVM algorithm learns from the training data — they determine the line’s orientation (which direction it tilts). <code class="language-plaintext highlighter-rouge">W0</code> is a constant, called the <strong>bias</strong> or <strong>intercept</strong> term — it determines how far the line is shifted away from the origin.</p>
+
+<p>Put simply: <strong>“training the SVM” means searching for the specific values of <code class="language-plaintext highlighter-rouge">W0</code>, <code class="language-plaintext highlighter-rouge">W1</code>, and <code class="language-plaintext highlighter-rouge">W2</code> that best separate the two classes.</strong> Part 2 of this series explains exactly how those values are chosen; for now, assume they’ve already been found.</p>
 
 <h3 id="how-the-line-classifies-a-point">How the line classifies a point</h3>
 
