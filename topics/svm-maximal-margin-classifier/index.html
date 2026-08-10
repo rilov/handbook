@@ -221,30 +221,78 @@ W = [W0', W1', ..., Wd']
 
 <p>This constraint exists because a hyperplane equation can be scaled by any constant and still represent the same line (e.g. <code class="language-plaintext highlighter-rouge">2x + 2y = 0</code> is the same line as <code class="language-plaintext highlighter-rouge">x + y = 0</code>). Standardizing removes this ambiguity so “distance” is measured consistently.</p>
 
-<p><strong>Constraint 2 — every point must be correctly classified and outside the margin.</strong> Once the weights are standardized, this becomes an optimization: maximize the margin width, subject to every training point being on the correct side of its margin boundary.</p>
+<p><strong>Constraint 2 — every point must sit at least a margin’s distance away, on its correct side.</strong> Using the concise <code class="language-plaintext highlighter-rouge">W · Y</code> notation from Step 4, and labeling each class as <code class="language-plaintext highlighter-rouge">li = +1</code> or <code class="language-plaintext highlighter-rouge">li = -1</code>, this constraint is written as:</p>
 
-<p>You will almost never need to solve this optimization by hand — <code class="language-plaintext highlighter-rouge">scikit-learn</code> does it for you — but understanding the two constraints explains <em>why</em> this is a well-defined optimization problem, not just “eyeball the widest gap.”</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>li · (W · Yi)  ≥  M      for every training point i
+</code></pre></div></div>
+
+<p>where:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">li</code> = the label of point <code class="language-plaintext highlighter-rouge">i</code> (<code class="language-plaintext highlighter-rouge">+1</code> or <code class="language-plaintext highlighter-rouge">-1</code>)</li>
+  <li><code class="language-plaintext highlighter-rouge">W</code> = the rescaled, augmented weight vector <code class="language-plaintext highlighter-rouge">[W0', W1', ..., Wd']</code></li>
+  <li><code class="language-plaintext highlighter-rouge">Yi</code> = the augmented data point <code class="language-plaintext highlighter-rouge">[1, x1, x2, ..., xd]</code></li>
+  <li><code class="language-plaintext highlighter-rouge">M</code> = the margin width — the quantity we are trying to maximize</li>
+</ul>
+
+<h3 id="why-multiplying-by-the-label-works">Why multiplying by the label works</h3>
+
+<p>Think of the hyperplane as splitting space into a <code class="language-plaintext highlighter-rouge">+L</code> side and a <code class="language-plaintext highlighter-rouge">-L</code> side:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Figure A: red dots below the "-L" hyperplane        Figure B: blue dots above the "+L" hyperplane
+
+        ┄┄┄┄┄┄┄┄┄┄┄┄  +L                                ●  ●  ●   (li = +1)
+             ●●●        (blue, li = +1)               ┄┄┄┄┄┄┄┄┄┄┄┄  +L
+      ─────────────── hyperplane                    ─────────────── hyperplane
+             ■■■        (red,  li = -1)               ┄┄┄┄┄┄┄┄┄┄┄┄  -L
+        ┄┄┄┄┄┄┄┄┄┄┄┄  -L                                ■  ■  ■   (li = -1)
+</code></pre></div></div>
+
+<ul>
+  <li>For a <strong>red point</strong> (<code class="language-plaintext highlighter-rouge">li = -1</code>), the raw dot product <code class="language-plaintext highlighter-rouge">W · Yi</code> comes out <strong>negative</strong> (it’s on the <code class="language-plaintext highlighter-rouge">-L</code> side). Multiplying by <code class="language-plaintext highlighter-rouge">li = -1</code> flips the sign, giving a <strong>positive</strong> result.</li>
+  <li>For a <strong>blue point</strong> (<code class="language-plaintext highlighter-rouge">li = +1</code>), the raw dot product <code class="language-plaintext highlighter-rouge">W · Yi</code> is already <strong>positive</strong>. Multiplying by <code class="language-plaintext highlighter-rouge">li = +1</code> leaves it positive.</li>
+</ul>
+
+<p>Either way, <code class="language-plaintext highlighter-rouge">li · (W · Yi)</code> is always <strong>positive when the point is correctly classified</strong>, and its size tells you <em>how far past the margin</em> the point sits. Requiring this value to be <code class="language-plaintext highlighter-rouge">≥ M</code> for every point is exactly the constraint “every point must be correctly classified and at least a margin’s distance from the hyperplane.”</p>
+
+<h3 id="worked-2d-example">Worked 2D example</h3>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
 <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
 
-<span class="c1"># A simple, cleanly separable 2D dataset
+<span class="c1"># A simple, cleanly separable 2D dataset, using +1/-1 labels to match the li notation
 </span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
-    <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>     <span class="c1"># class 1 (upper right)
-</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>     <span class="c1"># class 0 (lower left)
+    <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>     <span class="c1"># class li=+1 (upper right)
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>     <span class="c1"># class li=-1 (lower left)
 </span><span class="p">])</span>
-<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 
 <span class="c1"># A hard-margin SVM: extremely high C forces near-zero tolerance
 # for misclassification, which approximates a Maximal Margin Classifier
 </span><span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1e6</span><span class="p">)</span>
 <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Weights (W):</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">coef_</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Bias (W0):</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Support vectors (the closest points that define the margin):</span><span class="sh">"</span><span class="p">)</span>
-<span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="n">support_vectors_</span><span class="p">)</span>
+<span class="n">W1</span><span class="p">,</span> <span class="n">W2</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">W0</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">norm</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">W1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">W2</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Rescale so W1'^2 + W2'^2 = 1 (Step 4's trick)
+</span><span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="n">W0</span> <span class="o">/</span> <span class="n">norm</span><span class="p">,</span> <span class="n">W1</span> <span class="o">/</span> <span class="n">norm</span><span class="p">,</span> <span class="n">W2</span> <span class="o">/</span> <span class="n">norm</span><span class="p">])</span>
+<span class="n">M</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">norm</span>   <span class="c1"># the resulting margin width
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Rescaled W:</span><span class="sh">"</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Margin M:</span><span class="sh">"</span><span class="p">,</span> <span class="n">M</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">li</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="n">Yi</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">xi</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xi</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">li</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">Yi</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">point=</span><span class="si">{</span><span class="n">xi</span><span class="si">}</span><span class="s">  li=</span><span class="si">{</span><span class="n">li</span><span class="si">:</span><span class="o">+</span><span class="n">d</span><span class="si">}</span><span class="s">  li*(W.Yi)=</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s">  </span><span class="si">{</span><span class="sh">'</span><span class="s">← equals M (support vector)</span><span class="sh">'</span> <span class="k">if</span> <span class="nf">abs</span><span class="p">(</span><span class="n">value</span> <span class="o">-</span> <span class="n">M</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-6</span> <span class="k">else</span> <span class="sh">''</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">sklearn</span><span class="sh">'</span><span class="s">s own support vectors:</span><span class="sh">"</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">support_vectors_</span><span class="p">)</span>
 </code></pre></div></div>
+
+<p>Running this shows every point satisfies <code class="language-plaintext highlighter-rouge">li·(W·Yi) ≥ M</code>, and the three points that hit <strong>exactly</strong> <code class="language-plaintext highlighter-rouge">M</code> are the support vectors from Step 6 — confirming that support vectors are precisely the points where this constraint is “tight” (an equality, not a strict inequality).</p>
 
 <hr />
 
@@ -298,6 +346,7 @@ Class 0 (lower left):  [■]  ■  ■   ← closest point "supports" the margin
   <li>If you remove a training point that is <em>not</em> a support vector and retrain the model, does the hyperplane change? Why or why not?</li>
   <li>What is the main weakness of the Maximal Margin Classifier on real-world data?</li>
   <li>After rescaling <code class="language-plaintext highlighter-rouge">W</code> so that <code class="language-plaintext highlighter-rouge">W1'² + ... + Wd'² = 1</code>, why does the distance formula simplify to <code class="language-plaintext highlighter-rouge">W · Y</code> instead of <code class="language-plaintext highlighter-rouge">|W·X + W0| / ||W||</code>?</li>
+  <li>Why does multiplying by the label <code class="language-plaintext highlighter-rouge">li</code> (<code class="language-plaintext highlighter-rouge">+1</code> or <code class="language-plaintext highlighter-rouge">-1</code>) turn <code class="language-plaintext highlighter-rouge">W · Yi</code> into a value that is always positive for a correctly classified point?</li>
 </ol>
 
 <p><strong>Answers:</strong></p>
@@ -308,6 +357,7 @@ Class 0 (lower left):  [■]  ■  ■   ← closest point "supports" the margin
   <li>No — non-support-vector points do not affect the hyperplane at all. Only the closest points (support vectors) determine its position.</li>
   <li>It requires the data to be perfectly linearly separable and is extremely sensitive to outliers — a single noisy point can shrink the margin drastically or make separation impossible.</li>
   <li>Because after rescaling, <code class="language-plaintext highlighter-rouge">||W'|| = 1</code> by construction, so the denominator in the distance formula disappears. Folding <code class="language-plaintext highlighter-rouge">W0'</code> into <code class="language-plaintext highlighter-rouge">W</code> as its first entry and prepending a <code class="language-plaintext highlighter-rouge">1</code> to <code class="language-plaintext highlighter-rouge">X</code> (giving <code class="language-plaintext highlighter-rouge">Y</code>) lets the whole numerator be written as a single dot product <code class="language-plaintext highlighter-rouge">W · Y</code>.</li>
+  <li>For a point on the <code class="language-plaintext highlighter-rouge">-L</code> side (<code class="language-plaintext highlighter-rouge">li = -1</code>), the raw dot product <code class="language-plaintext highlighter-rouge">W · Yi</code> is negative; multiplying by <code class="language-plaintext highlighter-rouge">-1</code> flips it positive. For a point on the <code class="language-plaintext highlighter-rouge">+L</code> side (<code class="language-plaintext highlighter-rouge">li = +1</code>), the dot product is already positive, and multiplying by <code class="language-plaintext highlighter-rouge">+1</code> leaves it unchanged. Either way, correct classification always produces a positive <code class="language-plaintext highlighter-rouge">li · (W · Yi)</code>, which is why the constraint <code class="language-plaintext highlighter-rouge">li · (W · Yi) ≥ M</code> can require this value to be at least the margin <code class="language-plaintext highlighter-rouge">M</code> for every point.</li>
 </ol>
 
 <hr />
