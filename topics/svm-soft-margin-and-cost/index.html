@@ -249,6 +249,46 @@ underfitting risk                      overfitting risk
   <li><strong>Small C</strong> → the model tolerates a larger total slack, allowing more points to violate the margin. This produces a wide margin and a model that can underfit — high bias, low variance.</li>
 </ul>
 
+<h3 id="a-worked-example-one-outlier-ruining-the-whole-model">A worked example: one outlier ruining the whole model</h3>
+
+<p>Here’s a concrete illustration of why forcing zero errors can backfire. Imagine two clearly separated clusters, but <strong>one single point is mislabeled</strong> — it belongs to class <code class="language-plaintext highlighter-rouge">-1</code> by every reasonable judgment (it sits right at the edge of the <code class="language-plaintext highlighter-rouge">-1</code> cluster), but was recorded in the data as <code class="language-plaintext highlighter-rouge">+1</code>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    ●  ●  ●
+     ●  ●  ●
+                      ← if C is large, the boundary bends all
+                         the way down here just to get the
+                         outlier "correct"
+    ■  ■  +(outlier)
+  ■  ■  ■
+</code></pre></div></div>
+
+<p>If <code class="language-plaintext highlighter-rouge">C</code> is very large, the model refuses to accept <em>any</em> misclassification — including the outlier — so it contorts the boundary to wrap around and correctly classify that single point. This comes at a cost: the boundary is now in the wrong place for every <em>future</em> point that lands near where the outlier was.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>   <span class="c1"># class +1 cluster
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>   <span class="c1"># class -1 cluster
+</span>    <span class="p">[</span><span class="mf">2.3</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">],</span>                                        <span class="c1"># mislabeled outlier, recorded as +1
+</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+<span class="c1"># A brand-new point that should obviously be classified as -1
+</span><span class="n">future_point</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]])</span>
+
+<span class="k">for</span> <span class="n">C</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">1e6</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">]:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="n">C</span><span class="p">)</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">train_acc</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">score</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">prediction</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">future_point</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">C=</span><span class="si">{</span><span class="n">C</span><span class="si">}</span><span class="s">: train accuracy=</span><span class="si">{</span><span class="n">train_acc</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">, predicts new point as </span><span class="si">{</span><span class="n">prediction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s"> (true label is -1)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Running this: with <code class="language-plaintext highlighter-rouge">C=1e6</code>, the model achieves <strong>100% training accuracy</strong> — it successfully “explains” the outlier — but then <strong>misclassifies</strong> the brand-new point that lands nearby. With <code class="language-plaintext highlighter-rouge">C=0.01</code>, training accuracy is <em>lower</em> (it accepts the outlier as a mistake), but the new point is classified <strong>correctly</strong>.</p>
+
+<p>This is the central lesson of the cost parameter: <strong>a model with zero training errors is not necessarily the best model.</strong> Tolerating a known mistake on the training set, in exchange for a more sensible overall boundary, usually generalizes far better to unseen data.</p>
+
 <hr />
 
 <h2 id="5-step-4-seeing-c-in-action">5. Step 4: Seeing C in action</h2>
@@ -327,6 +367,7 @@ underfitting risk                      overfitting risk
   <li>What does <code class="language-plaintext highlighter-rouge">ε &gt; 1</code> mean?</li>
   <li>If you increase <code class="language-plaintext highlighter-rouge">C</code>, does the margin get wider or narrower? Does the model become more or less prone to overfitting?</li>
   <li>You train an SVM and see train accuracy = 99%, test accuracy = 70%. Should you increase or decrease <code class="language-plaintext highlighter-rouge">C</code>?</li>
+  <li>In the single-outlier example, why does achieving 100% training accuracy actually make the model <em>worse</em>?</li>
 </ol>
 
 <p><strong>Answers:</strong></p>
@@ -336,6 +377,7 @@ underfitting risk                      overfitting risk
   <li>The point is on the wrong side of the hyperplane entirely — it is misclassified.</li>
   <li>Increasing <code class="language-plaintext highlighter-rouge">C</code> makes the margin narrower (less slack allowed) and makes the model more prone to overfitting (low bias, high variance).</li>
   <li>Decrease <code class="language-plaintext highlighter-rouge">C</code>. The large gap between train and test accuracy signals overfitting (high variance), and a smaller <code class="language-plaintext highlighter-rouge">C</code> allows more slack, widening the margin and improving generalization.</li>
+  <li>Getting the mislabeled outlier “correct” forces the hyperplane to bend away from where it should sensibly sit for the bulk of the data. This distorted boundary then misclassifies new, legitimate points that happen to land near where the outlier was — trading one training-set win for many real-world losses.</li>
 </ol>
 
 <hr />
