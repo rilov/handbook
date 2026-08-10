@@ -66,6 +66,37 @@
 
 <p>This is exactly what the <strong>Soft Margin Classifier</strong> (also called the <strong>Support Vector Classifier</strong>) provides.</p>
 
+<h3 id="two-very-different-kinds-of-not-perfectly-separable">Two very different kinds of “not perfectly separable”</h3>
+
+<p>It’s worth distinguishing two situations, because the fix for each is different:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Nearly separable (a handful of        Totally intermingled (no straight
+points cross over, but a straight     line, no matter how you draw it,
+line still roughly works):            can ever separate these):
+
+    ●  ●  ●                                ●  ■  ●
+  ╲       ■  (a couple of outliers)      ■  ●  ■  ●
+   ╲                                       ●  ■  ●
+    ■  ■  ■                              ■  ●  ■
+</code></pre></div></div>
+
+<ul>
+  <li><strong>Nearly separable</strong> — the two classes are <em>mostly</em> on opposite sides, with just a few stray points crossing over. A straight-line hyperplane still makes sense here; it just needs to tolerate a handful of mistakes. <strong>This is what the Soft Margin Classifier in this topic solves.</strong></li>
+  <li><strong>Totally intermingled</strong> — there is no hope for <em>any</em> straight line, no matter how you tilt or shift it, because the classes are thoroughly mixed or arranged in a non-linear pattern (like a ring). Tolerating misclassifications won’t fix this — you need a fundamentally different, non-linear separator. <strong>This is what kernels solve, covered in <a href="/handbook/topics/svm-kernels-and-kernel-trick">Part 4</a>.</strong></li>
+</ul>
+
+<p>The Soft Margin Classifier’s job is specifically the first case: keep the hyperplane, but relax the “zero mistakes allowed” rule from Part 2.</p>
+
+<h3 id="the-modified-goal">The modified goal</h3>
+
+<p>Instead of Part 2’s strict rule (“find the hyperplane that separates every point perfectly, then maximize the margin”), the goal becomes:</p>
+
+<blockquote>
+  <p>Find the hyperplane that <strong>maximizes the margin</strong>, while keeping the <strong>number and severity of misclassifications as low as possible</strong> — but not necessarily zero.</p>
+</blockquote>
+
+<p>Critically, this formulation does <strong>not</strong> assume zero misclassifications the way the Maximal Margin Classifier did. Some points are allowed to fall on the wrong side, as long as the total amount of “damage” stays controlled.</p>
+
 <hr />
 
 <h2 id="2-step-1-allow-some-points-to-be-on-the-wrong-side">2. Step 1: Allow some points to be on the wrong side</h2>
@@ -87,7 +118,53 @@
 
 <h2 id="3-step-2-the-slack-variable-epsilon-ε">3. Step 2: The slack variable (epsilon, ε)</h2>
 
-<p>To formalize “how much a point violates the margin,” SVM introduces a <strong>slack variable</strong>, written as epsilon (<code class="language-plaintext highlighter-rouge">ε</code>), for every training point.</p>
+<h3 id="deriving-it-from-part-2s-constraint">Deriving it from Part 2’s constraint</h3>
+
+<p>Recall Part 2’s strict constraint for the Maximal Margin Classifier, using the concise <code class="language-plaintext highlighter-rouge">W · Yi</code> notation:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>li · (W · Yi)  ≥  M      for every point i
+</code></pre></div></div>
+
+<p>This says every point must be <strong>at least</strong> a margin’s distance <code class="language-plaintext highlighter-rouge">M</code> away, on the correct side — no exceptions. To relax this, introduce a slack variable <code class="language-plaintext highlighter-rouge">εi</code> (one per point) and modify the constraint to:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>li · (W · Yi)  ≥  M · (1 − εi)      for every point i
+</code></pre></div></div>
+
+<p>Since <code class="language-plaintext highlighter-rouge">εi</code> can range from <code class="language-plaintext highlighter-rouge">0</code> to <code class="language-plaintext highlighter-rouge">+∞</code>, this single formula reproduces every case from the table below automatically:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">εi = 0</code></strong> → right-hand side is exactly <code class="language-plaintext highlighter-rouge">M</code> → identical to Part 2’s original constraint (correctly classified, at least a margin’s distance away).</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">0 &lt; εi &lt; 1</code></strong> → <code class="language-plaintext highlighter-rouge">(1 − εi)</code> is between <code class="language-plaintext highlighter-rouge">0</code> and <code class="language-plaintext highlighter-rouge">1</code>, so the required distance shrinks below <code class="language-plaintext highlighter-rouge">M</code> but stays positive → the point can be inside the margin while <code class="language-plaintext highlighter-rouge">li·(W·Yi)</code> is still positive (correct side).</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">εi = 1</code></strong> → right-hand side becomes <code class="language-plaintext highlighter-rouge">0</code> → the point sits exactly on the hyperplane.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">εi &gt; 1</code></strong> → right-hand side goes negative → <code class="language-plaintext highlighter-rouge">li·(W·Yi)</code> is allowed to be negative too, meaning the point can fall on the <strong>wrong side</strong> of the hyperplane entirely (misclassified).</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Reuse the rescaled W and margin M from Part 2's worked example
+</span><span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="o">-</span><span class="mf">3.18201573</span><span class="p">,</span> <span class="mf">0.7068946</span><span class="p">,</span> <span class="mf">0.7073189</span><span class="p">])</span>
+<span class="n">M</span> <span class="o">=</span> <span class="mf">1.0607662006606353</span>
+
+<span class="k">def</span> <span class="nf">implied_epsilon</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">li</span><span class="p">):</span>
+    <span class="n">Yi</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">xi</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xi</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">li</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">Yi</span><span class="p">)</span>
+    <span class="c1"># solve li*(W.Yi) = M*(1 - eps) for eps
+</span>    <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">value</span> <span class="o">/</span> <span class="n">M</span>
+
+<span class="n">points</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span>      <span class="c1"># a support vector — sits exactly at the margin
+</span>    <span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># correctly classified but inside the margin
+</span>    <span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># deep on the wrong side of the hyperplane
+</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">li</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="nf">implied_epsilon</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">li</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">point=</span><span class="si">{</span><span class="n">xi</span><span class="si">}</span><span class="s">  implied epsilon=</span><span class="si">{</span><span class="n">eps</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Running this gives <code class="language-plaintext highlighter-rouge">epsilon ≈ 0</code>, <code class="language-plaintext highlighter-rouge">≈ 0.67</code>, and <code class="language-plaintext highlighter-rouge">≈ 2.0</code> respectively — exactly matching the three regions described above.</p>
+
+<h3 id="the-slack-variable-summarized">The slack variable, summarized</h3>
 
 <p>The slack variable tells you where a point sits relative to the margin and the hyperplane:</p>
 
