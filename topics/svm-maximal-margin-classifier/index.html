@@ -298,14 +298,62 @@ W = [W0', W1', ..., Wd']
 
 <h2 id="7-step-6-why-theyre-called-support-vectors">7. Step 6: Why they’re called “support vectors”</h2>
 
-<p>Notice something in the code above: only a handful of points — <code class="language-plaintext highlighter-rouge">model.support_vectors_</code> — actually determine the margin. These are the points <strong>closest to the hyperplane on each side</strong>.</p>
+<h3 id="intuition-first-distance-from-the-boundary--difficulty-of-the-decision">Intuition first: distance from the boundary = difficulty of the decision</h3>
+
+<p>Before defining support vectors formally, it helps to notice something about how confident you’d be classifying a point, just based on how far it sits from the separator.</p>
+
+<p>Imagine classifying animals as “small” or “large” based on weight, and your SVM finds the discriminating boundary at 50 kg. If you’re handed an animal that weighs 200 kg, you don’t need the model at all — it’s obviously “large,” no matter where exactly the boundary sits. The same is true for a 2 kg animal — obviously “small.” These far-away points are “no-brainers.”</p>
+
+<p>Now you’re handed an animal that weighs 49 kg. This is where it gets tricky — it’s right on the edge, and small shifts in the boundary could flip its classification. Points like this, sitting close to the separator, are the ones that actually determine <em>where</em> the boundary should go.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Far from boundary          Close to boundary          Far from boundary
+(easy: obviously  ●)      (hard: could go       )      (easy: obviously  ■)
+                            either way, ● or ■)
+
+  ●───●───●   ...   ●   ┄┄┄┄┄┄┄ margin ┄┄┄┄┄┄┄   ■   ...   ■───■───■
+</code></pre></div></div>
+
+<p>The farther a point is from the separator, the <em>easier</em> and more obvious its classification is. The closer it is, the <em>harder</em> — and it’s precisely these hard, boundary-hugging points that the model needs to pay attention to.</p>
+
+<h3 id="the-formal-definition">The formal definition</h3>
+
+<p>Only a handful of points — <code class="language-plaintext highlighter-rouge">model.support_vectors_</code> — actually determine the margin. These are the points <strong>closest to the hyperplane on each side</strong>.</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Class 1 (upper right):  ●  ●  [●]  ← closest point "supports" the margin
                                        ↕ margin
 Class 0 (lower left):  [■]  ■  ■   ← closest point "supports" the margin
 </code></pre></div></div>
 
-<p>If you deleted every other point and re-trained the model using only these support vectors, you would get <strong>the exact same hyperplane</strong>. The other points could move around freely (as long as they don’t cross into the margin) and the boundary would not change at all.</p>
+<h3 id="proof-retraining-on-only-the-support-vectors-gives-the-same-hyperplane">Proof: retraining on only the support vectors gives the same hyperplane</h3>
+
+<p>This isn’t just a claim — you can verify it directly. Train on the full dataset, extract only the support vectors, then retrain using <em>just</em> those points and compare:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>    <span class="c1"># class +1: some far, some close to the boundary
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>   <span class="c1"># class -1: some far, some close to the boundary
+</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="c1"># Train on the full dataset
+</span><span class="n">full_model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1e6</span><span class="p">)</span>
+<span class="n">full_model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Full dataset  -&gt; W:</span><span class="sh">"</span><span class="p">,</span> <span class="n">full_model</span><span class="p">.</span><span class="n">coef_</span><span class="p">,</span> <span class="sh">"</span><span class="s"> W0:</span><span class="sh">"</span><span class="p">,</span> <span class="n">full_model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">)</span>
+
+<span class="c1"># Keep only the support vectors, throw away every other point
+</span><span class="n">sv_idx</span> <span class="o">=</span> <span class="n">full_model</span><span class="p">.</span><span class="n">support_</span>
+<span class="n">X_sv</span><span class="p">,</span> <span class="n">y_sv</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">sv_idx</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">sv_idx</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Support vectors kept:</span><span class="sh">"</span><span class="p">,</span> <span class="n">X_sv</span><span class="p">.</span><span class="nf">tolist</span><span class="p">())</span>
+
+<span class="c1"># Retrain using only those points
+</span><span class="n">sv_model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mf">1e6</span><span class="p">)</span>
+<span class="n">sv_model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_sv</span><span class="p">,</span> <span class="n">y_sv</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">SV-only dataset -&gt; W:</span><span class="sh">"</span><span class="p">,</span> <span class="n">sv_model</span><span class="p">.</span><span class="n">coef_</span><span class="p">,</span> <span class="sh">"</span><span class="s"> W0:</span><span class="sh">"</span><span class="p">,</span> <span class="n">sv_model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Both models produce essentially identical weights — the seven points that weren’t support vectors were completely <strong>redundant</strong> for finding the separator. Only the points closest to the boundary — the tricky, ambiguous ones from the intuition above — actually determine where the hyperplane goes.</p>
 
 <p>This is why the algorithm is called a <strong>Support Vector</strong> Machine — the boundary is “supported” by a small subset of the data, not by all of it.</p>
 
@@ -347,6 +395,7 @@ Class 0 (lower left):  [■]  ■  ■   ← closest point "supports" the margin
   <li>What is the main weakness of the Maximal Margin Classifier on real-world data?</li>
   <li>After rescaling <code class="language-plaintext highlighter-rouge">W</code> so that <code class="language-plaintext highlighter-rouge">W1'² + ... + Wd'² = 1</code>, why does the distance formula simplify to <code class="language-plaintext highlighter-rouge">W · Y</code> instead of <code class="language-plaintext highlighter-rouge">|W·X + W0| / ||W||</code>?</li>
   <li>Why does multiplying by the label <code class="language-plaintext highlighter-rouge">li</code> (<code class="language-plaintext highlighter-rouge">+1</code> or <code class="language-plaintext highlighter-rouge">-1</code>) turn <code class="language-plaintext highlighter-rouge">W · Yi</code> into a value that is always positive for a correctly classified point?</li>
+  <li>Why do points that are <em>far</em> from the separating hyperplane matter less than points close to it, when it comes to determining where the hyperplane goes?</li>
 </ol>
 
 <p><strong>Answers:</strong></p>
@@ -358,6 +407,7 @@ Class 0 (lower left):  [■]  ■  ■   ← closest point "supports" the margin
   <li>It requires the data to be perfectly linearly separable and is extremely sensitive to outliers — a single noisy point can shrink the margin drastically or make separation impossible.</li>
   <li>Because after rescaling, <code class="language-plaintext highlighter-rouge">||W'|| = 1</code> by construction, so the denominator in the distance formula disappears. Folding <code class="language-plaintext highlighter-rouge">W0'</code> into <code class="language-plaintext highlighter-rouge">W</code> as its first entry and prepending a <code class="language-plaintext highlighter-rouge">1</code> to <code class="language-plaintext highlighter-rouge">X</code> (giving <code class="language-plaintext highlighter-rouge">Y</code>) lets the whole numerator be written as a single dot product <code class="language-plaintext highlighter-rouge">W · Y</code>.</li>
   <li>For a point on the <code class="language-plaintext highlighter-rouge">-L</code> side (<code class="language-plaintext highlighter-rouge">li = -1</code>), the raw dot product <code class="language-plaintext highlighter-rouge">W · Yi</code> is negative; multiplying by <code class="language-plaintext highlighter-rouge">-1</code> flips it positive. For a point on the <code class="language-plaintext highlighter-rouge">+L</code> side (<code class="language-plaintext highlighter-rouge">li = +1</code>), the dot product is already positive, and multiplying by <code class="language-plaintext highlighter-rouge">+1</code> leaves it unchanged. Either way, correct classification always produces a positive <code class="language-plaintext highlighter-rouge">li · (W · Yi)</code>, which is why the constraint <code class="language-plaintext highlighter-rouge">li · (W · Yi) ≥ M</code> can require this value to be at least the margin <code class="language-plaintext highlighter-rouge">M</code> for every point.</li>
+  <li>A point far from the hyperplane is classified with obvious confidence — no matter small shifts to the boundary, it stays on the same side. A point close to the hyperplane is ambiguous — a small shift in the boundary’s position could flip its predicted class. Since the optimization is choosing the boundary’s exact position, only the close, ambiguous points (the support vectors) actually constrain that choice; far-away points impose no real constraint and could be removed without changing the result.</li>
 </ol>
 
 <hr />
