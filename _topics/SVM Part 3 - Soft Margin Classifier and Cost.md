@@ -33,6 +33,34 @@ We need a version of SVM that:
 
 This is exactly what the **Soft Margin Classifier** (also called the **Support Vector Classifier**) provides.
 
+### Two very different kinds of "not perfectly separable"
+
+It's worth distinguishing two situations, because the fix for each is different:
+
+```
+Nearly separable (a handful of        Totally intermingled (no straight
+points cross over, but a straight     line, no matter how you draw it,
+line still roughly works):            can ever separate these):
+
+    ●  ●  ●                                ●  ■  ●
+  ╲       ■  (a couple of outliers)      ■  ●  ■  ●
+   ╲                                       ●  ■  ●
+    ■  ■  ■                              ■  ●  ■
+```
+
+- **Nearly separable** — the two classes are *mostly* on opposite sides, with just a few stray points crossing over. A straight-line hyperplane still makes sense here; it just needs to tolerate a handful of mistakes. **This is what the Soft Margin Classifier in this topic solves.**
+- **Totally intermingled** — there is no hope for *any* straight line, no matter how you tilt or shift it, because the classes are thoroughly mixed or arranged in a non-linear pattern (like a ring). Tolerating misclassifications won't fix this — you need a fundamentally different, non-linear separator. **This is what kernels solve, covered in [Part 4]({{ site.baseurl }}/topics/svm-kernels-and-kernel-trick).**
+
+The Soft Margin Classifier's job is specifically the first case: keep the hyperplane, but relax the "zero mistakes allowed" rule from Part 2.
+
+### The modified goal
+
+Instead of Part 2's strict rule ("find the hyperplane that separates every point perfectly, then maximize the margin"), the goal becomes:
+
+> Find the hyperplane that **maximizes the margin**, while keeping the **number and severity of misclassifications as low as possible** — but not necessarily zero.
+
+Critically, this formulation does **not** assume zero misclassifications the way the Maximal Margin Classifier did. Some points are allowed to fall on the wrong side, as long as the total amount of "damage" stays controlled.
+
 ---
 
 ## 2. Step 1: Allow some points to be on the wrong side
@@ -55,7 +83,54 @@ Only the points close to the hyperplane matter for building it — these are sti
 
 ## 3. Step 2: The slack variable (epsilon, ε)
 
-To formalize "how much a point violates the margin," SVM introduces a **slack variable**, written as epsilon (`ε`), for every training point.
+### Deriving it from Part 2's constraint
+
+Recall Part 2's strict constraint for the Maximal Margin Classifier, using the concise `W · Yi` notation:
+
+```
+li · (W · Yi)  ≥  M      for every point i
+```
+
+This says every point must be **at least** a margin's distance `M` away, on the correct side — no exceptions. To relax this, introduce a slack variable `εi` (one per point) and modify the constraint to:
+
+```
+li · (W · Yi)  ≥  M · (1 − εi)      for every point i
+```
+
+Since `εi` can range from `0` to `+∞`, this single formula reproduces every case from the table below automatically:
+
+- **`εi = 0`** → right-hand side is exactly `M` → identical to Part 2's original constraint (correctly classified, at least a margin's distance away).
+- **`0 < εi < 1`** → `(1 − εi)` is between `0` and `1`, so the required distance shrinks below `M` but stays positive → the point can be inside the margin while `li·(W·Yi)` is still positive (correct side).
+- **`εi = 1`** → right-hand side becomes `0` → the point sits exactly on the hyperplane.
+- **`εi > 1`** → right-hand side goes negative → `li·(W·Yi)` is allowed to be negative too, meaning the point can fall on the **wrong side** of the hyperplane entirely (misclassified).
+
+```python
+import numpy as np
+
+# Reuse the rescaled W and margin M from Part 2's worked example
+W = np.array([-3.18201573, 0.7068946, 0.7073189])
+M = 1.0607662006606353
+
+def implied_epsilon(xi, li):
+    Yi = np.array([1, xi[0], xi[1]])
+    value = li * np.dot(W, Yi)
+    # solve li*(W.Yi) = M*(1 - eps) for eps
+    return 1 - value / M
+
+points = [
+    (np.array([3, 3]), 1),      # a support vector — sits exactly at the margin
+    (np.array([2.5, 2.5]), 1),  # correctly classified but inside the margin
+    (np.array([1.5, 1.5]), 1),  # deep on the wrong side of the hyperplane
+]
+
+for xi, li in points:
+    eps = implied_epsilon(xi, li)
+    print(f"point={xi}  implied epsilon={eps:.4f}")
+```
+
+Running this gives `epsilon ≈ 0`, `≈ 0.67`, and `≈ 2.0` respectively — exactly matching the three regions described above.
+
+### The slack variable, summarized
 
 The slack variable tells you where a point sits relative to the margin and the hyperplane:
 
