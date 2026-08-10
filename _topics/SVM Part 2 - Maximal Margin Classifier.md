@@ -202,31 +202,77 @@ Mathematically, this optimization has two important constraints:
 
 This constraint exists because a hyperplane equation can be scaled by any constant and still represent the same line (e.g. `2x + 2y = 0` is the same line as `x + y = 0`). Standardizing removes this ambiguity so "distance" is measured consistently.
 
-**Constraint 2 — every point must be correctly classified and outside the margin.** Once the weights are standardized, this becomes an optimization: maximize the margin width, subject to every training point being on the correct side of its margin boundary.
+**Constraint 2 — every point must sit at least a margin's distance away, on its correct side.** Using the concise `W · Y` notation from Step 4, and labeling each class as `li = +1` or `li = -1`, this constraint is written as:
 
-You will almost never need to solve this optimization by hand — `scikit-learn` does it for you — but understanding the two constraints explains *why* this is a well-defined optimization problem, not just "eyeball the widest gap."
+```
+li · (W · Yi)  ≥  M      for every training point i
+```
+
+where:
+
+- `li` = the label of point `i` (`+1` or `-1`)
+- `W` = the rescaled, augmented weight vector `[W0', W1', ..., Wd']`
+- `Yi` = the augmented data point `[1, x1, x2, ..., xd]`
+- `M` = the margin width — the quantity we are trying to maximize
+
+### Why multiplying by the label works
+
+Think of the hyperplane as splitting space into a `+L` side and a `-L` side:
+
+```
+Figure A: red dots below the "-L" hyperplane        Figure B: blue dots above the "+L" hyperplane
+
+        ┄┄┄┄┄┄┄┄┄┄┄┄  +L                                ●  ●  ●   (li = +1)
+             ●●●        (blue, li = +1)               ┄┄┄┄┄┄┄┄┄┄┄┄  +L
+      ─────────────── hyperplane                    ─────────────── hyperplane
+             ■■■        (red,  li = -1)               ┄┄┄┄┄┄┄┄┄┄┄┄  -L
+        ┄┄┄┄┄┄┄┄┄┄┄┄  -L                                ■  ■  ■   (li = -1)
+```
+
+- For a **red point** (`li = -1`), the raw dot product `W · Yi` comes out **negative** (it's on the `-L` side). Multiplying by `li = -1` flips the sign, giving a **positive** result.
+- For a **blue point** (`li = +1`), the raw dot product `W · Yi` is already **positive**. Multiplying by `li = +1` leaves it positive.
+
+Either way, `li · (W · Yi)` is always **positive when the point is correctly classified**, and its size tells you *how far past the margin* the point sits. Requiring this value to be `≥ M` for every point is exactly the constraint "every point must be correctly classified and at least a margin's distance from the hyperplane."
+
+### Worked 2D example
 
 ```python
 from sklearn.svm import SVC
 import numpy as np
 
-# A simple, cleanly separable 2D dataset
+# A simple, cleanly separable 2D dataset, using +1/-1 labels to match the li notation
 X = np.array([
-    [3, 3], [4, 3], [4, 4],     # class 1 (upper right)
-    [1, 1], [1, 2], [2, 1],     # class 0 (lower left)
+    [3, 3], [4, 3], [4, 4],     # class li=+1 (upper right)
+    [1, 1], [1, 2], [2, 1],     # class li=-1 (lower left)
 ])
-y = [1, 1, 1, 0, 0, 0]
+y = np.array([1, 1, 1, -1, -1, -1])
 
 # A hard-margin SVM: extremely high C forces near-zero tolerance
 # for misclassification, which approximates a Maximal Margin Classifier
 model = SVC(kernel='linear', C=1e6)
 model.fit(X, y)
 
-print("Weights (W):", model.coef_)
-print("Bias (W0):", model.intercept_)
-print("Support vectors (the closest points that define the margin):")
-print(model.support_vectors_)
+W1, W2 = model.coef_[0]
+W0 = model.intercept_[0]
+norm = np.sqrt(W1**2 + W2**2)
+
+# Rescale so W1'^2 + W2'^2 = 1 (Step 4's trick)
+W = np.array([W0 / norm, W1 / norm, W2 / norm])
+M = 1 / norm   # the resulting margin width
+
+print("Rescaled W:", W)
+print("Margin M:", M)
+print()
+
+for xi, li in zip(X, y):
+    Yi = np.array([1, xi[0], xi[1]])
+    value = li * np.dot(W, Yi)
+    print(f"point={xi}  li={li:+d}  li*(W.Yi)={value:.4f}  {'← equals M (support vector)' if abs(value - M) < 1e-6 else ''}")
+
+print("\nsklearn's own support vectors:", model.support_vectors_)
 ```
+
+Running this shows every point satisfies `li·(W·Yi) ≥ M`, and the three points that hit **exactly** `M` are the support vectors from Step 6 — confirming that support vectors are precisely the points where this constraint is "tight" (an equality, not a strict inequality).
 
 ---
 
@@ -279,6 +325,7 @@ Real-world data is almost never perfectly separable — there are always some am
 3. If you remove a training point that is *not* a support vector and retrain the model, does the hyperplane change? Why or why not?
 4. What is the main weakness of the Maximal Margin Classifier on real-world data?
 5. After rescaling `W` so that `W1'² + ... + Wd'² = 1`, why does the distance formula simplify to `W · Y` instead of `|W·X + W0| / ||W||`?
+6. Why does multiplying by the label `li` (`+1` or `-1`) turn `W · Yi` into a value that is always positive for a correctly classified point?
 
 **Answers:**
 
@@ -287,6 +334,7 @@ Real-world data is almost never perfectly separable — there are always some am
 3. No — non-support-vector points do not affect the hyperplane at all. Only the closest points (support vectors) determine its position.
 4. It requires the data to be perfectly linearly separable and is extremely sensitive to outliers — a single noisy point can shrink the margin drastically or make separation impossible.
 5. Because after rescaling, `||W'|| = 1` by construction, so the denominator in the distance formula disappears. Folding `W0'` into `W` as its first entry and prepending a `1` to `X` (giving `Y`) lets the whole numerator be written as a single dot product `W · Y`.
+6. For a point on the `-L` side (`li = -1`), the raw dot product `W · Yi` is negative; multiplying by `-1` flips it positive. For a point on the `+L` side (`li = +1`), the dot product is already positive, and multiplying by `+1` leaves it unchanged. Either way, correct classification always produces a positive `li · (W · Yi)`, which is why the constraint `li · (W · Yi) ≥ M` can require this value to be at least the margin `M` for every point.
 
 ---
 
