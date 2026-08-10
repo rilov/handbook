@@ -53,12 +53,12 @@ Everything that follows is the exact same idea — compute a number, check wheth
 
 ## 2. Step 1: The hyperplane in 2D
 
-Suppose you want to classify emails as spam or not spam using two features:
+Suppose you want to classify emails as spam or not spam. Every email gets converted into numbers first — this is a very common approach (used, for example, in the classic UCI Spambase dataset), where each feature is a **word frequency**: the percentage of words in the email that match a specific keyword. So:
 
-- `x1` = word_freq_technology (how often the word "technology" appears)
-- `x2` = word_freq_money (how often the word "money" appears)
+- `x1` = word_freq_technology → e.g. if "technology" makes up 2% of the words in an email, `x1 = 2.0`
+- `x2` = word_freq_money → e.g. if "money" makes up 5% of the words in an email, `x2 = 5.0`
 
-A **hyperplane** in 2D is just a line that separates the two classes:
+The intuition is that legitimate technology-related emails tend to use words like "technology" a lot but rarely mention "money," while spam emails (offers, prizes, financial scams) tend to do the opposite — mention "money" heavily and "technology" rarely. So plotting every email as a point `(x1, x2)`, you'd expect spam and non-spam emails to cluster in different regions:
 
 ```
 x2 (word_freq_money)
@@ -71,19 +71,27 @@ x2 (word_freq_money)
   └──────────────────────── x1 (word_freq_technology)
 ```
 
-The standard equation of a line is:
+A **hyperplane** in 2D is just a line that separates the two classes. You've almost certainly seen the *slope-intercept* form of a line before:
+
+```
+y = m·x + c
+```
+
+This works fine for drawing lines, but it breaks down for a vertical line (where the slope `m` is undefined) and doesn't generalize cleanly to 3D or beyond. So instead, we use the more general **standard form** of a line, which has no such restriction:
 
 ```
 a·x + b·y + c = 0
 ```
 
-We generalize this using weights (`W`) instead of `a, b, c`:
+Any line — no matter its orientation — can be written this way. We now relabel the constants using weights (`W`) instead of `a, b, c`, and rename `x, y` to `x1, x2` (since we'll soon have far more than 2 features):
 
 ```
 W0 + W1·x1 + W2·x2 = 0
 ```
 
-Here, `x1` and `x2` are the features, and `W1`, `W2` are the coefficients the model learns. `W0` is a constant (the bias/intercept term).
+Here, `x1` and `x2` are the **features** — the actual data values for one email. `W1` and `W2` are the **weights** (coefficients) that the SVM algorithm learns from the training data — they determine the line's orientation (which direction it tilts). `W0` is a constant, called the **bias** or **intercept** term — it determines how far the line is shifted away from the origin.
+
+Put simply: **"training the SVM" means searching for the specific values of `W0`, `W1`, and `W2` that best separate the two classes.** Part 2 of this series explains exactly how those values are chosen; for now, assume they've already been found.
 
 ### How the line classifies a point
 
