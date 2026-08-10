@@ -247,6 +247,24 @@ Degree-2 transformed:
 
 <h2 id="4-step-3-the-kernel-trick--never-actually-transform-the-data">4. Step 3: The kernel trick — never actually transform the data</h2>
 
+<h3 id="pre-reading-the-inner-product-dot-product">Pre-reading: the inner product (dot product)</h3>
+
+<p>Before we get to the trick itself, recall what an <strong>inner product</strong> (also called a <strong>dot product</strong>) of two vectors is: multiply the vectors element-wise, then sum the results. It always returns a single <strong>scalar</strong> number.</p>
+
+<p>For example, if <code class="language-plaintext highlighter-rouge">A = [2, 3, 5]</code> and <code class="language-plaintext highlighter-rouge">B = [1, 0, 4]</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Aᵗ B = A · B = (2)(1) + (3)(0) + (5)(4) = 2 + 0 + 20 = 22
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">A</span> <span class="o">@</span> <span class="n">B</span><span class="p">)</span>  <span class="c1"># 22
+</span></code></pre></div></div>
+
+<p>In any dataset with <code class="language-plaintext highlighter-rouge">n</code> attributes, each row (observation) is a vector of length <code class="language-plaintext highlighter-rouge">n</code>. So the dot product of any two rows is a single scalar — this is exactly what the SVM’s learning algorithm uses over and over again.</p>
+
 <p>Here is the key mathematical fact that makes the kernel trick possible:</p>
 
 <blockquote>
@@ -264,6 +282,44 @@ Degree-2 transformed:
 </code></pre></div></div>
 
 <p>This means you get all the benefit of transforming into a huge, complex feature space, while paying only the computational cost of the <em>original</em>, much smaller feature space. This is why it’s called a “trick” — it bypasses the expensive step entirely.</p>
+
+<h3 id="naming-the-transformation-the-feature-vector-φ">Naming the transformation: the feature vector Φ</h3>
+
+<p>We give the transformation a name: <strong>Φ</strong> (phi). If your original attributes are, say, <code class="language-plaintext highlighter-rouge">age</code> and <code class="language-plaintext highlighter-rouge">salary</code>, you might construct a new feature vector:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Φ(X) = [ age², log(salary), age × log(salary), ... ]
+</code></pre></div></div>
+
+<p>As far as the SVM algorithm is concerned, <code class="language-plaintext highlighter-rouge">Φ(X)</code> <strong>is</strong> the data — it has no idea (and doesn’t care) that these features were derived from something else. All the SVM ever asks for is the dot product between two such feature vectors: <code class="language-plaintext highlighter-rouge">Φ(Xi) · Φ(Xj)</code>.</p>
+
+<h3 id="what-makes-a-function-a-valid-kernel">What makes a function a valid kernel</h3>
+
+<p>Suppose we define some scalar-valued function of two vectors, e.g. the popular <strong>RBF (Gaussian) kernel</strong>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>K(Xi, Xj) = exp( -γ · ‖Xi − Xj‖² )
+</code></pre></div></div>
+
+<p>This just takes the Euclidean distance between two points, squares it, scales it by <code class="language-plaintext highlighter-rouge">-γ</code>, and exponentiates — clearly cheap to compute directly from the <em>original</em> attributes.</p>
+
+<p><code class="language-plaintext highlighter-rouge">K</code> is a valid <strong>kernel function</strong> if we can show that there <em>exists</em> some feature transformation <code class="language-plaintext highlighter-rouge">Φ</code> such that, for every pair of vectors:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>K(Xi, Xj) = Φ(Xi) · Φ(Xj)
+</code></pre></div></div>
+
+<p>Critically, we don’t need to know the explicit form of <code class="language-plaintext highlighter-rouge">Φ</code> — only that it exists. For the RBF kernel above, the corresponding <code class="language-plaintext highlighter-rouge">Φ</code> turns out to map into an <strong>infinite-dimensional</strong> feature space, yet <code class="language-plaintext highlighter-rouge">K</code> itself takes only microseconds to evaluate.</p>
+
+<h3 id="why-this-makes-the-two-scenarios-identical">Why this makes the two scenarios identical</h3>
+
+<p>Compare two ways of running SVM:</p>
+
+<ol>
+  <li><strong>Explicit transformation:</strong> compute <code class="language-plaintext highlighter-rouge">Φ(X)</code> for every data point, then run SVM in that (possibly huge or infinite-dimensional) feature space.</li>
+  <li><strong>Kernel trick:</strong> whenever the SVM algorithm asks for <code class="language-plaintext highlighter-rouge">Φ(Xi) · Φ(Xj)</code>, secretly hand back <code class="language-plaintext highlighter-rouge">K(Xi, Xj)</code> instead — never computing <code class="language-plaintext highlighter-rouge">Φ</code> at all.</li>
+</ol>
+
+<p>Since <code class="language-plaintext highlighter-rouge">K(Xi, Xj) = Φ(Xi) · Φ(Xj)</code> by definition of a valid kernel, the SVM receives <em>exactly the same numbers</em> in both scenarios. The resulting decision boundary is therefore <strong>identical</strong> — the only difference is that scenario 2 is computationally feasible even when <code class="language-plaintext highlighter-rouge">Φ</code> would blow up to millions (or infinite) dimensions.</p>
+
+<p>Practically, this means the <code class="language-plaintext highlighter-rouge">kernel</code> argument you pass to <code class="language-plaintext highlighter-rouge">SVC(...)</code> doesn’t change the algorithm at all — it only changes which function is used to compute the dot product whenever the algorithm needs one.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
 <span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_circles</span>
@@ -374,11 +430,38 @@ Degree-2 transformed:
 
 <h2 id="7-step-6-choosing-a-kernel-in-practice">7. Step 6: Choosing a kernel in practice</h2>
 
-<p>There is no formula that tells you the “correct” kernel just by looking at raw data with many features. The practical approach:</p>
+<h3 id="thumb-rule-complexity-vs-overfitting">Thumb rule: complexity vs. overfitting</h3>
+
+<p>There is no formula that tells you the “correct” kernel just by looking at raw data with many features — kernel selection is largely <strong>trial and error</strong>. But one general rule always holds:</p>
+
+<blockquote>
+  <p>As the kernel becomes more complex, the model becomes more complex — and so does the danger of <strong>overfitting</strong>.</p>
+</blockquote>
+
+<ul>
+  <li>A kernel that is <strong>too simple</strong> (e.g. linear, on data with real curvature) will <strong>underfit</strong> — it isn’t flexible enough to capture the true pattern.</li>
+  <li>A kernel that is <strong>too complex</strong> (e.g. high-degree polynomial, or RBF with very high <code class="language-plaintext highlighter-rouge">gamma</code>) can fit the training data almost perfectly, but <strong>overfits</strong> and generalizes poorly.</li>
+</ul>
+
+<p>This is the exact same bias-variance tradeoff from <a href="/handbook/topics/bias-and-variance">Bias and Variance</a> — the kernel is just one more tool (alongside <code class="language-plaintext highlighter-rouge">C</code> and <code class="language-plaintext highlighter-rouge">gamma</code>) that lets you exploit non-linearity in your data while still technically running a <em>linear</em> method underneath.</p>
+
+<h3 id="thumb-rule-judge-the-boundary-visually">Thumb rule: judge the boundary visually</h3>
+
+<p>When you have just a couple of attributes, plot the two classes on a scatter plot and visually judge how clean the separation looks:</p>
+
+<ul>
+  <li><strong>Reds and Blues clearly bunched apart</strong>, maybe with a few outliers (which is fine — chasing every outlier just leads to overfitting) → a <strong>linear kernel</strong> will do. This is exactly what happens with email spam detection.</li>
+  <li><strong>Reds and Blues intermingled, but you could still draw a curved or wavy line (or a circle)</strong> that separates them reasonably well → try a <strong>polynomial kernel</strong> first.</li>
+  <li><strong>Completely intermingled with no hope of drawing any clean boundary curve</strong> → fall back to the <strong>RBF kernel</strong>, the most flexible and common default when nothing simpler works.</li>
+</ul>
+
+<p>So the order of preference is always: <strong>linear → polynomial → RBF</strong>, moving to the next only when the previous, simpler option visibly can’t separate the classes.</p>
+
+<p>The practical approach:</p>
 
 <ol>
-  <li>Start with <code class="language-plaintext highlighter-rouge">kernel='rbf'</code> — it works well as a general-purpose default.</li>
-  <li>If your data is very high-dimensional and sparse (e.g. text with TF-IDF features), try <code class="language-plaintext highlighter-rouge">kernel='linear'</code> first — it is much faster and often just as accurate.</li>
+  <li>If you can visually inspect the data (or it’s very high-dimensional and sparse, e.g. text with TF-IDF features), follow linear → polynomial → RBF as above.</li>
+  <li>Otherwise, <code class="language-plaintext highlighter-rouge">kernel='rbf'</code> is a reasonable general-purpose default to start experimenting with.</li>
   <li>Use cross-validation to compare kernels and tune <code class="language-plaintext highlighter-rouge">C</code> and <code class="language-plaintext highlighter-rouge">gamma</code> together, since they interact.</li>
 </ol>
 
@@ -400,7 +483,102 @@ Degree-2 transformed:
 
 <hr />
 
-<h2 id="8-practice-questions">8. Practice questions</h2>
+<h2 id="8-applied-lab--tuning-an-rbf-spam-classifier-and-comparing-it-to-linear">8. Applied lab — tuning an RBF spam classifier and comparing it to linear</h2>
+
+<p>Let’s continue the email spam classifier and apply everything from this part: build a nonlinear RBF model, tune its two hyperparameters (<code class="language-plaintext highlighter-rouge">C</code> and <code class="language-plaintext highlighter-rouge">gamma</code>) with cross-validation, and compare the result against a tuned linear SVM.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_classification</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span><span class="p">,</span> <span class="n">GridSearchCV</span><span class="p">,</span> <span class="n">KFold</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">confusion_matrix</span><span class="p">,</span> <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">precision_score</span><span class="p">,</span> <span class="n">recall_score</span>
+
+<span class="c1"># Simulated spam dataset: 57 word-frequency-style attributes (like the classic spam email dataset)
+</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_classification</span><span class="p">(</span>
+    <span class="n">n_samples</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">n_features</span><span class="o">=</span><span class="mi">57</span><span class="p">,</span> <span class="n">n_informative</span><span class="o">=</span><span class="mi">57</span><span class="p">,</span> <span class="n">n_redundant</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">n_clusters_per_class</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">flip_y</span><span class="o">=</span><span class="mf">0.18</span><span class="p">,</span> <span class="n">class_sep</span><span class="o">=</span><span class="mf">1.8</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">7</span>
+<span class="p">)</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+<span class="p">)</span>
+
+<span class="c1"># Standardization is mandatory for the RBF kernel — it relies on Euclidean
+# distance ‖Xi - Xj‖, so every feature must contribute on the same scale.
+</span><span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_train_s</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">X_test_s</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="step-1-a-first-untuned-rbf-model">Step 1: A first, untuned RBF model</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">rbf</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">rbf</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">pred_rbf</span> <span class="o">=</span> <span class="n">rbf</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_s</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="nf">confusion_matrix</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_rbf</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_rbf</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">precision:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_rbf</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">recall:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_rbf</span><span class="p">))</span>
+</code></pre></div></div>
+
+<h3 id="step-2-tune-c-and-gamma-together-with-gridsearchcv">Step 2: Tune C and gamma together with GridSearchCV</h3>
+
+<p>The RBF kernel has <strong>three</strong> hyperparameters to choose from in practice: the kernel itself, <code class="language-plaintext highlighter-rouge">C</code>, and <code class="language-plaintext highlighter-rouge">gamma</code>. Since <code class="language-plaintext highlighter-rouge">C</code> and <code class="language-plaintext highlighter-rouge">gamma</code> interact, they must be searched together, not one at a time.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">kf</span> <span class="o">=</span> <span class="nc">KFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">C</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1000</span><span class="p">],</span> <span class="sh">'</span><span class="s">gamma</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.0001</span><span class="p">]}</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">rbf</span><span class="sh">'</span><span class="p">),</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">kf</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">'</span><span class="s">accuracy</span><span class="sh">'</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">grid</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best params:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+
+<span class="n">results_df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">(</span><span class="n">grid</span><span class="p">.</span><span class="n">cv_results_</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.0001</span><span class="p">]:</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">results_df</span><span class="p">[</span><span class="n">results_df</span><span class="p">[</span><span class="sh">'</span><span class="s">param_gamma</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">g</span><span class="p">][[</span><span class="sh">'</span><span class="s">param_C</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">mean_test_score</span><span class="sh">'</span><span class="p">]]</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">gamma=</span><span class="si">{</span><span class="n">g</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">sub</span><span class="p">.</span><span class="nf">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="bp">False</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Reading the effect of <code class="language-plaintext highlighter-rouge">C</code> at each fixed <code class="language-plaintext highlighter-rouge">gamma</code> value tells the same overfitting story as the last section, just concretely:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">gamma=0.01</code> (high gamma):</strong> accuracy peaks earliest, at <code class="language-plaintext highlighter-rouge">C=1</code> (<strong>0.920</strong>), then drops sharply as <code class="language-plaintext highlighter-rouge">C</code> grows (<strong>0.880</strong> at <code class="language-plaintext highlighter-rouge">C=10</code> and beyond) — the model overfits quickly once it’s allowed to fit tightly <em>and</em> the kernel is already highly localized.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">gamma=0.001</code> (middle gamma):</strong> accuracy peaks later, at <code class="language-plaintext highlighter-rouge">C=10</code> (<strong>0.920</strong>), and stays high over a broader range of <code class="language-plaintext highlighter-rouge">C</code> before declining — a more robust setting.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">gamma=0.0001</code> (low gamma):</strong> the model <strong>underfits</strong> badly at <code class="language-plaintext highlighter-rouge">C=1</code> (<strong>0.466</strong>, near random guessing) because the kernel is too smooth to do anything useful, but accuracy climbs steadily as <code class="language-plaintext highlighter-rouge">C</code> increases, eventually matching the other settings (<strong>0.920</strong> at <code class="language-plaintext highlighter-rouge">C=100</code>).</li>
+</ul>
+
+<p>This is the practical version of the bias-variance curve from earlier: too much flexibility (<code class="language-plaintext highlighter-rouge">high gamma</code> + <code class="language-plaintext highlighter-rouge">high C</code>) overfits, too little (<code class="language-plaintext highlighter-rouge">low gamma</code> + <code class="language-plaintext highlighter-rouge">low C</code>) underfits, and the best operating point sits in between.</p>
+
+<h3 id="step-3-evaluate-the-best-rbf-model-and-compare-to-a-tuned-linear-svm">Step 3: Evaluate the best RBF model, and compare to a tuned linear SVM</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">best_rbf</span> <span class="o">=</span> <span class="n">grid</span><span class="p">.</span><span class="n">best_estimator_</span>
+<span class="n">pred_best</span> <span class="o">=</span> <span class="n">best_rbf</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_s</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Tuned RBF — accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_best</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Tuned RBF — precision:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_best</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Tuned RBF — recall:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_best</span><span class="p">))</span>
+
+<span class="n">param_grid_lin</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">C</span><span class="sh">'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">]}</span>
+<span class="n">grid_lin</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">),</span> <span class="n">param_grid_lin</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">kf</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="sh">'</span><span class="s">accuracy</span><span class="sh">'</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">grid_lin</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="n">best_lin</span> <span class="o">=</span> <span class="n">grid_lin</span><span class="p">.</span><span class="n">best_estimator_</span>
+<span class="n">pred_best_lin</span> <span class="o">=</span> <span class="n">best_lin</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_s</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Tuned linear — accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_best_lin</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Tuned linear — precision:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_best_lin</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Tuned linear — recall:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred_best_lin</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Running this: the tuned RBF model (<code class="language-plaintext highlighter-rouge">C=1, gamma=0.01</code>) achieves <strong>91.7% test accuracy</strong>, while the tuned linear model (<code class="language-plaintext highlighter-rouge">C=0.01</code>) reaches the <strong>exact same 91.7% test accuracy</strong> — with identical precision and recall too. The linear model got there with a single hyperparameter to tune, instead of two that interact with each other.</p>
+
+<p><strong>The takeaway:</strong> in high-dimensional feature spaces (57 attributes here), a simple linear boundary can be just as good as — or even better than — a carefully tuned nonlinear RBF boundary, while being far cheaper and simpler to tune. Always compare a tuned linear SVM against a tuned nonlinear one; don’t assume “nonlinear = better.”</p>
+
+<hr />
+
+<h2 id="9-practice-questions">9. Practice questions</h2>
 
 <ol>
   <li>What is the key mathematical fact that makes the kernel trick computationally efficient?</li>
@@ -420,7 +598,7 @@ Degree-2 transformed:
 
 <hr />
 
-<h2 id="9-summary--the-full-svm-series">9. Summary — the full SVM series</h2>
+<h2 id="10-summary--the-full-svm-series">10. Summary — the full SVM series</h2>
 
 <ul>
   <li><strong>Part 1:</strong> SVM is a linear model that separates classes with a hyperplane: <code class="language-plaintext highlighter-rouge">∑(Wi·Xi) + W0 = 0</code>.</li>

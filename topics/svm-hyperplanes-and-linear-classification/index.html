@@ -65,6 +65,24 @@
 
 <hr />
 
+<h2 id="15-the-simplest-possible-version-one-feature">1.5 The simplest possible version: one feature</h2>
+
+<p>Before jumping into lines and planes, consider the simplest case: <strong>one single feature</strong>, like an exam score. Suppose “pass” is <code class="language-plaintext highlighter-rouge">score ≥ 50</code>. You can write this as a rule:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score - 50 ≥ 0   →  pass
+score - 50 &lt; 0   →  fail
+</code></pre></div></div>
+
+<p>This is already a “hyperplane” — just in 1D, it’s a single <strong>point</strong> (<code class="language-plaintext highlighter-rouge">score = 50</code>) that splits the number line into two sides:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fail  ────────────●──────────── pass
+  0      20   40  50   60   80  100
+</code></pre></div></div>
+
+<p>Everything that follows is the exact same idea — compute a number, check whether it’s positive or negative — just done using more than one feature at a time. A hyperplane is simply “a splitting point” generalized to more dimensions: a splitting <strong>line</strong> in 2D, a splitting <strong>plane</strong> in 3D, and a splitting <strong>equation</strong> beyond that.</p>
+
+<hr />
+
 <h2 id="2-step-1-the-hyperplane-in-2d">2. Step 1: The hyperplane in 2D</h2>
 
 <p>Suppose you want to classify emails as spam or not spam using two features:</p>
@@ -126,6 +144,106 @@
 </span><span class="nf">print</span><span class="p">(</span><span class="nf">classify_2d</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>   <span class="c1"># 2 - 5 + 0 = -3                       → not spam
 </span></code></pre></div></div>
 
+<h3 id="a-fully-worked-example-with-real-sample-data">A fully worked example with real sample data</h3>
+
+<p>Let’s make this concrete with an actual small dataset of 6 emails, using <code class="language-plaintext highlighter-rouge">word_freq_technology</code> (<code class="language-plaintext highlighter-rouge">x1</code>) and <code class="language-plaintext highlighter-rouge">word_freq_money</code> (<code class="language-plaintext highlighter-rouge">x2</code>):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Email</th>
+      <th>x1 (technology)</th>
+      <th>x2 (money)</th>
+      <th>Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>5</td>
+      <td>1</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>6</td>
+      <td>2</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>7</td>
+      <td>1</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>1</td>
+      <td>5</td>
+      <td>not spam</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>2</td>
+      <td>6</td>
+      <td>not spam</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>1</td>
+      <td>7</td>
+      <td>not spam</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Notice: spam emails have <strong>high</strong> <code class="language-plaintext highlighter-rouge">x1</code> and <strong>low</strong> <code class="language-plaintext highlighter-rouge">x2</code>, while non-spam emails have the opposite. Plotted, the two classes fall cleanly on either side of a diagonal line running from the top-left to the bottom-right:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x2 (money)
+ 7 │                     ■ (email 6)
+ 6 │                  ■ (email 5)
+ 5 │               ■ (email 4)
+ 4 │            ╲
+ 3 │              ╲   ← the hyperplane sits somewhere in this gap
+ 2 │       ●          ╲ (email 2)
+ 1 │  ● (email 1)   ● (email 3)
+ 0 └──────────────────────────── x1 (technology)
+     0  1  2  3  4  5  6  7
+</code></pre></div></div>
+
+<p>Fitting an SVM to this data (we’ll properly explain <em>how</em> the best line is chosen in Part 2 — for now, just look at what comes out) gives the following hyperplane:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.25·x1 − 0.25·x2 = 0
+</code></pre></div></div>
+
+<p>i.e. <code class="language-plaintext highlighter-rouge">W1 = 0.25</code>, <code class="language-plaintext highlighter-rouge">W2 = -0.25</code>, <code class="language-plaintext highlighter-rouge">W0 = 0</code>. Let’s verify this classifies every training point correctly, and then use it on a brand-new email:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>   <span class="c1"># spam
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>   <span class="c1"># not spam
+</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">W</span><span class="p">,</span> <span class="n">W0</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">W:</span><span class="sh">"</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="sh">"</span><span class="s">W0:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">round</span><span class="p">(</span><span class="n">W0</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>   <span class="c1"># W: [0.25 -0.25]  W0: ~0.0
+</span>
+<span class="k">for</span> <span class="n">point</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span> <span class="o">+</span> <span class="n">W0</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="sh">"</span><span class="s">label:</span><span class="sh">"</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="sh">"</span><span class="s">→ value:</span><span class="sh">"</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="sh">"</span><span class="s">→ predicted:</span><span class="sh">"</span><span class="p">,</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># A brand-new, never-seen email: technology=4, money=2
+</span><span class="n">new_email</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">new_email</span><span class="p">)</span> <span class="o">+</span> <span class="n">W0</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">New email value:</span><span class="sh">"</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="sh">"</span><span class="s">→</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">spam</span><span class="sh">"</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sh">"</span><span class="s">not spam</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Running this: every training point’s computed value matches its true label exactly (all six values come out <code class="language-plaintext highlighter-rouge">+1.0, +1.0, +1.5, -1.0, -1.0, -1.5</code>, matching <code class="language-plaintext highlighter-rouge">+1, +1, +1, -1, -1, -1</code>). The new email <code class="language-plaintext highlighter-rouge">[4, 2]</code> gives <code class="language-plaintext highlighter-rouge">0.25(4) - 0.25(2) = 0.5</code>, a <strong>positive</strong> value — so the model classifies it as <strong>spam</strong>, even though it never saw this exact point during training. This is the entire point of learning a hyperplane: it generalizes the boundary to any new point in the feature space, not just the training examples.</p>
+
 <hr />
 
 <h2 id="3-step-2-the-hyperplane-in-3d">3. Step 2: The hyperplane in 3D</h2>
@@ -184,6 +302,37 @@
 
 <p>The rule never changes: <strong>compute the dot product of weights and features, add the bias, check the sign.</strong></p>
 
+<h3 id="a-real-5-feature-example-end-to-end">A real 5-feature example, end to end</h3>
+
+<p>To prove this isn’t just theory, let’s generate a real dataset with 5 features, fit an SVM, and manually check the learned hyperplane’s accuracy ourselves — with no visualization possible, since we can’t draw a 5D picture:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">make_classification</span>
+
+<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">make_classification</span><span class="p">(</span>
+    <span class="n">n_samples</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">n_features</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">n_informative</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">n_redundant</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_clusters_per_class</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="n">y</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>   <span class="c1"># relabel classes as -1 / +1
+</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">'</span><span class="s">linear</span><span class="sh">'</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">W</span><span class="p">,</span> <span class="n">W0</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">model</span><span class="p">.</span><span class="n">intercept_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Learned W:</span><span class="sh">"</span><span class="p">,</span> <span class="n">np</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Learned W0:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">round</span><span class="p">(</span><span class="n">W0</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+
+<span class="n">correct</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">point</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span> <span class="o">+</span> <span class="n">W0</span>     <span class="c1"># exact same rule as before, just with 5 features
+</span>    <span class="n">predicted</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">correct</span> <span class="o">+=</span> <span class="p">(</span><span class="n">predicted</span> <span class="o">==</span> <span class="n">label</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Accuracy using the manual dot-product rule: </span><span class="si">{</span><span class="n">correct</span> <span class="o">/</span> <span class="nf">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>This prints a learned weight vector like <code class="language-plaintext highlighter-rouge">[3.871, -2.053, 0.022, -3.099, -3.886]</code> and a bias <code class="language-plaintext highlighter-rouge">W0 ≈ 0.896</code>, and manually applying <code class="language-plaintext highlighter-rouge">∑(Wi·Xi) + W0</code> with these numbers gets <strong>98% accuracy</strong> on this dataset — using nothing but the same dot-product-and-check-the-sign rule from the 2D case. The dimensionality changed from 2 to 5, but the underlying math is identical.</p>
+
 <hr />
 
 <h2 id="5-step-4-why-linear-matters">5. Step 4: Why “linear” matters</h2>
@@ -223,6 +372,7 @@
   <li>A point plugged into a hyperplane equation gives a result of exactly 0. What does that mean?</li>
   <li>Why is SVM called a “linear model” even though it can eventually create curved decision boundaries (as you’ll see in Part 4)?</li>
   <li>If you have 50 features in your dataset, how many weights (<code class="language-plaintext highlighter-rouge">Wi</code>) will your hyperplane equation need (not counting <code class="language-plaintext highlighter-rouge">W0</code>)?</li>
+  <li>Using the worked 2D example (<code class="language-plaintext highlighter-rouge">W1=0.25, W2=-0.25, W0=0</code>), what value does the point <code class="language-plaintext highlighter-rouge">(3, 3)</code> produce, and what does that tell you?</li>
 </ol>
 
 <p><strong>Answers:</strong></p>
@@ -232,6 +382,7 @@
   <li>The point lies exactly on the hyperplane — it is on the boundary between the two classes.</li>
   <li>Because the core boundary equation is always a linear (weighted sum) function. Curved boundaries come from transforming the <em>features</em> first (via kernels), not from changing the linear nature of the boundary equation itself.</li>
   <li>50 — one weight per feature, plus the separate <code class="language-plaintext highlighter-rouge">W0</code> bias term.</li>
+  <li><code class="language-plaintext highlighter-rouge">0.25(3) - 0.25(3) = 0</code> — the point falls exactly on the hyperplane, meaning it’s ambiguous/undecided between spam and not spam.</li>
 </ol>
 
 <hr />
