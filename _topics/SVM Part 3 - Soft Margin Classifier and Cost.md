@@ -198,6 +198,48 @@ This is the **exact same bias-variance tradeoff** from the [Bias and Variance]({
 - **Large C** → the model tries very hard to classify every training point correctly, allowing only a small total slack. This produces a narrow margin and a model that can overfit — low bias, high variance.
 - **Small C** → the model tolerates a larger total slack, allowing more points to violate the margin. This produces a wide margin and a model that can underfit — high bias, low variance.
 
+### A worked example: one outlier ruining the whole model
+
+Here's a concrete illustration of why forcing zero errors can backfire. Imagine two clearly separated clusters, but **one single point is mislabeled** — it belongs to class `-1` by every reasonable judgment (it sits right at the edge of the `-1` cluster), but was recorded in the data as `+1`.
+
+```
+    ●  ●  ●
+     ●  ●  ●
+                      ← if C is large, the boundary bends all
+                         the way down here just to get the
+                         outlier "correct"
+    ■  ■  +(outlier)
+  ■  ■  ■
+```
+
+If `C` is very large, the model refuses to accept *any* misclassification — including the outlier — so it contorts the boundary to wrap around and correctly classify that single point. This comes at a cost: the boundary is now in the wrong place for every *future* point that lands near where the outlier was.
+
+```python
+import numpy as np
+from sklearn.svm import SVC
+
+X = np.array([
+    [5, 5], [6, 5], [6, 6], [7, 5], [5, 6], [6, 7],   # class +1 cluster
+    [1, 1], [1, 2], [2, 1], [0, 0], [2, 2], [0, 1],   # class -1 cluster
+    [2.3, 2.3],                                        # mislabeled outlier, recorded as +1
+])
+y = np.array([1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1])
+
+# A brand-new point that should obviously be classified as -1
+future_point = np.array([[2.5, 2.5]])
+
+for C in [1e6, 0.01]:
+    model = SVC(kernel='linear', C=C)
+    model.fit(X, y)
+    train_acc = model.score(X, y)
+    prediction = model.predict(future_point)
+    print(f"C={C}: train accuracy={train_acc:.2f}, predicts new point as {prediction[0]} (true label is -1)")
+```
+
+Running this: with `C=1e6`, the model achieves **100% training accuracy** — it successfully "explains" the outlier — but then **misclassifies** the brand-new point that lands nearby. With `C=0.01`, training accuracy is *lower* (it accepts the outlier as a mistake), but the new point is classified **correctly**.
+
+This is the central lesson of the cost parameter: **a model with zero training errors is not necessarily the best model.** Tolerating a known mistake on the training set, in exchange for a more sensible overall boundary, usually generalizes far better to unseen data.
+
 ---
 
 ## 5. Step 4: Seeing C in action
@@ -278,6 +320,7 @@ No amount of slack tolerance will make a straight line separate a ring shape fro
 2. What does `ε > 1` mean?
 3. If you increase `C`, does the margin get wider or narrower? Does the model become more or less prone to overfitting?
 4. You train an SVM and see train accuracy = 99%, test accuracy = 70%. Should you increase or decrease `C`?
+5. In the single-outlier example, why does achieving 100% training accuracy actually make the model *worse*?
 
 **Answers:**
 
@@ -285,6 +328,7 @@ No amount of slack tolerance will make a straight line separate a ring shape fro
 2. The point is on the wrong side of the hyperplane entirely — it is misclassified.
 3. Increasing `C` makes the margin narrower (less slack allowed) and makes the model more prone to overfitting (low bias, high variance).
 4. Decrease `C`. The large gap between train and test accuracy signals overfitting (high variance), and a smaller `C` allows more slack, widening the margin and improving generalization.
+5. Getting the mislabeled outlier "correct" forces the hyperplane to bend away from where it should sensibly sit for the bulk of the data. This distorted boundary then misclassifies new, legitimate points that happen to land near where the outlier was — trading one training-set win for many real-world losses.
 
 ---
 
