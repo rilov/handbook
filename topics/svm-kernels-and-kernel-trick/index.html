@@ -171,7 +171,52 @@ Y' = (Y - b)²
 
 <h2 id="3-step-2-feature-transformation-gets-expensive-fast">3. Step 2: Feature transformation gets expensive fast</h2>
 
-<p>The transformation above used two attributes. But as the number of original attributes grows, the number of transformed features can explode.</p>
+<h3 id="you-usually-dont-know-the-exact-functional-form">You usually don’t know the exact functional form</h3>
+
+<p>The circle/ellipse example in Step 1 was convenient because we <em>guessed</em> the exact shape of the boundary in advance, and that guess happened to be correct. In practice, you rarely know the precise functional form of the separator — you can often tell from the data that it’s <em>not</em> linear, and that it’s probably not wildly complicated (not some jagged, arbitrary shape), but you usually can’t be sure whether it’s exactly a circle, an ellipse, or some other quadratic curve.</p>
+
+<p>To handle this uncertainty, write out the <strong>most general quadratic equation</strong> possible, rather than assuming the specific <code class="language-plaintext highlighter-rouge">X²/a + Y²/b = C</code> form:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A·X² + B·Y² + C·XY + D·X + E·Y + F = 0
+</code></pre></div></div>
+
+<p>This general form includes every possible quadratic curve — circles, ellipses, parabolas, hyperbolas, and skewed/rotated versions of all of them — because it keeps the cross-term <code class="language-plaintext highlighter-rouge">XY</code> and the linear terms <code class="language-plaintext highlighter-rouge">X</code>, <code class="language-plaintext highlighter-rouge">Y</code>, which the earlier circle-specific example conveniently assumed were zero.</p>
+
+<h3 id="mapping-2-attributes-to-6-features">Mapping 2 attributes to 6 features</h3>
+
+<p>To make this general quadratic become a linear equation, you now need <strong>six</strong> transformed features instead of two — one for every term in the equation above:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X², Y², XY, X, Y, 1     (6 features, extracted from the original 2)
+</code></pre></div></div>
+
+<p>Every point <code class="language-plaintext highlighter-rouge">(X, Y)</code> gets mapped to a point in this 6-dimensional feature space. The general quadratic equation above is now exactly a <strong>linear equation</strong> in these 6 coordinates — confirmed below with a skewed quadratic curve that a simple <code class="language-plaintext highlighter-rouge">X²/a + Y²/b = C</code> guess would have missed entirely:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># A general (skewed) quadratic: A*x^2 + B*y^2 + C*x*y + D*x + E*y + F = 0
+</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">F</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span>
+
+<span class="k">def</span> <span class="nf">on_curve</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nf">abs</span><span class="p">(</span><span class="n">A</span><span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">B</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">C</span><span class="o">*</span><span class="n">x</span><span class="o">*</span><span class="n">y</span> <span class="o">+</span> <span class="n">D</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="n">E</span><span class="o">*</span><span class="n">y</span> <span class="o">+</span> <span class="n">F</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-9</span>
+
+<span class="k">def</span> <span class="nf">on_hyperplane_6d</span><span class="p">(</span><span class="n">x_sq</span><span class="p">,</span> <span class="n">y_sq</span><span class="p">,</span> <span class="n">xy</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nf">abs</span><span class="p">(</span><span class="n">A</span><span class="o">*</span><span class="n">x_sq</span> <span class="o">+</span> <span class="n">B</span><span class="o">*</span><span class="n">y_sq</span> <span class="o">+</span> <span class="n">C</span><span class="o">*</span><span class="n">xy</span> <span class="o">+</span> <span class="n">D</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="n">E</span><span class="o">*</span><span class="n">y</span> <span class="o">+</span> <span class="n">F</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-9</span>
+
+<span class="c1"># Find a few points that lie exactly on this curve, then check the 6D features
+</span><span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">np</span><span class="p">.</span><span class="nf">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">1.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+    <span class="n">b_</span><span class="p">,</span> <span class="n">c_</span> <span class="o">=</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="n">E</span>
+    <span class="n">disc</span> <span class="o">=</span> <span class="n">c_</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">4</span><span class="o">*</span><span class="n">b_</span><span class="o">*</span><span class="p">(</span><span class="n">A</span><span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">D</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="n">F</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">c_</span> <span class="o">+</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">disc</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">b_</span><span class="p">)</span>
+    <span class="n">x_sq</span><span class="p">,</span> <span class="n">y_sq</span><span class="p">,</span> <span class="n">xy</span> <span class="o">=</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">(x,y)=(</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">,</span><span class="si">{</span><span class="n">y</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">)  on_curve=</span><span class="si">{</span><span class="nf">on_curve</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s">  -&gt;  </span><span class="sh">"</span>
+          <span class="sa">f</span><span class="sh">"</span><span class="s">6D features satisfy linear eq: </span><span class="si">{</span><span class="nf">on_hyperplane_6d</span><span class="p">(</span><span class="n">x_sq</span><span class="p">,</span> <span class="n">y_sq</span><span class="p">,</span> <span class="n">xy</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Once you’re in this 6D feature space, run any linear method (SVM, logistic regression) on the transformed points, get back a linear separator, then substitute <code class="language-plaintext highlighter-rouge">X²</code>, <code class="language-plaintext highlighter-rouge">Y²</code>, <code class="language-plaintext highlighter-rouge">XY</code> back in to recover the actual quadratic curve in the original 2D attribute space — exactly the same “transform, solve linearly, map back” workflow from Step 1, just with more features.</p>
+
+<h3 id="the-blowup-problem">The blowup problem</h3>
+
+<p>This already reveals the core issue: transforming just <strong>2</strong> attributes into a general quadratic feature space required <strong>6</strong> dimensions — a 3x blowup. And it gets much worse as the number of original attributes grows.</p>
 
 <p>For example, with 4 original attributes and a degree-2 polynomial transformation, you end up with 15 new features (all pairwise products, squares, and originals):</p>
 
