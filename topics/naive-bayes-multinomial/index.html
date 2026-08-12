@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Naive Bayes Part 5: Multinomial Naive Bayes</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Naive Bayes Part 5: Multinomial Naive Bayes</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="naive-bayes-part-5-multinomial-naive-bayes">Naive Bayes Part 5: Multinomial Naive Bayes</h1>
+
+<blockquote>
+  <p>Part 5 of the Naive Bayes series. Multinomial Naive Bayes is the standard variant for count data — most famously, word counts in text classification.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-the-three-variants-of-naive-bayes">1. The three variants of Naive Bayes</h2>
+
+<p>The Naive Bayes family has different variants based on the <strong>type of features</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variant</th>
+      <th>Feature type</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Multinomial NB</strong></td>
+      <td>Counts / frequencies</td>
+      <td>Number of times a word appears in a document</td>
+    </tr>
+    <tr>
+      <td><strong>Bernoulli NB</strong></td>
+      <td>Binary (present/absent)</td>
+      <td>Whether a word appears at all; symptom yes/no</td>
+    </tr>
+    <tr>
+      <td><strong>Gaussian NB</strong></td>
+      <td>Continuous values</td>
+      <td>Height, weight, temperature</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>This topic covers Multinomial NB. Bernoulli NB is covered in <a href="/handbook/topics/naive-bayes-bernoulli">Part 6</a>, and Gaussian NB was covered in <a href="/handbook/topics/naive-bayes-gaussian-from-scratch">Part 4</a>.</p>
+
+<hr />
+
+<h2 id="2-the-multinomial-likelihood">2. The multinomial likelihood</h2>
+
+<p>Multinomial NB models word counts using the probability mass function of the multinomial distribution. For a document with word counts <code class="language-plaintext highlighter-rouge">x1, x2, ..., xn</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                    N!
+P(X | C) = ──────────────────── × ∏ P(wi | C)^xi
+           x1! × x2! × ... × xn!   i
+</code></pre></div></div>
+
+<p>where:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">N</code> is the total number of words in the document</li>
+  <li><code class="language-plaintext highlighter-rouge">xi</code> is the count of word <code class="language-plaintext highlighter-rouge">i</code></li>
+  <li><code class="language-plaintext highlighter-rouge">P(wi | C)</code> is the probability of word <code class="language-plaintext highlighter-rouge">i</code> appearing in class <code class="language-plaintext highlighter-rouge">C</code></li>
+</ul>
+
+<p>For <strong>classification</strong>, the factorial term is a constant that does not depend on the class, so we drop it:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(X | C) ∝ ∏ P(wi | C)^xi
+</code></pre></div></div>
+
+<p>The posterior becomes:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(C | X) ∝ P(C) × ∏ P(wi | C)^xi
+</code></pre></div></div>
+
+<p>Each word’s class probability is raised to the power of how many times the word appears.</p>
+
+<hr />
+
+<h2 id="3-laplace-smoothing">3. Laplace smoothing</h2>
+
+<p>Word probabilities are estimated from training counts:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                 count of word w in class C + 1
+P(w | C) = ───────────────────────────────────────
+           total words in class C + vocabulary size
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">+1</code> in the numerator and <code class="language-plaintext highlighter-rouge">+ V</code> in the denominator is <strong>Laplace smoothing</strong>. Without it, a word that never appeared in a class’s training data would have probability exactly 0 — and since the score is a product, one zero would wipe out all the other evidence and pull the entire score to zero. Smoothing guarantees every word has a small non-zero probability.</p>
+
+<hr />
+
+<h2 id="4-fully-worked-example-spam-detection">4. Fully worked example: spam detection</h2>
+
+<h3 id="training-data">Training data</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Message</th>
+      <th>Text</th>
+      <th>Class</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>M1</td>
+      <td>“buy limited items”</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>M2</td>
+      <td>“special offer sale”</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>M3</td>
+      <td>“let us meet tomorrow”</td>
+      <td>not spam</td>
+    </tr>
+    <tr>
+      <td>M4</td>
+      <td>“see you”</td>
+      <td>not spam</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>New incoming email:</strong> “buy items buy items” — spam or not spam?</p>
+
+<h3 id="step-1--vocabulary">Step 1 — Vocabulary</h3>
+
+<p>All unique words across training data: buy, limited, items, special, offer, sale, let, us, meet, tomorrow, see, you.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Vocabulary size V = 12
+</code></pre></div></div>
+
+<p>Total words in spam messages = 6 (buy, limited, items, special, offer, sale).
+Total words in not-spam messages = 6 (let, us, meet, tomorrow, see, you).</p>
+
+<h3 id="step-2--priors">Step 2 — Priors</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(spam)     = 2/4 = 0.5
+P(not spam) = 2/4 = 0.5
+</code></pre></div></div>
+
+<h3 id="step-3--word-probabilities-with-laplace-smoothing">Step 3 — Word probabilities with Laplace smoothing</h3>
+
+<p>For spam (word count + 1, divided by total words in class + V):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P("buy"   | spam) = (1 + 1) / (6 + 12) = 2/18
+P("items" | spam) = (1 + 1) / (6 + 12) = 2/18
+</code></pre></div></div>
+
+<p>For not spam (“buy” and “items” never appear in not-spam messages):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P("buy"   | not spam) = (0 + 1) / (6 + 12) = 1/18
+P("items" | not spam) = (0 + 1) / (6 + 12) = 1/18
+</code></pre></div></div>
+
+<p>Notice how smoothing saved us: without the <code class="language-plaintext highlighter-rouge">+1</code>, both not-spam probabilities would be <code class="language-plaintext highlighter-rouge">0/18 = 0</code> and the entire not-spam score would collapse to zero.</p>
+
+<h3 id="step-4--posteriors">Step 4 — Posteriors</h3>
+
+<p>The new email “buy items buy items” has counts: buy = 2, items = 2. Each word’s probability is raised to its count:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>posterior(spam)     ∝ 0.5 × (2/18)² × (2/18)² = 0.5 × (2/18)⁴ ≈ 7.6 × 10⁻⁵
+
+posterior(not spam) ∝ 0.5 × (1/18)² × (1/18)² = 0.5 × (1/18)⁴ ≈ 4.8 × 10⁻⁶
+</code></pre></div></div>
+
+<h3 id="step-5--decision">Step 5 — Decision</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>posterior(spam) &gt; posterior(not spam)
+</code></pre></div></div>
+
+<p>The predicted class is <strong>spam</strong> — the score for spam is about 16× larger.</p>
+
+<hr />
+
+<h2 id="5-python-verification">5. Python verification</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">MultinomialNB</span>
+<span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">CountVectorizer</span>
+
+<span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">buy limited items</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">special offer sale</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">let us meet tomorrow</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">see you</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># 1 = spam, 0 = not spam
+</span>
+<span class="n">vectorizer</span> <span class="o">=</span> <span class="nc">CountVectorizer</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">MultinomialNB</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># alpha=1.0 is Laplace smoothing
+</span><span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+
+<span class="n">new_email</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="p">.</span><span class="nf">transform</span><span class="p">([</span><span class="sh">"</span><span class="s">buy items buy items</span><span class="sh">"</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">new_email</span><span class="p">))</span>        <span class="c1"># [1] → spam
+</span><span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">new_email</span><span class="p">))</span>  <span class="c1"># spam probability dominates
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">alpha=1.0</code> (the default) is exactly the Laplace smoothing from the hand calculation.</p>
+
+<hr />
+
+<h2 id="6-when-to-use-multinomial-nb">6. When to use Multinomial NB</h2>
+
+<p><strong>Good fit:</strong></p>
+<ul>
+  <li>Text classification with word counts or TF-IDF (spam filtering, topic labeling, sentiment)</li>
+  <li>Any feature vector of non-negative counts or frequencies</li>
+  <li>Large vocabularies — it scales effortlessly</li>
+</ul>
+
+<p><strong>Not a fit:</strong></p>
+<ul>
+  <li>Continuous measurements → use Gaussian NB</li>
+  <li>Pure presence/absence features → Bernoulli NB is often a better model</li>
+  <li>Negative feature values → Multinomial NB requires non-negative input</li>
+</ul>
+
+<hr />
+
+<h2 id="7-practice-questions">7. Practice questions</h2>
+
+<ol>
+  <li>Why can we drop the factorial term from the multinomial likelihood during classification?</li>
+  <li>In the worked example, what would happen without Laplace smoothing?</li>
+  <li>Why is each word’s probability raised to the power of its count?</li>
+  <li>What does the <code class="language-plaintext highlighter-rouge">alpha</code> parameter of <code class="language-plaintext highlighter-rouge">MultinomialNB</code> control?</li>
+</ol>
+
+<p><strong>Answers:</strong></p>
+
+<ol>
+  <li>The factorial term depends only on the word counts of the document, not on the class. It scales every class score equally, so it does not affect which class wins.</li>
+  <li><code class="language-plaintext highlighter-rouge">P("buy" | not spam)</code> and <code class="language-plaintext highlighter-rouge">P("items" | not spam)</code> would be 0, making the entire not-spam score 0 regardless of any other evidence. Smoothing keeps every probability non-zero.</li>
+  <li>Because the multinomial model treats each occurrence of a word as independent evidence. A word appearing twice contributes its probability twice — i.e. squared.</li>
+  <li>The smoothing strength. <code class="language-plaintext highlighter-rouge">alpha=1.0</code> is Laplace (add-one) smoothing; smaller values smooth less, larger values smooth more.</li>
+</ol>
+
+<hr />
+
+<h2 id="8-summary">8. Summary</h2>
+
+<ul>
+  <li>Multinomial NB is used when features are <strong>counts or frequencies</strong>, most commonly word counts.</li>
+  <li>Likelihood: <code class="language-plaintext highlighter-rouge">P(X | C) ∝ ∏ P(wi | C)^xi</code> — each word’s probability raised to its count.</li>
+  <li>Word probabilities use <strong>Laplace smoothing</strong> to avoid zero probabilities.</li>
+  <li>The worked example shows “buy items buy items” scored ≈ 7.6e-5 for spam vs ≈ 4.8e-6 for not spam → predicted spam.</li>
+  <li><code class="language-plaintext highlighter-rouge">sklearn.naive_bayes.MultinomialNB</code> with <code class="language-plaintext highlighter-rouge">alpha=1.0</code> reproduces the hand calculation.</li>
+</ul>
+
+<p><strong>Next topic:</strong> <a href="/handbook/topics/naive-bayes-bernoulli">Bernoulli Naive Bayes</a></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">naive-bayes</span>, <span class="tag">multinomial</span>, <span class="tag">text-classification</span>, <span class="tag">laplace-smoothing</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

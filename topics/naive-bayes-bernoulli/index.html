@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Naive Bayes Part 6: Bernoulli Naive Bayes</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Naive Bayes Part 6: Bernoulli Naive Bayes</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="naive-bayes-part-6-bernoulli-naive-bayes">Naive Bayes Part 6: Bernoulli Naive Bayes</h1>
+
+<blockquote>
+  <p>Part 6 of the Naive Bayes series. Bernoulli Naive Bayes handles binary features — each attribute is either present (1) or absent (0) — and predicts the class based on how likely that combination of yes/no attributes is under each class.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-when-features-are-binary">1. When features are binary</h2>
+
+<p>Many datasets have features that are purely yes/no:</p>
+
+<ul>
+  <li>Does this word appear in the email at all? (present/absent, ignoring the count)</li>
+  <li>Does the patient have this symptom? (yes/no)</li>
+  <li>Does this animal give birth? Can it fly? (yes/no)</li>
+</ul>
+
+<p>For these, <strong>Bernoulli Naive Bayes</strong> is the natural variant. It is built on the Bernoulli distribution — the distribution of a single yes/no trial.</p>
+
+<hr />
+
+<h2 id="2-the-bernoulli-likelihood">2. The Bernoulli likelihood</h2>
+
+<p>For binary features <code class="language-plaintext highlighter-rouge">xi ∈ {0, 1}</code>, the likelihood of feature <code class="language-plaintext highlighter-rouge">i</code> given class <code class="language-plaintext highlighter-rouge">C</code> is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(xi | C) = pᵢ^xi × (1 - pᵢ)^(1-xi)
+</code></pre></div></div>
+
+<p>where <code class="language-plaintext highlighter-rouge">pᵢ = P(feature i is present | C)</code>.</p>
+
+<p>This compact formula covers both cases:</p>
+
+<ul>
+  <li>If <code class="language-plaintext highlighter-rouge">xi = 1</code> (present): the term becomes <code class="language-plaintext highlighter-rouge">pᵢ</code> — the probability that feature <code class="language-plaintext highlighter-rouge">i</code> appears in class <code class="language-plaintext highlighter-rouge">C</code>.</li>
+  <li>If <code class="language-plaintext highlighter-rouge">xi = 0</code> (absent): the term becomes <code class="language-plaintext highlighter-rouge">1 - pᵢ</code> — the probability that feature <code class="language-plaintext highlighter-rouge">i</code> does <strong>not</strong> appear in class <code class="language-plaintext highlighter-rouge">C</code>.</li>
+</ul>
+
+<p>The full posterior follows the usual Naive Bayes pattern:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(C | X) ∝ P(C) × ∏ pᵢ^xi × (1 - pᵢ)^(1-xi)
+                  i
+</code></pre></div></div>
+
+<p><strong>Key difference from Multinomial NB:</strong> Bernoulli NB explicitly penalizes <em>absent</em> features through the <code class="language-plaintext highlighter-rouge">(1 - pᵢ)</code> terms. Multinomial NB only counts what is present; Bernoulli NB also uses what is missing as evidence.</p>
+
+<hr />
+
+<h2 id="3-fully-worked-example-mammal-or-non-mammal">3. Fully worked example: mammal or non-mammal?</h2>
+
+<p>We want to classify animals as <strong>mammal (M)</strong> or <strong>non-mammal (N)</strong> from four binary attributes: gives birth, can fly, lives in water, has legs.</p>
+
+<h3 id="training-data-summary">Training data summary</h3>
+
+<p>Out of 20 animals: 7 are mammals and 13 are non-mammals.</p>
+
+<p>Counting attribute occurrences within each class gives these conditional probabilities:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Attribute (= yes)</th>
+      <th>P(attr = 1 | M)</th>
+      <th>P(attr = 1 | N)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>gives birth</td>
+      <td>6/7</td>
+      <td>1/13</td>
+    </tr>
+    <tr>
+      <td>can fly</td>
+      <td>1/7</td>
+      <td>3/13</td>
+    </tr>
+    <tr>
+      <td>lives in water</td>
+      <td>2/7</td>
+      <td>3/13</td>
+    </tr>
+    <tr>
+      <td>has legs</td>
+      <td>5/7</td>
+      <td>9/13</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>For example, <code class="language-plaintext highlighter-rouge">P(gives birth = 1 | M) = 6/7</code> means: of the 7 mammals in the training data, 6 give birth.</p>
+
+<h3 id="the-new-sample-to-classify">The new sample to classify</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gives birth = yes (1)
+can fly = no (0)
+lives in water = yes (1)
+has legs = no (0)
+</code></pre></div></div>
+
+<h3 id="step-1--priors">Step 1 — Priors</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(M) = 7/20  = 0.35
+P(N) = 13/20 = 0.65
+</code></pre></div></div>
+
+<h3 id="step-2--likelihood-for-mammal">Step 2 — Likelihood for mammal</h3>
+
+<p>Apply the Bernoulli formula per feature. Present features use <code class="language-plaintext highlighter-rouge">pᵢ</code>, absent features use <code class="language-plaintext highlighter-rouge">(1 - pᵢ)</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(X | M) = P(gb=1|M) × (1 - P(fly=1|M)) × P(water=1|M) × (1 - P(legs=1|M))
+         = (6/7) × (1 - 1/7) × (2/7) × (1 - 5/7)
+         = 0.857 × 0.857 × 0.286 × 0.286
+         ≈ 0.06
+</code></pre></div></div>
+
+<h3 id="step-3--likelihood-for-non-mammal">Step 3 — Likelihood for non-mammal</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(X | N) = P(gb=1|N) × (1 - P(fly=1|N)) × P(water=1|N) × (1 - P(legs=1|N))
+         = (1/13) × (1 - 3/13) × (3/13) × (1 - 9/13)
+         = 0.077 × 0.769 × 0.231 × 0.308
+         ≈ 0.0042
+</code></pre></div></div>
+
+<h3 id="step-4--posteriors-likelihood--prior">Step 4 — Posteriors (likelihood × prior)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>posterior(M) = 0.06   × 0.35 ≈ 0.021
+posterior(N) = 0.0042 × 0.65 ≈ 0.0027
+</code></pre></div></div>
+
+<h3 id="step-5--decision">Step 5 — Decision</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>posterior(M) = 0.021 &gt; posterior(N) = 0.0027
+</code></pre></div></div>
+
+<p>The predicted class is <strong>Mammal</strong>. Even though non-mammals are almost twice as common (prior 0.65 vs 0.35), the evidence — especially “gives birth = yes,” which is very rare among non-mammals (1/13) — overwhelmingly favors mammal.</p>
+
+<hr />
+
+<h2 id="4-python-verification">4. Python verification</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">BernoulliNB</span>
+
+<span class="c1"># Features: [gives_birth, can_fly, lives_in_water, has_legs]
+# A training set matching the probability table above
+</span><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="c1"># 7 mammals
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="c1"># 13 non-mammals
+</span>    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="mi">7</span> <span class="o">+</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="mi">13</span><span class="p">)</span>  <span class="c1"># 1 = mammal, 0 = non-mammal
+</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">BernoulliNB</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># no smoothing, to match the hand calculation
+</span><span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="n">new_animal</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]])</span>  <span class="c1"># gives birth, doesn't fly, lives in water, no legs
+</span><span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">new_animal</span><span class="p">))</span>        <span class="c1"># [1] → mammal
+</span><span class="nf">print</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">predict_proba</span><span class="p">(</span><span class="n">new_animal</span><span class="p">))</span>  <span class="c1"># mammal probability dominates
+</span></code></pre></div></div>
+
+<p>In practice you would keep the default <code class="language-plaintext highlighter-rouge">alpha=1.0</code> (Laplace smoothing) to protect against zero probabilities, just like in Multinomial NB.</p>
+
+<hr />
+
+<h2 id="5-bernoulli-vs-multinomial-for-text">5. Bernoulli vs Multinomial for text</h2>
+
+<p>Both variants are used for text, but they model it differently:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Multinomial NB</th>
+      <th>Bernoulli NB</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Feature</td>
+      <td>word <strong>count</strong></td>
+      <td>word <strong>present or absent</strong></td>
+    </tr>
+    <tr>
+      <td>“free free free” vs “free”</td>
+      <td>different (count 3 vs 1)</td>
+      <td>identical (both present)</td>
+    </tr>
+    <tr>
+      <td>Absent words</td>
+      <td>ignored</td>
+      <td>actively used as evidence via <code class="language-plaintext highlighter-rouge">(1 - pᵢ)</code></td>
+    </tr>
+    <tr>
+      <td>Best for</td>
+      <td>longer documents</td>
+      <td>short texts (SMS, tweets, headlines)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>For short texts, word repetition is rare, so presence/absence captures most of the signal — and Bernoulli’s use of absent words as evidence often helps.</p>
+
+<hr />
+
+<h2 id="6-practice-questions">6. Practice questions</h2>
+
+<ol>
+  <li>Write the Bernoulli likelihood formula for one feature and explain how it behaves for <code class="language-plaintext highlighter-rouge">xi = 1</code> vs <code class="language-plaintext highlighter-rouge">xi = 0</code>.</li>
+  <li>In the mammal example, the non-mammal prior (0.65) was almost double the mammal prior (0.35). Why did the model still predict mammal?</li>
+  <li>What is the main modeling difference between Bernoulli NB and Multinomial NB for text?</li>
+  <li>Why might Bernoulli NB outperform Multinomial NB on very short texts?</li>
+</ol>
+
+<p><strong>Answers:</strong></p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">P(xi | C) = pᵢ^xi × (1 - pᵢ)^(1-xi)</code>. When <code class="language-plaintext highlighter-rouge">xi = 1</code> it evaluates to <code class="language-plaintext highlighter-rouge">pᵢ</code> (probability the feature is present in class C); when <code class="language-plaintext highlighter-rouge">xi = 0</code> it evaluates to <code class="language-plaintext highlighter-rouge">1 - pᵢ</code> (probability it is absent).</li>
+  <li>The likelihood ratio dominated the prior. <code class="language-plaintext highlighter-rouge">P(X | M) ≈ 0.06</code> vs <code class="language-plaintext highlighter-rouge">P(X | N) ≈ 0.0042</code> — a 14× difference in evidence, far larger than the ~2× prior advantage of non-mammals.</li>
+  <li>Multinomial models word counts; Bernoulli models only presence/absence and additionally uses absent words as evidence through the <code class="language-plaintext highlighter-rouge">(1 - pᵢ)</code> terms.</li>
+  <li>In short texts words rarely repeat, so counts add little information beyond presence. Bernoulli’s explicit modeling of absent words provides extra signal that Multinomial ignores.</li>
+</ol>
+
+<hr />
+
+<h2 id="7-summary">7. Summary</h2>
+
+<ul>
+  <li>Bernoulli NB is for <strong>binary features</strong> — each attribute is present (1) or absent (0).</li>
+  <li>Likelihood per feature: <code class="language-plaintext highlighter-rouge">pᵢ^xi × (1 - pᵢ)^(1-xi)</code> — present features contribute <code class="language-plaintext highlighter-rouge">pᵢ</code>, absent features contribute <code class="language-plaintext highlighter-rouge">1 - pᵢ</code>.</li>
+  <li>Posterior: <code class="language-plaintext highlighter-rouge">P(C | X) ∝ P(C) × ∏ pᵢ^xi (1 - pᵢ)^(1-xi)</code>.</li>
+  <li>Worked example: posterior(mammal) ≈ 0.021 vs posterior(non-mammal) ≈ 0.0027 → predicted <strong>mammal</strong>, despite the smaller prior.</li>
+  <li>Bernoulli NB uses absent features as evidence, which makes it especially effective on short texts.</li>
+</ul>
+
+<p><strong>Next topic:</strong> <a href="/handbook/topics/naive-bayes-choosing-the-right-variant">Choosing the Right Variant</a> — all three variants compared head-to-head on the same dataset.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">naive-bayes</span>, <span class="tag">bernoulli</span>, <span class="tag">binary-features</span>, <span class="tag">classification</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Naive Bayes Part 3: From Bayes' Theorem to the Naive Bayes Classifier</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Naive Bayes Part 3: From Bayes' Theorem to the Naive Bayes Classifier</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="naive-bayes-part-3-from-bayes-theorem-to-the-naive-bayes-classifier">Naive Bayes Part 3: From Bayes’ Theorem to the Naive Bayes Classifier</h1>
+
+<blockquote>
+  <p>Part 3 of the Naive Bayes series. We extend Bayes’ theorem to many features, make the conditional independence assumption, and arrive at the final Naive Bayes decision rule.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-bayes-theorem-with-a-single-feature">1. Bayes’ theorem with a single feature</h2>
+
+<p>From Part 2, for one feature <code class="language-plaintext highlighter-rouge">x</code> and class <code class="language-plaintext highlighter-rouge">C</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>             P(x | C) × P(C)
+P(C | x) =  ─────────────────
+                  P(x)
+</code></pre></div></div>
+
+<p>The class with the highest posterior wins. For now, we ignore the denominator because it is the same for every class.</p>
+
+<hr />
+
+<h2 id="2-extending-to-multiple-features">2. Extending to multiple features</h2>
+
+<p>Real samples have many features:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X = [x1, x2, ..., xn]
+</code></pre></div></div>
+
+<p>Bayes’ theorem becomes:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>             P(x1, x2, ..., xn | C) × P(C)
+P(C | X) =  ───────────────────────────────
+                     P(x1, x2, ..., xn)
+</code></pre></div></div>
+
+<p>The term <code class="language-plaintext highlighter-rouge">P(x1, x2, ..., xn | C)</code> is the <strong>joint likelihood</strong> — the probability of seeing this exact combination of features, given the class. This is the hard part. With many features, estimating the joint distribution directly is impractical because the feature space is too large and too sparse.</p>
+
+<hr />
+<h2 id="3-conditional-independence-assumption">3. Conditional independence assumption</h2>
+
+<p>Naive Bayes assumes that, once the class is known, every feature is independent of the others:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(x1, x2, ..., xn | C) ≈ P(x1 | C) × P(x2 | C) × ... × P(xn | C)
+</code></pre></div></div>
+
+<p>In compact product notation:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            n
+P(X | C) ≈ ∏ P(xi | C)
+           i=1
+</code></pre></div></div>
+
+<p>This is the core assumption. It says we can estimate each feature’s likelihood separately, then multiply them together. Instead of one impossible high-dimensional joint distribution, we have <code class="language-plaintext highlighter-rouge">n</code> simple one-dimensional distributions.</p>
+
+<hr />
+
+<h2 id="4-the-naive-bayes-posterior">4. The Naive Bayes posterior</h2>
+
+<p>Substitute the assumption into Bayes’ theorem and drop the constant denominator:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                  n
+P(C | X) ∝ P(C) × ∏ P(xi | C)
+                 i=1
+</code></pre></div></div>
+
+<p>This is the score Naive Bayes computes for every class. The class with the highest score is the prediction.</p>
+
+<hr />
+
+<h2 id="5-the-decision-rule-argmax">5. The decision rule: argmax</h2>
+
+<p>For a sample with features <code class="language-plaintext highlighter-rouge">X</code>, compute the score for each possible class <code class="language-plaintext highlighter-rouge">C</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(C) = P(C) × P(x1 | C) × P(x2 | C) × ... × P(xn | C)
+</code></pre></div></div>
+
+<p>Then pick the class with the maximum score:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ŷ = argmax_C  score(C)
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">argmax_C</code> means: “the value of <code class="language-plaintext highlighter-rouge">C</code> that gives the largest score.” If <code class="language-plaintext highlighter-rouge">C</code> can be <code class="language-plaintext highlighter-rouge">spam</code> or <code class="language-plaintext highlighter-rouge">not spam</code>, we compute both scores and choose the larger one.</p>
+
+<hr />
+
+<h2 id="6-numerical-underflow--and-why-log-space-is-used-in-practice">6. Numerical underflow — and why log-space is used in practice</h2>
+
+<h3 id="the-problem">The problem</h3>
+
+<p>Naive Bayes multiplies many probabilities:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(C) = P(C) × P(x1 | C) × P(x2 | C) × ... × P(xn | C)
+</code></pre></div></div>
+
+<p>Every term is between 0 and 1, so the product <strong>shrinks rapidly</strong> toward zero as more features are multiplied in. With hundreds or thousands of features (like words in a document), the product can reach values like <code class="language-plaintext highlighter-rouge">1e-420</code> — smaller than what a computer’s floating-point numbers can represent. The computer rounds it to exactly <strong>0</strong>.</p>
+
+<p>This is called <strong>numerical underflow</strong>. The model’s math is still correct — the issue is purely computational. When it happens, <em>all</em> class scores underflow to zero, they all look identical, and the classifier can no longer tell the classes apart.</p>
+
+<h3 id="the-fix-take-logarithms">The fix: take logarithms</h3>
+
+<p>Instead of multiplying probabilities, we take their logarithms and add them. The key identity is <code class="language-plaintext highlighter-rouge">log(a × b) = log(a) + log(b)</code>, so the product becomes a sum:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>log score(C) = log P(C) + Σ log P(xi | C)
+</code></pre></div></div>
+
+<p>For example, if the individual word likelihoods are small numbers like <code class="language-plaintext highlighter-rouge">0.07</code>, their logs are moderate negative numbers like <code class="language-plaintext highlighter-rouge">-2.66</code>. Summing hundreds of values around <code class="language-plaintext highlighter-rouge">-2.66</code> gives something like <code class="language-plaintext highlighter-rouge">-266</code> — a perfectly representable number, no underflow.</p>
+
+<h3 id="why-the-logs-are-negative">Why the logs are negative</h3>
+
+<p>A logarithm answers: “to what power must I raise the base to get this number?”</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>log10(100) = 2     because 10² = 100
+log10(0.1) = -1    because 10⁻¹ = 0.1
+</code></pre></div></div>
+
+<p>Since probabilities are between 0 and 1, their logs are always <strong>negative</strong>. That is fine — we only care about which class’s sum is <em>highest</em> (least negative).</p>
+
+<h3 id="why-this-doesnt-change-the-answer">Why this doesn’t change the answer</h3>
+
+<p>The logarithm is a <strong>monotonically increasing</strong> function: if <code class="language-plaintext highlighter-rouge">a &gt; b</code> then <code class="language-plaintext highlighter-rouge">log(a) &gt; log(b)</code>. So the class with the highest log-score is exactly the class that would have had the highest raw score. We can safely replace the product with a sum, avoid underflow, and get the same prediction.</p>
+
+<hr />
+
+<h2 id="7-a-tiny-worked-example">7. A tiny worked example</h2>
+
+<p>Training data: 4 emails, each with 3 words.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Email</th>
+      <th>Words</th>
+      <th>Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>“free prize win”</td>
+      <td>free, prize, win</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>“free offer claim”</td>
+      <td>free, offer, claim</td>
+      <td>spam</td>
+    </tr>
+    <tr>
+      <td>“meeting tomorrow agenda”</td>
+      <td>meeting, tomorrow, agenda</td>
+      <td>not spam</td>
+    </tr>
+    <tr>
+      <td>“project update tomorrow”</td>
+      <td>project, update, tomorrow</td>
+      <td>not spam</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Priors:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P(spam) = 2/4 = 0.5
+P(not spam) = 2/4 = 0.5
+</code></pre></div></div>
+
+<p><strong>Likelihoods with Laplace smoothing (smoothing value = 1):</strong></p>
+
+<p>Vocabulary size = 8 words (free, prize, win, offer, claim, meeting, tomorrow, agenda, project, update) → actually 10 words. Counting carefully: free, prize, win, offer, claim, meeting, tomorrow, agenda, project, update = 10.</p>
+
+<p>Spam word count = 6. Not spam word count = 6.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>P("free" | spam) = (2 + 1) / (6 + 10) = 3/16 = 0.1875
+P("win"  | spam) = (1 + 1) / (6 + 10) = 2/16 = 0.125
+P("tomorrow" | spam) = (0 + 1) / (6 + 10) = 1/16 = 0.0625
+
+P("free" | not spam) = (0 + 1) / (6 + 10) = 1/16 = 0.0625
+P("win"  | not spam) = (0 + 1) / (6 + 10) = 1/16 = 0.0625
+P("tomorrow" | not spam) = (2 + 1) / (6 + 10) = 3/16 = 0.1875
+</code></pre></div></div>
+
+<p><strong>Classify new email: “free win tomorrow”</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(spam)     ∝ 0.5 × 0.1875 × 0.125 × 0.0625 = 0.000732
+score(not spam) ∝ 0.5 × 0.0625 × 0.0625 × 0.1875 = 0.000366
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">score(spam)</code> &gt; <code class="language-plaintext highlighter-rouge">score(not spam)</code>, so the prediction is <strong>spam</strong>. The word “tomorrow” pulls toward not spam, but “free” and “win” pull harder toward spam.</p>
+
+<hr />
+
+<h2 id="8-practice-questions">8. Practice questions</h2>
+
+<ol>
+  <li>Write the Naive Bayes score formula for a sample with <code class="language-plaintext highlighter-rouge">n</code> features.</li>
+  <li>What problem does working in log-space solve?</li>
+  <li>In the worked example above, why does “free win tomorrow” get classified as spam even though “tomorrow” is more common in not-spam emails?</li>
+  <li>What does <code class="language-plaintext highlighter-rouge">argmax_C</code> mean in the Naive Bayes decision rule?</li>
+</ol>
+
+<p><strong>Answers:</strong></p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">score(C) = P(C) × ∏ P(xi | C)</code> or, equivalently, <code class="language-plaintext highlighter-rouge">log score(C) = log P(C) + Σ log P(xi | C)</code>.</li>
+  <li>Multiplying many small probabilities can underflow to zero. Log-space turns products into sums, avoiding this numerical issue.</li>
+  <li>Classification depends on the combined evidence. “free” and “win” are much stronger spam indicators than “tomorrow” is a not-spam indicator, so the product favors spam overall.</li>
+  <li>It means “the class <code class="language-plaintext highlighter-rouge">C</code> that produces the highest score.” We compute the score for every class and pick the winner.</li>
+</ol>
+
+<hr />
+
+<h2 id="9-summary">9. Summary</h2>
+
+<ul>
+  <li>Start with Bayes’ theorem for many features: <code class="language-plaintext highlighter-rouge">P(C | X) ∝ P(X | C) × P(C)</code>.</li>
+  <li>The joint likelihood <code class="language-plaintext highlighter-rouge">P(X | C)</code> is hard to estimate directly.</li>
+  <li>Naive Bayes assumes conditional independence: <code class="language-plaintext highlighter-rouge">P(X | C) ≈ ∏ P(xi | C)</code>.</li>
+  <li>The classifier becomes: <code class="language-plaintext highlighter-rouge">ŷ = argmax_C P(C) × ∏ P(xi | C)</code>.</li>
+  <li>In practice, use log-space: <code class="language-plaintext highlighter-rouge">log score(C) = log P(C) + Σ log P(xi | C)</code>.</li>
+  <li>Laplace smoothing prevents zero probabilities from destroying the product.</li>
+</ul>
+
+<p><strong>Next topic:</strong> <a href="/handbook/topics/naive-bayes-gaussian-from-scratch">Gaussian Naive Bayes from Scratch in Python</a></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">naive-bayes</span>, <span class="tag">bayes-theorem</span>, <span class="tag">conditional-independence</span>, <span class="tag">classification</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
