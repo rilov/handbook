@@ -130,37 +130,83 @@
 
 <h3 id="so-can-svm-predict-house-prices-too">So can SVM predict house prices too?</h3>
 
-<p>Yes — through a sibling algorithm called <strong>Support Vector Regression (SVR)</strong>. But it”s important to understand <em>why</em> this isn”t a contradiction of everything just said about “only the sign matters.”</p>
+<p>Yes — through a sibling algorithm called <strong>Support Vector Regression (SVR)</strong>. But it is important to understand <em>why</em> this is not a contradiction of everything just said about “only the sign matters.”</p>
 
-<p><strong>The mechanism is genuinely different, not just relabeled:</strong></p>
+<p>First, the only thing we care about in <strong>SVM classification</strong> is the <strong>sign</strong> of the line:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Classification (SVC):  prediction = sign(W·X + b)     →  a category (spam / not spam)
-Regression      (SVR):  prediction = W·X + b           →  the actual number (e.g. price)
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Classification (SVC):  prediction = sign(W·X + b)   →  spam or not spam
 </code></pre></div></div>
 
-<p>In SVR, there is <strong>no sign check at all</strong>. The raw output of the line <em>is</em> the answer — exactly like ordinary linear regression. So SVR isn”t “classifying and somehow producing a price.” It”s simply reading the line”s value directly, the same way the house-price example at the top of this section works.</p>
+<p>The exact number does not matter — only whether it is positive or negative.</p>
+
+<p>In <strong>SVR</strong>, the exact number <em>does</em> matter, because the number itself is the prediction:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Regression (SVR):  prediction = W·X + b   →  the actual price
+</code></pre></div></div>
+
+<p>There is no sign check at all. The raw output of the line is the answer. So SVR is <strong>not</strong> classifying anything — it is simply reading the line’s value, exactly like ordinary linear regression when you predict a price from square footage.</p>
+
+<p><strong>In short:</strong> SVC uses the line as a wall that separates classes. SVR uses the line as a ruler that gives a number.</p>
 
 <hr />
 
-<h4 id="why-is-it-called-svm-and-not-just-linear-regression">Why is it called “SVM” and not just linear regression?</h4>
+<h4 id="why-is-this-called-svm-if-it-is-just-a-line-for-numbers">Why is this called “SVM” if it is just a line for numbers?</h4>
 
-<p>The difference is <strong>how the line gets chosen</strong>, not what it predicts. Ordinary linear regression fits a line by <strong>minimizing the squared error on every single point</strong> — every point pulls the line, no matter how small the error. SVR instead draws an <strong>ε-tube</strong> (epsilon tube) — a band of width <code class="language-plaintext highlighter-rouge">±ε</code> running alongside the line — and mostly ignores points that fall inside that tube:</p>
+<p>The answer is not in the final prediction. The answer is in <strong>how the line is chosen</strong>.</p>
+
+<h4 id="step-1--how-ordinary-linear-regression-chooses-its-line">Step 1 — How ordinary linear regression chooses its line</h4>
+
+<p>Imagine you are fitting a line to these three points by hand:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>price
-  │                                    ●  ← outside the tube: this point
-  │                ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄     pulls the line (a "support vector")
+  │              ●  point C
+  │         ●   point B
+  │    ●      point A
+  └──────────────────── square footage
+</code></pre></div></div>
+
+<p>Ordinary linear regression does this:</p>
+
+<ol>
+  <li>Start with a random line.</li>
+  <li>For every point, measure the vertical distance from the point to the line.</li>
+  <li>Make the line <strong>slightly move</strong> to reduce the total of all those distances (squared).</li>
+  <li>Repeat until the line is as close as possible to <strong>every point</strong>.</li>
+</ol>
+
+<p>Every single point has a say. A point that is a little off still nudges the line. A point that is far off pulls it strongly. No point is ignored — the final line is a balance of all the points.</p>
+
+<h4 id="step-2--how-svr-chooses-its-line">Step 2 — How SVR chooses its line</h4>
+
+<p>SVR does something different. It draws an imaginary tube around the line. The tube has a width you choose, called <code class="language-plaintext highlighter-rouge">ε</code> (epsilon):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>price
+  │                                    ●  ← outside the tube
+  │                ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄     this point pulls the line
   │             ●──────line───────●
   │        ●   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
   │     ●
   └───────────────────────────────── square footage
-        (the shaded band is the ε-tube: points inside it cost zero error)
+        (the shaded band is the ε-tube)
 </code></pre></div></div>
 
-<p>Think of the tube as a “don”t-care band.” A house that sells for $310k when the model predicts $300k is only $10k off — if <code class="language-plaintext highlighter-rouge">ε</code> is, say, $15k, that point sits comfortably inside the tube and does <strong>not</strong> force the line to move. It contributes zero loss, exactly as if it were already perfectly predicted. This is very different from ordinary linear regression, where <em>every</em> point, no matter how tiny its error, nudges the line slightly.</p>
+<p>Then SVR follows these rules:</p>
 
-<p><strong>What pulls the line?</strong> Only points that land <strong>outside</strong> the tube. These are the actual <strong>support vectors</strong> for the regression problem, because they “support” the final position of the line — just as support vectors in classification determine the margin.</p>
+<ol>
+  <li><strong>Points inside the tube:</strong> “You are close enough. I do not care.” They contribute <strong>zero</strong> to the loss. The line does not move because of them.</li>
+  <li><strong>Points outside the tube:</strong> “You are too far off. Fix it.” These points pull the line.</li>
+</ol>
 
-<p>The hyperparameter <code class="language-plaintext highlighter-rouge">C</code> still plays the same role as the soft-margin <code class="language-plaintext highlighter-rouge">C</code> from Part 3: it controls how harshly those outside-the-tube points are penalized. A huge <code class="language-plaintext highlighter-rouge">C</code> means even small outside-tube violations pull the line aggressively; a tiny <code class="language-plaintext highlighter-rouge">C</code> means the model allows large violations in exchange for a flatter, simpler line.</p>
+<p>So the line is shaped only by the points that land outside the tube. Those outside points are the <strong>support vectors</strong> for the regression problem — the same idea as support vectors in classification, just with a tube instead of a margin.</p>
+
+<h4 id="step-3--the-role-of-c-and-ε">Step 3 — The role of <code class="language-plaintext highlighter-rouge">C</code> and <code class="language-plaintext highlighter-rouge">ε</code></h4>
+
+<p>Two settings control the behavior:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">ε</code> (epsilon):</strong> sets the width of the tube. A larger <code class="language-plaintext highlighter-rouge">ε</code> means more points are ignored, so the line becomes flatter and simpler. A smaller <code class="language-plaintext highlighter-rouge">ε</code> means the model tries to fit more points closely.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">C</code>:</strong> decides how hard outside points pull. A large <code class="language-plaintext highlighter-rouge">C</code> means even a small outside-tube error is punished strongly, so the line bends to fit those points. A small <code class="language-plaintext highlighter-rouge">C</code> means outside points are allowed to stay far, giving a simpler line.</li>
+</ul>
 
 <table>
   <thead>
@@ -172,29 +218,33 @@ Regression      (SVR):  prediction = W·X + b           →  the actual number (
   </thead>
   <tbody>
     <tr>
-      <td>How does the model treat the point?</td>
-      <td>“Close enough” — ignored</td>
-      <td>“Too far off” — pulls the line</td>
+      <td>What the model thinks</td>
+      <td>“Close enough”</td>
+      <td>“Too far — fix it”</td>
     </tr>
     <tr>
-      <td>Does it contribute to loss?</td>
-      <td>No (zero loss)</td>
-      <td>Yes, proportional to distance outside</td>
+      <td>Loss</td>
+      <td>Zero</td>
+      <td>Proportional to how far outside</td>
     </tr>
     <tr>
-      <td>Name for the point</td>
-      <td>Ordinary training point</td>
+      <td>Does it pull the line?</td>
+      <td>No</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>What we call it</td>
+      <td>Normal training point</td>
       <td>Support vector</td>
-    </tr>
-    <tr>
-      <td>Effect on the learned line</td>
-      <td>None</td>
-      <td>Determines the final line</td>
     </tr>
   </tbody>
 </table>
 
-<p>So the line”s final position is decided by the <strong>few hardest points</strong>, not by the bulk of the data. That is what makes SVR “sparse”: once the model is trained, you can often throw away most of the training data and keep only the support vectors.</p>
+<h4 id="step-4--why-this-matters">Step 4 — Why this matters</h4>
+
+<p>In ordinary linear regression, the line is the result of a vote by <strong>every point</strong>. In SVR, the line is the result of a vote by <strong>only the points the tube cannot tolerate</strong>. That makes SVR sparse and often more robust to small wiggles in the data.</p>
+
+<p><strong>The bottom line:</strong> SVR is not about the sign. It is about the same SVM idea of a tolerance zone — but instead of tolerating points near the boundary between classes, it tolerates points near the predicted number.</p>
 
 <p><strong>A verified worked example.</strong> Seven houses, <code class="language-plaintext highlighter-rouge">sqft</code> in thousands vs. <code class="language-plaintext highlighter-rouge">price</code> in $100k’s:</p>
 
