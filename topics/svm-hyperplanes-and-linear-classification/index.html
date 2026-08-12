@@ -130,7 +130,7 @@
 
 <h3 id="so-can-svm-predict-house-prices-too">So can SVM predict house prices too?</h3>
 
-<p>Yes — through a sibling algorithm called <strong>Support Vector Regression (SVR)</strong>. But it’s important to understand <em>why</em> this isn’t a contradiction of everything just said about “only the sign matters.”</p>
+<p>Yes — through a sibling algorithm called <strong>Support Vector Regression (SVR)</strong>. But it”s important to understand <em>why</em> this isn”t a contradiction of everything just said about “only the sign matters.”</p>
 
 <p><strong>The mechanism is genuinely different, not just relabeled:</strong></p>
 
@@ -138,9 +138,13 @@
 Regression      (SVR):  prediction = W·X + b           →  the actual number (e.g. price)
 </code></pre></div></div>
 
-<p>In SVR, there is <strong>no sign check at all</strong>. The raw output of the line <em>is</em> the answer — exactly like ordinary linear regression. So SVR isn’t “classifying and somehow producing a price.” It’s simply reading the line’s value directly, the same way the house-price example at the top of this section works.</p>
+<p>In SVR, there is <strong>no sign check at all</strong>. The raw output of the line <em>is</em> the answer — exactly like ordinary linear regression. So SVR isn”t “classifying and somehow producing a price.” It”s simply reading the line”s value directly, the same way the house-price example at the top of this section works.</p>
 
-<p><strong>So what makes it “SVM” rather than plain linear regression, then?</strong> The difference is <em>how the line gets chosen</em>, not what it predicts. Ordinary linear regression fits a line by minimizing the error on every single point. SVR instead draws an <strong>ε-tube</strong> (epsilon tube) — a band of width <code class="language-plaintext highlighter-rouge">±ε</code> running alongside the line — and only cares about points that fall <strong>outside</strong> that tube:</p>
+<hr />
+
+<h4 id="why-is-it-called-svm-and-not-just-linear-regression">Why is it called “SVM” and not just linear regression?</h4>
+
+<p>The difference is <strong>how the line gets chosen</strong>, not what it predicts. Ordinary linear regression fits a line by <strong>minimizing the squared error on every single point</strong> — every point pulls the line, no matter how small the error. SVR instead draws an <strong>ε-tube</strong> (epsilon tube) — a band of width <code class="language-plaintext highlighter-rouge">±ε</code> running alongside the line — and mostly ignores points that fall inside that tube:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>price
   │                                    ●  ← outside the tube: this point
@@ -152,7 +156,45 @@ Regression      (SVR):  prediction = W·X + b           →  the actual number (
         (the shaded band is the ε-tube: points inside it cost zero error)
 </code></pre></div></div>
 
-<p>Points <strong>inside</strong> the tube are considered “close enough” and contribute nothing to the loss — only points outside it (the actual <strong>support vectors</strong>) pull the line into its final position, and <code class="language-plaintext highlighter-rouge">C</code> still controls how harshly those violations are penalized, exactly like the soft-margin <code class="language-plaintext highlighter-rouge">C</code> from Part 3.</p>
+<p>Think of the tube as a “don”t-care band.” A house that sells for $310k when the model predicts $300k is only $10k off — if <code class="language-plaintext highlighter-rouge">ε</code> is, say, $15k, that point sits comfortably inside the tube and does <strong>not</strong> force the line to move. It contributes zero loss, exactly as if it were already perfectly predicted. This is very different from ordinary linear regression, where <em>every</em> point, no matter how tiny its error, nudges the line slightly.</p>
+
+<p><strong>What pulls the line?</strong> Only points that land <strong>outside</strong> the tube. These are the actual <strong>support vectors</strong> for the regression problem, because they “support” the final position of the line — just as support vectors in classification determine the margin.</p>
+
+<p>The hyperparameter <code class="language-plaintext highlighter-rouge">C</code> still plays the same role as the soft-margin <code class="language-plaintext highlighter-rouge">C</code> from Part 3: it controls how harshly those outside-the-tube points are penalized. A huge <code class="language-plaintext highlighter-rouge">C</code> means even small outside-tube violations pull the line aggressively; a tiny <code class="language-plaintext highlighter-rouge">C</code> means the model allows large violations in exchange for a flatter, simpler line.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Inside the ε-tube</th>
+      <th>Outside the ε-tube</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>How does the model treat the point?</td>
+      <td>“Close enough” — ignored</td>
+      <td>“Too far off” — pulls the line</td>
+    </tr>
+    <tr>
+      <td>Does it contribute to loss?</td>
+      <td>No (zero loss)</td>
+      <td>Yes, proportional to distance outside</td>
+    </tr>
+    <tr>
+      <td>Name for the point</td>
+      <td>Ordinary training point</td>
+      <td>Support vector</td>
+    </tr>
+    <tr>
+      <td>Effect on the learned line</td>
+      <td>None</td>
+      <td>Determines the final line</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>So the line”s final position is decided by the <strong>few hardest points</strong>, not by the bulk of the data. That is what makes SVR “sparse”: once the model is trained, you can often throw away most of the training data and keep only the support vectors.</p>
 
 <p><strong>A verified worked example.</strong> Seven houses, <code class="language-plaintext highlighter-rouge">sqft</code> in thousands vs. <code class="language-plaintext highlighter-rouge">price</code> in $100k’s:</p>
 
