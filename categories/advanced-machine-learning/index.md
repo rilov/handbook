@@ -14,9 +14,19 @@ Learn advanced machine learning algorithms through clear, step-by-step explanati
 3. **[SVM Part 3: Soft Margin Classifier and the Cost Parameter (C)]({{ site.baseurl }}/topics/svm-soft-margin-and-cost)** — Slack variables, why the Maximal Margin Classifier is fragile, and how `C` controls the bias-variance tradeoff.
 4. **[SVM Part 4: Kernels and the Kernel Trick]({{ site.baseurl }}/topics/svm-kernels-and-kernel-trick)** — Mapping non-linear data to linear data, feature transformation, the kernel trick, and the `gamma` parameter.
 
-**Complementary classification algorithm:**
+**Naive Bayes series — probabilistic classification from first principles:**
 
-- **[Naive Bayes — A Friendly Guide]({{ site.baseurl }}{% link _topics/Naive Bayes - A Friendly Guide.md %})** — A probabilistic classifier often compared with SVM. Covers Bayes' theorem, the naive independence assumption, and Multinomial/Bernoulli/Gaussian variants.
+5. **[Naive Bayes Part 1: Probabilistic Classification Intuition]({{ site.baseurl }}/topics/naive-bayes-probabilistic-classification-intuition)** — Classification as a probability question, priors and likelihoods, the curse of dimensionality, and why the "naive" assumption saves everything.
+6. **[Naive Bayes Part 2: Deriving Bayes' Theorem]({{ site.baseurl }}/topics/naive-bayes-deriving-bayes-theorem)** — Conditional probability, the full derivation of Bayes' theorem, and what posterior, likelihood, prior, and evidence mean.
+7. **[Naive Bayes Part 3: From Bayes' Theorem to the Classifier]({{ site.baseurl }}/topics/naive-bayes-from-bayes-theorem-to-classifier)** — Extending to multiple features, conditional independence, the argmax decision rule, numerical underflow, and log-space.
+8. **[Naive Bayes Part 4: Gaussian Naive Bayes from Scratch]({{ site.baseurl }}/topics/naive-bayes-gaussian-from-scratch)** — Continuous features, the Gaussian PDF, a hand-worked male/female example, and a full from-scratch implementation compared to scikit-learn.
+9. **[Naive Bayes Part 5: Multinomial Naive Bayes]({{ site.baseurl }}/topics/naive-bayes-multinomial)** — Count data, the multinomial likelihood, Laplace smoothing, and a fully worked spam example.
+10. **[Naive Bayes Part 6: Bernoulli Naive Bayes]({{ site.baseurl }}/topics/naive-bayes-bernoulli)** — Binary features, the Bernoulli likelihood, and a fully worked mammal vs non-mammal example.
+11. **[Naive Bayes Part 7: Choosing the Right Variant]({{ site.baseurl }}/topics/naive-bayes-choosing-the-right-variant)** — All three variants compared on the same spam dataset, and why the winner depends on how the feature distribution aligns with each model's assumption.
+
+**Quick reference:**
+
+- **[Naive Bayes — A Friendly Guide]({{ site.baseurl }}{% link _topics/Naive Bayes - A Friendly Guide.md %})** — Original single-page overview of Naive Bayes, useful as a quick refresher after the series.
 
 **What You'll Learn:**
 
