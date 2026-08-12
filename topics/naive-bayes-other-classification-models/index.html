@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Naive Bayes Part 8: Other Classification Models and Parametric vs Non-Parametric</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Naive Bayes Part 8: Other Classification Models and Parametric vs Non-Parametric</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="naive-bayes-part-8-other-classification-models-and-parametric-vs-non-parametric">Naive Bayes Part 8: Other Classification Models and Parametric vs Non-Parametric</h1>
+
+<blockquote>
+  <p>Part 8 of the Naive Bayes series. We step back and compare Naive Bayes against four other well-known classifiers on the same spam dataset, then organize them by a crucial conceptual idea: parametric versus non-parametric models.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-what-this-topic-does">1. What this topic does</h2>
+
+<p>So far we have focused on the Naive Bayes family itself. This topic widens the lens. We run the same experiment on the UCI <strong>Spambase</strong> dataset with five different classifiers:</p>
+
+<ul>
+  <li><strong>Naive Bayes (Gaussian)</strong></li>
+  <li><strong>Logistic Regression</strong></li>
+  <li><strong>Decision Tree</strong></li>
+  <li><strong>K-Nearest Neighbors (KNN)</strong></li>
+  <li><strong>Support Vector Machine (SVM, linear kernel)</strong></li>
+</ul>
+
+<p>We look at two things for each model: <strong>accuracy</strong> and <strong>training time</strong>. The goal is not to crown a single winner, but to see how the models’ different assumptions, flexibility and computational costs trade off on the same data.</p>
+
+<hr />
+
+<h2 id="2-the-dataset-uci-spambase">2. The dataset: UCI Spambase</h2>
+
+<p>We use the real UCI Spambase data from OpenML. It has:</p>
+
+<ul>
+  <li>4,601 emails</li>
+  <li>57 numerical features (word frequencies and message statistics)</li>
+  <li>39.4% spam, 60.6% ham</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">fetch_openml</span>
+
+<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">fetch_openml</span><span class="p">(</span><span class="n">data_id</span><span class="o">=</span><span class="mi">44</span><span class="p">,</span> <span class="n">parser</span><span class="o">=</span><span class="sh">'</span><span class="s">auto</span><span class="sh">'</span><span class="p">,</span> <span class="n">as_frame</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">return_X_y</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span> <span class="o">==</span> <span class="sh">'</span><span class="s">1</span><span class="sh">'</span><span class="p">).</span><span class="nf">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>   <span class="c1"># spam = 1
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">,</span> <span class="sh">"</span><span class="s">class balance:</span><span class="sh">"</span><span class="p">,</span> <span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>The 57 features are already numerical, but they are on very different scales. Many classifiers are sensitive to scale, so we standardize every feature to mean 0 and standard deviation 1.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">.</span><span class="nf">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+<span class="p">)</span>
+
+<span class="n">scaler</span> <span class="o">=</span> <span class="nc">StandardScaler</span><span class="p">()</span>
+<span class="n">X_train_s</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">X_test_s</span> <span class="o">=</span> <span class="n">scaler</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-training-and-evaluating-the-five-models">3. Training and evaluating the five models</h2>
+
+<p>All five models are trained on the scaled training data and evaluated on the same held-out test set.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+<span class="kn">from</span> <span class="n">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">GaussianNB</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
+<span class="kn">from</span> <span class="n">sklearn.tree</span> <span class="kn">import</span> <span class="n">DecisionTreeClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.neighbors</span> <span class="kn">import</span> <span class="n">KNeighborsClassifier</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">models</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">Naive Bayes (Gaussian)</span><span class="sh">"</span><span class="p">:</span> <span class="nc">GaussianNB</span><span class="p">(),</span>
+    <span class="sh">"</span><span class="s">Logistic Regression</span><span class="sh">"</span><span class="p">:</span> <span class="nc">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">Decision Tree</span><span class="sh">"</span><span class="p">:</span> <span class="nc">DecisionTreeClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">KNN (k=5)</span><span class="sh">"</span><span class="p">:</span> <span class="nc">KNeighborsClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">SVM (linear)</span><span class="sh">"</span><span class="p">:</span> <span class="nc">SVC</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="sh">"</span><span class="s">linear</span><span class="sh">"</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">.</span><span class="nf">items</span><span class="p">():</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">perf_counter</span><span class="p">()</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train_s</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="n">train_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">.</span><span class="nf">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+    <span class="n">acc</span> <span class="o">=</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test_s</span><span class="p">))</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="mi">25</span><span class="n">s</span><span class="si">}</span><span class="s"> accuracy=</span><span class="si">{</span><span class="n">acc</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s">  train_time=</span><span class="si">{</span><span class="n">train_time</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s">s</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="verified-results">Verified results</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Naive Bayes (Gaussian)    accuracy=0.8197  train_time=0.0014s
+Logistic Regression       accuracy=0.9290  train_time=0.0411s
+Decision Tree             accuracy=0.8928  train_time=0.0577s
+KNN (k=5)                 accuracy=0.8993  train_time=0.0011s
+SVM (linear)              accuracy=0.9290  train_time=0.3218s
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Accuracy</th>
+      <th>Training time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Logistic Regression</strong></td>
+      <td><strong>92.9%</strong></td>
+      <td>0.041s</td>
+    </tr>
+    <tr>
+      <td><strong>SVM (linear)</strong></td>
+      <td><strong>92.9%</strong></td>
+      <td>0.322s</td>
+    </tr>
+    <tr>
+      <td>KNN (k=5)</td>
+      <td>89.9%</td>
+      <td>0.001s</td>
+    </tr>
+    <tr>
+      <td>Decision Tree</td>
+      <td>89.3%</td>
+      <td>0.058s</td>
+    </tr>
+    <tr>
+      <td>Naive Bayes (Gaussian)</td>
+      <td>82.0%</td>
+      <td>0.001s</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Two clear stories emerge:</p>
+
+<ul>
+  <li><strong>Accuracy:</strong> SVM and Logistic Regression tie at the top. KNN and Decision Tree are in the middle. Naive Bayes is the simplest but also the least accurate here.</li>
+  <li><strong>Training speed:</strong> Naive Bayes and KNN are essentially instantaneous at <code class="language-plaintext highlighter-rouge">fit()</code> time. Logistic Regression and Decision Tree are still fast. SVM is the slowest by a wide margin.</li>
+</ul>
+
+<p>This is a classic accuracy-versus-speed tradeoff. There is no single “best” model — the right choice depends on which of these dimensions matters most for your project.</p>
+
+<hr />
+
+<h2 id="4-parametric-vs-non-parametric-models">4. Parametric vs non-parametric models</h2>
+
+<p>A second, deeper way to compare these models is to ask: <strong>does the model assume a fixed mathematical shape, or does it learn the shape from the data?</strong></p>
+
+<h3 id="parametric-models">Parametric models</h3>
+
+<p>A parametric model assumes a specific functional form and then estimates a fixed set of parameters from the data. For example:</p>
+
+<ul>
+  <li><strong>Naive Bayes</strong> assumes each class follows a product of conditional probabilities and the continuous version assumes Gaussian distributions.</li>
+  <li><strong>Logistic Regression</strong> assumes a linear decision boundary in feature space (possibly after a transformation).</li>
+  <li><strong>SVM (with a linear kernel)</strong> also learns a linear boundary.</li>
+</ul>
+
+<p>Because the form is fixed, training is usually fast and the model is easy to interpret. But if the true relationship is very different from the assumed form, the model will be wrong no matter how much data you feed it.</p>
+
+<h3 id="non-parametric-models">Non-parametric models</h3>
+
+<p>A non-parametric model does <strong>not</strong> commit to a single equation ahead of time. It learns the relationship directly from the data:</p>
+
+<ul>
+  <li><strong>Decision Tree</strong> learns a series of if/then splits from the data.</li>
+  <li><strong>KNN</strong> simply remembers the training points and predicts by looking up the closest neighbors.</li>
+  <li><strong>SVM with non-linear kernels</strong> can also behave non-parametrically by mapping features into higher-dimensional spaces and adapting to the data’s shape.</li>
+</ul>
+
+<p>These models are more flexible, but that flexibility costs: they often need more data, more computation and more careful tuning to avoid overfitting.</p>
+
+<h3 id="classification-of-the-five-models">Classification of the five models</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Parametric or non-parametric</th>
+      <th>Why?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Naive Bayes</td>
+      <td><strong>Parametric</strong></td>
+      <td>Assumes a specific probability distribution for each feature.</td>
+    </tr>
+    <tr>
+      <td>Logistic Regression</td>
+      <td><strong>Parametric</strong></td>
+      <td>Assumes a linear log-odds boundary.</td>
+    </tr>
+    <tr>
+      <td>SVM (linear)</td>
+      <td><strong>Parametric</strong></td>
+      <td>Learns a single linear separating hyperplane.</td>
+    </tr>
+    <tr>
+      <td>SVM (RBF)</td>
+      <td><strong>Non-parametric</strong> (can be)</td>
+      <td>Adapts to complex shapes via the kernel.</td>
+    </tr>
+    <tr>
+      <td>Decision Tree</td>
+      <td><strong>Non-parametric</strong></td>
+      <td>Splits are learned from the data, not fixed.</td>
+    </tr>
+    <tr>
+      <td>KNN</td>
+      <td><strong>Non-parametric</strong></td>
+      <td>Predictions come from nearby training points, not from a fitted equation.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>So SVM is an interesting bridge: a <strong>linear SVM is parametric</strong>, but an <strong>SVM with an RBF kernel behaves more like a non-parametric model</strong>.</p>
+
+<hr />
+
+<h2 id="5-model-characteristics-and-when-to-use-each">5. Model characteristics and when to use each</h2>
+
+<h3 id="accuracy-vs-interpretability">Accuracy vs interpretability</h3>
+
+<ul>
+  <li><strong>Naive Bayes and Logistic Regression</strong> are the most interpretable. Naive Bayes shows you class-conditional probabilities; Logistic Regression shows you feature weights.</li>
+  <li><strong>SVM and KNN</strong> are less transparent. SVM’s support vectors matter, but the final boundary is not as easy to read as a probability table. KNN has no coefficients at all — its “model” is the entire training set.</li>
+  <li><strong>Decision Tree</strong> is somewhere in the middle. A small tree is easy to read; a deep tree is not.</li>
+</ul>
+
+<h3 id="training-time">Training time</h3>
+
+<ul>
+  <li><strong>Naive Bayes and KNN</strong> train almost instantly. Naive Bayes is literally counting; KNN is just storing data.</li>
+  <li><strong>Logistic Regression and Decision Tree</strong> are fast enough for most applications.</li>
+  <li><strong>SVM</strong> is the slowest, especially on larger datasets. This is why linear SVMs and approximate solvers are often preferred for large-scale work.</li>
+</ul>
+
+<h3 id="assumptions">Assumptions</h3>
+
+<ul>
+  <li><strong>Naive Bayes</strong> assumes feature independence and, for Gaussian NB, normally distributed continuous features.</li>
+  <li><strong>Logistic Regression</strong> assumes a linearly separable problem in the feature space (or the space you transform into).</li>
+  <li><strong>Decision Tree and KNN</strong> make relatively few assumptions about the data distribution. That makes them more flexible but also more prone to overfitting if not regularized or tuned.</li>
+  <li><strong>SVM (linear)</strong> assumes a linear boundary. <strong>SVM (kernel)</strong> can fit more complex boundaries but needs kernel and <code class="language-plaintext highlighter-rouge">C</code> tuning.</li>
+</ul>
+
+<h3 id="parametric-vs-non-parametric-the-rule-of-thumb">Parametric vs non-parametric: the rule of thumb</h3>
+
+<ul>
+  <li><strong>Use a parametric model</strong> when:
+    <ul>
+      <li>You believe the data roughly matches a known distribution or shape.</li>
+      <li>You want speed, simplicity and interpretability.</li>
+      <li>You have limited data.</li>
+    </ul>
+  </li>
+  <li><strong>Use a non-parametric model</strong> when:
+    <ul>
+      <li>The relationship between features and the target is complex or unknown.</li>
+      <li>You have enough data for the model to learn the complexity.</li>
+      <li>You are willing to trade some speed and interpretability for better fit.</li>
+    </ul>
+  </li>
+</ul>
+
+<hr />
+
+<h2 id="6-summary">6. Summary</h2>
+
+<ul>
+  <li>Naive Bayes is fast and simple, but on the UCI Spambase dataset it is outperformed by Logistic Regression and SVM.</li>
+  <li><strong>Logistic Regression and linear SVM</strong> achieved the highest accuracy (~92.9%) on this data, but SVM took much longer to train.</li>
+  <li><strong>Decision Tree and KNN</strong> sit in the middle in both accuracy and speed.</li>
+  <li>A key conceptual distinction is <strong>parametric vs non-parametric</strong>: Naive Bayes, Logistic Regression and linear SVM assume a fixed form; Decision Trees and KNN learn the form from the data.</li>
+  <li>SVM is a bridge: linear SVMs are parametric, while SVMs with non-linear kernels can act as non-parametric models.</li>
+  <li>The best model is the one whose assumptions, speed and flexibility match your problem — not the one with the highest test accuracy in isolation.</li>
+</ul>
+
+<p><strong>Series recap:</strong> intuition (Part 1) → Bayes’ theorem (Part 2) → the classifier (Part 3) → Gaussian (Part 4) → Multinomial (Part 5) → Bernoulli (Part 6) → choosing between variants (Part 7) → comparing Naive Bayes to other models (Part 8, this topic).</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">naive-bayes</span>, <span class="tag">logistic-regression</span>, <span class="tag">decision-tree</span>, <span class="tag">knn</span>, <span class="tag">svm</span>, <span class="tag">parametric</span>, <span class="tag">non-parametric</span>, <span class="tag">model-selection</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
