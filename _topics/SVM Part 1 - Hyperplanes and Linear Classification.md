@@ -142,6 +142,8 @@ Then SVR follows these rules:
 
 So the line is shaped only by the points that land outside the tube. Those outside points are the **support vectors** for the regression problem — the same idea as support vectors in classification, just with a tube instead of a margin.
 
+**A common point of confusion:** when the outside point pulls the line, the **whole line moves**, not just one spot. A line is a single rigid object — like a straight ruler. If you push or pull one end, the entire ruler shifts. This means the inside points also get new predicted values (their y-coordinate on the line changes), but they still do **not** cause the move. The inside points are passengers; the outside points are the drivers.
+
 #### Step 3 — The role of `C` and `ε`
 
 Two settings control the behavior, and they do different jobs:
