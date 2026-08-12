@@ -144,16 +144,47 @@ So the line is shaped only by the points that land outside the tube. Those outsi
 
 #### Step 3 — The role of `C` and `ε`
 
-Two settings control the behavior:
+Two settings control the behavior, and they do different jobs:
 
-- **`ε` (epsilon):** sets the width of the tube. A larger `ε` means more points are ignored, so the line becomes flatter and simpler. A smaller `ε` means the model tries to fit more points closely.
-- **`C`:** decides how hard outside points pull. A large `C` means even a small outside-tube error is punished strongly, so the line bends to fit those points. A small `C` means outside points are allowed to stay far, giving a simpler line.
+- **`ε` (epsilon):** sets the **width of the tube**. A larger `ε` means more points are ignored, so the line becomes flatter and simpler. A smaller `ε` means the model tries to fit more points closely. `ε` does **not** change the penalty — it only changes which points count as "outside."
+- **`C`:** does **not** move or widen the tube. It decides how **harshly** the points outside the tube pull the line. A large `C` means outside points are punished strongly, so the line bends to fit them. A small `C` means outside points are allowed to stay far away, giving a simpler, flatter line.
+
+Here is what `C` does to the same data and the same tube:
+
+**Small `C`: one outside point is ignored**
+
+```
+price
+  │                                    ●  ← outside point
+  │                ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │        ● ───────line────── ●
+  │     ●  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │
+  └───────────────────────────────── square footage
+           (small C: line stays flat; the outlier is tolerated)
+```
+
+**Large `C`: the same outside point pulls the line**
+
+```
+price
+  │                                    ●  ← outside point
+  │                              ╱
+  │                ┄┄┄┄┄┄┄┄┄┄  ╱
+  │        ● ───────line──────●     (line tilts to pull the point inside)
+  │     ●  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │
+  └───────────────────────────────── square footage
+            (large C: the line bends toward the outlier)
+```
+
+Notice that the **tube width is the same** in both pictures. Only the **line's position** changes, because `C` controls how much the outside point is allowed to pull.
 
 | | Inside the ε-tube | Outside the ε-tube |
 |---|---|---|
 | What the model thinks | “Close enough” | “Too far — fix it” |
 | Loss | Zero | Proportional to how far outside |
-| Does it pull the line? | No | Yes |
+| Does it pull the line? | No | Yes, and `C` controls how hard |
 | What we call it | Normal training point | Support vector |
 
 #### Step 4 — Why this matters
