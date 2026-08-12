@@ -172,7 +172,42 @@ When in doubt — especially with text data — try both Multinomial (on counts)
 
 ---
 
-## 8. Practice questions
+## 8. Strengths and weaknesses of Naive Bayes
+
+Naive Bayes is one of the simplest and most versatile classification families in machine learning. It is not perfect, but its strengths make it a surprisingly strong baseline.
+
+### Strengths
+
+1. **Extremely fast training and inference.**
+   Training is just counting: count class priors, count feature statistics per class, and you are done. Inference is one product (or sum in log space) of already-known probabilities. This makes it ideal for large datasets and real-time predictions.
+
+2. **Works well with high-dimensional data.**
+   Because each feature is handled with its own small probability table or distribution, the product of likelihoods scales naturally to hundreds or thousands of features. This is why Naive Bayes is a classic first choice for text: each word is a feature, and vocabulary sizes can be large.
+
+3. **Simple and interpretable.**
+   The model is transparent. You can look at the learned probabilities and literally read off why a sample was classified one way: it had the highest `P(class)` times the product of `P(feature | class)`.
+
+4. **One algorithm family covers many data types.**
+   With three variants, the Naive Bayes framework covers:
+   - continuous numeric features (Gaussian NB),
+   - count/frequency features (Multinomial NB),
+   - binary yes/no features (Bernoulli NB).
+   You do not need to dummy-encode categorical variables in the same way linear regression often requires; you can pick the likelihood that matches the feature type.
+
+### Weaknesses
+
+1. **The feature independence assumption is unrealistic.**
+   Naive Bayes gets its name from the assumption that every feature is independent of every other feature given the class. In the real world, features usually depend on each other. For example, "cloudy weather" and "rain" are clearly not independent — one strongly suggests the other — but Naive Bayes treats them as if they are.
+
+2. **It cannot model feature interactions.**
+   Because it assumes independence, the model has no way to capture that two features together mean something different from either one alone. The rain-and-cloud example is a classic case: Naive Bayes sees `P(cloud | rain)` and `P(rain)` separately, but never the combined effect of `cloud AND rain` beyond what the product already implies. It works, but it can underestimate or misestimate the importance of a combination.
+
+3. **Continuous data is assumed to be Gaussian.**
+   Gaussian NB treats every continuous feature as a bell curve within each class. If the data is skewed, has outliers, or is zero-inflated — as we saw in the spam experiment above — the Gaussian assumption is violated and performance suffers. In those cases, transforming the data or using a different model may help.
+
+---
+
+## 9. Practice questions
 
 1. Why did Multinomial NB perform worst on this spam-like dataset despite being the standard choice for text?
 2. Why did binarizing the features (losing all magnitude information) *improve* accuracy?
@@ -188,7 +223,7 @@ When in doubt — especially with text data — try both Multinomial (on counts)
 
 ---
 
-## 9. Summary
+## 10. Summary
 
 - The three variants make different distribution assumptions: Gaussian (normal), Multinomial (counts), Bernoulli (binary).
 - On the same spam-like dataset: **Bernoulli 98.5% > Gaussian 83.3% > Multinomial 81.6%**.
