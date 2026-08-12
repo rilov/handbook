@@ -201,12 +201,41 @@
 
 <h4 id="step-3--the-role-of-c-and-ε">Step 3 — The role of <code class="language-plaintext highlighter-rouge">C</code> and <code class="language-plaintext highlighter-rouge">ε</code></h4>
 
-<p>Two settings control the behavior:</p>
+<p>Two settings control the behavior, and they do different jobs:</p>
 
 <ul>
-  <li><strong><code class="language-plaintext highlighter-rouge">ε</code> (epsilon):</strong> sets the width of the tube. A larger <code class="language-plaintext highlighter-rouge">ε</code> means more points are ignored, so the line becomes flatter and simpler. A smaller <code class="language-plaintext highlighter-rouge">ε</code> means the model tries to fit more points closely.</li>
-  <li><strong><code class="language-plaintext highlighter-rouge">C</code>:</strong> decides how hard outside points pull. A large <code class="language-plaintext highlighter-rouge">C</code> means even a small outside-tube error is punished strongly, so the line bends to fit those points. A small <code class="language-plaintext highlighter-rouge">C</code> means outside points are allowed to stay far, giving a simpler line.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">ε</code> (epsilon):</strong> sets the <strong>width of the tube</strong>. A larger <code class="language-plaintext highlighter-rouge">ε</code> means more points are ignored, so the line becomes flatter and simpler. A smaller <code class="language-plaintext highlighter-rouge">ε</code> means the model tries to fit more points closely. <code class="language-plaintext highlighter-rouge">ε</code> does <strong>not</strong> change the penalty — it only changes which points count as “outside.”</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">C</code>:</strong> does <strong>not</strong> move or widen the tube. It decides how <strong>harshly</strong> the points outside the tube pull the line. A large <code class="language-plaintext highlighter-rouge">C</code> means outside points are punished strongly, so the line bends to fit them. A small <code class="language-plaintext highlighter-rouge">C</code> means outside points are allowed to stay far away, giving a simpler, flatter line.</li>
 </ul>
+
+<p>Here is what <code class="language-plaintext highlighter-rouge">C</code> does to the same data and the same tube:</p>
+
+<p><strong>Small <code class="language-plaintext highlighter-rouge">C</code>: one outside point is ignored</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>price
+  │                                    ●  ← outside point
+  │                ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │        ● ───────line────── ●
+  │     ●  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │
+  └───────────────────────────────── square footage
+           (small C: line stays flat; the outlier is tolerated)
+</code></pre></div></div>
+
+<p><strong>Large <code class="language-plaintext highlighter-rouge">C</code>: the same outside point pulls the line</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>price
+  │                                    ●  ← outside point
+  │                              ╱
+  │                ┄┄┄┄┄┄┄┄┄┄  ╱
+  │        ● ───────line──────●     (line tilts to pull the point inside)
+  │     ●  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  │
+  └───────────────────────────────── square footage
+            (large C: the line bends toward the outlier)
+</code></pre></div></div>
+
+<p>Notice that the <strong>tube width is the same</strong> in both pictures. Only the <strong>line’s position</strong> changes, because <code class="language-plaintext highlighter-rouge">C</code> controls how much the outside point is allowed to pull.</p>
 
 <table>
   <thead>
@@ -230,7 +259,7 @@
     <tr>
       <td>Does it pull the line?</td>
       <td>No</td>
-      <td>Yes</td>
+      <td>Yes, and <code class="language-plaintext highlighter-rouge">C</code> controls how hard</td>
     </tr>
     <tr>
       <td>What we call it</td>
