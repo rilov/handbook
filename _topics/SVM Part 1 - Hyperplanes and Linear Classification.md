@@ -183,7 +183,12 @@ price
             (large C: the line bends toward the outlier)
 ```
 
-Notice that the **tube width is the same** in both pictures. Only the **line's position** changes, because `C` controls how much the outside point is allowed to pull.
+Think of the outside point as a weight tied to the line by a string. `C` is how heavy that weight is.
+
+- **Small `C`:** a light weight. The string pulls gently, so the line barely moves.
+- **Large `C`:** a heavy weight. The string pulls hard, so the line tilts toward the outside point.
+
+The **tube itself does not move or get wider** in either picture. The tube is only a "no-penalty zone." What changes is the **line's position**, because the outside point pulls harder when `C` is larger.
 
 | | Inside the ε-tube | Outside the ε-tube |
 |---|---|---|
