@@ -149,6 +149,11 @@ Two settings control the behavior, and they do different jobs:
 - **`ε` (epsilon):** sets the **width of the tube**. A larger `ε` means more points are ignored, so the line becomes flatter and simpler. A smaller `ε` means the model tries to fit more points closely. `ε` does **not** change the penalty — it only changes which points count as "outside."
 - **`C`:** does **not** move or widen the tube. It decides how **harshly** the points outside the tube pull the line. A large `C` means outside points are punished strongly, so the line bends to fit them. A small `C` means outside points are allowed to stay far away, giving a simpler, flatter line.
 
+**In the simplest possible words:** `C` is like a **volume knob for the complaints** of the points that fall outside the tube.
+
+- **Small `C`:** the complaints are quiet. The model says, "Yes, you are outside the tube, but I don't care very much," so the line barely moves.
+- **Large `C`:** the complaints are loud. The model says, "You are outside the tube and that is a big problem," so the line bends to pull those points closer.
+
 Here is what `C` does to the same data and the same tube:
 
 **Small `C`: one outside point is ignored**
