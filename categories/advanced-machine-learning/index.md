@@ -23,6 +23,7 @@ Learn advanced machine learning algorithms through clear, step-by-step explanati
 9. **[Naive Bayes Part 5: Multinomial Naive Bayes]({{ site.baseurl }}/topics/naive-bayes-multinomial)** — Count data, the multinomial likelihood, Laplace smoothing, and a fully worked spam example.
 10. **[Naive Bayes Part 6: Bernoulli Naive Bayes]({{ site.baseurl }}/topics/naive-bayes-bernoulli)** — Binary features, the Bernoulli likelihood, and a fully worked mammal vs non-mammal example.
 11. **[Naive Bayes Part 7: Choosing the Right Variant]({{ site.baseurl }}/topics/naive-bayes-choosing-the-right-variant)** — All three variants compared on the same spam dataset, and why the winner depends on how the feature distribution aligns with each model's assumption.
+12. **[Naive Bayes Part 8: Other Classification Models and Parametric vs Non-Parametric]({{ site.baseurl }}/topics/naive-bayes-other-classification-models)** — Compare Naive Bayes with Logistic Regression, Decision Tree, KNN and SVM on the UCI Spambase dataset, and learn the parametric vs non-parametric distinction.
 
 **Quick reference:**
 
