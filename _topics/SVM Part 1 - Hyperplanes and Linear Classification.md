@@ -142,18 +142,33 @@ Then SVR follows these rules:
 
 So the line is shaped only by the points that land outside the tube. Those outside points are the **support vectors** for the regression problem — the same idea as support vectors in classification, just with a tube instead of a margin.
 
-### What is a “point” here, in the spam example?
+### What is a “point” here?
 
-Each point is one data sample. The example above uses houses because the target — price — is a number, and SVR predicts numbers.
+A **point** is one data sample — one row in the training set. In the house example, a point is one house. It has:
 
-You can use the same picture for spam if the target is also a number. Imagine the x-axis is the **percentage of capital-run words** in an email and the y-axis is a human **spam-likeness score** from 0 to 1. Each point is one email.
+- an **x value** — the feature, e.g. square footage
+- a **y value** — the target, e.g. the actual price of that house
 
-- **Inside the tube:** the email’s actual spam score is close to the score the line predicts. The model says, “Close enough,” and ignores it.
-- **Outside the tube:** the email’s actual spam score is far from the predicted score. The model says, “That is too far off,” and this email pulls the line to fix the error.
+The point itself is **not** the error. The error is the vertical distance between the point’s actual y and the line’s predicted y.
 
-Those outside emails are the **support vectors** — the few examples the model actually cares about.
+```
+price
+  │                         ● actual price
+  │                         │
+  │                         │  ← error (vertical distance)
+  │              ●──────────┤
+  │             line        │
+  │                         ↓
+  │                         ○ predicted price on the line
+  └───────────────────────────────── square footage
+```
 
-(Note: if the target is just a spam/ham label instead of a number, you would use SVM **classification**, not SVR. The tube becomes a **margin**, and the same inside/outside idea still applies.)
+- **Inside the tube:** the error is small. The model ignores the point.
+- **Outside the tube:** the error is large. The point pulls the line.
+
+The point never moves. Only the line moves. The point’s job is to tell the model, “My actual y is here; how far is your current line from me?”
+
+(Note: this only works when the target y is a number. If the target is a label such as spam/ham, the problem is **classification**, not regression, and SVM uses a **margin** instead of a tube.)
 
 **A common point of confusion:** when the outside point pulls the line, the **whole line moves**, not just one spot. A line is a single rigid object — like a straight ruler. If you push or pull one end, the entire ruler shifts. This means the inside points also get new predicted values (their y-coordinate on the line changes), but they still do **not** cause the move. The inside points are passengers; the outside points are the drivers.
 
