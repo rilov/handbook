@@ -125,7 +125,50 @@ print("Cross-validation scores:", scores)
 print("Average:", scores.mean())
 ```
 
-**Common choices:** `k=5` or `k=10`. Use `k=5` for speed, `k=10` for small datasets. Leave-one-out cross-validation (`k` equals the number of samples) is the most thorough but the slowest.
+**Common choices:** `k=5` for speed, `k=10` for small datasets.
+
+### Stratified k-fold
+
+In normal k-fold, the folds are random. With imbalanced classes, one fold might accidentally contain only the majority class and give a misleading score. **Stratified k-fold** keeps the same class proportions in every fold. If 90% of the data is class A and 10% is class B, every fold also has that 90/10 split. This is the default choice for classification problems because it prevents a lucky or unlucky fold from fooling you.
+
+```python
+from sklearn.model_selection import StratifiedKFold
+
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(LogisticRegression(max_iter=200), X, y, cv=skf)
+```
+
+### Leave-one-out cross-validation
+
+**Leave-one-out (LOO)** is k-fold taken to the extreme: each fold is a single sample, so the model is trained on every sample except one and tested on that one. It uses almost all the data for training and gives a very unbiased estimate, but it is extremely slow on large datasets. Use it only for very small datasets where you cannot afford to hold out a bigger chunk.
+
+### Time series cross-validation
+
+For time-ordered data, you cannot shuffle the rows randomly because the future depends on the past. **Time series cross-validation** respects the order.
+
+**Expanding window:** use the first T1, T2, T3 to predict T4; then T1..T4 to predict T5; then T1..T5 to predict T6. The training set grows over time.
+
+```
+Train: T1 T2 T3           → Test: T4
+Train: T1 T2 T3 T4        → Test: T5
+Train: T1 T2 T3 T4 T5     → Test: T6
+```
+
+**Rolling window:** use a fixed window that slides forward. For example, T1, T2, T3 to predict T4; then T2, T3, T4 to predict T5; then T3, T4, T5 to predict T6.
+
+```
+Train: T1 T2 T3   → Test: T4
+Train: T2 T3 T4   → Test: T5
+Train: T3 T4 T5   → Test: T6
+```
+
+Choose expanding window when you want to use all historical data; choose rolling window when you only care about the most recent window and want the training set size to stay constant.
+
+### Benefits and costs
+
+- **Benefit:** cross-validation gives a more reliable score because every data point gets to be in the validation set once, and the average is less sensitive to one unlucky split.
+- **Cost:** it trains the model multiple times, so it can be slow on large datasets or complex models.
+- **Rule of thumb:** use holdout for large data, k-fold for medium data, stratified k-fold for imbalanced classification, LOO for tiny data, and time-series splits for ordered data.
 
 ---
 
