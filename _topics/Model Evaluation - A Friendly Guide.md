@@ -25,10 +25,15 @@ This guide covers the practical ideas behind splitting data, choosing the right 
 
 A model's job is to learn a pattern that also works on **new** data.
 
+### Why training accuracy is not enough
+
+**Training accuracy** is how well the model does on the data it already saw. A model that simply memorises the training set can score 99% on training data and still fail on real-world data. Training score alone cannot tell you whether the model has learned a useful pattern or just memorised the answers.
+
 - **Training error:** how well the model does on the data it learned from.
+- **Validation error:** how well the model does on a held-out set used to tune and compare options.
 - **Test error:** how well the model does on data it has never seen.
-- A model with low training error but high test error has **overfitted**.
-- A model with high training error and high test error has **underfitted**.
+
+A model with low training error but high test error has **overfitted** — it memorised noise instead of the pattern. A model with high training error and high test error has **underfitted** — it is too simple to capture the pattern.
 
 The only score that really matters is the score on data the model has not seen.
 
@@ -87,11 +92,18 @@ A **validation set** is a second held-out split used to make decisions *during* 
 
 The rule is simple: **train on the training set, tune on the validation set, report on the test set**.
 
+Think of the validation set as an early warning system. It gives the model a chance to prove itself on unseen data before the final test. If the validation score is much worse than the training score, the model is overfitting and you need to simplify it, collect more data, or add regularisation. Repeating this check stops you from accidentally optimising for the test set.
+
 ---
 
 ## 4. Cross-validation
 
-When the dataset is small, a single train-test split can be unlucky: the test fold might happen to contain only easy or only hard examples. **Cross-validation** trains and tests the model multiple times on different slices of the data, then averages the scores.
+There are two common ways to create a validation set:
+
+- **Holdout validation:** split the data once into train and validation. Fast, but the score can be unlucky if the validation slice is small or unusual.
+- **Cross-validation:** split the data into `k` folds and train/test `k` times, rotating which fold is the validation set. Slower, but uses more data for training and gives a more stable, less variable score.
+
+For very large datasets (millions of rows), a holdout set is usually enough because the validation set is already large and representative. For smaller datasets, cross-validation is better because every data point gets used for both training and validation across different folds.
 
 ### k-fold cross-validation
 
@@ -154,6 +166,16 @@ print("F1:", f1_score(y_test, predictions, average="macro"))
 ```
 
 A **confusion matrix** shows exactly which classes get confused with which. It is the most honest view of a classifier's mistakes.
+
+### Which mistakes are more expensive?
+
+The right metric depends on what the model is used for. A high score on the wrong metric can still be a bad model.
+
+- **Fraud detection:** a false negative (a real fraud marked as safe) is usually much more expensive than a false positive (a safe transaction marked as fraud). Maximise **recall** so you catch as much fraud as possible.
+- **Credit scoring:** the goal is to maximise expected profit. The metric should reflect the financial gain or loss of each kind of decision, not just accuracy.
+- **Medical screening:** a false negative (sick patient told they are healthy) can cost a life. Minimise false negatives even if it means more false positives, which lead to extra tests but not harm.
+
+Always ask: *What does a wrong prediction cost in the real world?* Then pick the metric that matches that cost.
 
 ---
 
