@@ -57,12 +57,17 @@
 
 <p>A model’s job is to learn a pattern that also works on <strong>new</strong> data.</p>
 
+<h3 id="why-training-accuracy-is-not-enough">Why training accuracy is not enough</h3>
+
+<p><strong>Training accuracy</strong> is how well the model does on the data it already saw. A model that simply memorises the training set can score 99% on training data and still fail on real-world data. Training score alone cannot tell you whether the model has learned a useful pattern or just memorised the answers.</p>
+
 <ul>
   <li><strong>Training error:</strong> how well the model does on the data it learned from.</li>
+  <li><strong>Validation error:</strong> how well the model does on a held-out set used to tune and compare options.</li>
   <li><strong>Test error:</strong> how well the model does on data it has never seen.</li>
-  <li>A model with low training error but high test error has <strong>overfitted</strong>.</li>
-  <li>A model with high training error and high test error has <strong>underfitted</strong>.</li>
 </ul>
+
+<p>A model with low training error but high test error has <strong>overfitted</strong> — it memorised noise instead of the pattern. A model with high training error and high test error has <strong>underfitted</strong> — it is too simple to capture the pattern.</p>
 
 <p>The only score that really matters is the score on data the model has not seen.</p>
 
@@ -120,11 +125,20 @@
 
 <p>The rule is simple: <strong>train on the training set, tune on the validation set, report on the test set</strong>.</p>
 
+<p>Think of the validation set as an early warning system. It gives the model a chance to prove itself on unseen data before the final test. If the validation score is much worse than the training score, the model is overfitting and you need to simplify it, collect more data, or add regularisation. Repeating this check stops you from accidentally optimising for the test set.</p>
+
 <hr />
 
 <h2 id="4-cross-validation">4. Cross-validation</h2>
 
-<p>When the dataset is small, a single train-test split can be unlucky: the test fold might happen to contain only easy or only hard examples. <strong>Cross-validation</strong> trains and tests the model multiple times on different slices of the data, then averages the scores.</p>
+<p>There are two common ways to create a validation set:</p>
+
+<ul>
+  <li><strong>Holdout validation:</strong> split the data once into train and validation. Fast, but the score can be unlucky if the validation slice is small or unusual.</li>
+  <li><strong>Cross-validation:</strong> split the data into <code class="language-plaintext highlighter-rouge">k</code> folds and train/test <code class="language-plaintext highlighter-rouge">k</code> times, rotating which fold is the validation set. Slower, but uses more data for training and gives a more stable, less variable score.</li>
+</ul>
+
+<p>For very large datasets (millions of rows), a holdout set is usually enough because the validation set is already large and representative. For smaller datasets, cross-validation is better because every data point gets used for both training and validation across different folds.</p>
 
 <h3 id="k-fold-cross-validation">k-fold cross-validation</h3>
 
@@ -183,6 +197,18 @@ recall    = true positives / (true positives + false negatives)
 </code></pre></div></div>
 
 <p>A <strong>confusion matrix</strong> shows exactly which classes get confused with which. It is the most honest view of a classifier’s mistakes.</p>
+
+<h3 id="which-mistakes-are-more-expensive">Which mistakes are more expensive?</h3>
+
+<p>The right metric depends on what the model is used for. A high score on the wrong metric can still be a bad model.</p>
+
+<ul>
+  <li><strong>Fraud detection:</strong> a false negative (a real fraud marked as safe) is usually much more expensive than a false positive (a safe transaction marked as fraud). Maximise <strong>recall</strong> so you catch as much fraud as possible.</li>
+  <li><strong>Credit scoring:</strong> the goal is to maximise expected profit. The metric should reflect the financial gain or loss of each kind of decision, not just accuracy.</li>
+  <li><strong>Medical screening:</strong> a false negative (sick patient told they are healthy) can cost a life. Minimise false negatives even if it means more false positives, which lead to extra tests but not harm.</li>
+</ul>
+
+<p>Always ask: <em>What does a wrong prediction cost in the real world?</em> Then pick the metric that matches that cost.</p>
 
 <hr />
 
