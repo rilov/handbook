@@ -147,6 +147,39 @@ The validation set is for comparison, but if you test hundreds of ideas on it, t
 
 ---
 
-## 7. One-sentence takeaway
+## 7. Hyperparameters in generative AI
+
+Generative AI uses the same tuning principles, but the settings themselves are different. You are usually not choosing a tree depth or a kernel width; you are choosing how the model generates text, images, or other outputs.
+
+### Inference-time hyperparameters
+
+These are set when you call the model, not when you train it:
+
+- **Temperature:** controls how random the output is. `0` means deterministic; higher values mean more creative and unpredictable.
+- **Top-p (nucleus sampling):** limits the model to a small set of likely next tokens. A low `top-p` makes output focused and safe; a high `top-p` lets the model explore rare words.
+- **Top-k:** limits the model to the `k` most likely next tokens.
+- **Max output length:** the longest sequence the model is allowed to produce.
+- **System prompt / prompt template:** the instructions you give the model before the user's question. This is one of the most powerful levers.
+- **Number of in-context examples:** how many examples you show the model in the prompt for few-shot learning.
+
+### Training-time hyperparameters for generative models
+
+When you fine-tune a large language or image model, you still tune:
+
+- **Learning rate and schedule**
+- **Batch size and number of epochs**
+- **LoRA rank and alpha** (when using parameter-efficient fine-tuning)
+- **Warm-up steps**
+- **Context window length**
+
+### What makes tuning harder
+
+- **Evaluation is expensive.** Generative output is open-ended, so you may need human review, an LLM-as-a-judge, or task-specific benchmarks.
+- **Compute is expensive.** Large models take a long time to train, so you cannot run hundreds of grid-search trials.
+- **Small gains may not be worth the cost.** Going from 92% to 93% quality might need ten times more compute. Domain knowledge and budget matter more than ever.
+
+---
+
+## 8. One-sentence takeaway
 
 **Hyperparameters control how a model learns; grid search and random search help you find good values, but the best tuning is useless if you leak information from the validation or test set into the training process.**
