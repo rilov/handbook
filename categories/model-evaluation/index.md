@@ -9,6 +9,7 @@ How do you know a machine learning model will actually work on new data? This mo
 **Start here:**
 
 - **[Model Evaluation - A Friendly Guide]({{ site.baseurl }}/topics/model-evaluation)** — The complete, beginner-friendly guide to evaluating models without fooling yourself.
+- **[Hyperparameters and Tuning - A Friendly Guide]({{ site.baseurl }}/topics/hyperparameters-and-tuning)** — How to choose the settings that control how a model learns.
 
 **What You'll Learn:**
 
