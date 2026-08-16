@@ -6,6 +6,10 @@ category: Advanced Machine Learning
 
 Learn advanced machine learning algorithms through clear, step-by-step explanations and practical Python examples. This module builds Support Vector Machines from the ground up — one small idea at a time — starting from the bias-variance tradeoff that motivates every design choice that follows.
 
+**Start here:**
+
+- **[Advanced Machine Learning: The One-Pager]({{ site.baseurl }}/topics/advanced-machine-learning-one-pager)** — The simplest, one-page summary of every topic in this module. Read this first if you want the big picture.
+
 **Recommended Learning Path:**
 
 0. **[Bias and Variance]({{ site.baseurl }}/topics/bias-and-variance)** — The two ways any model can go wrong: underfitting (bias) vs overfitting (variance). Read this first — every later topic refers back to it.
