@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Model Evaluation - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/model-evaluation">Model Evaluation</a> &mdash;
+    </nav>
+    <h2>Model Evaluation - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/model-evaluation">Model Evaluation</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="model-evaluation---a-friendly-guide">Model Evaluation - A Friendly Guide</h1>
+
+<p>The fanciest model in the world is useless if it cannot make good predictions on data it has not seen yet. <strong>Model evaluation</strong> is the set of tools we use to answer one question: <em>how will this model actually perform in the real world?</em></p>
+
+<p>This guide covers the practical ideas behind splitting data, choosing the right metric, and comparing models fairly. It assumes you already know the basics of machine learning; if you want a deeper look at the bias-variance tradeoff, see the <a href="/handbook/topics/bias-and-variance">Bias and Variance</a> topic first.</p>
+
+<hr />
+
+<h2 id="1-the-whole-point-generalisation">1. The whole point: generalisation</h2>
+
+<p>A model’s job is to learn a pattern that also works on <strong>new</strong> data.</p>
+
+<ul>
+  <li><strong>Training error:</strong> how well the model does on the data it learned from.</li>
+  <li><strong>Test error:</strong> how well the model does on data it has never seen.</li>
+  <li>A model with low training error but high test error has <strong>overfitted</strong>.</li>
+  <li>A model with high training error and high test error has <strong>underfitted</strong>.</li>
+</ul>
+
+<p>The only score that really matters is the score on data the model has not seen.</p>
+
+<hr />
+
+<h2 id="2-the-train-test-split">2. The train-test split</h2>
+
+<p>The simplest way to estimate real-world performance is to hide some data before training.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>100% of data
+│
+├── training set  (e.g. 80%)  → used to train the model
+└── test set      (e.g. 20%)  → used only at the very end
+</code></pre></div></div>
+
+<p>A common split is <strong>80% train / 20% test</strong>. For imbalanced classes, use <strong>stratification</strong> so the test set has the same class proportions as the full set.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.datasets</span> <span class="kn">import</span> <span class="n">load_iris</span>
+<span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="n">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nf">load_iris</span><span class="p">(</span><span class="n">return_X_y</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="nf">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+<span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Test accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>The test set should be touched <strong>once</strong>. If you keep tuning the model to improve the test score, the test set becomes just another training set.</p>
+
+<hr />
+
+<h2 id="3-the-validation-set">3. The validation set</h2>
+
+<p>A <strong>validation set</strong> is a second held-out split used to make decisions <em>during</em> the project:</p>
+
+<ul>
+  <li>picking between different models,</li>
+  <li>choosing hyperparameters,</li>
+  <li>deciding when to stop training.</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>100% of data
+│
+├── training set      (e.g. 70%)
+├── validation set    (e.g. 15%)  → used to compare options
+└── test set          (e.g. 15%)  → used only for final score
+</code></pre></div></div>
+
+<p>The rule is simple: <strong>train on the training set, tune on the validation set, report on the test set</strong>.</p>
+
+<hr />
+
+<h2 id="4-cross-validation">4. Cross-validation</h2>
+
+<p>When the dataset is small, a single train-test split can be unlucky: the test fold might happen to contain only easy or only hard examples. <strong>Cross-validation</strong> trains and tests the model multiple times on different slices of the data, then averages the scores.</p>
+
+<h3 id="k-fold-cross-validation">k-fold cross-validation</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Fold 1:  [Test][Train][Train][Train][Train]
+Fold 2:  [Train][Test][Train][Train][Train]
+Fold 3:  [Train][Train][Test][Train][Train]
+Fold 4:  [Train][Train][Train][Test][Train]
+Fold 5:  [Train][Train][Train][Train][Test]
+</code></pre></div></div>
+
+<p>The data is split into <code class="language-plaintext highlighter-rouge">k</code> equal chunks. The model is trained <code class="language-plaintext highlighter-rouge">k</code> times, each time holding out one chunk as the test set. The final score is the average of all <code class="language-plaintext highlighter-rouge">k</code> scores.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">cross_val_score</span>
+
+<span class="n">scores</span> <span class="o">=</span> <span class="nf">cross_val_score</span><span class="p">(</span><span class="nc">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">200</span><span class="p">),</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Cross-validation scores:</span><span class="sh">"</span><span class="p">,</span> <span class="n">scores</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Average:</span><span class="sh">"</span><span class="p">,</span> <span class="n">scores</span><span class="p">.</span><span class="nf">mean</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p><strong>Common choices:</strong> <code class="language-plaintext highlighter-rouge">k=5</code> or <code class="language-plaintext highlighter-rouge">k=10</code>. Use <code class="language-plaintext highlighter-rouge">k=5</code> for speed, <code class="language-plaintext highlighter-rouge">k=10</code> for small datasets. Leave-one-out cross-validation (<code class="language-plaintext highlighter-rouge">k</code> equals the number of samples) is the most thorough but the slowest.</p>
+
+<hr />
+
+<h2 id="5-classification-metrics">5. Classification metrics</h2>
+
+<p><strong>Accuracy</strong> is the simplest classification metric:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>accuracy = correct predictions / total predictions
+</code></pre></div></div>
+
+<p>It is easy to understand, but it can be misleading when the classes are imbalanced. If 99% of emails are not spam, a model that always says “not spam” gets 99% accuracy.</p>
+
+<p>For imbalanced problems, use <strong>precision</strong>, <strong>recall</strong>, and the <strong>F1-score</strong>.</p>
+
+<ul>
+  <li><strong>Precision:</strong> of all the positives the model predicted, how many were actually positive?</li>
+  <li><strong>Recall:</strong> of all the actual positives, how many did the model find?</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>precision = true positives / (true positives + false positives)
+recall    = true positives / (true positives + false negatives)
+</code></pre></div></div>
+
+<p>The <strong>F1-score</strong> is the balanced average of precision and recall:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>F1 = 2 * (precision * recall) / (precision + recall)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">precision_score</span><span class="p">,</span> <span class="n">recall_score</span><span class="p">,</span> <span class="n">f1_score</span>
+
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">accuracy:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">precision:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="sh">"</span><span class="s">macro</span><span class="sh">"</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">recall:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="sh">"</span><span class="s">macro</span><span class="sh">"</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">F1:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">f1_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="sh">"</span><span class="s">macro</span><span class="sh">"</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>A <strong>confusion matrix</strong> shows exactly which classes get confused with which. It is the most honest view of a classifier’s mistakes.</p>
+
+<hr />
+
+<h2 id="6-regression-metrics">6. Regression metrics</h2>
+
+<p>For numerical predictions, the most common metrics are:</p>
+
+<ul>
+  <li><strong>MSE (Mean Squared Error):</strong> the average of the squared errors. It punishes large mistakes heavily.</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>MSE = average of (actual - predicted)^2
+</code></pre></div></div>
+
+<ul>
+  <li><strong>RMSE (Root Mean Squared Error):</strong> the square root of MSE. It has the same units as the target, so it is easier to interpret.</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>RMSE = sqrt(MSE)
+</code></pre></div></div>
+
+<ul>
+  <li><strong>MAE (Mean Absolute Error):</strong> the average of the absolute errors. It treats all mistakes equally.</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>MAE = average of |actual - predicted|
+</code></pre></div></div>
+
+<ul>
+  <li><strong>R^2 (coefficient of determination):</strong> how much of the variance in the target is explained by the model. 1.0 is a perfect fit; negative values mean the model is worse than predicting the mean.</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">mean_squared_error</span><span class="p">,</span> <span class="n">mean_absolute_error</span><span class="p">,</span> <span class="n">r2_score</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># replace y_test and predictions with regression values
+# print("RMSE:", np.sqrt(mean_squared_error(y_test, predictions)))
+# print("MAE:", mean_absolute_error(y_test, predictions))
+# print("R^2:", r2_score(y_test, predictions))
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="7-hyperparameter-search">7. Hyperparameter search</h2>
+
+<p><strong>Hyperparameters</strong> are the settings you choose before training, such as <code class="language-plaintext highlighter-rouge">C</code> for an SVM, <code class="language-plaintext highlighter-rouge">k</code> for KNN, or <code class="language-plaintext highlighter-rouge">max_depth</code> for a decision tree. They are not learned from the data, so we have to try different values and see what works best.</p>
+
+<p>Two simple strategies are:</p>
+
+<ul>
+  <li><strong>Grid search:</strong> try every combination from a fixed list. Exhaustive, but slow.</li>
+  <li><strong>Random search:</strong> try random combinations. Often faster and almost as good.</li>
+</ul>
+
+<p>In both cases, use a <strong>validation set</strong> or <strong>cross-validation</strong> to score each combination. Never pick hyperparameters by looking at the final test score.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">C</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">gamma</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">scale</span><span class="sh">"</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">kernel</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">rbf</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">linear</span><span class="sh">"</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">search</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="nc">SVC</span><span class="p">(),</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">search</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best params:</span><span class="sh">"</span><span class="p">,</span> <span class="n">search</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV score:</span><span class="sh">"</span><span class="p">,</span> <span class="n">search</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="8-the-most-common-traps">8. The most common traps</h2>
+
+<ul>
+  <li><strong>Data leakage:</strong> any information from the test set reaches the training process. Always split before scaling, feature engineering, or any transformation.</li>
+  <li><strong>Optimising for the wrong metric:</strong> accuracy is not enough for imbalanced data; mean accuracy is not enough if some mistakes are more expensive than others.</li>
+  <li><strong>Overfitting the test set:</strong> if you tune, re-tune, and re-tune again using the test score, your final score is no longer an honest estimate.</li>
+  <li><strong>Ignoring the validation set:</strong> the test set is for the final report. The validation set is for all decisions before that.</li>
+</ul>
+
+<hr />
+
+<h2 id="9-summary-which-tool-for-which-job">9. Summary: which tool for which job?</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Use this</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Lots of data and one model to check</td>
+      <td>Train-test split</td>
+    </tr>
+    <tr>
+      <td>Small dataset or comparing models</td>
+      <td>k-fold cross-validation</td>
+    </tr>
+    <tr>
+      <td>Choosing hyperparameters or models</td>
+      <td>Validation set or cross-validation</td>
+    </tr>
+    <tr>
+      <td>Imbalanced classes</td>
+      <td>Precision, recall, F1</td>
+    </tr>
+    <tr>
+      <td>Numerical predictions</td>
+      <td>RMSE, MAE, R^2</td>
+    </tr>
+    <tr>
+      <td>Final report on unseen data</td>
+      <td>Test set (used once)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-one-sentence-takeaway">10. One-sentence takeaway</h2>
+
+<p><strong>Treat the test set like an exam paper you only get to see once:</strong> use the training and validation sets to practise, and only measure real performance on the final test set.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">model-evaluation</span>, <span class="tag">cross-validation</span>, <span class="tag">overfitting</span>, <span class="tag">metrics</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
