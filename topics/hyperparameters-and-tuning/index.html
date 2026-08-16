@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hyperparameters and Tuning - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/model-evaluation">Model Evaluation</a> &mdash;
+    </nav>
+    <h2>Hyperparameters and Tuning - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/model-evaluation">Model Evaluation</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="hyperparameters-and-tuning---a-friendly-guide">Hyperparameters and Tuning - A Friendly Guide</h1>
+
+<p>Every machine learning model has two kinds of numbers:</p>
+
+<ul>
+  <li><strong>Parameters:</strong> the numbers the model learns from the data. In <code class="language-plaintext highlighter-rouge">y = w * x + b</code>, <code class="language-plaintext highlighter-rouge">w</code> and <code class="language-plaintext highlighter-rouge">b</code> are parameters.</li>
+  <li><strong>Hyperparameters:</strong> the settings you choose before training. They control <em>how</em> the model learns, not <em>what</em> it learns.</li>
+</ul>
+
+<p>Picking the right hyperparameters can be the difference between a great model and a useless one. This guide explains what they are, how to search for them, and the common traps that make tuning go wrong.</p>
+
+<hr />
+
+<h2 id="1-hyperparameters-vs-parameters">1. Hyperparameters vs parameters</h2>
+
+<p>A <strong>parameter</strong> is something the training algorithm adjusts for you. A linear regression finds the best <code class="language-plaintext highlighter-rouge">w</code> and <code class="language-plaintext highlighter-rouge">b</code>. A neural network finds the best weights. You do not set these by hand.</p>
+
+<p>A <strong>hyperparameter</strong> is something you set before the training begins. You tell the model how deep a tree can grow, how fast it should learn, or which optimisation algorithm to use. The model cannot learn these from the data.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Linear regression:  y = w * x + b
+- Parameters: w, b           (learned)
+- Hyperparameter: learning rate, regularisation strength
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="2-examples-of-hyperparameters">2. Examples of hyperparameters</h2>
+
+<p>Different models have different hyperparameters. Here are a few common ones:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Hyperparameters</th>
+      <th>What they control</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Decision tree</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">max_depth</code>, <code class="language-plaintext highlighter-rouge">min_samples_leaf</code></td>
+      <td>How tall the tree can grow and when it stops splitting.</td>
+    </tr>
+    <tr>
+      <td><strong>Linear regression</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">learning_rate</code></td>
+      <td>How big each update step is during training.</td>
+    </tr>
+    <tr>
+      <td><strong>Neural network</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">number_of_layers</code>, <code class="language-plaintext highlighter-rouge">neurons_per_layer</code>, <code class="language-plaintext highlighter-rouge">learning_rate</code>, <code class="language-plaintext highlighter-rouge">batch_size</code></td>
+      <td>The size of the network and how fast it updates.</td>
+    </tr>
+    <tr>
+      <td><strong>Optimiser</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">SGD</code>, <code class="language-plaintext highlighter-rouge">Adam</code>, <code class="language-plaintext highlighter-rouge">RMSprop</code></td>
+      <td>Which rule the model uses to update its weights.</td>
+    </tr>
+    <tr>
+      <td><strong>SVM</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">C</code>, <code class="language-plaintext highlighter-rouge">gamma</code>, <code class="language-plaintext highlighter-rouge">kernel</code></td>
+      <td>The cost of mistakes and the shape of the decision boundary.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Even non-parametric models such as KNN have hyperparameters (for example, the number of neighbours <code class="language-plaintext highlighter-rouge">k</code>).</p>
+
+<hr />
+
+<h2 id="3-grid-search">3. Grid search</h2>
+
+<p><strong>Grid search</strong> tries every combination from a fixed list you provide. If you give it three learning rates and two optimisers, it will train six models and pick the best one.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>learning_rate: [0.001, 0.01, 0.1]
+optimiser:     ["sgd", "adam"]
+
+gives 3 × 2 = 6 combinations
+</code></pre></div></div>
+
+<p>It is exhaustive, so it is guaranteed to find the best combination inside the grid. The downside is that it can be very slow, especially when there are many hyperparameters or many values per hyperparameter.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="n">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">C</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">gamma</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">],</span>
+    <span class="sh">"</span><span class="s">kernel</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">rbf</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">linear</span><span class="sh">"</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">search</span> <span class="o">=</span> <span class="nc">GridSearchCV</span><span class="p">(</span><span class="nc">SVC</span><span class="p">(),</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">search</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best params:</span><span class="sh">"</span><span class="p">,</span> <span class="n">search</span><span class="p">.</span><span class="n">best_params_</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Best CV score:</span><span class="sh">"</span><span class="p">,</span> <span class="n">search</span><span class="p">.</span><span class="n">best_score_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-random-search">4. Random search</h2>
+
+<p><strong>Random search</strong> does not try every combination. Instead, it samples random combinations from a range or distribution you define. It usually finds a good solution much faster than grid search.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">RandomizedSearchCV</span>
+<span class="kn">from</span> <span class="n">scipy.stats</span> <span class="kn">import</span> <span class="n">loguniform</span>
+
+<span class="n">param_distributions</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sh">"</span><span class="s">C</span><span class="sh">"</span><span class="p">:</span> <span class="nf">loguniform</span><span class="p">(</span><span class="mf">1e-2</span><span class="p">,</span> <span class="mf">1e2</span><span class="p">),</span>
+    <span class="sh">"</span><span class="s">gamma</span><span class="sh">"</span><span class="p">:</span> <span class="nf">loguniform</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-1</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="n">search</span> <span class="o">=</span> <span class="nc">RandomizedSearchCV</span><span class="p">(</span>
+    <span class="nc">SVC</span><span class="p">(),</span>
+    <span class="n">param_distributions</span><span class="p">,</span>
+    <span class="n">n_iter</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+<span class="n">search</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>If one hyperparameter does not matter much, random search wastes very little time on it. This is why it often beats grid search in practice.</p>
+
+<hr />
+
+<h2 id="5-search-space-early-stopping-and-budget">5. Search space, early stopping, and budget</h2>
+
+<h3 id="search-space">Search space</h3>
+
+<p>The <strong>search space</strong> is the set of hyperparameters and the ranges you consider. A huge search space can find better values, but it also means more trials. Keep the search space focused on values that make sense for your data and model.</p>
+
+<h3 id="early-stopping">Early stopping</h3>
+
+<p><strong>Early stopping</strong> stops training when the validation score stops improving. It is a cheap, effective way to prevent overfitting and save time. You do not have to wait for the full number of epochs if the model has already stopped getting better.</p>
+
+<h3 id="budget">Budget</h3>
+
+<p>In the real world, every trial costs money and time. A 1% accuracy gain might not be worth a week of extra compute. Decide up front how many trials or hours you are willing to spend. Good hyperparameter tuning means getting the best model you can within your budget, not chasing the absolute best score at any cost.</p>
+
+<hr />
+
+<h2 id="6-common-pitfalls">6. Common pitfalls</h2>
+
+<h3 id="data-leakage">Data leakage</h3>
+
+<p>The validation data must never influence the training data. Two classic mistakes:</p>
+
+<ul>
+  <li><strong>Scaling before splitting:</strong> if you fit the scaler on the whole dataset and then split, the validation set has already seen the training set’s statistics. Always <code class="language-plaintext highlighter-rouge">fit</code> on the training set and <code class="language-plaintext highlighter-rouge">transform</code> the validation and test sets.</li>
+  <li><strong>Tuning with the test set:</strong> if you keep adjusting hyperparameters to improve the test score, the test score is no longer an honest measure.</li>
+</ul>
+
+<h3 id="target-leakage">Target leakage</h3>
+
+<p><strong>Target leakage</strong> happens when a feature would not actually be available at prediction time. For example, if you are predicting tomorrow’s solar radiation, you cannot use tomorrow’s relative humidity as a feature because that value will not be known until tomorrow. Always ask: <em>will this feature be available when the model is used?</em></p>
+
+<h3 id="reusing-the-validation-set-too-much">Reusing the validation set too much</h3>
+
+<p>The validation set is for comparison, but if you test hundreds of ideas on it, the model effectively learns what the validation set looks like. Keep a final <strong>test set</strong> that is only used once at the end.</p>
+
+<hr />
+
+<h2 id="7-one-sentence-takeaway">7. One-sentence takeaway</h2>
+
+<p><strong>Hyperparameters control how a model learns; grid search and random search help you find good values, but the best tuning is useless if you leak information from the validation or test set into the training process.</strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">machine-learning</span>, <span class="tag">hyperparameters</span>, <span class="tag">tuning</span>, <span class="tag">grid-search</span>, <span class="tag">random-search</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
