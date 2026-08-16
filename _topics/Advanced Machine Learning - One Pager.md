@@ -28,6 +28,20 @@ This page is a bird's-eye view of the whole module. Each topic below is reduced 
 
 ---
 
+## SVM: the big idea
+
+[SVM Part 1]({{ site.baseurl }}/topics/svm-hyperplanes-and-linear-classification) | [SVM Part 2]({{ site.baseurl }}/topics/svm-maximal-margin-classifier) | [SVM Part 3]({{ site.baseurl }}/topics/svm-soft-margin-and-cost) | [SVM Part 4]({{ site.baseurl }}/topics/svm-kernels-and-kernel-trick)
+
+- **SVM's goal:** find the best boundary between two groups of points.
+- **Main trick:** draw the widest possible empty "street" (called the **margin**) between the two groups. A wide street gives a safer, more confident boundary.
+- **Support vectors:** the few points that touch the edge of the street. They are the only points that matter for the final boundary.
+- **Soft margin:** real data is messy, so SVM can allow a few points on the wrong side. The cost **C** controls how much we care about those mistakes.
+- **Kernel trick:** when a straight line cannot separate the groups, SVM lifts the data into a higher-dimensional space where it can. The **linear**, **polynomial** and **RBF** kernels are the most common.
+
+The four sections below walk through these steps one at a time.
+
+---
+
 ## 1. SVM Part 1: Hyperplanes and Linear Classification
 
 [SVM Part 1]({{ site.baseurl }}/topics/svm-hyperplanes-and-linear-classification)
