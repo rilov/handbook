@@ -287,7 +287,40 @@ print("Best CV score:", search.best_score_)
 
 ---
 
-## 8. The most common traps
+## 8. Out-of-bag (OOB) error
+
+Some models, such as **random forests**, build many trees on different **bootstrapped samples** of the training data. A bootstrapped sample is created by picking observations at random with replacement, so some observations are left out of each tree's training set. These left-out observations are called **out-of-bag (OOB)** samples.
+
+For each training observation, the model can make a prediction using only the trees that did *not* see that observation. The final OOB prediction for an observation is a **majority vote** (classification) or **average** (regression) across those trees.
+
+```
+100 observations, 50 trees
+For observation N1, 10 trees did not train on N1
+  4 of those 10 predict class 0
+  6 of those 10 predict class 1
+OOB prediction for N1 = 1 (majority vote)
+```
+
+### Why OOB error is useful
+
+- It is an estimate of generalisation error that does **not** need a separate validation set.
+- It is almost as good as cross-validation for bagging methods.
+- It is efficient because every observation is validated by the trees that did not include it.
+- The **OOB error** is the number of OOB predictions that are wrong divided by the total number of observations.
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier(n_estimators=50, oob_score=True, random_state=42)
+model.fit(X_train, y_train)
+print("OOB score:", model.oob_score_)
+```
+
+OOB error works well for bagging and random forests, but it does not replace a proper validation or test set for other kinds of models.
+
+---
+
+## 9. The most common traps
 
 - **Data leakage:** any information from the test set reaches the training process. Always split before scaling, feature engineering, or any transformation.
 - **Optimising for the wrong metric:** accuracy is not enough for imbalanced data; mean accuracy is not enough if some mistakes are more expensive than others.
@@ -296,7 +329,7 @@ print("Best CV score:", search.best_score_)
 
 ---
 
-## 9. Summary: which tool for which job?
+## 10. Summary: which tool for which job?
 
 | Situation | Use this |
 |---|---|
@@ -309,6 +342,6 @@ print("Best CV score:", search.best_score_)
 
 ---
 
-## 10. One-sentence takeaway
+## 11. One-sentence takeaway
 
 **Treat the test set like an exam paper you only get to see once:** use the training and validation sets to practise, and only measure real performance on the final test set.
