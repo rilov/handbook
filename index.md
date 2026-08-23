@@ -12,16 +12,7 @@ title: Handbook — Index
 </div>
 
 <div class="main-grid">
-  <nav class="categories" aria-label="Categories">
-  <h3>Categories</h3>
-  <ul>
-    {% assign grouped = site.topics | group_by: "category" | sort: "name" %}
-    {% for cat in grouped %}
-      {% assign cat_slug = cat.name | slugify %}
-      <li><a href="{{ '/categories/' | append: cat_slug | relative_url }}">{{ cat.name }} ({{ cat.items | size }})</a></li>
-    {% endfor %}
-  </ul>
-  </nav>
+  {% include categories-nav.html %}
 
   <section class="topics-list">
   <h3>All Topics</h3>
