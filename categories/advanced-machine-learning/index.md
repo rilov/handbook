@@ -29,6 +29,10 @@ Learn advanced machine learning algorithms through clear, step-by-step explanati
 11. **[Naive Bayes Part 7: Choosing the Right Variant]({{ site.baseurl }}/topics/naive-bayes-choosing-the-right-variant)** — All three variants compared on the same spam dataset, and why the winner depends on how the feature distribution aligns with each model's assumption.
 12. **[Naive Bayes Part 8: Other Classification Models and Parametric vs Non-Parametric]({{ site.baseurl }}/topics/naive-bayes-other-classification-models)** — Compare Naive Bayes with Logistic Regression, Decision Tree, KNN and SVM on the UCI Spambase dataset, and learn the parametric vs non-parametric distinction.
 
+**Time Series:**
+
+- **[Time Series - A Friendly Guide]({{ site.baseurl }}/topics/time-series-friendly-guide)** — A beginner-friendly introduction to stationarity, trend, seasonality, and additive vs multiplicative decomposition.
+
 **Quick reference:**
 
 - **[Advanced Machine Learning: The One-Pager]({{ site.baseurl }}/topics/advanced-machine-learning-one-pager)** — The simplest, big-picture summary of the whole module.
