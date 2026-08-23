@@ -1,30 +1,48 @@
-{% assign grouped = site.topics | group_by: "category" | sort: "name" %}
-{% assign ai_subcats = "Advanced Machine Learning, Data Science, Deep Learning, Generative AI, GenAI Dev Tools, Machine Learning, Model Evaluation, Natural Language Processing, Time Series" | split: ", " %}
+{% assign grouped = site.topics | group_by: "category" %}
+{% assign ai_subcats = "Machine Learning, Data Science, Model Evaluation, Advanced Machine Learning, Deep Learning, Natural Language Processing, Time Series, Generative AI, GenAI Dev Tools" | split: ", " %}
+{% assign top_order = "Mathematics, Artificial Intelligence, Python, Data, Architecture, Security, Operations, Scaling, Case Studies" | split: ", " %}
+
 {% assign ai_total = 0 %}
-{% for cat in grouped %}
-  {% if ai_subcats contains cat.name %}
-    {% assign ai_total = ai_total | plus: cat.items.size %}
+{% for sub in ai_subcats %}
+  {% assign found = grouped | where: "name", sub | first %}
+  {% if found %}
+    {% assign ai_total = ai_total | plus: found.items.size %}
   {% endif %}
 {% endfor %}
 
 <nav class="categories" aria-label="Categories">
   <h3>Categories</h3>
   <ul>
-    <li class="has-children">
-      <a href="{{ '/categories/artificial-intelligence/' | relative_url }}">Artificial Intelligence ({{ ai_total }})</a>
-      <ul class="sub-categories">
-        {% for cat in grouped %}
-          {% if ai_subcats contains cat.name %}
-            {% assign cat_slug = cat.name | slugify %}
-            <li><a href="{{ '/categories/' | append: cat_slug | relative_url }}">{{ cat.name }} ({{ cat.items | size }})</a></li>
-          {% endif %}
-        {% endfor %}
-      </ul>
-    </li>
+    {% for name in top_order %}
+      {% if name == "Artificial Intelligence" %}
+        <li class="has-children">
+          <a href="{{ '/categories/artificial-intelligence/' | relative_url }}">Artificial Intelligence ({{ ai_total }})</a>
+          <ul class="sub-categories">
+            {% for sub in ai_subcats %}
+              {% assign sub_cat = grouped | where: "name", sub | first %}
+              {% if sub_cat %}
+                {% assign sub_slug = sub | slugify %}
+                <li><a href="{{ '/categories/' | append: sub_slug | relative_url }}">{{ sub }} ({{ sub_cat.items | size }})</a></li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </li>
+      {% else %}
+        {% assign cat = grouped | where: "name", name | first %}
+        {% if cat %}
+          {% assign cat_slug = name | slugify %}
+          <li><a href="{{ '/categories/' | append: cat_slug | relative_url }}">{{ name }} ({{ cat.items | size }})</a></li>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+
+    {% comment %}Add any categories that are not in the explicit top_order{% endcomment %}
     {% for cat in grouped %}
-      {% unless ai_subcats contains cat.name %}
-        {% assign cat_slug = cat.name | slugify %}
-        <li><a href="{{ '/categories/' | append: cat_slug | relative_url }}">{{ cat.name }} ({{ cat.items | size }})</a></li>
+      {% unless top_order contains cat.name %}
+        {% unless ai_subcats contains cat.name %}
+          {% assign cat_slug = cat.name | slugify %}
+          <li><a href="{{ '/categories/' | append: cat_slug | relative_url }}">{{ cat.name }} ({{ cat.items | size }})</a></li>
+        {% endunless %}
       {% endunless %}
     {% endfor %}
   </ul>
