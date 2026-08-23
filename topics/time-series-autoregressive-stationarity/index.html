@@ -94,6 +94,35 @@
 
 <p>If yesterday’s value was 10, the model predicts roughly <code class="language-plaintext highlighter-rouge">2 + 0.8 × 10 = 10</code> today, plus a small random wiggle.</p>
 
+<h4 id="worked-example-generating-an-ar1-series">Worked example: generating an AR(1) series</h4>
+
+<p>Imagine the process is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y_t = 5 + 0.6 × y_{t-1} + ε_t
+</code></pre></div></div>
+
+<p>The noise <code class="language-plaintext highlighter-rouge">ε_t</code> is small random numbers with mean 0.</p>
+
+<p>Start with <code class="language-plaintext highlighter-rouge">y_0 = 12</code>. The next values are:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y_1 = 5 + 0.6 × 12 + ε_1 = 12.2 + small noise
+y_2 = 5 + 0.6 × y_1 + ε_2
+y_3 = 5 + 0.6 × y_2 + ε_3
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Time:    0    1     2      3      4      5
+Value:  12  12.2  12.3   12.4   12.4   12.4
+</code></pre></div></div>
+
+<p>Because <code class="language-plaintext highlighter-rouge">0.6</code> is less than 1, the effect of the starting value <code class="language-plaintext highlighter-rouge">12</code> dies out and the series settles around its long-run mean of about <code class="language-plaintext highlighter-rouge">12.5</code>.</p>
+
+<p>The long-run mean is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mean = c / (1 - φ) = 5 / (1 - 0.6) = 12.5
+</code></pre></div></div>
+
+<p>This is why the condition <code class="language-plaintext highlighter-rouge">|φ| &lt; 1</code> is important. If <code class="language-plaintext highlighter-rouge">φ = 1</code>, the series has a unit root and is non-stationary. If <code class="language-plaintext highlighter-rouge">φ &gt; 1</code>, the series explodes.</p>
+
 <h3 id="arp">AR(p)</h3>
 
 <p>An <strong>AR(p)</strong> model uses the last <code class="language-plaintext highlighter-rouge">p</code> values:</p>
@@ -119,6 +148,28 @@
 </ul>
 
 <p>If the data is not stationary, the AR model can give strange or useless results.</p>
+
+<h4 id="an-intuitive-example">An intuitive example</h4>
+
+<p>Consider two versions of the same daily temperature series.</p>
+
+<p><strong>Version A is stationary:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day:   1   2   3   4   5   6   7
+Temp: 20  22  19  21  20  23  21
+</code></pre></div></div>
+
+<p>The mean is about 21. The relationship between today’s temperature and yesterday’s temperature is the same everywhere.</p>
+
+<p><strong>Version B is non-stationary:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day:   1   2   3   4   5   6   7
+Temp: 20  25  31  38  46  55  65
+</code></pre></div></div>
+
+<p>Each day is warmer. A single AR(1) parameter cannot describe today-to-tomorrow for the whole series because the relationship changes as the level rises.</p>
+
+<p>You must remove the trend before fitting an AR model.</p>
 
 <hr />
 
@@ -191,6 +242,31 @@ Alternative hypothesis: the series is non-stationary
 
 <p>It is good practice to use both tests. If they disagree, you need to look more carefully at the plot.</p>
 
+<h4 id="worked-example-interpreting-the-tests">Worked example: interpreting the tests</h4>
+
+<p>A stock price series gives:</p>
+
+<ul>
+  <li><strong>ADF p-value = 0.02</strong></li>
+  <li><strong>KPSS p-value = 0.04</strong></li>
+</ul>
+
+<p>What do we conclude?</p>
+
+<ul>
+  <li>ADF: small p-value → reject the null of a unit root → the series looks stationary.</li>
+  <li>KPSS: small p-value → reject the null of stationarity → the series looks non-stationary.</li>
+</ul>
+
+<p>This is a contradiction. The series might be close to the borderline, or there might be a slow trend. Look at the plot before deciding. If a plot shows a wandering pattern, treat the series as non-stationary and try differencing.</p>
+
+<p>If both tests agreed:</p>
+
+<ul>
+  <li>ADF p-value &lt; 0.05 and KPSS p-value &gt; 0.05 → stationary.</li>
+  <li>ADF p-value &gt; 0.05 and KPSS p-value &lt; 0.05 → non-stationary.</li>
+</ul>
+
 <hr />
 
 <h2 id="4-dealing-with-non-stationarity">4. Dealing with non-stationarity</h2>
@@ -211,6 +287,51 @@ Differenced: 2, 3, 2, 3, 2
 </code></pre></div></div>
 
 <p>If the data has a trend, differencing often makes it stationary. If one round of differencing is not enough, you can difference again.</p>
+
+<h4 id="worked-example-first-differencing">Worked example: first differencing</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day:     1   2   3   4   5   6   7
+Sales:  10  12  15  17  20  22  25
+
+Differenced:
+Day 2: 12 - 10 = 2
+Day 3: 15 - 12 = 3
+Day 4: 17 - 15 = 2
+Day 5: 20 - 17 = 3
+Day 6: 22 - 20 = 2
+Day 7: 25 - 22 = 3
+</code></pre></div></div>
+
+<p>The differenced series is <code class="language-plaintext highlighter-rouge">2, 3, 2, 3, 2, 3</code>. It is now flat around <code class="language-plaintext highlighter-rouge">2.5</code>.</p>
+
+<h4 id="worked-example-second-differencing">Worked example: second differencing</h4>
+
+<p>If the first difference is itself trending, difference again.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day:     1   2   3   4   5   6   7
+Sales:   2   5   9  14  20  27  35
+
+First difference:
+Day 2: 5 - 2 = 3
+Day 3: 9 - 5 = 4
+Day 4: 14 - 9 = 5
+Day 5: 20 - 14 = 6
+Day 6: 27 - 20 = 7
+Day 7: 35 - 27 = 8
+
+First difference: 3, 4, 5, 6, 7, 8  (still increasing)
+
+Second difference:
+4 - 3 = 1
+5 - 4 = 1
+6 - 5 = 1
+7 - 6 = 1
+8 - 7 = 1
+
+Second difference: 1, 1, 1, 1, 1 (flat and stationary)
+</code></pre></div></div>
+
+<p>A second difference means you are looking at the change of the change. You rarely need more than two rounds.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">diff</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sh">"</span><span class="s">value</span><span class="sh">"</span><span class="p">].</span><span class="nf">diff</span><span class="p">().</span><span class="nf">dropna</span><span class="p">()</span>
 </code></pre></div></div>
@@ -338,6 +459,58 @@ lag 4: .
   <li>The number of significant spikes in the PACF often tells you what <code class="language-plaintext highlighter-rouge">p</code> should be.</li>
   <li>If the PACF drops to zero after lag 2, try AR(2).</li>
 </ul>
+
+<h4 id="worked-example-reading-acf-and-pacf">Worked example: reading ACF and PACF</h4>
+
+<p>Daily temperature with a one-day memory pattern:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day:  1   2   3   4   5   6   7
+Temp: 20  22  19  21  20  23  21
+</code></pre></div></div>
+
+<p>Imagine the ACF and PACF plots look like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ACF:
+Lag 1: 0.85  (high)
+Lag 2: 0.70  (still high)
+Lag 3: 0.55
+Lag 4: 0.40
+Lag 5: 0.30
+
+PACF:
+Lag 1: 0.85  (high)
+Lag 2: 0.05  (near zero)
+Lag 3: 0.00
+Lag 4: 0.00
+Lag 5: 0.00
+</code></pre></div></div>
+
+<p>What does this mean?</p>
+
+<ul>
+  <li>The <strong>ACF</strong> decays slowly, which is typical for an AR(1) process. Today’s temperature is related to yesterday, yesterday’s to the day before, and so on.</li>
+  <li>The <strong>PACF</strong> has one big spike at lag 1 and then drops. That means only the previous day has a direct effect. The relationship at lag 2 is just a knock-on from lag 1.</li>
+</ul>
+
+<p>The pattern “ACF decays, PACF cuts off after lag 1” suggests an <strong>AR(1)</strong> model.</p>
+
+<p>For an AR(2), you would see:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ACF:
+Lag 1: 0.80
+Lag 2: 0.65
+Lag 3: 0.50
+Lag 4: 0.35
+Lag 5: 0.25
+
+PACF:
+Lag 1: 0.80
+Lag 2: 0.40
+Lag 3: 0.02
+Lag 4: 0.00
+</code></pre></div></div>
+
+<p>The PACF cuts off after lag 2, so try AR(2).</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.graphics.tsaplots</span> <span class="kn">import</span> <span class="n">plot_acf</span><span class="p">,</span> <span class="n">plot_pacf</span>
 

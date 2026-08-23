@@ -103,6 +103,30 @@ Past                              Future
 
 <p>A <strong>one-step-ahead</strong> forecast predicts the next point only. A <strong>multi-step-ahead</strong> forecast predicts several points into the future. Simple models are usually easier to understand one step at a time.</p>
 
+<h4 id="worked-example-one-step-ahead">Worked example: one-step-ahead</h4>
+
+<p>Imagine weekly sales:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Week:    1   2   3   4   5   6
+Sales:  10  12  11  13  12   ?
+</code></pre></div></div>
+
+<p>A one-step-ahead forecast for week 6 uses the data up to week 5:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast for week 6 = some function of (10, 12, 11, 13, 12)
+</code></pre></div></div>
+
+<p>Once week 6 is over and the real value is known, you update the model and forecast week 7.</p>
+
+<p>A multi-step-ahead forecast for weeks 6, 7, and 8 uses the data up to week 5:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast for week 6 = function of (10, 12, 11, 13, 12)
+Forecast for week 7 = function of (10, 12, 11, 13, 12, forecast for week 6)
+Forecast for week 8 = function of (10, 12, 11, 13, 12, forecast for week 6, forecast for week 7)
+</code></pre></div></div>
+
+<p>The further ahead you forecast, the more uncertainty you accumulate.</p>
+
 <h3 id="goodness-of-fit">Goodness of fit</h3>
 
 <p>For time series, the most common error is the difference between the actual value and the forecast:</p>
@@ -194,6 +218,52 @@ Seasonal naive forecast for January 2024: 100
 
 <p>The seasonal naive method is good when the data has strong seasonality and the level does not change much.</p>
 
+<h4 id="worked-example-all-four-simple-forecasts-on-the-same-data">Worked example: all four simple forecasts on the same data</h4>
+
+<p>Weekly sales with a steady level:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Week:    1   2   3   4   5   6
+Sales:  20  22  21  23  22   ?
+</code></pre></div></div>
+
+<ul>
+  <li><strong>Naive forecast for week 6:</strong> 22 (last value)</li>
+  <li><strong>Mean forecast for week 6:</strong> (20 + 22 + 21 + 23 + 22) / 5 = 21.6</li>
+  <li><strong>Drift forecast for week 6:</strong> trend = (22 - 20) / 4 = +0.5 per week. Forecast = 22 + 0.5 = 22.5</li>
+  <li><strong>Seasonal naive (season = 4 weeks) for week 6:</strong> take the value from 4 weeks ago, week 2. Forecast = 22</li>
+</ul>
+
+<p>These forecasts are close because the series is flat. The real value of each method shows up when the series has trend or seasonality.</p>
+
+<h4 id="which-simple-model-should-you-use">Which simple model should you use?</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>What the data looks like</th>
+      <th>Try this first</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Flat, no pattern</td>
+      <td>Mean or naive</td>
+    </tr>
+    <tr>
+      <td>Flat with repeating season</td>
+      <td>Seasonal naive</td>
+    </tr>
+    <tr>
+      <td>Rising or falling trend</td>
+      <td>Drift</td>
+    </tr>
+    <tr>
+      <td>Trend plus season</td>
+      <td>Holt-Winters</td>
+    </tr>
+  </tbody>
+</table>
+
 <hr />
 
 <h2 id="4-simple-exponential-smoothing">4. Simple exponential smoothing</h2>
@@ -226,6 +296,34 @@ Step 5: 0.2 × 13 + 0.8 × 11.12 = 11.496
 </code></pre></div></div>
 
 <p>Simple exponential smoothing is good for data with <strong>no trend and no seasonality</strong>, just a level that changes slowly.</p>
+
+<h4 id="worked-example-with-a-table">Worked example with a table</h4>
+
+<p>Daily demand:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day:    1    2    3    4    5    ?
+Actual: 100  105  103  108  107
+</code></pre></div></div>
+
+<p>Use <code class="language-plaintext highlighter-rouge">α = 0.3</code> and set the first forecast to the first actual value.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Day 1: Forecast = 100 (initialisation)
+Day 2: Forecast = 0.3 × 100 + 0.7 × 100 = 100
+       Actual = 105
+       Error   = 105 - 100 = 5
+Day 3: Forecast = 0.3 × 105 + 0.7 × 100 = 101.5
+       Actual = 103
+       Error   = 103 - 101.5 = 1.5
+Day 4: Forecast = 0.3 × 103 + 0.7 × 101.5 = 101.95
+       Actual = 108
+       Error   = 108 - 101.95 = 6.05
+Day 5: Forecast = 0.3 × 108 + 0.7 × 101.95 = 103.77
+       Actual = 107
+       Error   = 107 - 103.77 = 3.23
+Day 6: Forecast = 0.3 × 107 + 0.7 × 103.77 = 104.74
+</code></pre></div></div>
+
+<p>The forecast is a smooth middle value. It never jumps all the way to the latest observation unless <code class="language-plaintext highlighter-rouge">α = 1</code>.</p>
 
 <hr />
 
@@ -262,6 +360,37 @@ Forecast for the next step: 17 + 2 = 19
 </code></pre></div></div>
 
 <p>Holt’s method is good for data with a <strong>trend but no seasonality</strong>.</p>
+
+<h4 id="worked-example-holts-method-step-by-step">Worked example: Holt’s method step by step</h4>
+
+<p>Monthly app downloads:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Month:     1    2    3    4    5    ?
+Downloads: 100  120  140  160  180
+</code></pre></div></div>
+
+<p>Use <code class="language-plaintext highlighter-rouge">α = 0.4</code> and <code class="language-plaintext highlighter-rouge">β = 0.2</code>. Initialise the level to the first value, <code class="language-plaintext highlighter-rouge">100</code>, and the trend to the average difference between the first few points, <code class="language-plaintext highlighter-rouge">20</code>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Month 1: l_1 = 100,  b_1 = 20
+
+Month 2: l_2 = 0.4 × 120 + 0.6 × (100 + 20) = 48 + 72 = 120
+         b_2 = 0.2 × (120 - 100) + 0.8 × 20 = 4 + 16 = 20
+
+Month 3: l_3 = 0.4 × 140 + 0.6 × (120 + 20) = 56 + 84 = 140
+         b_3 = 0.2 × (140 - 120) + 0.8 × 20 = 4 + 16 = 20
+
+Month 4: l_4 = 0.4 × 160 + 0.6 × (140 + 20) = 64 + 96 = 160
+         b_4 = 0.2 × (160 - 140) + 0.8 × 20 = 4 + 16 = 20
+
+Month 5: l_5 = 0.4 × 180 + 0.6 × (160 + 20) = 72 + 108 = 180
+         b_5 = 0.2 × (180 - 160) + 0.8 × 20 = 4 + 16 = 20
+
+Forecast for month 6: l_5 + 1 × b_5 = 180 + 20 = 200
+</code></pre></div></div>
+
+<p>Because the data is a perfect straight line with <code class="language-plaintext highlighter-rouge">+20</code> per month, the model quickly learns the correct level and trend.</p>
+
+<p>In real life the trend is not so clean, so <code class="language-plaintext highlighter-rouge">b_t</code> changes slightly each month.</p>
 
 <hr />
 
@@ -317,6 +446,65 @@ Forecast for next December: 1,000 + (12 × 50) + 200 = 1,800
 
 <p>Holt-Winters is good for data with a <strong>trend and a seasonal pattern</strong>.</p>
 
+<h4 id="worked-example-additive-holt-winters">Worked example: additive Holt-Winters</h4>
+
+<p>Quarterly sales show a trend of <code class="language-plaintext highlighter-rouge">+10</code> per quarter and a seasonal pattern that repeats every 4 quarters.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Quarter: 1   2   3   4   5   6   7   8
+Sales:  110 125  95 140 125 140 110 155
+</code></pre></div></div>
+
+<p>The series has:</p>
+
+<ul>
+  <li>an upward trend</li>
+  <li>a clear seasonal spike in quarter 4</li>
+</ul>
+
+<p>A simplified additive forecast for quarter 9 is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Current level (after quarter 8): 155
+Current trend: +10 per quarter
+Seasonal factor for quarter 1 (same season as quarter 5 and 9): +0
+
+Forecast for quarter 9 = 155 + 10 + 0 = 165
+
+For quarter 12 (same season as quarter 4 and 8):
+Seasonal factor for quarter 4: +25 (roughly, because quarter 4 is always the biggest)
+
+Forecast for quarter 12 = 155 + (4 × 10) + 25 = 220
+</code></pre></div></div>
+
+<p>This is a hand-waved example. In practice, <code class="language-plaintext highlighter-rouge">statsmodels</code> estimates the level, trend, and all four seasonal factors automatically from the data.</p>
+
+<h4 id="additive-vs-multiplicative-when-to-use-each">Additive vs multiplicative: when to use each</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Data pattern</th>
+      <th>Use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Seasonal peaks stay the same absolute size</td>
+      <td>Additive</td>
+    </tr>
+    <tr>
+      <td>Seasonal peaks grow as the series grows</td>
+      <td>Multiplicative</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Example: ice-cream sales.</p>
+
+<ul>
+  <li>A small shop sells 100 cones, summer adds 30 → additive seasonality of <code class="language-plaintext highlighter-rouge">+30</code>.</li>
+  <li>Later the shop sells 1,000 cones. If summer still adds about 30% more, the seasonal effect is <code class="language-plaintext highlighter-rouge">×1.3</code> → multiplicative.</li>
+</ul>
+
 <hr />
 
 <h2 id="7-how-the-parameters-are-determined">7. How the parameters are determined</h2>
@@ -361,6 +549,47 @@ Forecast for next December: 1,000 + (12 × 50) + 200 = 1,800
 </code></pre></div></div>
 
 <p><code class="language-plaintext highlighter-rouge">fit()</code> automatically picks the <code class="language-plaintext highlighter-rouge">α</code>, <code class="language-plaintext highlighter-rouge">β</code>, and <code class="language-plaintext highlighter-rouge">γ</code> values that minimise the error.</p>
+
+<h4 id="worked-example-choosing-alpha-by-grid-search">Worked example: choosing alpha by grid search</h4>
+
+<p>Imagine testing <code class="language-plaintext highlighter-rouge">α</code> for simple exponential smoothing on the daily demand series. You hold out the last three days and try different <code class="language-plaintext highlighter-rouge">α</code> values.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Training: 100, 105, 103, 108, 107
+Test:     106, 104, 109
+</code></pre></div></div>
+
+<p>Try <code class="language-plaintext highlighter-rouge">α = 0.1</code>, <code class="language-plaintext highlighter-rouge">0.3</code>, and <code class="language-plaintext highlighter-rouge">0.7</code>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>α</th>
+      <th>Forecasts for test</th>
+      <th>MAE on test</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0.1</td>
+      <td>102.6, 102.9, 103.0</td>
+      <td>5.2</td>
+    </tr>
+    <tr>
+      <td>0.3</td>
+      <td>104.7, 105.0, 104.6</td>
+      <td>2.9</td>
+    </tr>
+    <tr>
+      <td>0.7</td>
+      <td>107.0, 106.3, 106.0</td>
+      <td>2.0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">α = 0.7</code> gives the lowest MAE on the held-out test set. So that is the best value for this data.</p>
+
+<p>This is the same idea <code class="language-plaintext highlighter-rouge">statsmodels.fit()</code> does, but automatically across all three parameters.</p>
 
 <hr />
 
