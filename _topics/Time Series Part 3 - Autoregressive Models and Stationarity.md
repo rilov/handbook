@@ -63,6 +63,39 @@ y_t = 2 + 0.8 × y_{t-1} + noise
 
 If yesterday's value was 10, the model predicts roughly `2 + 0.8 × 10 = 10` today, plus a small random wiggle.
 
+#### Worked example: generating an AR(1) series
+
+Imagine the process is:
+
+```
+y_t = 5 + 0.6 × y_{t-1} + ε_t
+```
+
+The noise `ε_t` is small random numbers with mean 0.
+
+Start with `y_0 = 12`. The next values are:
+
+```
+y_1 = 5 + 0.6 × 12 + ε_1 = 12.2 + small noise
+y_2 = 5 + 0.6 × y_1 + ε_2
+y_3 = 5 + 0.6 × y_2 + ε_3
+```
+
+```
+Time:    0    1     2      3      4      5
+Value:  12  12.2  12.3   12.4   12.4   12.4
+```
+
+Because `0.6` is less than 1, the effect of the starting value `12` dies out and the series settles around its long-run mean of about `12.5`.
+
+The long-run mean is:
+
+```
+mean = c / (1 - φ) = 5 / (1 - 0.6) = 12.5
+```
+
+This is why the condition `|φ| < 1` is important. If `φ = 1`, the series has a unit root and is non-stationary. If `φ > 1`, the series explodes.
+
 ### AR(p)
 
 An **AR(p)** model uses the last `p` values:
@@ -88,6 +121,30 @@ AR models work well when:
 - You have enough historical data to estimate the parameters
 
 If the data is not stationary, the AR model can give strange or useless results.
+
+#### An intuitive example
+
+Consider two versions of the same daily temperature series.
+
+**Version A is stationary:**
+
+```
+Day:   1   2   3   4   5   6   7
+Temp: 20  22  19  21  20  23  21
+```
+
+The mean is about 21. The relationship between today's temperature and yesterday's temperature is the same everywhere.
+
+**Version B is non-stationary:**
+
+```
+Day:   1   2   3   4   5   6   7
+Temp: 20  25  31  38  46  55  65
+```
+
+Each day is warmer. A single AR(1) parameter cannot describe today-to-tomorrow for the whole series because the relationship changes as the level rises.
+
+You must remove the trend before fitting an AR model.
 
 ---
 
@@ -163,6 +220,25 @@ print("p-value:", result[1])
 
 It is good practice to use both tests. If they disagree, you need to look more carefully at the plot.
 
+#### Worked example: interpreting the tests
+
+A stock price series gives:
+
+- **ADF p-value = 0.02**
+- **KPSS p-value = 0.04**
+
+What do we conclude?
+
+- ADF: small p-value → reject the null of a unit root → the series looks stationary.
+- KPSS: small p-value → reject the null of stationarity → the series looks non-stationary.
+
+This is a contradiction. The series might be close to the borderline, or there might be a slow trend. Look at the plot before deciding. If a plot shows a wandering pattern, treat the series as non-stationary and try differencing.
+
+If both tests agreed:
+
+- ADF p-value < 0.05 and KPSS p-value > 0.05 → stationary.
+- ADF p-value > 0.05 and KPSS p-value < 0.05 → non-stationary.
+
 ---
 
 ## 4. Dealing with non-stationarity
@@ -185,6 +261,53 @@ Differenced: 2, 3, 2, 3, 2
 ```
 
 If the data has a trend, differencing often makes it stationary. If one round of differencing is not enough, you can difference again.
+
+#### Worked example: first differencing
+
+```
+Day:     1   2   3   4   5   6   7
+Sales:  10  12  15  17  20  22  25
+
+Differenced:
+Day 2: 12 - 10 = 2
+Day 3: 15 - 12 = 3
+Day 4: 17 - 15 = 2
+Day 5: 20 - 17 = 3
+Day 6: 22 - 20 = 2
+Day 7: 25 - 22 = 3
+```
+
+The differenced series is `2, 3, 2, 3, 2, 3`. It is now flat around `2.5`.
+
+#### Worked example: second differencing
+
+If the first difference is itself trending, difference again.
+
+```
+Day:     1   2   3   4   5   6   7
+Sales:   2   5   9  14  20  27  35
+
+First difference:
+Day 2: 5 - 2 = 3
+Day 3: 9 - 5 = 4
+Day 4: 14 - 9 = 5
+Day 5: 20 - 14 = 6
+Day 6: 27 - 20 = 7
+Day 7: 35 - 27 = 8
+
+First difference: 3, 4, 5, 6, 7, 8  (still increasing)
+
+Second difference:
+4 - 3 = 1
+5 - 4 = 1
+6 - 5 = 1
+7 - 6 = 1
+8 - 7 = 1
+
+Second difference: 1, 1, 1, 1, 1 (flat and stationary)
+```
+
+A second difference means you are looking at the change of the change. You rarely need more than two rounds.
 
 ```python
 df["diff"] = df["value"].diff().dropna()
@@ -303,6 +426,59 @@ A simple rule of thumb:
 - Look at the **PACF** to choose the order `p` of an AR model.
 - The number of significant spikes in the PACF often tells you what `p` should be.
 - If the PACF drops to zero after lag 2, try AR(2).
+
+#### Worked example: reading ACF and PACF
+
+Daily temperature with a one-day memory pattern:
+
+```
+Day:  1   2   3   4   5   6   7
+Temp: 20  22  19  21  20  23  21
+```
+
+Imagine the ACF and PACF plots look like this:
+
+```
+ACF:
+Lag 1: 0.85  (high)
+Lag 2: 0.70  (still high)
+Lag 3: 0.55
+Lag 4: 0.40
+Lag 5: 0.30
+
+PACF:
+Lag 1: 0.85  (high)
+Lag 2: 0.05  (near zero)
+Lag 3: 0.00
+Lag 4: 0.00
+Lag 5: 0.00
+```
+
+What does this mean?
+
+- The **ACF** decays slowly, which is typical for an AR(1) process. Today's temperature is related to yesterday, yesterday's to the day before, and so on.
+- The **PACF** has one big spike at lag 1 and then drops. That means only the previous day has a direct effect. The relationship at lag 2 is just a knock-on from lag 1.
+
+The pattern "ACF decays, PACF cuts off after lag 1" suggests an **AR(1)** model.
+
+For an AR(2), you would see:
+
+```
+ACF:
+Lag 1: 0.80
+Lag 2: 0.65
+Lag 3: 0.50
+Lag 4: 0.35
+Lag 5: 0.25
+
+PACF:
+Lag 1: 0.80
+Lag 2: 0.40
+Lag 3: 0.02
+Lag 4: 0.00
+```
+
+The PACF cuts off after lag 2, so try AR(2).
 
 ```python
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
