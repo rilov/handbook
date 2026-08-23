@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Time Series Part 2 - Simple Models and Smoothing</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/time-series">Time Series</a> &mdash;
+    </nav>
+    <h2>Time Series Part 2 - Simple Models and Smoothing</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/time-series">Time Series</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="time-series-part-2---simple-models-and-smoothing">Time Series Part 2 - Simple Models and Smoothing</h1>
+
+<p>This part of the time series module covers the simplest forecasting models. These models are the first things you try before moving to more advanced tools. They are surprisingly useful, and they help you understand why more complex models are needed.</p>
+
+<hr />
+
+<h2 id="1-session-overview">1. Session overview</h2>
+
+<p>In this guide we will learn:</p>
+
+<ul>
+  <li>Why forecasting is different from normal supervised learning</li>
+  <li>How to split a time series honestly</li>
+  <li>The simplest forecasting benchmarks: naive, mean, drift, and seasonal naive</li>
+  <li>Simple exponential smoothing for level only</li>
+  <li>Holt’s method for trend</li>
+  <li>Holt-Winters for trend and seasonality</li>
+  <li>How the smoothing parameters are chosen</li>
+</ul>
+
+<p>By the end, you will be able to look at a time series and pick a reasonable first model.</p>
+
+<hr />
+
+<h2 id="2-modelling-essentials-for-time-series">2. Modelling essentials for time series</h2>
+
+<h3 id="forecasting-is-not-like-normal-prediction">Forecasting is not like normal prediction</h3>
+
+<p>In normal machine learning, you might predict house prices from features. The rows are independent: one house does not depend on the next.</p>
+
+<p>In time series, the value at the next step depends on the values before it. The order of the data matters. You cannot shuffle the rows.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal ML: shuffle rows, split randomly
+
+Time series: keep order, split by time
+
+Past                              Future
+[-----------------------------------|-----]
+ training                           test
+</code></pre></div></div>
+
+<h3 id="train-test-split-for-time-series">Train-test split for time series</h3>
+
+<p>For a time series, the <strong>test set is always at the end</strong>. You train on the past and try to predict the future. Shuffling would let the model see the future, which is not allowed in real forecasting.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+
+<span class="c1"># df has a datetime index and a 'value' column
+# use the first 80% for training, the last 20% for testing
+</span><span class="n">cutoff</span> <span class="o">=</span> <span class="nf">int</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">)</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="n">iloc</span><span class="p">[:</span><span class="n">cutoff</span><span class="p">]</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">cutoff</span><span class="p">:]</span>
+</code></pre></div></div>
+
+<h3 id="one-step-ahead-vs-multi-step-ahead">One-step-ahead vs multi-step-ahead</h3>
+
+<p>A <strong>one-step-ahead</strong> forecast predicts the next point only. A <strong>multi-step-ahead</strong> forecast predicts several points into the future. Simple models are usually easier to understand one step at a time.</p>
+
+<h3 id="goodness-of-fit">Goodness of fit</h3>
+
+<p>For time series, the most common error is the difference between the actual value and the forecast:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Error = Actual - Forecast
+</code></pre></div></div>
+
+<p>Common accuracy measures are:</p>
+
+<ul>
+  <li><strong>MAE (Mean Absolute Error):</strong> average of the absolute errors.</li>
+  <li><strong>RMSE (Root Mean Squared Error):</strong> square root of the average squared error.</li>
+  <li><strong>MAPE (Mean Absolute Percentage Error):</strong> average percentage error.</li>
+</ul>
+
+<p>Smaller values mean a better forecast.</p>
+
+<hr />
+
+<h2 id="3-simple-time-series-models">3. Simple time series models</h2>
+
+<p>These are the simplest possible forecasts. They are useful as baselines. If a fancy model cannot beat a simple model, the fancy model is not useful.</p>
+
+<h3 id="naive-forecast">Naive forecast</h3>
+
+<p>The forecast for the next period is just the last observed value.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast for t+1 = value at t
+</code></pre></div></div>
+
+<p>Example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Actual: 10, 12, 14, 13, ?
+Forecast for the next point: 13
+</code></pre></div></div>
+
+<p>The naive method is good for data with no strong trend or seasonality. It says, “tomorrow will look like today.”</p>
+
+<h3 id="mean-forecast">Mean forecast</h3>
+
+<p>The forecast for the next period is the mean of all past values.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast for t+1 = average of all observed values so far
+</code></pre></div></div>
+
+<p>Example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Actual: 10, 12, 14, 13
+Mean = (10 + 12 + 14 + 13) / 4 = 12.25
+Forecast for the next point: 12.25
+</code></pre></div></div>
+
+<p>The mean forecast is good when the data is roughly flat and has no trend. It can be bad if the data is changing over time.</p>
+
+<h3 id="drift-forecast">Drift forecast</h3>
+
+<p>The drift method assumes the trend continues. It connects the first and last points and extends the line.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast for t+h = last value + h × (last value - first value) / (number of points - 1)
+</code></pre></div></div>
+
+<p>Example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Actual: 10, 11, 13, 16, ?
+The trend from 10 to 16 over 3 steps is +2 per step.
+Forecast for the next point: 16 + 2 = 18
+</code></pre></div></div>
+
+<p>The drift method is good when the data has a clear, roughly straight trend.</p>
+
+<h3 id="seasonal-naive-forecast">Seasonal naive forecast</h3>
+
+<p>For data with a repeating pattern, the forecast for the next period is the value from the same season last year.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast for t+1 = value at t - m
+</code></pre></div></div>
+
+<p>where <code class="language-plaintext highlighter-rouge">m</code> is the length of the season. For monthly data with a yearly pattern, <code class="language-plaintext highlighter-rouge">m = 12</code>.</p>
+
+<p>Example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Sales in January 2023: 100
+Sales in February 2023: 110
+Sales in March 2023: 120
+...
+Sales in January 2024: ?
+Seasonal naive forecast for January 2024: 100
+</code></pre></div></div>
+
+<p>The seasonal naive method is good when the data has strong seasonality and the level does not change much.</p>
+
+<hr />
+
+<h2 id="4-simple-exponential-smoothing">4. Simple exponential smoothing</h2>
+
+<h3 id="the-idea">The idea</h3>
+
+<p>All the simple methods above treat every past observation equally. But the most recent values are usually more useful for forecasting than old values. Simple exponential smoothing weights the most recent observations more heavily.</p>
+
+<h3 id="the-formula">The formula</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast for t+1 = α × actual at t + (1 - α) × previous forecast
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">α</code> (alpha) is the <strong>smoothing parameter</strong>. It is a number between 0 and 1.</p>
+
+<ul>
+  <li>If <code class="language-plaintext highlighter-rouge">α</code> is close to <strong>1</strong>, the forecast mostly uses the most recent value. It reacts quickly.</li>
+  <li>If <code class="language-plaintext highlighter-rouge">α</code> is close to <strong>0</strong>, the forecast mostly uses the previous forecast. It is slow and smooth.</li>
+</ul>
+
+<p>Example with <code class="language-plaintext highlighter-rouge">α = 0.2</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Actual:    10, 12, 14, 13, ?
+Forecast:  10, 10, 10.4, 11.12, ...
+
+Step 2: 0.2 × 10 + 0.8 × 10 = 10
+Step 3: 0.2 × 12 + 0.8 × 10 = 10.4
+Step 4: 0.2 × 14 + 0.8 × 10.4 = 11.12
+Step 5: 0.2 × 13 + 0.8 × 11.12 = 11.496
+</code></pre></div></div>
+
+<p>Simple exponential smoothing is good for data with <strong>no trend and no seasonality</strong>, just a level that changes slowly.</p>
+
+<hr />
+
+<h2 id="5-holts-exponential-smoothing">5. Holt’s exponential smoothing</h2>
+
+<h3 id="the-problem-with-simple-exponential-smoothing">The problem with simple exponential smoothing</h3>
+
+<p>Simple exponential smoothing cannot handle a trend. If the data is going up, the forecast always lags behind.</p>
+
+<p>Holt’s method adds a second component: the <strong>trend</strong>.</p>
+
+<h3 id="the-formula-1">The formula</h3>
+
+<p>It keeps two smoothed values:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">l_t</code> the level at time <code class="language-plaintext highlighter-rouge">t</code></li>
+  <li><code class="language-plaintext highlighter-rouge">b_t</code> the trend at time <code class="language-plaintext highlighter-rouge">t</code></li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Level:   l_t = α × y_t + (1 - α) × (l_{t-1} + b_{t-1})
+Trend:   b_t = β × (l_t - l_{t-1}) + (1 - β) × b_{t-1}
+Forecast for h steps ahead: l_t + h × b_t
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">α</code> controls how fast the level updates. <code class="language-plaintext highlighter-rouge">β</code> (beta) controls how fast the trend updates.</p>
+
+<h3 id="example">Example</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Actual:  10, 12, 15, 17, ?
+
+Holt's method sees the level is rising and the trend is about +2 per step.
+Forecast for the next step: 17 + 2 = 19
+</code></pre></div></div>
+
+<p>Holt’s method is good for data with a <strong>trend but no seasonality</strong>.</p>
+
+<hr />
+
+<h2 id="6-holt-winters-exponential-smoothing">6. Holt-Winters’ exponential smoothing</h2>
+
+<h3 id="adding-seasonality">Adding seasonality</h3>
+
+<p>Holt-Winters extends Holt’s method by adding a third component: the <strong>seasonal effect</strong>.</p>
+
+<p>It keeps three components:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">l_t</code> the level</li>
+  <li><code class="language-plaintext highlighter-rouge">b_t</code> the trend</li>
+  <li><code class="language-plaintext highlighter-rouge">s_t</code> the seasonal factor</li>
+</ul>
+
+<h3 id="additive-vs-multiplicative-seasonality">Additive vs multiplicative seasonality</h3>
+
+<p>The seasonal effect can be combined in two ways:</p>
+
+<p><strong>Additive</strong> (the same size every year):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast = (l_t + h × b_t) + s_{t+m}
+</code></pre></div></div>
+
+<p><strong>Multiplicative</strong> (the size scales with the level):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Forecast = (l_t + h × b_t) × s_{t+m}
+</code></pre></div></div>
+
+<p>Use <strong>additive</strong> when the seasonal swings stay the same size. Use <strong>multiplicative</strong> when the swings grow as the series grows.</p>
+
+<h3 id="the-formula-additive-version">The formula (additive version)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Level:    l_t = α × (y_t - s_{t-m}) + (1 - α) × (l_{t-1} + b_{t-1})
+Trend:    b_t = β × (l_t - l_{t-1}) + (1 - β) × b_{t-1}
+Seasonal: s_t = γ × (y_t - l_t) + (1 - γ) × s_{t-m}
+
+Forecast h steps ahead: l_t + h × b_t + s_{t+h-m}
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">γ</code> (gamma) is the seasonal smoothing parameter. It is also between 0 and 1.</p>
+
+<p>Example with monthly sales and a yearly pattern (<code class="language-plaintext highlighter-rouge">m = 12</code>):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Current level: 1,000
+Current trend: +50 per month
+Seasonal factor for December: +200
+
+Forecast for next December: 1,000 + (12 × 50) + 200 = 1,800
+</code></pre></div></div>
+
+<p>Holt-Winters is good for data with a <strong>trend and a seasonal pattern</strong>.</p>
+
+<hr />
+
+<h2 id="7-how-the-parameters-are-determined">7. How the parameters are determined</h2>
+
+<p>For simple, Holt, and Holt-Winters methods, we need to choose the smoothing parameters <code class="language-plaintext highlighter-rouge">α</code>, <code class="language-plaintext highlighter-rouge">β</code>, and <code class="language-plaintext highlighter-rouge">γ</code>. The parameters are usually chosen by trying many values and picking the ones that give the smallest forecast error.</p>
+
+<h3 id="two-common-approaches">Two common approaches</h3>
+
+<ol>
+  <li><strong>Grid search:</strong> try a fixed set of values, such as <code class="language-plaintext highlighter-rouge">0.1, 0.2, 0.3, ..., 0.9</code>, and pick the combination with the lowest error on a validation set.</li>
+  <li><strong>Optimisation:</strong> use a numerical optimiser to find the values that minimise the error automatically.</li>
+</ol>
+
+<h3 id="what-error-is-minimised">What error is minimised?</h3>
+
+<p>Usually the <strong>sum of squared errors (SSE)</strong> or the <strong>mean squared error (MSE)</strong> on the training or validation set. The idea is the same: find the parameters that make the model’s one-step-ahead forecasts as close as possible to the actual values.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>SSE = (actual_1 - forecast_1)^2 + (actual_2 - forecast_2)^2 + ... + (actual_n - forecast_n)^2
+</code></pre></div></div>
+
+<h3 id="the-process">The process</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Start with initial guesses for α, β, γ
+2. Run the model over the training data
+3. Compute the forecast errors
+4. Adjust the parameters to make the errors smaller
+5. Repeat until the error cannot get much smaller
+</code></pre></div></div>
+
+<p>In Python, libraries like <code class="language-plaintext highlighter-rouge">statsmodels</code> do this automatically.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.tsa.holtwinters</span> <span class="kn">import</span> <span class="n">ExponentialSmoothing</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">ExponentialSmoothing</span><span class="p">(</span>
+    <span class="n">train</span><span class="p">,</span>
+    <span class="n">trend</span><span class="o">=</span><span class="sh">"</span><span class="s">add</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">seasonal</span><span class="o">=</span><span class="sh">"</span><span class="s">add</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">seasonal_periods</span><span class="o">=</span><span class="mi">12</span>
+<span class="p">)</span>
+<span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">()</span>
+<span class="n">forecast</span> <span class="o">=</span> <span class="n">fit</span><span class="p">.</span><span class="nf">forecast</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">fit()</code> automatically picks the <code class="language-plaintext highlighter-rouge">α</code>, <code class="language-plaintext highlighter-rouge">β</code>, and <code class="language-plaintext highlighter-rouge">γ</code> values that minimise the error.</p>
+
+<hr />
+
+<h2 id="8-one-sentence-takeaway">8. One-sentence takeaway</h2>
+
+<p><strong>Start with the simplest model that matches your data: use the naive for flat data, Holt’s for trend, and Holt-Winters for trend plus seasonality, and let the library fit the smoothing parameters for you.</strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">time-series</span>, <span class="tag">naive-forecast</span>, <span class="tag">exponential-smoothing</span>, <span class="tag">holt-winters</span>, <span class="tag">forecasting</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
