@@ -12,6 +12,7 @@ Learn the basics of time series analysis in plain language. This module covers h
 - **[Time Series Part 2 - Simple Models and Smoothing]({{ site.baseurl }}/topics/time-series-simple-models-smoothing)** — Naive, mean, drift, seasonal naive, simple exponential smoothing, Holt's, Holt-Winters, and how parameters are chosen.
 - **[Time Series Part 3 - Autoregressive Models and Stationarity]({{ site.baseurl }}/topics/time-series-autoregressive-stationarity)** — AR models, stationarity tests (ADF, KPSS), handling non-stationarity, ACF and PACF.
 - **[Time Series Part 4 - ARMA, ARIMA and SARIMA]({{ site.baseurl }}/topics/time-series-arma-arima-sarima)** — Moving Average, ARMA, ARIMA, SARIMA, and a worked example on monthly hot-chocolate sales.
+- **[Time Series Part 5 - Practical Forecasting]({{ site.baseurl }}/topics/time-series-practical-forecasting)** — White noise, forecast horizons, walk-forward validation, forecast intervals, and deep learning for time series.
 
 **What You'll Learn:**
 
