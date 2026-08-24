@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Time Series Part 4 - ARMA, ARIMA and SARIMA</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/time-series">Time Series</a> &mdash;
+    </nav>
+    <h2>Time Series Part 4 - ARMA, ARIMA and SARIMA</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/time-series">Time Series</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="time-series-part-4---arma-arima-and-sarima">Time Series Part 4 - ARMA, ARIMA and SARIMA</h1>
+
+<p>In Part 3, you learned how <strong>AR</strong> models use past values of the series to predict the next value. This part adds the missing pieces:</p>
+
+<ul>
+  <li><strong>MA</strong> models use past forecast errors.</li>
+  <li><strong>ARMA</strong> combines AR and MA.</li>
+  <li><strong>ARIMA</strong> adds differencing to handle trends.</li>
+  <li><strong>SARIMA</strong> adds seasonal differencing to handle repeating patterns.</li>
+</ul>
+
+<p>By the end, you will be able to read the order <code class="language-plaintext highlighter-rouge">(p, d, q)(P, D, Q)m</code> and fit a model in Python.</p>
+
+<hr />
+
+<h2 id="1-moving-average-ma-models">1. Moving Average (MA) models</h2>
+
+<p>A <strong>Moving Average</strong> model does not use past values of the series. It uses past <strong>shocks</strong> (the unpredictable bits, also called errors or residuals).</p>
+
+<p>An <strong>MA(1)</strong> model looks like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y_t = c + e_t + θ * e_{t-1}
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">y_t</code> is the value at time <code class="language-plaintext highlighter-rouge">t</code></li>
+  <li><code class="language-plaintext highlighter-rouge">c</code> is a constant</li>
+  <li><code class="language-plaintext highlighter-rouge">e_t</code> is the random shock at time <code class="language-plaintext highlighter-rouge">t</code></li>
+  <li><code class="language-plaintext highlighter-rouge">e_{t-1}</code> is the previous shock</li>
+  <li><code class="language-plaintext highlighter-rouge">θ</code> is the weight of the previous shock</li>
+</ul>
+
+<h3 id="a-tiny-worked-example">A tiny worked example</h3>
+
+<p>Imagine a lemonade stand. Sales are normally 50 cups a day. On Monday, there is an unexpected surprise: a school group visits and buys an extra 10 cups (<code class="language-plaintext highlighter-rouge">e_t = +10</code>). That shock also spills into Tuesday because the stand runs out of cups early and cannot serve a few customers.</p>
+
+<p>Let <code class="language-plaintext highlighter-rouge">c = 50</code>, <code class="language-plaintext highlighter-rouge">θ = 0.4</code>, and the random shocks be:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Day</th>
+      <th>Shock <code class="language-plaintext highlighter-rouge">e_t</code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Then:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">y_1 = 50 + 0 + 0.4 * 0 = 50</code></li>
+  <li><code class="language-plaintext highlighter-rouge">y_2 = 50 + 10 + 0.4 * 0 = 60</code> (the shock on day 2 has not yet appeared in <code class="language-plaintext highlighter-rouge">e_{t-1}</code>)</li>
+  <li><code class="language-plaintext highlighter-rouge">y_3 = 50 + 0 + 0.4 * 10 = 54</code> (the old shock is still affecting sales one day later)</li>
+</ul>
+
+<p>So an MA model has <strong>short-term memory</strong>: a shock affects the next few periods and then disappears.</p>
+
+<h3 id="how-to-spot-an-maq-process">How to spot an MA(q) process</h3>
+
+<ul>
+  <li>The <strong>ACF cuts off sharply</strong> after lag <code class="language-plaintext highlighter-rouge">q</code>.</li>
+  <li>The <strong>PACF tails off gradually</strong>.</li>
+</ul>
+
+<p>That is the opposite of an AR(p) process. In AR, the PACF cuts off and the ACF tails off.</p>
+
+<hr />
+
+<h2 id="2-armap-q">2. ARMA(p, q)</h2>
+
+<p><strong>ARMA(p, q)</strong> simply combines the two ideas:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">p</code> is the AR part: how many past values of the series are used.</li>
+  <li><code class="language-plaintext highlighter-rouge">q</code> is the MA part: how many past shocks are used.</li>
+</ul>
+
+<p>A common shorthand is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>y_t = c + φ_1 y_{t-1} + ... + φ_p y_{t-p} + e_t + θ_1 e_{t-1} + ... + θ_q e_{t-q}
+</code></pre></div></div>
+
+<h3 id="choosing-p-and-q-from-the-data">Choosing p and q from the data</h3>
+
+<p>A practical recipe is:</p>
+
+<ol>
+  <li>Plot the series and the ACF/PACF.</li>
+  <li>If the series is already stationary:
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">p</code> ≈ the last significant lag in the <strong>PACF</strong>.</li>
+      <li><code class="language-plaintext highlighter-rouge">q</code> ≈ the last significant lag in the <strong>ACF</strong>.</li>
+    </ul>
+  </li>
+  <li>Try a few nearby combinations and compare <code class="language-plaintext highlighter-rouge">AIC</code> or forecast error.</li>
+</ol>
+
+<hr />
+
+<h2 id="3-arimap-d-q">3. ARIMA(p, d, q)</h2>
+
+<p>Many real series are <strong>not</strong> stationary. They have a trend. <strong>ARIMA</strong> adds one more parameter, <code class="language-plaintext highlighter-rouge">d</code>, which stands for the number of times you need to <strong>difference</strong> the series to make it stationary.</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">p</code> = AR order</li>
+  <li><code class="language-plaintext highlighter-rouge">d</code> = number of differences</li>
+  <li><code class="language-plaintext highlighter-rouge">q</code> = MA order</li>
+</ul>
+
+<p>If <code class="language-plaintext highlighter-rouge">d = 0</code>, ARIMA is the same as ARMA. If <code class="language-plaintext highlighter-rouge">d = 1</code>, you fit the model to <code class="language-plaintext highlighter-rouge">y_t - y_{t-1}</code>.</p>
+
+<h3 id="a-tiny-worked-example-1">A tiny worked example</h3>
+
+<p>A savings account grows like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Balance: 100, 105, 112, 118, 125, 131, ...
+</code></pre></div></div>
+
+<p>The balance itself has a trend, so it is not stationary. If you look at the weekly <strong>changes</strong> instead:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Differences: 5, 7, 6, 7, 6, ...
+</code></pre></div></div>
+
+<p>Those differences are roughly flat. So <code class="language-plaintext highlighter-rouge">d = 1</code> is a good starting point.</p>
+
+<h3 id="building-an-arima-model">Building an ARIMA model</h3>
+
+<ol>
+  <li>Check stationarity with an ADF or KPSS test.</li>
+  <li>If the series is not stationary, apply differencing (<code class="language-plaintext highlighter-rouge">d = 1</code> or more).</li>
+  <li>On the differenced series, use ACF/PACF to pick <code class="language-plaintext highlighter-rouge">p</code> and <code class="language-plaintext highlighter-rouge">q</code>.</li>
+  <li>Fit the model and check residuals.</li>
+  <li>Forecast and transform the result back to the original scale if needed.</li>
+</ol>
+
+<hr />
+
+<h2 id="4-sarimapdqpdqm">4. SARIMA(p,d,q)(P,D,Q)m</h2>
+
+<p><strong>SARIMA</strong> adds a seasonal ARIMA model on top of the regular ARIMA model. The full order is written as <code class="language-plaintext highlighter-rouge">(p, d, q)(P, D, Q)m</code>.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Letter</th>
+      <th>Meaning</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">p</code></td>
+      <td>non-seasonal AR order</td>
+      <td><code class="language-plaintext highlighter-rouge">p = 1</code> uses <code class="language-plaintext highlighter-rouge">y_{t-1}</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">d</code></td>
+      <td>non-seasonal differencing</td>
+      <td><code class="language-plaintext highlighter-rouge">d = 1</code> removes trend</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">q</code></td>
+      <td>non-seasonal MA order</td>
+      <td><code class="language-plaintext highlighter-rouge">q = 1</code> uses <code class="language-plaintext highlighter-rouge">e_{t-1}</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">P</code></td>
+      <td>seasonal AR order</td>
+      <td><code class="language-plaintext highlighter-rouge">P = 1</code> uses <code class="language-plaintext highlighter-rouge">y_{t-m}</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">D</code></td>
+      <td>seasonal differencing</td>
+      <td><code class="language-plaintext highlighter-rouge">D = 1</code> removes yearly pattern</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Q</code></td>
+      <td>seasonal MA order</td>
+      <td><code class="language-plaintext highlighter-rouge">Q = 1</code> uses <code class="language-plaintext highlighter-rouge">e_{t-m}</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">m</code></td>
+      <td>number of periods per season</td>
+      <td><code class="language-plaintext highlighter-rouge">m = 12</code> for monthly data</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="how-to-read-it">How to read it</h3>
+
+<p><code class="language-plaintext highlighter-rouge">(1, 1, 1)(1, 1, 1)12</code> for monthly data means:</p>
+
+<ul>
+  <li>The series is differenced once to remove trend (<code class="language-plaintext highlighter-rouge">d = 1</code>).</li>
+  <li>It is also seasonally differenced once at lag 12 to remove the yearly pattern (<code class="language-plaintext highlighter-rouge">D = 1</code>, <code class="language-plaintext highlighter-rouge">m = 12</code>).</li>
+  <li>We use one non-seasonal AR term (<code class="language-plaintext highlighter-rouge">p = 1</code>), one non-seasonal MA term (<code class="language-plaintext highlighter-rouge">q = 1</code>).</li>
+  <li>We use one seasonal AR term at lag 12 (<code class="language-plaintext highlighter-rouge">P = 1</code>) and one seasonal MA term at lag 12 (<code class="language-plaintext highlighter-rouge">Q = 1</code>).</li>
+</ul>
+
+<h3 id="choosing-the-seasonal-orders">Choosing the seasonal orders</h3>
+
+<ol>
+  <li>Look at the ACF at seasonal lags: 12, 24, 36 for monthly data.</li>
+  <li>If a seasonal lag is significant, try <code class="language-plaintext highlighter-rouge">P</code> or <code class="language-plaintext highlighter-rouge">Q</code> at that lag.</li>
+  <li>Use seasonal differencing <code class="language-plaintext highlighter-rouge">D</code> if the seasonal pattern itself is changing over time.</li>
+  <li>Compare models using <code class="language-plaintext highlighter-rouge">AIC</code>, <code class="language-plaintext highlighter-rouge">BIC</code>, or forecast error.</li>
+</ol>
+
+<hr />
+
+<h2 id="5-worked-example-monthly-hot-chocolate-sales">5. Worked example: monthly hot-chocolate sales</h2>
+
+<p>We will build a SARIMA model for a small mountain café that sells hot chocolate. The café is busier in winter and grows a little each year.</p>
+
+<h3 id="step-1-make-the-data">Step 1: make the data</h3>
+
+<p>You can generate a similar dataset in Python.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># 4 years of monthly hot-chocolate sales
+</span><span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">n</span> <span class="o">=</span> <span class="mi">48</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">trend</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mf">0.2</span> <span class="o">*</span> <span class="n">time</span>
+<span class="n">seasonal</span> <span class="o">=</span> <span class="mi">30</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">time</span> <span class="o">/</span> <span class="mi">12</span><span class="p">)</span> <span class="o">+</span> <span class="mi">15</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="nf">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="p">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">time</span> <span class="o">/</span> <span class="mi">12</span><span class="p">)</span>
+<span class="n">noise</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+
+<span class="n">sales</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">trend</span> <span class="o">+</span> <span class="n">seasonal</span> <span class="o">+</span> <span class="n">noise</span>
+
+<span class="n">idx</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">date_range</span><span class="p">(</span><span class="sh">'</span><span class="s">2020-01-01</span><span class="sh">'</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="sh">'</span><span class="s">MS</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nc">DataFrame</span><span class="p">({</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">:</span> <span class="n">sales</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">idx</span><span class="p">)</span>
+
+<span class="c1"># Plot the series
+</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">].</span><span class="nf">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="sh">'</span><span class="s">Monthly hot-chocolate sales</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>This series has a trend and a yearly seasonal pattern, so SARIMA is a natural choice.</p>
+
+<h3 id="step-2-check-stationarity">Step 2: check stationarity</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.tsa.stattools</span> <span class="kn">import</span> <span class="n">adfuller</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="nf">adfuller</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">'</span><span class="s">ADF p-value:</span><span class="sh">'</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>If the p-value is large (for example, greater than 0.05), the series is not stationary. That is expected here because of the trend and the seasonality.</p>
+
+<h3 id="step-3-difference-the-series">Step 3: difference the series</h3>
+
+<p>We remove both the trend and the yearly pattern. For monthly data with season length <code class="language-plaintext highlighter-rouge">m = 12</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.tsa.seasonal</span> <span class="kn">import</span> <span class="n">seasonal_decompose</span>
+
+<span class="c1"># Optional: visualise the parts
+</span><span class="n">decompose</span> <span class="o">=</span> <span class="nf">seasonal_decompose</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">model</span><span class="o">=</span><span class="sh">'</span><span class="s">additive</span><span class="sh">'</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">decompose</span><span class="p">.</span><span class="nf">plot</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h3 id="step-4-decide-the-orders-from-acf-and-pacf">Step 4: decide the orders from ACF and PACF</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.graphics.tsaplots</span> <span class="kn">import</span> <span class="n">plot_acf</span><span class="p">,</span> <span class="n">plot_pacf</span>
+<span class="kn">import</span> <span class="n">warnings</span>
+<span class="n">warnings</span><span class="p">.</span><span class="nf">filterwarnings</span><span class="p">(</span><span class="sh">'</span><span class="s">ignore</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+<span class="nf">plot_acf</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">lags</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="nf">plot_pacf</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">lags</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="sh">'</span><span class="s">ywm</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>In this synthetic example:</p>
+
+<ul>
+  <li>The <strong>ACF</strong> decays slowly because the series is not stationary.</li>
+  <li>After one non-seasonal difference and one seasonal difference, the ACF and PACF should show clearer cut-off points.</li>
+</ul>
+
+<h3 id="step-5-fit-a-sarima-model">Step 5: fit a SARIMA model</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">statsmodels.tsa.statespace.sarimax</span> <span class="kn">import</span> <span class="n">SARIMAX</span>
+
+<span class="c1"># Split into train and test
+# Use the last 12 months as the test set
+</span><span class="n">train</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="n">iloc</span><span class="p">[:</span><span class="o">-</span><span class="mi">12</span><span class="p">]</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">12</span><span class="p">:]</span>
+
+<span class="c1"># Fit a SARIMA model with a reasonable starting order
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">SARIMAX</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span>
+                <span class="n">order</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">seasonal_order</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">disp</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">results</span><span class="p">.</span><span class="nf">summary</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p>The summary has three parts:</p>
+
+<ul>
+  <li><strong>coef</strong> tells you the estimated weights for each term.</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>**P&gt;</td>
+          <td>z</td>
+          <td>** tells you the p-value. Values below 0.05 mean the term is useful.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li><strong>AIC / BIC</strong> are information criteria. Lower is better when comparing models for the same data.</li>
+</ul>
+
+<h3 id="step-6-forecast-and-evaluate">Step 6: forecast and evaluate</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.metrics</span> <span class="kn">import</span> <span class="n">mean_squared_error</span><span class="p">,</span> <span class="n">mean_absolute_percentage_error</span>
+<span class="kn">import</span> <span class="n">math</span>
+
+<span class="c1"># Forecast the same length as the test set
+</span><span class="n">forecast</span> <span class="o">=</span> <span class="n">results</span><span class="p">.</span><span class="nf">get_forecast</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">predicted</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">.</span><span class="n">predicted_mean</span>
+
+<span class="n">rmse</span> <span class="o">=</span> <span class="n">math</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="nf">mean_squared_error</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">predicted</span><span class="p">))</span>
+<span class="n">mape</span> <span class="o">=</span> <span class="nf">mean_absolute_percentage_error</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">predicted</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">RMSE: </span><span class="si">{</span><span class="n">rmse</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">MAPE: </span><span class="si">{</span><span class="n">mape</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Plot actual vs forecast
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">train</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">train</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">test</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">actual</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">test</span><span class="p">.</span><span class="n">index</span><span class="p">,</span> <span class="n">predicted</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sh">'</span><span class="s">forecast</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h3 id="step-7-improve-the-model">Step 7: improve the model</h3>
+
+<p>If the first model is not good, try other values:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">orders_to_try</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">orders_to_try</span><span class="p">:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="nc">SARIMAX</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span>
+                    <span class="n">order</span><span class="o">=</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">q</span><span class="p">),</span>
+                    <span class="n">seasonal_order</span><span class="o">=</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">m</span><span class="p">))</span>
+    <span class="n">fitted</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">disp</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">forecast</span> <span class="o">=</span> <span class="n">fitted</span><span class="p">.</span><span class="nf">get_forecast</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">12</span><span class="p">).</span><span class="n">predicted_mean</span>
+    <span class="n">rmse</span> <span class="o">=</span> <span class="n">math</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="nf">mean_squared_error</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">forecast</span><span class="p">))</span>
+    <span class="n">mape</span> <span class="o">=</span> <span class="nf">mean_absolute_percentage_error</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">forecast</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">(</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s">,</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s">,</span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="s">)(</span><span class="si">{</span><span class="n">P</span><span class="si">}</span><span class="s">,</span><span class="si">{</span><span class="n">D</span><span class="si">}</span><span class="s">,</span><span class="si">{</span><span class="n">Q</span><span class="si">}</span><span class="s">)</span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s">  RMSE=</span><span class="si">{</span><span class="n">rmse</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">  MAPE=</span><span class="si">{</span><span class="n">mape</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s">%</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Pick the order with the lowest <code class="language-plaintext highlighter-rouge">RMSE</code> or <code class="language-plaintext highlighter-rouge">MAPE</code> on the test set.</p>
+
+<hr />
+
+<h2 id="6-one-sentence-takeaway">6. One-sentence takeaway</h2>
+
+<p><strong>SARIMA handles both trend and seasonality: use <code class="language-plaintext highlighter-rouge">p, q</code> and the ACF/PACF for the non-seasonal part, use <code class="language-plaintext highlighter-rouge">P, Q, m</code> for the repeating pattern, and use <code class="language-plaintext highlighter-rouge">d, D</code> to make the series stationary before you fit the model.</strong></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">time-series</span>, <span class="tag">arma</span>, <span class="tag">arima</span>, <span class="tag">sarima</span>, <span class="tag">forecasting</span>, <span class="tag">stationarity</span>, <span class="tag">differencing</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
