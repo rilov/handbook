@@ -39,6 +39,10 @@ Learn advanced machine learning algorithms through clear, step-by-step explanati
 - **[Advanced Machine Learning: One-Liners]({{ site.baseurl }}/topics/advanced-machine-learning-one-liners)** — Every key formula and concept in one easy-to-scan line.
 - **[Naive Bayes — A Friendly Guide]({{ site.baseurl }}{% link _topics/Naive Bayes - A Friendly Guide.md %})** — Original single-page overview of Naive Bayes, useful as a quick refresher after the series.
 
+**Recommendation Systems:**
+
+- **[Recommendation Systems - A Friendly Guide]({{ site.baseurl }}/topics/recommendation-systems-friendly-guide)** — How recommendation engines pick the next song, product or movie, from people-who-bought-this to hidden taste maps.
+
 **What You'll Learn:**
 
 - The bias-variance tradeoff and how to diagnose underfitting vs overfitting
