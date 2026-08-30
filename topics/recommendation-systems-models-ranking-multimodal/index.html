@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recommendation Systems - Part 3 - Models, Ranking and Multi-Modal Systems</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Recommendation Systems - Part 3 - Models, Ranking and Multi-Modal Systems</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="recommendation-systems---part-3---models-ranking-and-multi-modal-systems">Recommendation Systems - Part 3 - Models, Ranking and Multi-Modal Systems</h1>
+
+<p>This part covers the models that turn data into recommendations. We start with the simplest user-item matching, move to latent-factor models, and end with modern ideas like multi-modal systems.</p>
+
+<hr />
+
+<h2 id="1-collaborative-filtering">1. Collaborative filtering</h2>
+
+<p>Collaborative filtering means: use the behaviour of many users to guess what a single user will like.</p>
+
+<p>There are two main directions.</p>
+
+<ul>
+  <li><strong>User-user:</strong> find people similar to you.</li>
+  <li><strong>Item-item:</strong> find items similar to the ones you already like.</li>
+</ul>
+
+<h3 id="user-user-collaborative-filtering">User-user collaborative filtering</h3>
+
+<p>The idea is simple.</p>
+
+<ol>
+  <li>Build a profile for each user. The profile is a vector of their past interactions.</li>
+  <li>Find the users whose profiles are most similar to the target user.</li>
+  <li>Recommend the items those similar users liked.</li>
+</ol>
+
+<h3 id="example">Example</h3>
+
+<p>Three users have watched some of the same movies.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>          Movie A   Movie B   Movie C   Movie D
+Alice        5         3         0         4
+Bob          4         3         0         5
+Carol        0         4         5         1
+</code></pre></div></div>
+
+<p>Alice and Bob have very similar rows. If Bob loved movie B and movie D, those are safe recommendations for Alice.</p>
+
+<p>Carol is different. Recommending Carol’s favourites to Alice may not work.</p>
+
+<h3 id="the-user-user-prediction-formula">The user-user prediction formula</h3>
+
+<p>For user <code class="language-plaintext highlighter-rouge">u</code> and item <code class="language-plaintext highlighter-rouge">i</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>predicted_score(u, i) = average_score(u) +
+    Σ similarity(u, v) × (actual_score(v, i) - average_score(v))
+    ----------------------------------------------------------
+                 Σ |similarity(u, v)|
+</code></pre></div></div>
+
+<p>The sum is over all users <code class="language-plaintext highlighter-rouge">v</code> who are similar to <code class="language-plaintext highlighter-rouge">u</code> and who have rated item <code class="language-plaintext highlighter-rouge">i</code>.</p>
+
+<p>The formula does three things:</p>
+<ol>
+  <li>Start from the user’s own average.</li>
+  <li>Add a weighted adjustment from similar users.</li>
+  <li>Divide by the total weight so the result is an average adjustment.</li>
+</ol>
+
+<h3 id="item-item-collaborative-filtering">Item-item collaborative filtering</h3>
+
+<p>This is often more practical than user-user, because user profiles are sparse and change quickly. Item profiles are usually more stable.</p>
+
+<ol>
+  <li>Build a profile for each item. The profile is the list of users who liked it.</li>
+  <li>Find the items most similar to the ones the target user already liked.</li>
+  <li>Recommend those items.</li>
+</ol>
+
+<h3 id="the-item-item-similarity-formula">The item-item similarity formula</h3>
+
+<p>For two items <code class="language-plaintext highlighter-rouge">i</code> and <code class="language-plaintext highlighter-rouge">j</code>, use the users who interacted with both.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cosine_similarity(i, j) = Σ (r_ui × r_uj)
+                        / sqrt(Σ r_ui²) × sqrt(Σ r_uj²)
+</code></pre></div></div>
+
+<p>The sums are over all users <code class="language-plaintext highlighter-rouge">u</code> who have a score for both items. <code class="language-plaintext highlighter-rouge">r_ui</code> is the score user <code class="language-plaintext highlighter-rouge">u</code> gave to item <code class="language-plaintext highlighter-rouge">i</code>.</p>
+
+<p>A high cosine similarity means the two items appeal to the same people.</p>
+
+<h3 id="user-user-vs-item-item">User-user vs item-item</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Better choice</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Many more users than items</td>
+      <td>Item-item</td>
+    </tr>
+    <tr>
+      <td>Items change quickly</td>
+      <td>User-user</td>
+    </tr>
+    <tr>
+      <td>You want explanation</td>
+      <td>Item-item is easier to explain: “people who liked X also liked Y”</td>
+    </tr>
+    <tr>
+      <td>Sparsity is very high</td>
+      <td>Item-item is usually more stable</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="2-implicit-matrix-factorisation">2. Implicit matrix factorisation</h2>
+
+<p>Matrix factorisation is the most important classical model for large-scale recommendations. It learns hidden traits for users and items.</p>
+
+<h3 id="the-big-picture">The big picture</h3>
+
+<p>Imagine a huge table.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>         Item 1   Item 2   Item 3   ...   Item n
+User 1     ?        1        0     ...      ?
+User 2     1        ?        1     ...      ?
+User 3     0        0        ?     ...      1
+...       ...      ...      ...    ...    ...
+</code></pre></div></div>
+
+<p>A <code class="language-plaintext highlighter-rouge">1</code> means the user interacted with the item. A <code class="language-plaintext highlighter-rouge">0</code> or <code class="language-plaintext highlighter-rouge">?</code> means they did not, or we do not know.</p>
+
+<p>This table is mostly empty. We want to fill in the missing values with the probability that each user will like each item.</p>
+
+<h3 id="the-model-idea">The model idea</h3>
+
+<p>Give every user a small trait vector <code class="language-plaintext highlighter-rouge">p_u</code> and every item a small trait vector <code class="language-plaintext highlighter-rouge">q_i</code>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>predicted_score(u, i) = p_u · q_i
+</code></pre></div></div>
+
+<p>The dot product is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>p_u · q_i = p_u1 × q_i1 + p_u2 × q_i2 + ... + p_uk × q_ik
+</code></pre></div></div>
+
+<p>If the user and the item have similar traits, the dot product is high. If they have opposite traits, the dot product is low.</p>
+
+<h3 id="explicit-feedback-loss">Explicit feedback loss</h3>
+
+<p>When we have real ratings <code class="language-plaintext highlighter-rouge">r_ui</code>, the usual loss is squared error:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = Σ (r_ui - p_u · q_i)²
+</code></pre></div></div>
+
+<p>We try to make the predicted score as close as possible to the real rating.</p>
+
+<h3 id="implicit-feedback-loss">Implicit feedback loss</h3>
+
+<p>When we only have clicks or views, the signal is different. We use a confidence value <code class="language-plaintext highlighter-rouge">c_ui</code> for each user-item pair.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c_ui = 1 + α × observed_interactions(u, i)
+</code></pre></div></div>
+
+<p>Here <code class="language-plaintext highlighter-rouge">α</code> is a tuning number, usually something like 40. If a user watched a video ten times, we have more confidence that they like it than if they watched it once.</p>
+
+<p>The loss becomes:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = Σ c_ui × (p_ui - p_u · q_i)²
+</code></pre></div></div>
+
+<p>Where <code class="language-plaintext highlighter-rouge">p_ui</code> is 1 if the user interacted and 0 if not. The <code class="language-plaintext highlighter-rouge">c_ui</code> weight means frequent interactions matter more.</p>
+
+<h3 id="regularisation">Regularisation</h3>
+
+<p>We do not want the vectors to become huge. A small penalty keeps them modest:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L_total = L + λ × (Σ ||p_u||² + Σ ||q_i||²)
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">λ</code> controls the strength. A larger <code class="language-plaintext highlighter-rouge">λ</code> keeps vectors small. A smaller <code class="language-plaintext highlighter-rouge">λ</code> lets the model fit the data more closely.</p>
+
+<hr />
+
+<h2 id="3-alternating-least-squares-als">3. Alternating least squares (ALS)</h2>
+
+<p>ALS is a clever way to solve the matrix factorisation problem.</p>
+
+<h3 id="the-two-team-idea">The two-team idea</h3>
+
+<p>We have two sets of unknowns: user vectors and item vectors. We cannot solve for both at the same time easily. But if we fix one set, the other set has a closed-form solution.</p>
+
+<p>So we take turns.</p>
+
+<ol>
+  <li>Fix all item vectors <code class="language-plaintext highlighter-rouge">q_i</code>.</li>
+  <li>Solve for the best user vectors <code class="language-plaintext highlighter-rouge">p_u</code>.</li>
+  <li>Fix all user vectors <code class="language-plaintext highlighter-rouge">p_u</code>.</li>
+  <li>Solve for the best item vectors <code class="language-plaintext highlighter-rouge">q_i</code>.</li>
+  <li>Repeat.</li>
+</ol>
+
+<p>Because each step is a simple least-squares problem, it is fast and stable.</p>
+
+<h3 id="why-it-works">Why it works</h3>
+
+<p>Each step is a convex problem. That means there is a single best answer, and we can find it directly. By alternating, we slowly find a good pair of user and item vectors.</p>
+
+<h3 id="the-als-update-rule">The ALS update rule</h3>
+
+<p>For a fixed set of item vectors, the best user vector is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>p_u = (Q^T C_u Q + λI)^-1 Q^T C_u p_u_binary
+</code></pre></div></div>
+
+<p>Where:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Q</code> is the matrix of item vectors.</li>
+  <li><code class="language-plaintext highlighter-rouge">C_u</code> is a diagonal matrix of confidence values for user <code class="language-plaintext highlighter-rouge">u</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">p_u_binary</code> is the binary preference vector for user <code class="language-plaintext highlighter-rouge">u</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">λI</code> is the regularisation term.</li>
+  <li><code class="language-plaintext highlighter-rouge">^-1</code> means matrix inverse.</li>
+</ul>
+
+<p>Then the same formula, with the roles swapped, gives the item vectors.</p>
+
+<p>You do not need to remember this formula. The important idea is: hold one side still, solve the other side, then switch.</p>
+
+<hr />
+
+<h2 id="4-bayesian-personalised-ranking-bpr">4. Bayesian personalised ranking (BPR)</h2>
+
+<p>BPR does not try to predict the exact score. It tries to make sure that for every user, the items they liked are ranked above the items they did not like.</p>
+
+<h3 id="the-triplet-idea">The triplet idea</h3>
+
+<p>For each user, create triples:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(user u, positive item i, negative item j)
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">i</code> is an item the user actually liked.</li>
+  <li><code class="language-plaintext highlighter-rouge">j</code> is an item the user did not like or did not see.</li>
+</ul>
+
+<p>The goal is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>p_u · q_i  &gt;  p_u · q_j
+</code></pre></div></div>
+
+<p>In words: the model should give a higher score to the liked item than to the disliked item.</p>
+
+<h3 id="the-bpr-loss">The BPR loss</h3>
+
+<p>The loss is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L_BPR = -ln(σ(p_u · q_i - p_u · q_j))
+</code></pre></div></div>
+
+<p>Where <code class="language-plaintext highlighter-rouge">σ</code> is the sigmoid function:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>σ(x) = 1 / (1 + e^(-x))
+</code></pre></div></div>
+
+<p>If <code class="language-plaintext highlighter-rouge">p_u · q_i</code> is much larger than <code class="language-plaintext highlighter-rouge">p_u · q_j</code>, then <code class="language-plaintext highlighter-rouge">p_u · q_i - p_u · q_j</code> is a large positive number. The sigmoid is close to 1, and the log of 1 is 0. So the loss is small. That is good.</p>
+
+<p>If the model gets the order wrong, the difference is negative. The sigmoid is close to 0, and the log of a small number is very negative. With the minus sign in front, the loss becomes large. That is bad.</p>
+
+<h3 id="why-bpr-is-popular">Why BPR is popular</h3>
+
+<ul>
+  <li>It only needs positive and negative examples.</li>
+  <li>It focuses on ranking, which is what most systems actually need.</li>
+  <li>It is easy to train with stochastic gradient descent.</li>
+</ul>
+
+<hr />
+
+<h2 id="5-learning-to-rank">5. Learning-to-rank</h2>
+
+<p>Learning-to-rank trains a model to sort items correctly.</p>
+
+<p>There are three styles.</p>
+
+<h3 id="pointwise">Pointwise</h3>
+
+<p>Predict a score for each item independently. Then sort by that score. Matrix factorisation and many neural models are pointwise.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(u, i) = p_u · q_i
+</code></pre></div></div>
+
+<h3 id="pairwise">Pairwise</h3>
+
+<p>Compare two items at a time. BPR is a pairwise method. It trains the model to rank positive items above negative items.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = -ln(σ(score(u, i) - score(u, j)))
+</code></pre></div></div>
+
+<h3 id="listwise">Listwise</h3>
+
+<p>Compare the whole list at once. The model optimises the ranking of the full set of items. This can be more accurate but is also harder and slower.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = -Σ P(actual order) × log(P(predicted order))
+</code></pre></div></div>
+
+<p>Listwise methods try to match the full probability distribution over rankings.</p>
+
+<h3 id="when-to-use-each">When to use each</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Style</th>
+      <th>Use when</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Pointwise</td>
+      <td>You have ratings or confidence scores.</td>
+    </tr>
+    <tr>
+      <td>Pairwise</td>
+      <td>You have implicit feedback and want ranking.</td>
+    </tr>
+    <tr>
+      <td>Listwise</td>
+      <td>You can afford more computation and want the best possible order.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="6-negative-sampling">6. Negative sampling</h2>
+
+<p>In implicit feedback, we have lots of positive examples but no explicit negative examples. A user might not have clicked an item because they did not like it, or because they never saw it.</p>
+
+<p>Negative sampling is how we create negative examples to train the model.</p>
+
+<h3 id="random-negative-sampling">Random negative sampling</h3>
+
+<p>For each positive pair <code class="language-plaintext highlighter-rouge">(u, i)</code>, pick a random item <code class="language-plaintext highlighter-rouge">j</code> that the user has not interacted with. Treat <code class="language-plaintext highlighter-rouge">j</code> as a negative.</p>
+
+<p>This is simple, but the random item is often very easy to recognise as negative. The model does not learn much.</p>
+
+<h3 id="hard-negative-sampling">Hard negative sampling</h3>
+
+<p>Pick items that are popular and similar to the positive item, but the user did not choose them. These are harder to distinguish.</p>
+
+<p>For example, if a user bought a mystery novel, a hard negative might be another popular mystery novel that they did not buy.</p>
+
+<h3 id="in-batch-negative-sampling">In-batch negative sampling</h3>
+
+<p>Use the other positive examples in the same training batch as negatives. This is fast and works well for neural recommenders.</p>
+
+<h3 id="the-negative-sampling-ratio">The negative sampling ratio</h3>
+
+<p>A common choice is to use a few negatives for every positive. For example, four negatives per positive.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>number_of_negatives = k × number_of_positives
+</code></pre></div></div>
+
+<p>A larger <code class="language-plaintext highlighter-rouge">k</code> gives the model more negative examples to learn from, but also makes training slower.</p>
+
+<h3 id="why-negative-sampling-matters">Why negative sampling matters</h3>
+
+<p>Without negatives, the model would learn that every user-item pair is positive. Negative examples force the model to learn what users do not want, not just what they do want.</p>
+
+<hr />
+
+<h2 id="7-feature-engineering-for-recommendations">7. Feature engineering for recommendations</h2>
+
+<p>Good features make every model better. Here are the main types.</p>
+
+<h3 id="user-features">User features</h3>
+
+<ul>
+  <li>Past interactions: items, categories, brands.</li>
+  <li>Frequency: how often they visit, buy or watch.</li>
+  <li>Recency: time since last interaction.</li>
+  <li>Demographics: age, location, language.</li>
+  <li>Time patterns: morning vs evening, weekday vs weekend.</li>
+</ul>
+
+<h3 id="item-features">Item features</h3>
+
+<ul>
+  <li>Category, brand, price, age, popularity.</li>
+  <li>Content: text, images, audio, video.</li>
+  <li>Quality: average rating, return rate, dwell time.</li>
+  <li>Trend: rising or falling popularity.</li>
+</ul>
+
+<h3 id="context-features">Context features</h3>
+
+<ul>
+  <li>Device, location, time of day.</li>
+  <li>Season, weather, holidays.</li>
+  <li>Whether the user is in a rush or browsing.</li>
+</ul>
+
+<h3 id="sequence-features">Sequence features</h3>
+
+<p>Instead of just a list of items, capture the order.</p>
+
+<ul>
+  <li>Last five items viewed.</li>
+  <li>Items viewed in the current session.</li>
+  <li>Time between interactions.</li>
+</ul>
+
+<h3 id="feature-crosses">Feature crosses</h3>
+
+<p>Some combinations matter more than the individual parts.</p>
+
+<p>For example, <code class="language-plaintext highlighter-rouge">category_morning</code> might tell you that users in the morning prefer news, while in the evening they prefer movies.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>category_morning = category × time_of_day
+</code></pre></div></div>
+
+<p>Modern models can learn some crosses automatically, but hand-crafted crosses are still useful.</p>
+
+<hr />
+
+<h2 id="8-multi-modal-recommendation-systems">8. Multi-modal recommendation systems</h2>
+
+<p>So far, we have used interaction data. But real catalogues also have text, images, sound, and video.</p>
+
+<p>A multi-modal system uses more than one type of input.</p>
+
+<h3 id="text-as-a-signal">Text as a signal</h3>
+
+<p>For products, we have titles and descriptions. We can turn the text into a vector using a language model. Two items with similar descriptions get similar vectors.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>item_text_vector = language_model(description)
+</code></pre></div></div>
+
+<h3 id="images-as-a-signal">Images as a signal</h3>
+
+<p>For fashion or furniture, the visual look is important. A computer-vision model can turn an image into a vector. Two visually similar items get similar vectors.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>item_image_vector = vision_model(image)
+</code></pre></div></div>
+
+<h3 id="audio-and-video">Audio and video</h3>
+
+<p>For music and movies, the raw content can be converted into vectors. A song with a similar mood and tempo gets a similar vector.</p>
+
+<h3 id="cold-start">Cold start</h3>
+
+<p>A common problem is the <strong>cold start</strong>: a brand-new item has no interactions yet. Multi-modal features help here. Even if no one has bought the new item, the system can recommend it to users who liked similar-looking or similar-described items.</p>
+
+<h3 id="fusing-modalities">Fusing modalities</h3>
+
+<p>The system must combine the different vectors. A simple way is to concatenate them:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>item_vector = [interaction_vector, text_vector, image_vector]
+</code></pre></div></div>
+
+<p>Then use this combined vector in a matrix factorisation or neural model. Modern systems can also use attention to decide which modality matters most for each user and item.</p>
+
+<hr />
+
+<h2 id="9-building-a-small-end-to-end-system">9. Building a small end-to-end system</h2>
+
+<p>Here is a simple blueprint.</p>
+
+<ol>
+  <li><strong>Collect events</strong> with a clear data contract: who, what, when, how.</li>
+  <li><strong>Choose the problem type:</strong> explicit rating, implicit click, ranking, or next action.</li>
+  <li><strong>Split the data</strong> by time or by user. Make sure there is no leakage.</li>
+  <li><strong>Build baselines:</strong> global popularity, item co-occurrence, recent history.</li>
+  <li><strong>Measure with offline metrics:</strong> Recall, Precision, NDCG, MRR, coverage, personalisation.</li>
+  <li><strong>Train a simple matrix factorisation</strong> model with ALS or BPR.</li>
+  <li><strong>Add negative sampling</strong> and learning-to-rank if needed.</li>
+  <li><strong>Add features and multi-modal signals</strong> for better cold-start and quality.</li>
+  <li><strong>Run an online A/B test</strong> to confirm the offline gains appear in production.</li>
+</ol>
+
+<hr />
+
+<h2 id="10-one-sentence-takeaways">10. One-sentence takeaways</h2>
+
+<ul>
+  <li><strong>Collaborative filtering</strong> matches users to users or items to items.</li>
+  <li><strong>Matrix factorisation</strong> learns hidden user and item traits as vectors.</li>
+  <li><strong>ALS</strong> solves the problem by alternating between fixing users and fixing items.</li>
+  <li><strong>BPR</strong> trains the model to rank positive items above negatives.</li>
+  <li><strong>Learning-to-rank</strong> can be pointwise, pairwise, or listwise.</li>
+  <li><strong>Negative sampling</strong> creates the negative examples the model needs to learn.</li>
+  <li><strong>Feature engineering</strong> adds user, item, context, and sequence signals.</li>
+  <li><strong>Multi-modal systems</strong> use text, images, and audio to help cold-start items.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">recommendation-systems</span>, <span class="tag">collaborative-filtering</span>, <span class="tag">matrix-factorization</span>, <span class="tag">learning-to-rank</span>, <span class="tag">negative-sampling</span>, <span class="tag">multi-modal</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

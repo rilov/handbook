@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recommendation Systems - Part 2 - Framing, Data, Metrics and Baselines</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Recommendation Systems - Part 2 - Framing, Data, Metrics and Baselines</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="recommendation-systems---part-2---framing-data-metrics-and-baselines">Recommendation Systems - Part 2 - Framing, Data, Metrics and Baselines</h1>
+
+<p>This part builds the foundation. Before we train fancy models, we need to know what the problem is, what data we can use, how to avoid fooling ourselves with a bad test set, and how to measure success.</p>
+
+<hr />
+
+<h2 id="1-what-problem-are-we-really-solving">1. What problem are we really solving?</h2>
+
+<p>A recommendation system is a sorting machine. Given a person and a huge catalogue, it puts the items the person is most likely to enjoy at the top of the list.</p>
+
+<p>There are several different ways to ask the question.</p>
+
+<h3 id="the-three-common-tasks">The three common tasks</h3>
+
+<ol>
+  <li>
+    <p><strong>Predict a rating.</strong>
+“How many stars will Alice give to this movie?”
+This is a regression task. We minimise the error between the predicted and the actual star rating.</p>
+  </li>
+  <li>
+    <p><strong>Predict a ranking.</strong>
+“Which ten movies should Alice see first?”
+This is a ranking task. We care about the order of the list, not the exact score.</p>
+  </li>
+  <li>
+    <p><strong>Predict the next action.</strong>
+“What is Alice most likely to click or buy next?”
+This is a classification or click-through prediction task. We have positive and negative examples from real behaviour.</p>
+  </li>
+</ol>
+
+<p>Most production systems end up as ranking or next-action problems, because the exact rating matters less than the order.</p>
+
+<h3 id="a-simple-framing-rule">A simple framing rule</h3>
+
+<ul>
+  <li><strong>Input:</strong> a user, their past behaviour, and the item catalogue.</li>
+  <li><strong>Output:</strong> a sorted list of items the user is most likely to interact with.</li>
+  <li><strong>Goal:</strong> the best items should appear before the less interesting items.</li>
+</ul>
+
+<hr />
+
+<h2 id="2-types-of-recommendation-problems">2. Types of recommendation problems</h2>
+
+<p>Not every system needs the same design. The problem type shapes the model, the metric, and the data you collect.</p>
+
+<h3 id="explicit-feedback-problems">Explicit feedback problems</h3>
+
+<p>The user gives a direct opinion.</p>
+
+<ul>
+  <li>Star ratings.</li>
+  <li>Thumbs up or thumbs down.</li>
+  <li>Written reviews.</li>
+</ul>
+
+<p>These are gold, but rare. Most users do not rate. A movie site may have millions of views and only tens of thousands of ratings.</p>
+
+<h3 id="implicit-feedback-problems">Implicit feedback problems</h3>
+
+<p>The user gives an opinion through behaviour.</p>
+
+<ul>
+  <li>Clicked on an item.</li>
+  <li>Watched 90% of a video.</li>
+  <li>Added to basket.</li>
+  <li>Bought.</li>
+  <li>Skipped after two seconds.</li>
+</ul>
+
+<p>These are much more common, but the signal is noisy. A click does not always mean “I loved it.” It may only mean the title was interesting.</p>
+
+<h3 id="session-based-problems">Session-based problems</h3>
+
+<p>The user is anonymous or new. We only have the current session. The model must recommend based on what has been viewed in this session.</p>
+
+<p>This is common for news and e-commerce without accounts.</p>
+
+<h3 id="sequence-problems">Sequence problems</h3>
+
+<p>We have the exact order of actions over time. The model tries to predict the next item in the sequence. This is like language modelling, but for items.</p>
+
+<h3 id="diversity-and-serendipity-problems">Diversity and serendipity problems</h3>
+
+<p>Sometimes the goal is not just accuracy. We also want the user to discover surprising things. A music app may want to mix known favourites with new genres.</p>
+
+<hr />
+
+<h2 id="3-the-data-we-collect">3. The data we collect</h2>
+
+<p>Data is the raw material. The way you store and interpret it shapes everything that follows.</p>
+
+<h3 id="user-signals">User signals</h3>
+
+<p>Signals tell us who the user is and what they did.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Signal</th>
+      <th>Meaning</th>
+      <th>Strength</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Viewed</td>
+      <td>The user opened the item.</td>
+      <td>Weak but abundant.</td>
+    </tr>
+    <tr>
+      <td>Clicked</td>
+      <td>The user actively selected it.</td>
+      <td>Slightly stronger.</td>
+    </tr>
+    <tr>
+      <td>Dwell time</td>
+      <td>How long they looked or listened.</td>
+      <td>Stronger. 30 seconds vs 30 minutes means very different things.</td>
+    </tr>
+    <tr>
+      <td>Added to cart</td>
+      <td>Strong interest.</td>
+      <td>Strong.</td>
+    </tr>
+    <tr>
+      <td>Purchased</td>
+      <td>Strongest positive signal.</td>
+      <td>Very strong.</td>
+    </tr>
+    <tr>
+      <td>Skipped</td>
+      <td>Not interested.</td>
+      <td>Negative signal.</td>
+    </tr>
+    <tr>
+      <td>Dislike</td>
+      <td>Explicit negative.</td>
+      <td>Strong negative.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="item-signals">Item signals</h3>
+
+<p>Signals about the items themselves.</p>
+
+<ul>
+  <li>Category, brand, price, tags.</li>
+  <li>Text description.</li>
+  <li>Image or video.</li>
+  <li>Popularity, average rating, recency.</li>
+</ul>
+
+<h3 id="context-signals">Context signals</h3>
+
+<p>Signals about the situation.</p>
+
+<ul>
+  <li>Time of day, day of week, season.</li>
+  <li>Device, location, platform.</li>
+  <li>Whether the user is at home or commuting.</li>
+</ul>
+
+<p>The same person wants different things on a Monday morning and a Friday night.</p>
+
+<hr />
+
+<h2 id="4-data-contracts-and-what-the-numbers-really-mean">4. Data contracts and what the numbers really mean</h2>
+
+<p>A <strong>data contract</strong> is an agreement about what each event means. If one event is a “view” and another event is a “purchase,” they are not the same thing.</p>
+
+<h3 id="why-this-matters">Why this matters</h3>
+
+<p>If you treat a one-second glance the same as a finished movie, the model learns nonsense.</p>
+
+<p>A good data contract answers these questions for every event:</p>
+
+<ul>
+  <li><strong>Who?</strong> The user or session identifier.</li>
+  <li><strong>What?</strong> The item identifier.</li>
+  <li><strong>When?</strong> The exact timestamp.</li>
+  <li><strong>How?</strong> The action type: view, click, cart, purchase, skip, like, rate, etc.</li>
+  <li><strong>Where?</strong> The page or context.</li>
+  <li><strong>How much?</strong> Optional: dwell time, purchase value, rating value.</li>
+</ul>
+
+<h3 id="the-signal-strength-idea">The signal-strength idea</h3>
+
+<p>One way to turn a raw event into a number is to assign a weight.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>signal_strength = weight(action) × confidence(action)
+</code></pre></div></div>
+
+<p>For example:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Weight</th>
+      <th>Reason</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>View</td>
+      <td>1</td>
+      <td>The user saw it.</td>
+    </tr>
+    <tr>
+      <td>Click</td>
+      <td>2</td>
+      <td>They chose it.</td>
+    </tr>
+    <tr>
+      <td>Cart</td>
+      <td>4</td>
+      <td>Strong interest.</td>
+    </tr>
+    <tr>
+      <td>Buy</td>
+      <td>8</td>
+      <td>Strongest signal.</td>
+    </tr>
+    <tr>
+      <td>Skip</td>
+      <td>-1</td>
+      <td>Negative signal.</td>
+    </tr>
+    <tr>
+      <td>Dislike</td>
+      <td>-4</td>
+      <td>Strong negative.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These weights are engineering choices, not universal truths. A streaming app may value “watched to 80%” more than “clicked.”</p>
+
+<h3 id="dwell-time-as-a-continuous-signal">Dwell time as a continuous signal</h3>
+
+<p>Dwell time can be used directly:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dwell_signal = min(dwell_time / target_time, 1.0)
+</code></pre></div></div>
+
+<p>If a song is three minutes and the user listened to all three minutes, the signal is 1.0. If they stopped after thirty seconds, the signal is 0.17.</p>
+
+<hr />
+
+<h2 id="5-offline-evaluation-metrics">5. Offline evaluation metrics</h2>
+
+<p>Before the system goes live, we test it on historical data. This is <strong>offline evaluation</strong>. We need metrics that tell us whether the ranking is good.</p>
+
+<h3 id="the-ideal-outcome">The ideal outcome</h3>
+
+<p>If the user interacted with item A but not item B, then in the recommended list item A should appear above item B.</p>
+
+<h3 id="recall">Recall</h3>
+
+<p>Recall asks, “Of the items the user actually liked, how many did we put in the top list?”</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Recall@K = (number of liked items in top K) / (total number of liked items)
+</code></pre></div></div>
+
+<p>If a user liked 10 items and we put 4 of them in the top 20, then <code class="language-plaintext highlighter-rouge">Recall@20 = 4 / 10 = 0.4</code>.</p>
+
+<h3 id="precision">Precision</h3>
+
+<p>Precision asks, “Of the items we put in the top list, how many did the user actually like?”</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Precision@K = (number of liked items in top K) / K
+</code></pre></div></div>
+
+<p>If we recommend 20 items and 4 are liked, <code class="language-plaintext highlighter-rouge">Precision@20 = 4 / 20 = 0.2</code>.</p>
+
+<h3 id="hit-rate">Hit rate</h3>
+
+<p>Hit rate is a simple yes-or-no version of recall.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>HitRate@K = 1 if at least one liked item is in the top K, else 0
+</code></pre></div></div>
+
+<p>It is easy to understand but does not care about the exact position.</p>
+
+<h3 id="mean-reciprocal-rank-mrr">Mean Reciprocal Rank (MRR)</h3>
+
+<p>MRR cares about the first good item.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>MRR = (1 / rank of the first relevant item) averaged over all users
+</code></pre></div></div>
+
+<p>If the first relevant item is at position 3 for one user and position 1 for another, the average is <code class="language-plaintext highlighter-rouge">(1/3 + 1/1) / 2 = 0.667</code>.</p>
+
+<h3 id="mean-average-precision-map">Mean Average Precision (MAP)</h3>
+
+<p>MAP is precision averaged over every position where a relevant item appears.</p>
+
+<p>For one user, <strong>Average Precision (AP)</strong> is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>AP = (1 / number of liked items) × Σ Precision at each rank where a liked item appears
+</code></pre></div></div>
+
+<p>Then MAP is the average of AP across all users. It rewards putting many relevant items near the top.</p>
+
+<h3 id="normalised-discounted-cumulative-gain-ndcg">Normalised Discounted Cumulative Gain (NDCG)</h3>
+
+<p>NDCG is the most common ranking metric when items are not equally relevant.</p>
+
+<p>If a user liked an item a little, that is worth some points. If they loved it, it is worth more points. Positions near the top count more than positions further down.</p>
+
+<p>The formula works in two steps.</p>
+
+<ol>
+  <li>Compute the <strong>Discounted Cumulative Gain (DCG)</strong> at rank <code class="language-plaintext highlighter-rouge">K</code>:</li>
+</ol>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DCG@K = Σ (relevance_score at position i) / log2(i + 1)
+</code></pre></div></div>
+
+<ol>
+  <li>Divide by the <strong>Ideal DCG (IDCG)</strong>, which is the best possible score:</li>
+</ol>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>NDCG@K = DCG@K / IDCG@K
+</code></pre></div></div>
+
+<p>Because of the <code class="language-plaintext highlighter-rouge">log2(i + 1)</code> in the denominator, a highly relevant item at position 1 gives a much bigger score than the same item at position 10.</p>
+
+<h3 id="coverage">Coverage</h3>
+
+<p>Coverage asks, “How many different items does the system ever recommend?” A system that recommends the same popular items to everyone has low coverage.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Coverage = (number of unique recommended items) / (total number of items)
+</code></pre></div></div>
+
+<p>A good system balances accuracy with coverage, so long-tail items also get a chance.</p>
+
+<h3 id="personalisation">Personalisation</h3>
+
+<p>Personalisation measures how different the recommendations are from one user to another. If every user sees the same list, personalisation is zero.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Personalisation = average dissimilarity between pairs of users' top-K lists
+</code></pre></div></div>
+
+<p>This is not always desirable. Some users in a community may genuinely like the same things. But a low score is often a warning sign that the system is too generic.</p>
+
+<hr />
+
+<h2 id="6-evaluation-splits-and-leakage-prevention">6. Evaluation splits and leakage prevention</h2>
+
+<p>The biggest mistake in recommendation evaluation is to let the model peek at the future.</p>
+
+<h3 id="the-golden-rule">The golden rule</h3>
+
+<p>A model should only be trained on events that happened <strong>before</strong> the events it is tested on.</p>
+
+<p>If you use a click from Tuesday to recommend an item that was viewed on Monday, the model has seen the future. That is <strong>leakage</strong>, and it makes the results look much better than they really are.</p>
+
+<h3 id="time-based-split">Time-based split</h3>
+
+<p>Sort every interaction by timestamp.</p>
+
+<ol>
+  <li>Train on the oldest 80%.</li>
+  <li>Validate on the next 10%.</li>
+  <li>Test on the newest 10%.</li>
+</ol>
+
+<p>This mirrors the real world. The model is trained on the past and tested on the future.</p>
+
+<h3 id="user-based-split">User-based split</h3>
+
+<p>A stronger split is to hide all future interactions of some users.</p>
+
+<ol>
+  <li>Pick a set of test users.</li>
+  <li>Use their past interactions for training.</li>
+  <li>Hide their future interactions for testing.</li>
+</ol>
+
+<p>This is more realistic. In production, the model sees a user’s past and must predict their future.</p>
+
+<h3 id="leave-one-out">Leave-one-out</h3>
+
+<p>A common benchmark style is to hide exactly one interaction per user. The model is given the user’s other interactions and must predict the hidden one.</p>
+
+<p>This is simple and fast, but it does not represent the real world perfectly. Users usually have many future actions, not just one.</p>
+
+<h3 id="popularity-leakage">Popularity leakage</h3>
+
+<p>A subtle form of leakage is to include the test item in the popularity count used during training. For example, if you compute how often an item was bought in the whole dataset, and that includes test data, the model has an unfair advantage.</p>
+
+<p>Always compute popularity from training data only.</p>
+
+<hr />
+
+<h2 id="7-baseline-models">7. Baseline models</h2>
+
+<p>Before you build a complex model, you need a simple baseline. A baseline sets a floor. If your fancy model cannot beat a simple rule, it is not ready.</p>
+
+<h3 id="1-global-popularity">1. Global popularity</h3>
+
+<p>Recommend the most popular items to everyone.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(item) = number of times the item was interacted with
+</code></pre></div></div>
+
+<p>This is surprisingly strong. It has no personalisation, but it works because popularity often means quality.</p>
+
+<h3 id="2-personal-popularity">2. Personal popularity</h3>
+
+<p>Recommend the items that the current user has interacted with the most.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(item for user u) = number of times u interacted with item
+</code></pre></div></div>
+
+<p>This is the “just show me more of the same” baseline.</p>
+
+<h3 id="3-item-co-occurrence">3. Item co-occurrence</h3>
+
+<p>If a user has item A, recommend the items most often seen with A.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(item B for user with A) = count of sessions with both A and B
+</code></pre></div></div>
+
+<p>This is the bread-and-butter baseline for shopping carts.</p>
+
+<h3 id="4-recent-history">4. Recent history</h3>
+
+<p>Recommend the most recent items the user looked at, or items similar to them.</p>
+
+<p>This is a strong baseline for news, short videos, and feeds, because users often want more of what they were just looking at.</p>
+
+<h3 id="5-simple-matrix-factorisation">5. Simple matrix factorisation</h3>
+
+<p>A small latent-factor model is a good middle baseline. It is not as trivial as popularity, but not as complex as a neural network.</p>
+
+<h3 id="how-to-use-baselines">How to use baselines</h3>
+
+<ol>
+  <li>Build the baseline first.</li>
+  <li>Measure it with the same metrics you plan to use for the final model.</li>
+  <li>Only move to a complex model when you can clearly beat the baseline.</li>
+</ol>
+
+<hr />
+
+<h2 id="8-putting-it-together-a-one-page-checklist">8. Putting it together: a one-page checklist</h2>
+
+<p>Before training a recommendation model, ask:</p>
+
+<ol>
+  <li>What is the real goal — rating, ranking, or next action?</li>
+  <li>Is the data explicit or implicit?</li>
+  <li>Do we have user accounts, or are we session-based?</li>
+  <li>How strong is each signal?</li>
+  <li>What time split are we using?</li>
+  <li>Are we leaking any future information?</li>
+  <li>What baseline are we trying to beat?</li>
+  <li>Which metric matters most for the business?</li>
+</ol>
+
+<p>If you answer these clearly, the rest of the pipeline becomes much easier.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">recommendation-systems</span>, <span class="tag">recsys-framing</span>, <span class="tag">evaluation-metrics</span>, <span class="tag">data-signals</span>, <span class="tag">baselines</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
