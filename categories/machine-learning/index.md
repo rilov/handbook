@@ -14,7 +14,7 @@ Learn machine learning fundamentals and practical algorithms from scratch. The t
 4. Logistic Regression
 5. Regularization (Ridge, Lasso, Elastic Net)
 6. Decision Trees (3 parts)
-7. Ensembles: Bagging, Random Forests, Boosting (3 parts)
+7. Ensembles: Bagging, Random Forests, Boosting and a Voting Classifier example (4 parts)
 8. Similarity and Distance Metrics
 9. K-Means Clustering
 10. Hierarchical Clustering

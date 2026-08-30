@@ -21,11 +21,12 @@ We said that a single decision tree is good for learning and easy to interpret, 
 
 This tutorial is about why that is true, and how those methods actually work.
 
-This is Part 1 of a three part tutorial on ensembles.
+This is Part 1 of a four part tutorial on ensembles.
 
 * **Part 1.** What ensembles are, why they work, and the two big families.
 * **Part 2.** Bagging and Random Forests, with full hyperparameter tuning.
 * **Part 3.** Boosting, including AdaBoost, Gradient Boosting, and XGBoost.
+* **Part 4.** A worked example of a soft-voting classifier with Logistic Regression, Random Forest and Gradient Boosting.
 
 By the end of Part 1 you will have a strong intuition for why combining many models is so powerful. We will not write code yet. The goal of this part is purely understanding.
 
