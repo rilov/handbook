@@ -42,6 +42,8 @@ Learn advanced machine learning algorithms through clear, step-by-step explanati
 **Recommendation Systems:**
 
 - **[Recommendation Systems - A Friendly Guide]({{ site.baseurl }}/topics/recommendation-systems-friendly-guide)** — How recommendation engines pick the next song, product or movie, from people-who-bought-this to hidden taste maps.
+- **[Recommendation Systems - Part 2 - Framing, Data, Metrics and Baselines]({{ site.baseurl }}/topics/recommendation-systems-framing-data-metrics-baselines)** — Framing the problem, data contracts, signal strength, evaluation metrics, time-aware splits, leakage prevention and baseline models.
+- **[Recommendation Systems - Part 3 - Models, Ranking and Multi-Modal Systems]({{ site.baseurl }}/topics/recommendation-systems-models-ranking-multimodal)** — Collaborative filtering, matrix factorisation with ALS and BPR, learning-to-rank, negative sampling, feature engineering and multi-modal recommendations.
 
 **What You'll Learn:**
 
