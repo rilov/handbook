@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recommendation Systems - A Friendly Guide</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a> &mdash;
+    </nav>
+    <h2>Recommendation Systems - A Friendly Guide</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/advanced-machine-learning">Advanced Machine Learning</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="recommendation-systems---a-friendly-guide">Recommendation Systems - A Friendly Guide</h1>
+
+<p>A recommendation system answers a simple question: <strong>what should this person see next?</strong></p>
+
+<p>It is the engine behind movie suggestions, music playlists, shopping suggestions and news feeds. This guide explains the big ideas in plain English.</p>
+
+<hr />
+
+<h2 id="1-the-three-big-families">1. The three big families</h2>
+
+<p>There are three ways to recommend something.</p>
+
+<ol>
+  <li><strong>Frequently together:</strong> “People who bought X also bought Y.”</li>
+  <li><strong>Taste neighbours:</strong> “People like you enjoyed this.”</li>
+  <li><strong>Hidden taste map:</strong> “We can compress every person and every item into a small list of traits and guess missing likes.”</li>
+</ol>
+
+<p>A production system often combines all three.</p>
+
+<hr />
+
+<h2 id="2-frequently-together--the-shop-shelf-idea">2. Frequently together — the shop-shelf idea</h2>
+
+<p>This is the simplest recommendation of all.</p>
+
+<p>Imagine a small grocery shop. Every time a customer checks out, you write the basket on a card. After a thousand customers you notice that <strong>bread and butter</strong> appear together over and over. So when someone puts bread in their basket, you say, “Would you like butter too?”</p>
+
+<p>This method only cares about items. It does not care who the customer is. It just counts which pairs of items show up in the same basket, playlist or session.</p>
+
+<h3 id="why-it-works">Why it works</h3>
+
+<ul>
+  <li>Simple to compute.</li>
+  <li>No user profiles needed.</li>
+  <li>Great for items that naturally belong together.</li>
+</ul>
+
+<h3 id="why-it-struggles">Why it struggles</h3>
+
+<ul>
+  <li>Cannot recommend a brand-new item.</li>
+  <li>Cannot personalise for one specific person.</li>
+  <li>Makes the rich richer — popular items get recommended even more.</li>
+</ul>
+
+<hr />
+
+<h2 id="3-taste-neighbours--people-like-you">3. Taste neighbours — people like you</h2>
+
+<p>This is the most famous idea. Instead of looking at the item, look at the <strong>person</strong>.</p>
+
+<h3 id="a-tiny-story">A tiny story</h3>
+
+<p>Alice loves sci-fi, documentaries and jazz. Bob loves sci-fi, documentaries and classical. They have two tastes in common. If Alice just discovered a great jazz album, the system might tell Bob, “Since you also like sci-fi and documentaries, you may enjoy this album.”</p>
+
+<p>This is <strong>user-user</strong> matching.</p>
+
+<p>You can also flip it around. Instead of finding people like Alice, you can find <strong>items like the ones Alice already likes</strong>. If Alice loved movie A, and most people who loved movie A also loved movie B, recommend movie B.</p>
+
+<p>That is <strong>item-item</strong> matching.</p>
+
+<h3 id="measuring-similarity">Measuring similarity</h3>
+
+<p>The usual tool is a user-item table.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>         Movie A   Movie B   Movie C
+Alice       5         3          ?
+Bob         5         2         4
+Carol       1         4         5
+Dave        3         3         5
+</code></pre></div></div>
+
+<p>For <strong>user-user</strong> similarity, treat each row as a vector. Alice and Bob are similar because their rows are close.</p>
+
+<p>For <strong>item-item</strong> similarity, treat each column as a vector. Movie A and Movie B are compared using the ratings given by all users.</p>
+
+<p>A common way to measure that distance is to look at the angle between the two vectors. A small angle means high similarity. This is the same idea as cosine similarity in many clustering and NLP tutorials.</p>
+
+<h3 id="a-worked-example">A worked example</h3>
+
+<p>Here is a tiny table of books.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>Fantasy</th>
+      <th>Mystery</th>
+      <th>Romance</th>
+      <th>Sci-Fi</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Ada</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>Ben</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Cal</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>Dee</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Ada likes Fantasy, Romance and Sci-Fi. Cal likes Mystery, Romance and Sci-Fi. Their tastes overlap on two out of three genres, so they are taste neighbours. If Cal loved a new Mystery book, the system may recommend it to Ada because their profiles are close.</p>
+
+<hr />
+
+<h2 id="4-hidden-taste-map--the-compressed-profile">4. Hidden taste map — the compressed profile</h2>
+
+<p>Real catalogues can have thousands of items. You cannot compare people by asking, “Do you like item 1, item 2, item 3 … ?” for every single product.</p>
+
+<p>Instead, imagine that every person and every item can be described by a small list of hidden traits.</p>
+
+<p>For movies, the hidden traits might be things like:</p>
+
+<ul>
+  <li>how much dark humour it contains</li>
+  <li>how family-friendly it is</li>
+  <li>how action-heavy it is</li>
+  <li>how long and slow it is</li>
+</ul>
+
+<p>A person has scores for each trait. An item has scores for each trait. If a person and an item have similar trait scores, the person will probably like the item.</p>
+
+<p>This is the idea behind <strong>matrix factorisation</strong>. You learn the hidden trait scores from the data.</p>
+
+<h3 id="analogy-the-flavour-wheel">Analogy: the flavour wheel</h3>
+
+<p>Think of a coffee taster’s flavour wheel. It is impossible to describe every coffee by listing every chemical. Instead, experts use a small set of sliders: acidity, body, sweetness, bitterness, fruitiness. Two coffees are similar if their sliders are close. A person who loves fruity, low-bitterness coffees will probably like any coffee near that corner of the wheel.</p>
+
+<p>Recommendation systems do the same thing. They invent the sliders from the data instead of asking a human to define them.</p>
+
+<hr />
+
+<h2 id="5-implicit-feedback--learning-from-clicks">5. Implicit feedback — learning from clicks</h2>
+
+<p>Most of the time, people do not give star ratings. They just watch, click, buy or skip. This is called <strong>implicit feedback</strong>.</p>
+
+<p>The signal is weaker than a five-star rating, but it is much more abundant.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type of feedback</th>
+      <th>What it tells you</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Clicked</td>
+      <td>The title or cover was interesting enough to look at.</td>
+    </tr>
+    <tr>
+      <td>Watched 80%</td>
+      <td>The user probably liked it.</td>
+    </tr>
+    <tr>
+      <td>Bought</td>
+      <td>Strong positive signal.</td>
+    </tr>
+    <tr>
+      <td>Skipped quickly</td>
+      <td>Probably not interested.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A system with implicit feedback learns to predict whether a user will interact with an item. The prediction is usually a single score. Higher means “this user is more likely to engage with this item.”</p>
+
+<hr />
+
+<h2 id="6-two-ways-to-learn-the-hidden-taste-map">6. Two ways to learn the hidden taste map</h2>
+
+<p>There are many ways to train a matrix factorisation model. Two of the most common are:</p>
+
+<h3 id="team-a--team-b-racing">Team A / Team B racing</h3>
+
+<p>One team is in charge of the user trait scores. The other team is in charge of the item trait scores. They take turns. Team A fixes the item scores and improves the user scores. Then Team B fixes the new user scores and improves the item scores. They keep taking turns until the guesses stop improving.</p>
+
+<p>This is the basic idea behind <strong>alternating least squares</strong>.</p>
+
+<h3 id="pair-by-pair-ranking">Pair by pair ranking</h3>
+
+<p>Another approach does not try to predict the exact score. Instead, it asks a simpler question: for this user, should item A be ranked above item B?</p>
+
+<p>For every user, you pick an item they liked and an item they did not like. The model learns to give the liked item a higher score than the disliked item. This is called pairwise ranking.</p>
+
+<p>This is the basic idea behind <strong>Bayesian personalised ranking</strong>.</p>
+
+<h3 id="stopping-the-model-from-getting-too-confident">Stopping the model from getting too confident</h3>
+
+<p>If a model is too confident, it memorises the training data and fails on new users or items. A small penalty on the size of the trait scores keeps the model humble. This penalty is called regularisation.</p>
+
+<hr />
+
+<h2 id="7-which-approach-should-you-use">7. Which approach should you use?</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Start with</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>You only have shopping baskets or playlists</td>
+      <td>Frequently together</td>
+    </tr>
+    <tr>
+      <td>You have explicit ratings like stars</td>
+      <td>User-user or item-item collaborative filtering</td>
+    </tr>
+    <tr>
+      <td>You have millions of clicks or views</td>
+      <td>Matrix factorisation with implicit feedback</td>
+    </tr>
+    <tr>
+      <td>You need quick, interpretable results</td>
+      <td>User-user or item-item with cosine similarity</td>
+    </tr>
+    <tr>
+      <td>You want the best possible score and have lots of data</td>
+      <td>Modern matrix factorisation libraries</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="8-one-sentence-takeaways">8. One-sentence takeaways</h2>
+
+<ul>
+  <li><strong>Frequently together</strong> recommends items that are often seen together.</li>
+  <li><strong>Collaborative filtering</strong> recommends what similar people, or similar items, already liked.</li>
+  <li><strong>Matrix factorisation</strong> learns a hidden taste map for both people and items.</li>
+  <li><strong>Implicit feedback</strong> lets you learn from clicks, views and purchases instead of asking for ratings.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">recommendation-systems</span>, <span class="tag">collaborative-filtering</span>, <span class="tag">matrix-factorization</span>, <span class="tag">implicit-feedback</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
