@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Generative AI - Part 1 - Image Processing Fundamentals</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Generative AI - Part 1 - Image Processing Fundamentals</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="generative-ai---part-1---image-processing-fundamentals">Generative AI - Part 1 - Image Processing Fundamentals</h1>
+
+<p>Before a computer can generate or understand images, it must learn to read them. The first step is to stop seeing an image as a picture and start seeing it as a grid of numbers.</p>
+
+<p>This lesson explains how digital images are stored, how colour works, how we change images with small mathematical operations, and how convolution helps us find edges and other patterns.</p>
+
+<hr />
+
+<h2 id="1-a-digital-image-is-a-grid-of-numbers">1. A digital image is a grid of numbers</h2>
+
+<p>A digital image is a grid of tiny squares called <strong>pixels</strong>. Each pixel stores a number that represents brightness or colour.</p>
+
+<h3 id="binary-images">Binary images</h3>
+
+<p>The simplest image is binary: every pixel is either 0 (black) or 1 (white).</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0 0 1 1 0 0
+0 1 0 0 1 0
+0 1 1 1 1 0
+0 1 0 0 1 0
+0 1 0 0 1 0
+</code></pre></div></div>
+
+<p>This grid is the letter A. You can see the shape because the 1s form lines.</p>
+
+<h3 id="grayscale-images">Grayscale images</h3>
+
+<p>A grayscale image uses one number per pixel, usually from 0 to 255.</p>
+
+<ul>
+  <li><strong>0</strong> = pure black</li>
+  <li><strong>255</strong> = pure white</li>
+  <li>The numbers in between = different shades of grey</li>
+</ul>
+
+<p>If the grid above used 0 to 255 instead of 0 to 1, the idea would be the same. The darker the pixel, the smaller the number. The brighter the pixel, the larger the number.</p>
+
+<h3 id="colour-images">Colour images</h3>
+
+<p>A colour image has three numbers per pixel instead of one. The most common model is <strong>RGB</strong>.</p>
+
+<ul>
+  <li><strong>R</strong> = Red</li>
+  <li><strong>G</strong> = Green</li>
+  <li><strong>B</strong> = Blue</li>
+</ul>
+
+<p>Each channel is also from 0 to 255. By mixing different amounts of red, green and blue, you can create almost any colour.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pixel = [255, 0, 0]    # pure red
+pixel = [0, 255, 0]    # pure green
+pixel = [0, 0, 255]    # pure blue
+pixel = [255, 255, 255] # white
+pixel = [0, 0, 0]      # black
+</code></pre></div></div>
+
+<h3 id="the-floor-tile-analogy">The floor-tile analogy</h3>
+
+<p>Think of an image as a wall made of floor tiles. Each tile is one pixel.</p>
+
+<ul>
+  <li>A grayscale wall has one number painted on each tile.</li>
+  <li>A colour wall has three numbers painted on each tile: how much red, how much green, how much blue.</li>
+  <li>A video is just many walls shown one after another.</li>
+</ul>
+
+<hr />
+
+<h2 id="2-image-dimensions-height-width-and-channels">2. Image dimensions: height, width and channels</h2>
+
+<p>When we describe the size of an image in code, we use three numbers:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(height, width, channels)
+</code></pre></div></div>
+
+<ul>
+  <li><strong>Height</strong> = number of rows of pixels.</li>
+  <li><strong>Width</strong> = number of columns of pixels.</li>
+  <li><strong>Channels</strong> = how many numbers each pixel carries.</li>
+</ul>
+
+<p>A typical image might have shape <code class="language-plaintext highlighter-rouge">(480, 640, 3)</code>:</p>
+
+<ul>
+  <li>480 rows</li>
+  <li>640 columns</li>
+  <li>3 colour channels (RGB)</li>
+</ul>
+
+<p>A grayscale image has shape <code class="language-plaintext highlighter-rouge">(480, 640, 1)</code> because it has only one channel.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># A tiny 4x4 grayscale image
+</span><span class="n">gray</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">250</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">255</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">gray</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (4, 4)
+</span>
+<span class="c1"># A tiny 2x2 colour image
+</span><span class="n">rgb</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[[</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span>
+    <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">],</span> <span class="p">[</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">]]</span>
+<span class="p">])</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">rgb</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (2, 2, 3)
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="3-common-colour-models">3. Common colour models</h2>
+
+<p>A colour model is a way to describe colour with numbers.</p>
+
+<h3 id="rgb">RGB</h3>
+
+<p>RGB is the default for screens and cameras. It uses red, green and blue channels.</p>
+
+<p>It is an <strong>additive</strong> model. Add more light and the colour gets brighter. All three at full strength make white.</p>
+
+<h3 id="cmyk">CMYK</h3>
+
+<p>CMYK is used for printing. It stands for Cyan, Magenta, Yellow and Key (black).</p>
+
+<p>It is a <strong>subtractive</strong> model. You start with white paper and add ink. The more ink, the darker the result. It is not usually needed for on-screen work.</p>
+
+<h3 id="hsv">HSV</h3>
+
+<p>HSV is closer to how humans think about colour.</p>
+
+<ul>
+  <li><strong>H</strong> = Hue. The name of the colour: red, orange, blue.</li>
+  <li><strong>S</strong> = Saturation. How pure the colour is. 0 is grey, 255 is vivid.</li>
+  <li><strong>V</strong> = Value. How bright the colour is. 0 is black, 255 is full brightness.</li>
+</ul>
+
+<p>HSV is useful when you want to change a colour without changing its brightness, or when you want to pick every shade of blue from an image.</p>
+
+<hr />
+
+<h2 id="4-basic-arithmetic-on-images">4. Basic arithmetic on images</h2>
+
+<p>Because an image is a matrix, we can do normal math on it.</p>
+
+<h3 id="addition-blending-two-images">Addition: blending two images</h3>
+
+<p>Adding two images pixel by pixel makes a blended image.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new_pixel = pixel_image_1 + pixel_image_2
+</code></pre></div></div>
+
+<p>If both pixels are bright, the result is very bright. This is useful for overlays and double-exposure effects.</p>
+
+<h3 id="subtraction-finding-the-difference">Subtraction: finding the difference</h3>
+
+<p>Subtracting one image from another shows what changed.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new_pixel = pixel_image_1 - pixel_image_2
+</code></pre></div></div>
+
+<p>If a security camera takes two pictures and nothing moved, the result is close to black. If a person walked in, those pixels will show a large difference. This is how motion detection often starts.</p>
+
+<h3 id="multiplication-and-division-brightness-control">Multiplication and division: brightness control</h3>
+
+<p>Multiplying every pixel by a number makes the image brighter. Dividing makes it darker.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bright = pixel * 1.5
+dark   = pixel * 0.5
+</code></pre></div></div>
+
+<p>Values above 255 are usually clipped back to 255, otherwise the image would wrap around and look strange.</p>
+
+<h3 id="logical-operations-masks">Logical operations: masks</h3>
+
+<p>A mask is a binary image that says “keep these pixels, ignore the others.”</p>
+
+<p>With a bitwise AND, you can cut out a region of interest. With a bitwise OR, you can combine shapes.</p>
+
+<p>This is like using a stencil when spray-painting. The stencil decides where the paint goes.</p>
+
+<hr />
+
+<h2 id="5-filters-and-transformations">5. Filters and transformations</h2>
+
+<p>A <strong>filter</strong> is a small grid of numbers called a <strong>kernel</strong>. We move this kernel over the image and compute a new value for each pixel.</p>
+
+<p>Filters can blur, sharpen, detect edges or remove noise.</p>
+
+<h3 id="the-recipe-card-analogy">The recipe-card analogy</h3>
+
+<p>Imagine you are looking at a photograph through a small square magnifying glass. The magnifying glass only shows a 3x3 patch at a time. You write a rule for how to mix the nine pixel values you see into one new value. Then you slide the glass across the whole image and repeat.</p>
+
+<p>That rule is the kernel.</p>
+
+<h3 id="sharpening">Sharpening</h3>
+
+<p>A common sharpening trick is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sharpened = original + (original - blurred)
+</code></pre></div></div>
+
+<p>First, create a slightly blurred copy. Then subtract the blurred copy from the original. This gives you the fine details. Add those details back to the original image and the result looks sharper.</p>
+
+<p>You can also write this as a single 3x3 kernel:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> 0  -1   0
+-1   5  -1
+ 0  -1   0
+</code></pre></div></div>
+
+<p>When this kernel is applied, the center pixel is boosted and the neighbours are reduced. This makes edges stand out.</p>
+
+<hr />
+
+<h2 id="6-convolution-step-by-step">6. Convolution step by step</h2>
+
+<p><strong>Convolution</strong> is the name for the slide-multiply-sum operation used to apply a kernel.</p>
+
+<p>Here is how it works on a 3x3 patch of an image.</p>
+
+<h3 id="input-patch">Input patch</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10  20  30
+40  50  60
+70  80  90
+</code></pre></div></div>
+
+<h3 id="kernel">Kernel</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0  1  0
+1 -4  1
+0  1  0
+</code></pre></div></div>
+
+<h3 id="multiply-each-value-by-the-kernel-value">Multiply each value by the kernel value</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10×0   20×1   30×0    =   0  20   0
+40×1   50×-4  60×1    =  40 -200 60
+70×0   80×1   90×0    =   0  80   0
+</code></pre></div></div>
+
+<h3 id="add-everything-up">Add everything up</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0 + 20 + 0 + 40 + (-200) + 60 + 0 + 80 + 0 = 0
+</code></pre></div></div>
+
+<p>The output pixel for the center position is 0.</p>
+
+<p>This particular kernel finds edges. When the centre is very different from its neighbours, the result is a large positive or negative number. When the neighbourhood is flat, the result is near zero.</p>
+
+<h3 id="sliding-across-the-image">Sliding across the image</h3>
+
+<p>We place the kernel over every pixel, compute the sum, and write the result into a new image. Pixels at the border are special because the kernel would hang over the edge. There are two common fixes:</p>
+
+<ol>
+  <li><strong>Ignore the border.</strong> The output image becomes slightly smaller.</li>
+  <li><strong>Add padding.</strong> We place a ring of extra pixels, usually zeros, around the input image so the kernel can reach the edge.</li>
+</ol>
+
+<p>The second option is called <strong>padding</strong>. With a 3x3 kernel and padding of 1, the output image keeps the same size as the input.</p>
+
+<hr />
+
+<h2 id="7-why-convolution-is-powerful">7. Why convolution is powerful</h2>
+
+<p>Convolution does three useful things at once.</p>
+
+<ol>
+  <li><strong>Feature detection.</strong> It can highlight edges, corners, lines or textures depending on the kernel.</li>
+  <li><strong>Noise reduction.</strong> Some kernels smooth the image and hide small random changes.</li>
+  <li><strong>Compact representation.</strong> The output is often smaller and more meaningful than the raw image.</li>
+</ol>
+
+<p>This is why almost every computer vision model, from simple OpenCV scripts to deep neural networks, uses some form of convolution.</p>
+
+<hr />
+
+<h2 id="8-common-filters">8. Common filters</h2>
+
+<h3 id="box-blur--average-filter">Box blur / average filter</h3>
+
+<p>Every output pixel is the average of its neighbours. This smooths the image but can make edges fuzzy.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1/9  1/9  1/9
+1/9  1/9  1/9
+1/9  1/9  1/9
+</code></pre></div></div>
+
+<p>The 1/9 keeps the overall brightness the same.</p>
+
+<h3 id="gaussian-blur">Gaussian blur</h3>
+
+<p>A Gaussian blur uses weights shaped like a bell curve. The centre pixel matters most, and pixels farther away matter less. This looks more natural than a box blur.</p>
+
+<p>A common 3x3 version is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1/16  2/16  1/16
+2/16  4/16  2/16
+1/16  2/16  1/16
+</code></pre></div></div>
+
+<p>The 1/16 factor makes sure the image does not get brighter or darker.</p>
+
+<h3 id="sobel-edge-detector">Sobel edge detector</h3>
+
+<p>The Sobel filter finds edges by measuring how quickly brightness changes.</p>
+
+<p>It uses two kernels:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Horizontal edges (Gx)      Vertical edges (Gy)
+-1  0  1                   -1 -2 -1
+-2  0  2                    0  0  0
+-1  0  1                    1  2  1
+</code></pre></div></div>
+
+<p>One kernel is sensitive to horizontal changes, the other to vertical changes. The final edge strength is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>edge_strength = sqrt(Gx² + Gy²)
+</code></pre></div></div>
+
+<p>If both <code class="language-plaintext highlighter-rouge">Gx</code> and <code class="language-plaintext highlighter-rouge">Gy</code> are large, there is a strong edge. If both are small, the area is smooth.</p>
+
+<h3 id="canny-edge-detector">Canny edge detector</h3>
+
+<p>Canny is a multi-step method, not a single kernel.</p>
+
+<ol>
+  <li><strong>Blur</strong> the image with a Gaussian filter to remove noise.</li>
+  <li><strong>Find gradients</strong> with Sobel.</li>
+  <li><strong>Thin</strong> the edges to one pixel wide.</li>
+  <li><strong>Classify</strong> pixels as strong edge, weak edge or non-edge using two thresholds.</li>
+  <li><strong>Connect</strong> weak edges only if they touch strong edges.</li>
+</ol>
+
+<p>Canny usually produces cleaner edges than a raw Sobel filter.</p>
+
+<h3 id="median-filter">Median filter</h3>
+
+<p>A median filter is useful for removing speckled noise. It replaces the centre pixel with the median of its neighbours.</p>
+
+<p>If the 3x3 neighbourhood is:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10  12  200
+11  15  13
+14  255  16
+</code></pre></div></div>
+
+<p>The sorted values are <code class="language-plaintext highlighter-rouge">10, 11, 12, 13, 14, 15, 16, 200, 255</code>. The median is <code class="language-plaintext highlighter-rouge">14</code>. So the centre pixel becomes <code class="language-plaintext highlighter-rouge">14</code> instead of <code class="language-plaintext highlighter-rouge">15</code>.</p>
+
+<p>The two extreme values <code class="language-plaintext highlighter-rouge">200</code> and <code class="language-plaintext highlighter-rouge">255</code> are ignored. This is why the median filter is so good at removing salt-and-pepper noise while keeping edges sharp.</p>
+
+<hr />
+
+<h2 id="9-feature-extraction">9. Feature extraction</h2>
+
+<p><strong>Feature extraction</strong> means finding the important parts of an image that help a model understand what is in it.</p>
+
+<h3 id="low-level-features">Low-level features</h3>
+
+<p>These are simple building blocks.</p>
+
+<ul>
+  <li>Edges</li>
+  <li>Corners</li>
+  <li>Lines</li>
+  <li>Textures</li>
+  <li>Colours</li>
+  <li>Basic shapes</li>
+</ul>
+
+<p>These come directly from filters and convolutions.</p>
+
+<h3 id="high-level-features">High-level features</h3>
+
+<p>These are combinations of low-level features.</p>
+
+<ul>
+  <li>A face is a combination of eyes, nose, mouth and edges.</li>
+  <li>A car is a combination of wheels, windows, body shape and texture.</li>
+</ul>
+
+<p>Classical computer vision hand-crafts these. Modern deep learning learns them automatically. Either way, the image must start as numbers first.</p>
+
+<hr />
+
+<h2 id="10-a-quick-look-with-opencv">10. A quick look with OpenCV</h2>
+
+<p>OpenCV is a popular Python library for image processing. Here are a few one-line operations.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">cv2</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c1"># Read a colour image
+</span><span class="n">img</span> <span class="o">=</span> <span class="n">cv2</span><span class="p">.</span><span class="nf">imread</span><span class="p">(</span><span class="sh">"</span><span class="s">photo.jpg</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Convert to grayscale
+</span><span class="n">gray</span> <span class="o">=</span> <span class="n">cv2</span><span class="p">.</span><span class="nf">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="p">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">)</span>
+
+<span class="c1"># Gaussian blur
+</span><span class="n">blur</span> <span class="o">=</span> <span class="n">cv2</span><span class="p">.</span><span class="nc">GaussianBlur</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Canny edge detection
+</span><span class="n">edges</span> <span class="o">=</span> <span class="n">cv2</span><span class="p">.</span><span class="nc">Canny</span><span class="p">(</span><span class="n">gray</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+
+<span class="c1"># Median filter
+</span><span class="n">median</span> <span class="o">=</span> <span class="n">cv2</span><span class="p">.</span><span class="nf">medianBlur</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The first argument of <code class="language-plaintext highlighter-rouge">GaussianBlur</code> is the image. The second is the kernel size, which must be an odd number. The third is the standard deviation; <code class="language-plaintext highlighter-rouge">0</code> lets OpenCV choose it automatically.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Canny</code> takes two threshold values. Pixels above the upper threshold become strong edges. Pixels between the two thresholds become weak edges and are kept only if they connect to strong edges.</p>
+
+<hr />
+
+<h2 id="11-summary">11. Summary</h2>
+
+<ul>
+  <li>A digital image is a grid of numbers.</li>
+  <li>Grayscale images have one value per pixel. Colour images have three values per pixel, usually RGB.</li>
+  <li>Image shape is <code class="language-plaintext highlighter-rouge">(height, width, channels)</code>.</li>
+  <li>You can add, subtract, multiply and divide images just like matrices.</li>
+  <li>A <strong>kernel</strong> is a small grid of numbers. <strong>Convolution</strong> slides it over the image, multiplies, and sums.</li>
+  <li>Common filters blur, sharpen, find edges or remove noise.</li>
+  <li><strong>Sobel</strong> finds edges by measuring brightness change in two directions.</li>
+  <li><strong>Canny</strong> cleans up edges with multiple steps.</li>
+  <li><strong>Median filter</strong> removes speckled noise without blurring edges.</li>
+  <li>Features are the pieces of information an image contains, from edges to objects.</li>
+</ul>
+
+<p>These ideas are the foundation of computer vision and of generative models that create or edit images. Every neural network that understands pictures begins by treating pixels as numbers.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">image-processing</span>, <span class="tag">computer-vision</span>, <span class="tag">opencv</span>, <span class="tag">convolution</span>, <span class="tag">filters</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
