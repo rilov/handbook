@@ -156,6 +156,8 @@ That brings us to the two big families of ensembles.
 
 There are two main ways to build an ensemble. Almost every popular ensemble method is in one of these two families.
 
+<img src="{{ site.baseurl }}/assets/img/bagging-vs-boosting.svg" alt="Bagging trains three trees independently and in parallel on different bootstrap samples of the data, then combines them with a majority vote, reducing variance. Boosting trains three weak models one after another in sequence, each one focusing on the previous model's mistakes, then combines them with a weighted sum, reducing bias." width="100%" />
+
 ### Family 1. Bagging
 
 Bagging stands for **Bootstrap Aggregating**.

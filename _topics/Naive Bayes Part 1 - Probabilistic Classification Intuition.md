@@ -75,6 +75,8 @@ The final answer we want is the **posterior probability:**
 P(C | X) = probability the class is C, given the features we observed
 ```
 
+<img src="{{ site.baseurl }}/assets/img/naive-bayes-prior-likelihood-posterior.svg" alt="A prior probability of 30 percent spam, multiplied by the likelihood of each observed word given spam (free, won, Congratulations), producing an updated posterior belief that the email is spam" width="100%" />
+
 Bayes' theorem (covered in Part 2) is the bridge that turns priors and likelihoods into posteriors.
 
 ---

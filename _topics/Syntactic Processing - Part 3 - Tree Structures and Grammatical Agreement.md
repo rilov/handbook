@@ -29,17 +29,37 @@ Understanding sentence structure is one thing. Visualizing it and ensuring it fo
 
 ### Tree Components
 
-```
-        S                    ← Root node (Sentence)
-      /   \
-    NP      VP              ← Non-terminal nodes (phrases)
-   /  \     /  \
- DET   N   V    NP          ← Pre-terminal nodes (POS tags)
- |     |   |   /  \
-the   cat sleeps DET  N     ← Terminal nodes (actual words)
-               |     |
-              the  mat
-```
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'15px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    S["S<br/><i>Sentence (root)</i>"]
+    S --> NP1["NP"]
+    S --> VP["VP"]
+    NP1 --> DET1["DET"]
+    NP1 --> N1["N"]
+    DET1 --> the1["the"]
+    N1 --> cat["cat"]
+    VP --> V["V"]
+    VP --> PP["PP"]
+    V --> sleeps["sleeps"]
+    PP --> PREP["PREP"]
+    PP --> NP2["NP"]
+    PREP --> on["on"]
+    NP2 --> DET2["DET"]
+    NP2 --> N2["N"]
+    DET2 --> the2["the"]
+    N2 --> mat["mat"]
+    classDef root fill:#dbeafe,stroke:#1d4ed8,stroke-width:1.5px,color:#111
+    classDef phrase fill:#e8e8e8,stroke:#333,stroke-width:1.5px,color:#111
+    classDef tag fill:#fce7f3,stroke:#9d174d,stroke-width:1.5px,color:#111
+    classDef word fill:#dcfce7,stroke:#15803d,stroke-width:1.5px,color:#111
+    class S root
+    class NP1,VP,PP,NP2 phrase
+    class DET1,N1,V,PREP,DET2,N2 tag
+    class the1,cat,sleeps,on,the2,mat word
+</div>
+
+The **root** (S) sits at the top. **Non-terminals** (grey, NP/VP/PP) are phrase categories. **Pre-terminals** (pink, DET/N/V/PREP) are POS tags. **Terminals** (green) are the actual words, always the leaves of the tree.
 
 | Node Type | Description | Example |
 |-----------|-------------|---------|
