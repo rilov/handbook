@@ -2,6 +2,7 @@
 layout: category
 title: Advanced Machine Learning
 category: Advanced Machine Learning
+show_topic_list: false
 ---
 
 Learn advanced machine learning algorithms through clear, step-by-step explanations and practical Python examples. This module builds Support Vector Machines from the ground up — one small idea at a time — starting from the bias-variance tradeoff that motivates every design choice that follows.

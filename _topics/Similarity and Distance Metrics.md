@@ -1,7 +1,7 @@
 ---
 title: "14. Similarity and Distance Metrics"
 category: Machine Learning
-order: 14
+order: 14.5
 tags:
   - machine-learning
   - distance-metrics

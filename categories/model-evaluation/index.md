@@ -2,6 +2,7 @@
 layout: category
 title: Model Evaluation
 category: Model Evaluation
+show_topic_list: false
 ---
 
 How do you know a machine learning model will actually work on new data? This module covers the tools for honest model evaluation: train-test splits, validation sets, cross-validation, metrics, and the common traps that make scores look better than they really are.

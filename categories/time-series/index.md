@@ -2,6 +2,7 @@
 layout: category
 title: Time Series
 category: Time Series
+show_topic_list: false
 ---
 
 Learn the basics of time series analysis in plain language. This module covers how to look at a time series, check for stationarity, and decompose it into trend, seasonality, and residuals.

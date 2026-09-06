@@ -2,6 +2,7 @@
 title: "Skills vs MCP vs Agents: The Future of AI (Explained Simply)"
 description: "A simple guide explaining Anthropic's Skills, Model Context Protocol (MCP), and AI Agents - written for everyone, no tech background needed"
 category: Generative AI
+order: 10
 date: 2025-01-11
 ---
 

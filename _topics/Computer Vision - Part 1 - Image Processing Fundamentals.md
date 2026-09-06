@@ -1,12 +1,11 @@
 ---
-title: "Generative AI - Part 1 - Image Processing Fundamentals"
-category: Generative AI
+title: "Computer Vision - Part 1: Image Processing Fundamentals"
+category: Computer Vision
 order: 1
-permalink: /topics/generative-ai-image-processing-fundamentals/
+permalink: /topics/computer-vision-image-processing-fundamentals/
 tags:
-  - generative-ai
-  - image-processing
   - computer-vision
+  - image-processing
   - opencv
   - convolution
   - filters
@@ -14,7 +13,7 @@ summary: "A beginner-friendly introduction to digital images as numerical grids.
 date: 2026-09-02
 ---
 
-# Generative AI - Part 1 - Image Processing Fundamentals
+# Computer Vision — Part 1: Image Processing Fundamentals
 
 Before a computer can generate or understand images, it must learn to read them. The first step is to stop seeing an image as a picture and start seeing it as a grid of numbers.
 
@@ -443,3 +442,5 @@ The first argument of `GaussianBlur` is the image. The second is the kernel size
 - Features are the pieces of information an image contains, from edges to objects.
 
 These ideas are the foundation of computer vision and of generative models that create or edit images. Every neural network that understands pictures begins by treating pixels as numbers.
+
+**Next:** [Part 2: Introduction]({{ site.baseurl }}/topics/computer-vision-introduction/)

@@ -1,8 +1,8 @@
 ---
 layout: topic
-title: "Computer Vision - Part 1: Introduction"
+title: "Computer Vision - Part 2: Introduction"
 category: Computer Vision
-order: 1
+order: 2
 permalink: /topics/computer-vision-introduction/
 tags:
   - computer-vision
@@ -13,7 +13,7 @@ tags:
 summary: "A beginner-friendly introduction to computer vision: what it is, why it is hard, the standard pipeline, and how it connects to deep learning and image processing."
 ---
 
-# Computer Vision — Part 1: Introduction
+# Computer Vision — Part 2: Introduction
 
 Computer vision is the part of artificial intelligence that teaches computers to understand images and videos the way humans understand what they see.
 
@@ -93,7 +93,7 @@ Grayscale:   image[y, x] = one number (brightness)
 Colour:      image[y, x, c] = three numbers (R, G, B)
 ```
 
-For a detailed look at pixels, colour models, and basic image arithmetic, see [Generative AI - Part 1: Image Processing Fundamentals]({{ site.baseurl }}/topics/generative-ai-image-processing-fundamentals).
+For a detailed look at pixels, colour models, and basic image arithmetic, see [Part 1: Image Processing Fundamentals]({{ site.baseurl }}/topics/computer-vision-image-processing-fundamentals/).
 
 ---
 
@@ -134,7 +134,7 @@ Convolutional neural networks (CNNs) learn their own features from data. Instead
 Pixels → edges → textures → shapes → object parts → whole objects → prediction
 ```
 
-This is the foundation of modern computer vision. CNNs are covered in detail in the Deep Learning section under [Part 9: Convolutional Neural Networks]({{ site.baseurl }}/topics/convolutional-neural-networks).
+This is the foundation of modern computer vision. CNNs are covered in detail in the Deep Learning section under [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}).
 
 ---
 
@@ -175,4 +175,4 @@ Computer vision is used in many places you already interact with:
 - Modern computer vision is dominated by **deep learning**, especially CNNs.
 - Vision connects to image processing, NLP, robotics, and generative AI.
 
-**Next:** [Part 2: Object Detection Basics]({{ site.baseurl }}/topics/computer-vision-object-detection-basics/)
+**Next:** [Part 3: Object Detection Basics]({{ site.baseurl }}/topics/computer-vision-object-detection-basics/)

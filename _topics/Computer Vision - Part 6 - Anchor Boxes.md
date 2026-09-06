@@ -1,8 +1,8 @@
 ---
 layout: topic
-title: "Computer Vision - Part 5: Anchor Boxes"
+title: "Computer Vision - Part 6: Anchor Boxes"
 category: Computer Vision
-order: 5
+order: 6
 permalink: /topics/computer-vision-anchor-boxes/
 tags:
   - computer-vision
@@ -16,7 +16,7 @@ tags:
 summary: "A beginner-friendly guide to anchor boxes: why they exist, how they are placed and matched to ground truth, and how they are used in Faster R-CNN, YOLO, and SSD."
 ---
 
-# Computer Vision — Part 5: Anchor Boxes
+# Computer Vision — Part 6: Anchor Boxes
 
 When an object detector looks at an image, it does not know where objects are, how big they are, or what shape they are. **Anchor boxes** are pre-defined guess shapes that let the detector start from sensible defaults instead of searching blindly.
 
@@ -236,4 +236,4 @@ print(anchors[:3])
 - **Faster R-CNN** uses anchors in the RPN. **YOLO** uses dataset-specific anchor clusters. **SSD** uses anchors across multiple feature-map layers.
 - Anchors are effective but require tuning, create class imbalance, and can struggle with overlapping objects. Modern anchor-free detectors address some of these issues.
 
-**Next:** [Part 6: One-Stage Detectors — YOLO and SSD]({{ site.baseurl }}/topics/computer-vision-yolo-ssd/)
+**Next:** [Part 7: One-Stage Detectors — YOLO and SSD]({{ site.baseurl }}/topics/computer-vision-yolo-ssd/)

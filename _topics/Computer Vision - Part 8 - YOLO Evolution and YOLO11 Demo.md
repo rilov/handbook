@@ -1,8 +1,8 @@
 ---
 layout: topic
-title: "Computer Vision - Part 7: YOLO Evolution and YOLO11 Demo"
+title: "Computer Vision - Part 8: YOLO Evolution and YOLO11 Demo"
 category: Computer Vision
-order: 7
+order: 8
 permalink: /topics/computer-vision-yolo11-demo/
 tags:
   - computer-vision
@@ -17,7 +17,7 @@ tags:
 summary: "A beginner-friendly history of YOLO versions and a practical walkthrough of object detection with YOLO11 using Ultralytics and Python."
 ---
 
-# Computer Vision — Part 7: YOLO Evolution and YOLO11 Demo
+# Computer Vision — Part 8: YOLO Evolution and YOLO11 Demo
 
 YOLO is one of the most influential object-detection families because of its speed. This part traces how YOLO evolved from a simple grid idea to modern versions, and then shows a hands-on demonstration with **YOLO11**, the latest YOLO release from Ultralytics.
 
