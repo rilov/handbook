@@ -22,7 +22,7 @@ summary: A zero-background, kid-friendly walkthrough of the actual Faster R-CNN 
 
 This guide explains one specific, famous research paper: **"Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks"** by Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun (2015). We are going to demystify it completely, using very simple words and pictures, the kind of explanation you could give to a curious kid.
 
-If you have already read [Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/convolutional-neural-networks), you already know the main character of this story, the CNN. This guide picks up right where that one left off.
+If you have already read [Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}{% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}), you already know the main character of this story, the CNN. This guide picks up right where that one left off.
 
 ## First, a game everyone knows: "I Spy"
 
@@ -120,10 +120,10 @@ And importantly, this new, much faster way is not less accurate, it actually sco
 | mAP | "Mean Average Precision," the standard score used to compare how accurate two detectors are |
 | fps | "Frames per second," how many photos (or video frames) the system can process every second |
 
-If you enjoyed this, the [Part 13: CNN Applications]({{ site.baseurl }}/topics/cnn-applications-image-classification-object-detection-segmentation) guide gives a wider tour of everything CNNs are used for, including object detection, segmentation, facial recognition, and OCR, at a slightly higher level.
+If you enjoyed this, the [Part 13: CNN Applications]({{ site.baseurl }}{% link _topics/CNN Applications Image Classification Object Detection Segmentation - A Friendly Guide.md %}) guide gives a wider tour of everything CNNs are used for, including object detection, segmentation, facial recognition, and OCR, at a slightly higher level.
 
 ---
 
-Previous: **[Part 13: CNN Applications]({{ site.baseurl }}/topics/cnn-applications-image-classification-object-detection-segmentation)**
+Previous: **[Part 13: CNN Applications]({{ site.baseurl }}{% link _topics/CNN Applications Image Classification Object Detection Segmentation - A Friendly Guide.md %})**
 
-Next: **[Part 15: RNN — Recurrent Neural Networks]({{ site.baseurl }}/topics/rnn-recurrent-neural-networks)**
+Next: **[Part 15: RNN — Recurrent Neural Networks]({{ site.baseurl }}{% link _topics/RNN Recurrent Neural Networks - A Friendly Guide.md %})**
