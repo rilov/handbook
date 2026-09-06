@@ -30,6 +30,11 @@ permalink: /categories/artificial-intelligence/
   </article>
 
   <article class="topic-list-item">
+    <h4><a href="{{ '/categories/computer-vision/' | relative_url }}">Computer Vision</a></h4>
+    <p>Object detection, localisation, anchor boxes, region-based and one-stage detectors, YOLO, SSD, and practical YOLO11 demonstrations.</p>
+  </article>
+
+  <article class="topic-list-item">
     <h4><a href="{{ '/categories/generative-ai/' | relative_url }}">Generative AI</a></h4>
     <p>Large language models, LangChain, RAG, agents, and building AI-powered applications in plain language.</p>
   </article>
