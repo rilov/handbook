@@ -12,88 +12,79 @@ tags:
   - transfer-learning
   - beginners
   - friendly
-summary: "A short, focused primer on convolutional neural networks written specifically for computer vision: learned filters, feature maps, pooling, the hierarchy of features, and the idea of a pretrained CNN backbone — just enough to understand the object detectors covered later in this series."
+summary: "A very simple, picture-heavy primer on convolutional neural networks written specifically for computer vision, explained the way you'd explain it to a curious kid: learned filters, feature maps, pooling, the hierarchy of features, and the idea of a pretrained CNN backbone, just enough to understand the object detectors covered later in this series."
 date: 2026-09-07
 ---
 
 # Computer Vision — Part 3: CNNs for Computer Vision
 
-[Part 1]({{ site.baseurl }}/topics/computer-vision-image-processing-fundamentals/) showed you how to build filters by hand: a Sobel filter for edges, a Gaussian filter for blur, a median filter for noise. Every one of those filters had numbers a human chose in advance.
+[Part 1]({{ site.baseurl }}/topics/computer-vision-image-processing-fundamentals/) showed you how to build filters by hand. A Sobel filter for edges. A Gaussian filter for blur. A median filter for cleaning up noise. Every one of those filters used numbers that a person chose, in advance, by hand.
 
-That works for edges and blur. It does not work for "is this a cat." Nobody can hand-write a filter for "cat-ness." A **convolutional neural network (CNN)** solves this by keeping the exact same convolution operation from Part 1, but no longer choosing the filter numbers by hand. Instead, the network **learns** them from thousands of example photos.
+That works great for "make it blurry" or "find the edges." It does not work at all for "find the cat." Nobody on Earth can sit down and hand-write a filter for "cat-ness." So instead of a person choosing the numbers, we let the computer figure out its own numbers, by looking at a huge pile of example photos. That's the whole idea behind a **CNN**, short for **Convolutional Neural Network**.
 
-This part is a focused primer: just enough about how a CNN works to make sense of the detectors in the rest of this series (Region-Based Detectors, Anchor Boxes, YOLO, and SSD all lean on the ideas here). For the full depth — exact formulas, backpropagation through filters, and a real architecture walked through layer by layer — see the Deep Learning section's [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}).
+This part is a short, simple primer. Just enough to understand the object detectors later in this series (Region-Based Detectors, Anchor Boxes, YOLO, and SSD all lean on the ideas here). If you want the full deep dive, with exact formulas and a real architecture explained layer by layer, see the Deep Learning section's [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}).
 
----
+## 1. A filter you invent yourself, vs a filter a robot invents
 
-## 1. A convolutional layer is a learned filter
+Imagine you carve your own rubber stamp. It always stamps the exact same shape, forever. That's a hand-designed filter, like the Sobel filter from Part 1. It's great at its one job and terrible at everything else.
 
-Recall from Part 1: convolution slides a small grid of numbers (a kernel) over an image, multiplying and summing as it goes. In a CNN, that kernel's numbers are **parameters** — values the network adjusts during training, the same way it adjusts any other weight.
+Now imagine instead you hand a robot ten thousand photos of cats, dogs, cars, and trees, and you ask it, "invent your own rubber stamp, whatever helps you tell these apart." The robot tries random stamp shapes, checks how well each one helps, and keeps nudging the shape until it becomes genuinely useful, maybe it turns into an edge detector, maybe a "patch of orange fur" detector, maybe something a person would never have thought to design. Nobody told it what to look for. It found something useful on its own.
 
-At the start of training, a filter's numbers are random. After seeing many labelled photos and being corrected when it gets things wrong, the filter settles into numbers that respond strongly to some visual pattern — maybe a vertical edge, maybe a patch of orange-brown fur, maybe a curve. Nobody wrote that filter. The network found it because it was useful for telling the training photos apart.
+<img src="{{ site.baseurl }}/assets/img/learned-vs-handdesigned-filter.svg" alt="Comparison of a hand-designed filter, where a person picks fixed numbers and it always finds only edges, versus a CNN's learned filter, where the computer invents its own numbers from thousands of photos and might find edges, fur patches, or anything useful" width="100%" />
 
-A single convolutional layer doesn't use just one filter — it uses many, often 32, 64, or more, all learned side by side. Each one looks for a different pattern in the same image.
+That's really all a **convolutional layer** is: the exact same sliding, multiply-and-add operation from Part 1, except the little grid of numbers, the filter, is no longer chosen by a person. It's a bunch of adjustable numbers that the network tweaks, bit by bit, every time it gets something wrong during training, until the filter becomes genuinely useful.
 
-## 2. Feature maps
+## 2. Many filters means many maps
 
-Running one filter over an image produces one new grid of numbers, the same way Part 1's Sobel filter produced an edge map. In CNN terms, that output grid is called a **feature map** — it shows, at every position in the image, how strongly that one filter's pattern was detected there.
+A CNN never uses just one filter. It uses a whole bunch at once, often 32, 64, or more, all learning something different, side by side, on the very same photo.
 
-Since a convolutional layer runs many filters, it produces many feature maps, stacked together. If a layer has 64 filters, its output is 64 feature maps deep, one per filter, each one a map of "where did this particular pattern show up."
+Think of each filter as its own highlighter pen. One highlighter only lights up edges. Another only lights up orange, fur-like patches. Another only lights up rounded curves. Run all these highlighters over the same photo, and each one draws its own separate map of "here's where I found my thing." That map is called a **feature map**.
 
-```text
-image → [filter 1] → feature map 1  (found: vertical edges)
-      → [filter 2] → feature map 2  (found: orange-ish patches)
-      → [filter 3] → feature map 3  (found: rounded curves)
-      → ...
-```
+<img src="{{ site.baseurl }}/assets/img/cnn-many-filters-feature-maps.svg" alt="One cat photo passed through three different learned filters, one hunting for edges, one for orange fur, one for curves, each producing its own feature map, and all three feature maps then stacked together for the next layer" width="100%" />
 
-## 3. Stacking layers builds a hierarchy
+If a layer has 64 filters, you get 64 feature maps out, stacked together like 64 see-through sheets of tracing paper laid on top of each other. That whole stack moves on to the next layer as its input.
 
-A single layer of filters can only detect simple, local patterns like edges and colour patches. The real power of a CNN comes from **stacking many convolutional layers** one after another. Each new layer takes the previous layer's feature maps as its input, so it isn't looking at raw pixels anymore — it's looking at combinations of "edges" and "colour patches."
+## 3. Stack the layers and watch understanding grow
 
-This produces a hierarchy, the same one introduced in the Deep Learning CNN guide:
+One layer of filters can only notice simple things: an edge here, a colour there. The real magic happens when you stack many convolutional layers, one after another. Each new layer doesn't look at raw pixels anymore, it looks at the *previous* layer's feature maps, so it's really looking at combinations of edges and colours.
 
-```text
-Layer 1: pixels     → edges, colours
-Layer 2: edges      → textures, corners
-Layer 3: textures    → parts (an eye, a wheel, a leaf)
-Layer 4: parts       → whole objects (a face, a car, a tree)
-```
+Think of it like building with LEGO. First you have loose bricks (edges). Then you snap a few bricks into small pieces (a corner, a fuzzy patch). Then those pieces become recognisable parts (an eye, a paw). Finally the parts come together into the whole finished model (a cat!).
 
-Early layers learn generic, reusable patterns. Deeper layers learn increasingly specific, task-relevant combinations of those patterns. This is exactly why a CNN trained on one large photo collection can be reused for a completely different task — the early layers' edges and textures are useful almost everywhere.
+<img src="{{ site.baseurl }}/assets/img/cnn-hierarchy-edges-to-objects.svg" alt="Four stacked layers building understanding step by step: layer 1 finds edges and colours, layer 2 finds textures and corners, layer 3 finds object parts like an eye or a paw, layer 4 recognises the whole object, a cat, ending in a confident prediction" width="100%" />
 
-## 4. Pooling: shrinking the feature maps
+Here's the genuinely useful part: the earliest layers (edges, colours) end up learning things that are useful for almost *any* photo, not just cats. Only the deeper layers get picky and specific. Keep that in mind, it matters a lot in a couple of sections.
 
-Between convolutional layers, CNNs typically shrink the feature maps down, usually by keeping only the strongest value in each small neighbourhood (called **max pooling**). A 2×2 max-pooling step turns a 100×100 feature map into a 50×50 one, keeping the loudest signal from each 2×2 patch and throwing the rest away.
+## 4. Pooling: squint a little, on purpose
 
-This does two useful things at once: it makes the network faster (smaller grids are cheaper to process), and it makes detections more tolerant to small shifts — if the interesting pattern moves a few pixels, it usually still survives inside the same pooled cell.
+Between these stacked layers, a CNN usually shrinks its feature maps down a bit, on purpose. The most common way is called **max pooling**: look at each small 2×2 patch of the feature map, and keep only the biggest number, throwing the other three away.
 
-## 5. Putting it together: a CNN backbone
+<img src="{{ site.baseurl }}/assets/img/max-pooling-demo.svg" alt="A 4x4 feature map broken into four 2x2 coloured blocks, each block keeps only its largest number (bold), shrinking the map to 2x2 while keeping the strongest signal from each region" width="90%" />
 
-Stack enough (convolution → activation → pooling) blocks and you get a pipeline that takes a photo in one end, and produces a small, deep stack of feature maps out the other end — a compact numerical summary of "what patterns are present, and roughly where."
+Why deliberately throw information away? Two reasons. First, smaller feature maps are cheaper and faster for the next layer to process. Second, and more surprising, it makes the network a little forgiving about *exactly* where something was. If a cat's ear shifts two pixels to the left in a new photo, it still probably lands inside the same pooled square, so the network still notices it. It's a bit like squinting at a busy photo, you lose some fine detail, but the big important shapes still stand out clearly.
 
-```text
-image (e.g. 224×224×3)
-  → conv block 1 → pool  (edges, colours)
-  → conv block 2 → pool  (textures)
-  → conv block 3 → pool  (object parts)
-  → conv block 4 → pool  (whole-object patterns)
-  → final feature map (e.g. 7×7×512)
-```
+## 5. Put it all together: a backbone
 
-That stack of convolution and pooling blocks, on its own, is often called the **backbone**. On its own it doesn't say "cat" or "dog" — for a classifier, you'd add one more piece on top (a small set of fully connected layers, covered in the Deep Learning guide) that turns the final feature map into a decision.
+Stack enough (learn filters → make feature maps → pool) blocks in a row, and you get a machine that takes a raw photo in one end, and hands out a small, deep stack of feature maps at the other end, a compact summary of "here's every pattern I noticed, and roughly where."
 
-This "backbone" framing matters a lot for the rest of this series. Object detectors don't usually train a CNN backbone from scratch. Instead, they take a CNN that was already trained as an image classifier on a huge, general photo collection (commonly **ImageNet**, over a million photos across a thousand categories), throw away its final decision layer, and reuse everything before it purely as a feature extractor. This is why you'll keep seeing phrases like "a CNN pretrained on ImageNet" in the Region-Based Detectors and One-Stage Detectors parts that follow — they mean exactly this: someone else's backbone, already good at noticing edges, textures, and object parts, repurposed as the first stage of a detector.
+That whole stack, by itself, with no final decision bolted on yet, is often called a **backbone**. On its own, a backbone doesn't say "cat" or "dog." It just hands over its notes. Something else has to actually read those notes and make a decision.
+
+Here's the really important trick this entire series depends on: nobody trains a fresh backbone from scratch every single time. Instead, people train one backbone *once*, on a giant, general pile of over a million photos (a famous one is called **ImageNet**, with a thousand different categories), until it gets genuinely excellent at noticing edges, textures, fur, wheels, and every other everyday visual pattern. Then that same, already-trained backbone gets reused, again and again, for completely different jobs.
+
+<img src="{{ site.baseurl }}/assets/img/cnn-backbone-reuse.svg" alt="A single pretrained CNN backbone processes a new photo into a feature map once, then that same feature map is handed to three different task-specific heads, a classifier head answering what is the main object, a detector head answering where is each object and what is it, and a segmentation head answering which exact pixels belong to each object" width="100%" />
+
+This is exactly like a photographer who takes one detailed photo, then hands prints to three different people: one just wants to know "what's the main subject," one wants to circle every object in it, one wants to cut out the exact outline of each object with scissors. All three people work from the very same photo. Only the small part on top, what to actually *do* with the backbone's notes, changes per job.
+
+This is why, in the rest of this series, you'll keep running into a phrase like "a CNN pretrained on ImageNet." It means exactly this: somebody else's already-trained backbone, reused as the very first stage of a detector, so the detector doesn't have to relearn what an edge or a fur patch looks like from zero.
 
 ## 6. Summary
 
-- A convolutional layer is the same sliding-kernel operation from Part 1, except the kernel's numbers are **learned**, not hand-chosen.
-- Each filter's output is a **feature map**: where in the image that filter's pattern was found.
-- Stacking layers builds a **hierarchy**: edges → textures → parts → whole objects.
-- **Pooling** shrinks feature maps between layers, for speed and for tolerance to small shifts.
-- The stack of convolution and pooling layers, without a final decision layer, is a **backbone** — a reusable feature extractor.
-- Detectors almost always start from a backbone **pretrained** on a large general dataset like ImageNet, rather than training one from scratch.
+- A convolutional layer is Part 1's sliding filter, except now the filter's numbers are **learned** from photos, not chosen by hand.
+- Many filters run at once, each one producing its own **feature map**, all stacked together.
+- Stacking layers builds understanding step by step: edges → textures → parts → whole objects.
+- **Pooling** shrinks the feature maps between layers, for speed, and for a little tolerance to things shifting slightly.
+- A stack of convolution and pooling layers, with no final decision on top, is called a **backbone**, a reusable notebook of visual patterns.
+- Detectors almost always start from a backbone **pretrained** on a huge, general dataset like ImageNet, rather than starting from nothing.
 
-For the full mathematical depth behind all of this — exact output-size and parameter-count formulas, how backpropagation flows through a filter, and a complete layer-by-layer walkthrough of a real architecture (VGG16) — see [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}) in the Deep Learning section.
+For the full mathematical depth behind everything above, exact output-size and parameter-count formulas, how learning actually flows backward through a filter, and a complete layer-by-layer walkthrough of a real architecture (VGG16), see [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}) in the Deep Learning section.
 
 **Next:** [Part 4: Object Detection Basics]({{ site.baseurl }}/topics/computer-vision-object-detection-basics/)
