@@ -15,9 +15,9 @@ related:
 ---
 
 > **🎓 LangChain Learning Path - Step 5 of 7**
-> - **[← Step 4: RAG Basics]({{ site.baseurl }}{% link _topics/langchain-rag-basics.md %})**
+> - **[← Step 4: RAG Basics]({{ site.baseurl }}/topics/langchain-rag-basics/)**
 > - **Step 5 (this page):** LangGraph & Agents
-> - **[Step 6: Building Your Agent Project →]({{ site.baseurl }}{% link _topics/langchain-project-agent.md %})**
+> - **[Step 6: Building Your Agent Project →]({{ site.baseurl }}/topics/langchain-project-agent/)**
 
 > **📓 Hands-On Practice**  
 > **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part5-langgraph-agents.ipynb)** - Build complex workflows with states, nodes, edges, and conditional logic.
@@ -737,7 +737,7 @@ In the next section, you'll **build your own agentic application** from scratch,
 - LangGraph for workflow
 - Memory for context
 
-**[→ Continue to Step 6: Build Your Agent Project]({{ site.baseurl }}{% link _topics/langchain-project-agent.md %})**
+**[→ Continue to Step 6: Build Your Agent Project]({{ site.baseurl }}/topics/langchain-project-agent/)**
 
 ---
 
@@ -776,7 +776,7 @@ result = agent.invoke({"messages": [("user", "question")]})
 
 Ready to build your own agent? Let's do it! 🚀
 
-**[Next: Build Your Agent Project →]({{ site.baseurl }}{% link _topics/langchain-project-agent.md %})**
+**[Next: Build Your Agent Project →]({{ site.baseurl }}/topics/langchain-project-agent/)**
 
 
 

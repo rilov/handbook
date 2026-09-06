@@ -15,9 +15,9 @@ related:
 ---
 
 > **🎓 LangChain Learning Path - Step 3 of 7**
-> - **[← Step 2: LangChain Essentials]({{ site.baseurl }}{% link _topics/langchain-essentials.md %})**
+> - **[← Step 2: LangChain Essentials]({{ site.baseurl }}/topics/langchain-essentials/)**
 > - **Step 3 (this page):** Tool Calling
-> - **[Step 4: RAG Basics →]({{ site.baseurl }}{% link _topics/langchain-rag-basics.md %})**
+> - **[Step 4: RAG Basics →]({{ site.baseurl }}/topics/langchain-rag-basics/)**
 
 > **📓 Hands-On Practice**  
 > **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part3-tool-calling.ipynb)** - Create custom tools and build agents with runnable code examples.
@@ -670,7 +670,7 @@ In the next section, we'll learn about **RAG (Retrieval Augmented Generation)**:
 - Building retrievers
 - Wiring everything together
 
-**[→ Continue to Step 4: RAG Basics]({{ site.baseurl }}{% link _topics/langchain-rag-basics.md %})**
+**[→ Continue to Step 4: RAG Basics]({{ site.baseurl }}/topics/langchain-rag-basics/)**
 
 ---
 
@@ -707,7 +707,7 @@ result = agent_executor.invoke({"input": "Your question"})
 
 Ready to learn about RAG? Let's go! 🚀
 
-**[Next: RAG Basics →]({{ site.baseurl }}{% link _topics/langchain-rag-basics.md %})**
+**[Next: RAG Basics →]({{ site.baseurl }}/topics/langchain-rag-basics/)**
 
 
 

@@ -23,7 +23,7 @@ related:
 > 
 > This article explains how Uber built one of the world's largest data infrastructures from scratch. You'll learn why traditional databases don't work at Uber's scale and how they solved it with specialized tools.
 > 
-> **Next:** [Part 2 - Modernizing with Google Cloud →]({{ site.baseurl }}{% link _topics/uber-data-infrastructure-part-2-modernization.md %})
+> **Next:** [Part 2 - Modernizing with Google Cloud →]({{ site.baseurl }}/topics/uber-data-infrastructure-part-2-modernization/)
 
 ## Introduction: The Uber Data Challenge
 
@@ -990,7 +990,7 @@ This infrastructure powered Uber for years, but by 2020, they faced serious chal
 
 **The solution?** Move to Google Cloud Platform and simplify everything.
 
-**Continue to:** [Part 2 - Modernizing with Google Cloud →]({{ site.baseurl }}{% link _topics/uber-data-infrastructure-part-2-modernization.md %})
+**Continue to:** [Part 2 - Modernizing with Google Cloud →]({{ site.baseurl }}/topics/uber-data-infrastructure-part-2-modernization/)
 
 ---
 
@@ -1036,7 +1036,7 @@ Layer 5: Analytics
 
 **Next:** Learn how Uber modernized this entire stack with Google Cloud Platform, reducing complexity by 50% and costs by 40%!
 
-→ [Part 2 - Modernizing with Google Cloud]({{ site.baseurl }}{% link _topics/uber-data-infrastructure-part-2-modernization.md %})
+→ [Part 2 - Modernizing with Google Cloud]({{ site.baseurl }}/topics/uber-data-infrastructure-part-2-modernization/)
 
 ---
 

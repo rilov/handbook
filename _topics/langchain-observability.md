@@ -15,7 +15,7 @@ related:
 ---
 
 > **🎓 LangChain Learning Path - Step 7 of 7**
-> - **[← Step 6: Build Your Agent Project]({{ site.baseurl }}{% link _topics/langchain-project-agent.md %})**
+> - **[← Step 6: Build Your Agent Project]({{ site.baseurl }}/topics/langchain-project-agent/)**
 > - **Step 7 (this page):** Observability with LangSmith
 > - **🎉 Course Complete!**
 
@@ -692,7 +692,7 @@ You've completed the LangChain Learning Path! You now know:
 - Security and privacy
 
 **Other Resources:**
-- **[← Back to Foundations]({{ site.baseurl }}{% link _topics/langchain-foundations.md %})** to review
+- **[← Back to Foundations]({{ site.baseurl }}/topics/langchain-foundations/)** to review
 - Explore other topics in the handbook
 - Try building your own agent variations
 

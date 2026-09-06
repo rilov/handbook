@@ -457,5 +457,5 @@ Load CIFAR-10
 
 ## What to read next
 
-- [Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/cnn-training-pipeline-transfer-learning-and-visualization) — the full pipeline explained conceptually
-- [Part 13: CNN Applications]({{ site.baseurl }}/topics/cnn-applications-image-classification-object-detection-segmentation) — image classification, object detection, segmentation, facial recognition, OCR
+- [Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/CNN%20Training%20Pipeline%20Transfer%20Learning%20and%20Visualization%20-%20A%20Friendly%20Guide/) — the full pipeline explained conceptually
+- [Part 13: CNN Applications]({{ site.baseurl }}/topics/CNN%20Applications%20Image%20Classification%20Object%20Detection%20Segmentation%20-%20A%20Friendly%20Guide/) — image classification, object detection, segmentation, facial recognition, OCR

@@ -20,7 +20,7 @@ related:
 > 
 > **Important Note:** This article is based on my understanding after reading the [Airbnb Engineering blog](https://medium.com/airbnb-engineering) and various articles about their Minerva platform. I'm trying to demystify and explain these concepts in an accessible way. If you want to understand exactly what Airbnb built, please refer to the original articles linked in the Further Reading section.
 > 
-> **Previously:** [Part 1 - The Problem]({{ site.baseurl }}{% link _topics/airbnb-metric-consistency-part-1-problem.md %}) explained how Airbnb had 10,000+ metrics with different definitions, costing them 70% of engineering time and hundreds of millions in bad decisions.
+> **Previously:** [Part 1 - The Problem]({{ site.baseurl }}/topics/airbnb-metric-consistency-part-1-problem/) explained how Airbnb had 10,000+ metrics with different definitions, costing them 70% of engineering time and hundreds of millions in bad decisions.
 > 
 > **This article** explains how they built Minerva — a platform that made metric inconsistency impossible.
 
@@ -1626,6 +1626,6 @@ Payback period: 10 days
 ---
 
 **Series Navigation:**
-- ← [Part 1: The Problem]({{ site.baseurl }}{% link _topics/airbnb-metric-consistency-part-1-problem.md %})
+- ← [Part 1: The Problem]({{ site.baseurl }}/topics/airbnb-metric-consistency-part-1-problem/)
 - Part 2: The Solution (Minerva) ← You are here
 

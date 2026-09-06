@@ -565,4 +565,4 @@ Running this: the tuned RBF model (`C=1, gamma=0.01`) achieves **91.7% test accu
 
 Together, these four ideas — hyperplanes, margins, soft margins, and kernels — are the complete foundation of how Support Vector Machines work.
 
-**Related reading:** [Bias and Variance]({{ site.baseurl }}/topics/bias-and-variance) (prerequisite), [Naive Bayes — A Friendly Guide]({{ site.baseurl }}{% link _topics/Naive Bayes - A Friendly Guide.md %}) (a complementary classification algorithm often compared with SVM).
+**Related reading:** [Bias and Variance]({{ site.baseurl }}/topics/bias-and-variance) (prerequisite), [Naive Bayes — A Friendly Guide]({{ site.baseurl }}/topics/Naive%20Bayes%20-%20A%20Friendly%20Guide/) (a complementary classification algorithm often compared with SVM).

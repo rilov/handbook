@@ -15,9 +15,9 @@ related:
 ---
 
 > **🎓 LangChain Learning Path - Step 4 of 7**
-> - **[← Step 3: Tool Calling]({{ site.baseurl }}{% link _topics/langchain-tool-calling.md %})**
+> - **[← Step 3: Tool Calling]({{ site.baseurl }}/topics/langchain-tool-calling/)**
 > - **Step 4 (this page):** RAG Basics
-> - **[Step 5: LangGraph & Agents →]({{ site.baseurl }}{% link _topics/langgraph-agents.md %})**
+> - **[Step 5: LangGraph & Agents →]({{ site.baseurl }}/topics/langgraph-agents/)**
 
 > **📓 Hands-On Practice**  
 > **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part4-rag-basics.ipynb)** - Build complete RAG systems with document loading, embeddings, and retrieval.
@@ -831,7 +831,7 @@ In the next section, we'll learn about **LangGraph & Agents**:
 - Using tools in agentic systems
 - Managing complex decision flows
 
-**[→ Continue to Step 5: LangGraph & Agents]({{ site.baseurl }}{% link _topics/langgraph-agents.md %})**
+**[→ Continue to Step 5: LangGraph & Agents]({{ site.baseurl }}/topics/langgraph-agents/)**
 
 ---
 
@@ -865,7 +865,7 @@ answer = rag_chain.invoke("Your question")
 
 Ready to build agents? Let's go! 🚀
 
-**[Next: LangGraph & Agents →]({{ site.baseurl }}{% link _topics/langgraph-agents.md %})**
+**[Next: LangGraph & Agents →]({{ site.baseurl }}/topics/langgraph-agents/)**
 
 
 

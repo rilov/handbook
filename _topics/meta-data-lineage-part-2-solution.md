@@ -23,7 +23,7 @@ related:
 > 
 > **This article** reveals the technical architecture, clever techniques, and hard-won lessons from building data lineage at unprecedented scale.
 > 
-> **Previous:** [← Part 1 - The Challenge]({{ site.baseurl }}{% link _topics/meta-data-lineage-part-1-challenge.md %})
+> **Previous:** [← Part 1 - The Challenge]({{ site.baseurl }}/topics/meta-data-lineage-part-1-challenge/)
 
 ## Introduction: The Architecture
 
@@ -1551,6 +1551,6 @@ As data ecosystems grow more complex, lineage will evolve from a "nice to have" 
 
 ---
 
-**[← Back to Part 1: The Challenge]({{ site.baseurl }}{% link _topics/meta-data-lineage-part-1-challenge.md %})**
+**[← Back to Part 1: The Challenge]({{ site.baseurl }}/topics/meta-data-lineage-part-1-challenge/)**
 
 

@@ -23,7 +23,7 @@ related:
 > 
 > **This article** explains why metric inconsistency is one of the hardest problems in data — and why it matters more than you think.
 > 
-> **Next:** [Part 2 - The Solution (Minerva Platform) →]({{ site.baseurl }}{% link _topics/airbnb-metric-consistency-part-2-solution.md %})
+> **Next:** [Part 2 - The Solution (Minerva Platform) →]({{ site.baseurl }}/topics/airbnb-metric-consistency-part-2-solution/)
 
 ## Introduction: A Simple Question, A Hundred Answers
 
@@ -918,7 +918,7 @@ Bad decisions prevented: $500M+/year
 Time to implement: 2 years
 ```
 
-**Continue to:** [Part 2 - The Solution (Building Minerva) →]({{ site.baseurl }}{% link _topics/airbnb-metric-consistency-part-2-solution.md %})
+**Continue to:** [Part 2 - The Solution (Building Minerva) →]({{ site.baseurl }}/topics/airbnb-metric-consistency-part-2-solution/)
 
 ---
 
@@ -966,7 +966,7 @@ After (with Minerva):
    - Saved 60% of engineering time
    - Enabled IPO
 
-**Next:** Learn exactly how they did it! → [Part 2]({{ site.baseurl }}{% link _topics/airbnb-metric-consistency-part-2-solution.md %})
+**Next:** Learn exactly how they did it! → [Part 2]({{ site.baseurl }}/topics/airbnb-metric-consistency-part-2-solution/)
 
 ---
 

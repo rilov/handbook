@@ -1255,4 +1255,4 @@ Image
 | Softmax | Turning raw scores into percentages that add up to 100% |
 
 ---
-Previous: **[Part 8: Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** · Next: **[Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/advanced-convolutional-neural-networks)**
+Previous: **[Part 8: Deep Learning Cheat Sheet]({{ site.baseurl }}/topics/deep-learning-cheat-sheet)** · Next: **[Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/Advanced%20Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/)**

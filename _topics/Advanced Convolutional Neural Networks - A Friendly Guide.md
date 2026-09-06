@@ -1026,6 +1026,6 @@ Basic CNN
 
 ---
 
-Previous: **[Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/convolutional-neural-networks)**
+Previous: **[Part 9: Convolutional Neural Networks (CNNs)]({{ site.baseurl }}/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/)**
 
-Next: **[Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/cnn-training-pipeline-transfer-learning-and-visualization)**
+Next: **[Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/CNN%20Training%20Pipeline%20Transfer%20Learning%20and%20Visualization%20-%20A%20Friendly%20Guide/)**

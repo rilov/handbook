@@ -16,10 +16,10 @@ related:
 
 > **📚 This is Part 1 of the "Scaling Your API" Series**
 > - **Part 1 (this page):** Performance & Infrastructure - Technical techniques to handle millions of requests
-> - **[Part 2: Design & Architecture →]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** - Organizational strategies and API design patterns for large-scale systems
-> - **[Part 3: Choosing the Right Database →]({{ site.baseurl }}{% link _topics/choosing-the-right-database.md %})** - Database selection for your API
-> - **[Part 4: Load Balancing & High Availability →]({{ site.baseurl }}{% link _topics/scaling-api-load-balancing-part-4.md %})** - Keeping your API always available
-> - **[Part 5: Monitoring & Performance →]({{ site.baseurl }}{% link _topics/scaling-api-monitoring-part-5.md %})** - Tracking and improving API performance
+> - **[Part 2: Design & Architecture →]({{ site.baseurl }}/topics/scaling-api-design-architecture-part-2/)** - Organizational strategies and API design patterns for large-scale systems
+> - **[Part 3: Choosing the Right Database →]({{ site.baseurl }}/topics/choosing-the-right-database/)** - Database selection for your API
+> - **[Part 4: Load Balancing & High Availability →]({{ site.baseurl }}/topics/scaling-api-load-balancing-part-4/)** - Keeping your API always available
+> - **[Part 5: Monitoring & Performance →]({{ site.baseurl }}/topics/scaling-api-monitoring-part-5/)** - Tracking and improving API performance
 
 ## The Journey: 1 RPS → 1,000,000 RPS
 
@@ -1296,7 +1296,7 @@ Build for today's needs with an eye toward tomorrow's scale. When you need the n
 
 This guide covered the **technical and infrastructure** aspects of scaling APIs. But as your organization grows, you'll face a different kind of scaling challenge: **organizational and design complexity**.
 
-**[→ Continue to Part 2: Design & Architecture Strategies]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** to learn about:
+**[→ Continue to Part 2: Design & Architecture Strategies]({{ site.baseurl }}/topics/scaling-api-design-architecture-part-2/)** to learn about:
 - API portfolio management
 - Design-first methodologies
 - Organizational patterns for large-scale API development

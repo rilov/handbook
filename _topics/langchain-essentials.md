@@ -14,9 +14,9 @@ related:
 ---
 
 > **🎓 LangChain Learning Path - Step 2 of 7**
-> - **[← Step 1: Foundations]({{ site.baseurl }}{% link _topics/langchain-foundations.md %})**
+> - **[← Step 1: Foundations]({{ site.baseurl }}/topics/langchain-foundations/)**
 > - **Step 2 (this page):** LangChain Essentials
-> - **[Step 3: Tool Calling →]({{ site.baseurl }}{% link _topics/langchain-tool-calling.md %})**
+> - **[Step 3: Tool Calling →]({{ site.baseurl }}/topics/langchain-tool-calling/)**
 
 > **📓 Hands-On Practice**  
 > **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part2-langchain-essentials.ipynb)** - Practice chat models, prompting, structured outputs, and chaining with runnable examples.
@@ -651,7 +651,7 @@ In the next section, we'll learn about **Tool Calling** - how to let your LLM:
 - Call APIs
 - And much more!
 
-**[→ Continue to Step 3: Tool Calling]({{ site.baseurl }}{% link _topics/langchain-tool-calling.md %})**
+**[→ Continue to Step 3: Tool Calling]({{ site.baseurl }}/topics/langchain-tool-calling/)**
 
 ---
 
@@ -684,7 +684,7 @@ result = chain.invoke({"input": "..."})
 
 Ready to give your AI superpowers? Let's learn about tools! 🚀
 
-**[Next: Tool Calling →]({{ site.baseurl }}{% link _topics/langchain-tool-calling.md %})**
+**[Next: Tool Calling →]({{ site.baseurl }}/topics/langchain-tool-calling/)**
 
 
 

@@ -14,7 +14,7 @@ related:
 
 > **🎓 LangChain Learning Path - Step 1 of 7**
 > - **Step 1 (this page):** Foundations & Language Models
-> - **[Step 2: LangChain Essentials →]({{ site.baseurl }}{% link _topics/langchain-essentials.md %})**
+> - **[Step 2: LangChain Essentials →]({{ site.baseurl }}/topics/langchain-essentials/)**
 
 > **📓 Hands-On Practice**  
 > **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part1-langchain-foundations.ipynb)** - Practice the concepts with runnable code examples. Includes setup instructions for API keys.
@@ -476,7 +476,7 @@ Now that you understand the foundations, let's start building! In the next secti
 - **Structured outputs** to get data in formats you need
 - **Chaining** with LCEL (LangChain Expression Language)
 
-**[→ Continue to Step 2: LangChain Essentials]({{ site.baseurl }}{% link _topics/langchain-essentials.md %})**
+**[→ Continue to Step 2: LangChain Essentials]({{ site.baseurl }}/topics/langchain-essentials/)**
 
 ---
 
@@ -509,7 +509,7 @@ Now that you understand the foundations, let's start building! In the next secti
 
 Ready to dive in? Let's learn the essentials! 🚀
 
-**[Next: LangChain Essentials →]({{ site.baseurl }}{% link _topics/langchain-essentials.md %})**
+**[Next: LangChain Essentials →]({{ site.baseurl }}/topics/langchain-essentials/)**
 
 
 

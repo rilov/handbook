@@ -18,11 +18,11 @@ related:
 ---
 
 > **📚 This is Part 4 of the "Scaling Your API" Series**
-> - **[Part 1: Performance & Infrastructure ←]({{ site.baseurl }}{% link _topics/scaling-api-1-to-1-million-rps.md %})** - Technical techniques to handle millions of requests
-> - **[Part 2: Design & Architecture ←]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** - Organizational strategies and API design patterns
-> - **[Part 3: Choosing the Right Database ←]({{ site.baseurl }}{% link _topics/choosing-the-right-database.md %})** - Database selection for your API
+> - **[Part 1: Performance & Infrastructure ←]({{ site.baseurl }}/topics/scaling-api-1-to-1-million-rps/)** - Technical techniques to handle millions of requests
+> - **[Part 2: Design & Architecture ←]({{ site.baseurl }}/topics/scaling-api-design-architecture-part-2/)** - Organizational strategies and API design patterns
+> - **[Part 3: Choosing the Right Database ←]({{ site.baseurl }}/topics/choosing-the-right-database/)** - Database selection for your API
 > - **Part 4 (this page):** Load Balancing & High Availability - Keeping your API always available
-> - **[Part 5: Monitoring & Performance →]({{ site.baseurl }}{% link _topics/scaling-api-monitoring-part-5.md %})** - Tracking and improving API performance
+> - **[Part 5: Monitoring & Performance →]({{ site.baseurl }}/topics/scaling-api-monitoring-part-5/)** - Tracking and improving API performance
 
 ## What is Load Balancing? (Explained Simply)
 
@@ -734,11 +734,11 @@ With Load Balancer:
 
 This is **Part 4** of the "Scaling Your API" series:
 
-- **[Part 1: Performance & Infrastructure →]({{ site.baseurl }}{% link _topics/scaling-api-1-to-1-million-rps.md %})** - Technical techniques to handle millions of requests
-- **[Part 2: Design & Architecture →]({{ site.baseurl }}{% link _topics/scaling-api-design-architecture-part-2.md %})** - Organizational strategies and API design patterns
-- **[Part 3: Choosing the Right Database →]({{ site.baseurl }}{% link _topics/choosing-the-right-database.md %})** - Database selection for your API
+- **[Part 1: Performance & Infrastructure →]({{ site.baseurl }}/topics/scaling-api-1-to-1-million-rps/)** - Technical techniques to handle millions of requests
+- **[Part 2: Design & Architecture →]({{ site.baseurl }}/topics/scaling-api-design-architecture-part-2/)** - Organizational strategies and API design patterns
+- **[Part 3: Choosing the Right Database →]({{ site.baseurl }}/topics/choosing-the-right-database/)** - Database selection for your API
 - **Part 4:** Load Balancing & High Availability ← You are here
-- **[Part 5: Monitoring & Performance →]({{ site.baseurl }}{% link _topics/scaling-api-monitoring-part-5.md %})** - Tracking and improving API performance
+- **[Part 5: Monitoring & Performance →]({{ site.baseurl }}/topics/scaling-api-monitoring-part-5/)** - Tracking and improving API performance
 
 ---
 

@@ -246,7 +246,7 @@ transform = transforms.Compose([
 
 ## 6. Step 5: Augment data
 
-See the full augmentation explanation in the [Advanced CNN guide]({{ site.baseurl }}/topics/advanced-convolutional-neural-networks), Section 4.
+See the full augmentation explanation in the [Advanced CNN guide]({{ site.baseurl }}/topics/Advanced%20Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/), Section 4.
 
 Quick summary:
 
@@ -585,6 +585,6 @@ problem → data → clean → augment → split → train → visualize → eva
 
 ## What to read next
 
-- [Part 9: Convolutional Neural Networks]({{ site.baseurl }}/topics/convolutional-neural-networks) — CNN architecture from scratch
-- [Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/advanced-convolutional-neural-networks) — overfitting, dropout, batch normalization, residual connections, backpropagation
-- [Part 4: Data Handling with Dataset and DataLoader]({{ site.baseurl }}/topics/data-handling-with-dataset-and-dataloader) — how to build training pipelines in PyTorch
+- [Part 9: Convolutional Neural Networks]({{ site.baseurl }}/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/) — CNN architecture from scratch
+- [Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/Advanced%20Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/) — overfitting, dropout, batch normalization, residual connections, backpropagation
+- [Part 4: Data Handling with Dataset and DataLoader]({{ site.baseurl }}/topics/Data%20Handling%20with%20Dataset%20and%20DataLoader%20-%20A%20Friendly%20Guide/) — how to build training pipelines in PyTorch

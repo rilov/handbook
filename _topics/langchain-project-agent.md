@@ -15,9 +15,9 @@ related:
 ---
 
 > **🎓 LangChain Learning Path - Step 6 of 7**
-> - **[← Step 5: LangGraph & Agents]({{ site.baseurl }}{% link _topics/langgraph-agents.md %})**
+> - **[← Step 5: LangGraph & Agents]({{ site.baseurl }}/topics/langgraph-agents/)**
 > - **Step 6 (this page):** Build Your Agent Project
-> - **[Step 7: Observability with LangSmith →]({{ site.baseurl }}{% link _topics/langchain-observability.md %})**
+> - **[Step 7: Observability with LangSmith →]({{ site.baseurl }}/topics/langchain-observability/)**
 
 > **📓 Hands-On Practice**  
 > **[⬇️ Download Jupyter Notebook]({{ site.baseurl }}/notebooks/part6-project-agent.ipynb)** - Build a complete Research Assistant agent with tools, memory, and conversation management.
@@ -694,7 +694,7 @@ Learn how to **monitor and debug** your agent with LangSmith:
 - Optimize performance
 - Track costs
 
-**[→ Continue to Step 7: Observability with LangSmith]({{ site.baseurl }}{% link _topics/langchain-observability.md %})**
+**[→ Continue to Step 7: Observability with LangSmith]({{ site.baseurl }}/topics/langchain-observability/)**
 
 ---
 
@@ -706,7 +706,7 @@ Learn how to **monitor and debug** your agent with LangSmith:
 
 Congratulations on building your first agent! 🎉
 
-**[Next: Observability with LangSmith →]({{ site.baseurl }}{% link _topics/langchain-observability.md %})**
+**[Next: Observability with LangSmith →]({{ site.baseurl }}/topics/langchain-observability/)**
 
 
 

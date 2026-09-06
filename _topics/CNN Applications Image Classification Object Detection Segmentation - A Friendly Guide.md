@@ -392,6 +392,6 @@ What changes is the output format and the loss function:
 
 ## What to read next
 
-- [Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch]({{ site.baseurl }}/topics/building-a-cnn-end-to-end-cifar-10-with-pytorch) — hands-on implementation
-- [Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/cnn-training-pipeline-transfer-learning-and-visualization) — training strategy and Grad-CAM
-- [Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/advanced-convolutional-neural-networks) — dropout, batch norm, residual connections
+- [Part 12: Building a CNN End-to-End — CIFAR-10 with PyTorch]({{ site.baseurl }}/topics/Building%20a%20CNN%20End-to-End%20CIFAR-10%20with%20PyTorch%20-%20A%20Friendly%20Guide/) — hands-on implementation
+- [Part 11: CNN Training Pipeline, Transfer Learning, and Visualization]({{ site.baseurl }}/topics/CNN%20Training%20Pipeline%20Transfer%20Learning%20and%20Visualization%20-%20A%20Friendly%20Guide/) — training strategy and Grad-CAM
+- [Part 10: Advanced Convolutional Neural Networks]({{ site.baseurl }}/topics/Advanced%20Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/) — dropout, batch norm, residual connections

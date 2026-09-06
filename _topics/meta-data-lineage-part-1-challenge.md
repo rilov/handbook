@@ -25,7 +25,7 @@ related:
 > 
 > **This article** explains why data lineage became critical for privacy at Meta's scale — and why manual tracking completely breaks down.
 > 
-> **Next:** [Part 2 - The Solution (Building Data Lineage at Scale) →]({{ site.baseurl }}{% link _topics/meta-data-lineage-part-2-solution.md %})
+> **Next:** [Part 2 - The Solution (Building Data Lineage at Scale) →]({{ site.baseurl }}/topics/meta-data-lineage-part-2-solution/)
 
 ## Introduction: A Simple Privacy Promise
 
@@ -794,7 +794,7 @@ Privacy violations prevented: 100s per year
 Cost: $50M investment, $500M+ value
 ```
 
-**Continue to:** [Part 2 - Building Data Lineage at Scale →]({{ site.baseurl }}{% link _topics/meta-data-lineage-part-2-solution.md %})
+**Continue to:** [Part 2 - Building Data Lineage at Scale →]({{ site.baseurl }}/topics/meta-data-lineage-part-2-solution/)
 
 ---
 
@@ -848,7 +848,7 @@ With data lineage:
    - 100+ engineers
    - $50M+ investment
 
-**Next:** Learn exactly how they built it! → [Part 2]({{ site.baseurl }}{% link _topics/meta-data-lineage-part-2-solution.md %})
+**Next:** Learn exactly how they built it! → [Part 2]({{ site.baseurl }}/topics/meta-data-lineage-part-2-solution/)
 
 ---
 
