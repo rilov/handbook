@@ -134,7 +134,7 @@ Convolutional neural networks (CNNs) learn their own features from data. Instead
 Pixels → edges → textures → shapes → object parts → whole objects → prediction
 ```
 
-This is the foundation of modern computer vision. The next part of this series, [Part 3: CNNs for Computer Vision]({{ site.baseurl }}/topics/computer-vision-cnn-primer/), covers just enough about how CNNs work to understand the detectors later in this series. For the full depth, formulas, and a real architecture walkthrough, see the Deep Learning section's [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}).
+This is the foundation of modern computer vision. The next part of this series, [Part 3: CNNs for Computer Vision]({{ site.baseurl }}/topics/computer-vision-cnn-primer/), covers just enough about how CNNs work to understand the detectors later in this series. For the full depth, formulas, and a real architecture walkthrough, see the Deep Learning section's [Part 9: Convolutional Neural Networks]({{ site.baseurl }}/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/).
 
 ---
 

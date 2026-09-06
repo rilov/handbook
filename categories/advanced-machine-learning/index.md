@@ -38,7 +38,7 @@ Learn advanced machine learning algorithms through clear, step-by-step explanati
 
 - **[Advanced Machine Learning: The One-Pager]({{ site.baseurl }}/topics/advanced-machine-learning-one-pager)** — The simplest, big-picture summary of the whole module.
 - **[Advanced Machine Learning: One-Liners]({{ site.baseurl }}/topics/advanced-machine-learning-one-liners)** — Every key formula and concept in one easy-to-scan line.
-- **[Naive Bayes — A Friendly Guide]({{ site.baseurl }}{% link _topics/Naive Bayes - A Friendly Guide.md %})** — Original single-page overview of Naive Bayes, useful as a quick refresher after the series.
+- **[Naive Bayes — A Friendly Guide]({{ site.baseurl }}{{ site.baseurl }}/topics/Naive%20Bayes%20-%20A%20Friendly%20Guide/)** — Original single-page overview of Naive Bayes, useful as a quick refresher after the series.
 
 **Recommendation Systems:**
 

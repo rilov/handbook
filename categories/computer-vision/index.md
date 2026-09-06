@@ -21,6 +21,6 @@ Learn computer vision from the ground up: how images become numbers, what object
 
 **Related Deep Learning topics** (for the full mathematical depth):
 
-- [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}) — the complete guide behind this series' Part 3 primer, with exact formulas and a real architecture walked through layer by layer.
-- [Part 13: CNN Applications]({% link _topics/CNN Applications Image Classification Object Detection Segmentation - A Friendly Guide.md %}) — broader computer-vision tasks including classification, segmentation, facial recognition, and OCR.
-- [Part 14: Faster R-CNN and Region Proposal Networks]({% link _topics/Faster R-CNN and Region Proposal Networks - A Friendly Guide.md %}) — a deeper walk through the Faster R-CNN paper.
+- [Part 9: Convolutional Neural Networks]({{ site.baseurl }}/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/) — the complete guide behind this series' Part 3 primer, with exact formulas and a real architecture walked through layer by layer.
+- [Part 13: CNN Applications]({{ site.baseurl }}/topics/CNN%20Applications%20Image%20Classification%20Object%20Detection%20Segmentation%20-%20A%20Friendly%20Guide/) — broader computer-vision tasks including classification, segmentation, facial recognition, and OCR.
+- [Part 14: Faster R-CNN and Region Proposal Networks]({{ site.baseurl }}/topics/Faster%20R-CNN%20and%20Region%20Proposal%20Networks%20-%20A%20Friendly%20Guide/) — a deeper walk through the Faster R-CNN paper.

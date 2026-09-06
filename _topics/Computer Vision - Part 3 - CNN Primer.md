@@ -22,7 +22,7 @@ date: 2026-09-07
 
 That works great for "make it blurry" or "find the edges." It does not work at all for "find the cat." Nobody on Earth can sit down and hand-write a filter for "cat-ness." So instead of a person choosing the numbers, we let the computer figure out its own numbers, by looking at a huge pile of example photos. That's the whole idea behind a **CNN**, short for **Convolutional Neural Network**.
 
-This part is a short, simple primer. Just enough to understand the object detectors later in this series (Region-Based Detectors, Anchor Boxes, YOLO, and SSD all lean on the ideas here). If you want the full deep dive, with exact formulas and a real architecture explained layer by layer, see the Deep Learning section's [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}).
+This part is a short, simple primer. Just enough to understand the object detectors later in this series (Region-Based Detectors, Anchor Boxes, YOLO, and SSD all lean on the ideas here). If you want the full deep dive, with exact formulas and a real architecture explained layer by layer, see the Deep Learning section's [Part 9: Convolutional Neural Networks]({{ site.baseurl }}/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/).
 
 ## 1. A filter you invent yourself, vs a filter a robot invents
 
@@ -85,6 +85,6 @@ This is why, in the rest of this series, you'll keep running into a phrase like 
 - A stack of convolution and pooling layers, with no final decision on top, is called a **backbone**, a reusable notebook of visual patterns.
 - Detectors almost always start from a backbone **pretrained** on a huge, general dataset like ImageNet, rather than starting from nothing.
 
-For the full mathematical depth behind everything above, exact output-size and parameter-count formulas, how learning actually flows backward through a filter, and a complete layer-by-layer walkthrough of a real architecture (VGG16), see [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}) in the Deep Learning section.
+For the full mathematical depth behind everything above, exact output-size and parameter-count formulas, how learning actually flows backward through a filter, and a complete layer-by-layer walkthrough of a real architecture (VGG16), see [Part 9: Convolutional Neural Networks]({{ site.baseurl }}/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/) in the Deep Learning section.
 
 **Next:** [Part 4: Object Detection Basics]({{ site.baseurl }}/topics/computer-vision-object-detection-basics/)
