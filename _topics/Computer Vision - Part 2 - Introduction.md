@@ -101,14 +101,17 @@ For a detailed look at pixels, colour models, and basic image arithmetic, see [P
 
 Most real-world vision systems follow the same broad steps:
 
-```text
-1. Capture     → camera, scanner, video file, medical device
-2. Preprocess  → resize, crop, rotate, denoise, normalise
-3. Augment     → random flips, colour changes (training only)
-4. Model       → extract features and make a prediction
-5. Postprocess → convert raw outputs to human-readable results
-6. Act         → display, alert, store, or control another system
-```
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'14px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph LR
+    A["Capture<br/>camera, scanner,<br/>video, medical device"] --> B["Preprocess<br/>resize, crop, rotate,<br/>denoise, normalise"]
+    B --> C["Augment<br/>flips, colour changes<br/>(training only)"]
+    C --> D["Model<br/>extract features,<br/>make a prediction"]
+    D --> E["Postprocess<br/>raw outputs →<br/>human-readable results"]
+    E --> F["Act<br/>display, alert, store,<br/>or control a system"]
+    classDef step fill:#dbeafe,stroke:#1d4ed8,stroke-width:1.5px,color:#111
+    class A,B,C,D,E,F step
+</div>
 
 **Preprocessing** makes sure every input has the same size and range so the model sees consistent data. **Augmentation** artificially creates more training examples by slightly changing existing images. **Postprocessing** turns model outputs, such as tensors, into bounding boxes, masks, or labels.
 

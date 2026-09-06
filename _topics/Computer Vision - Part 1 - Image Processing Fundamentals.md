@@ -270,6 +270,8 @@ This particular kernel finds edges. When the centre is very different from its n
 
 ### Sliding across the image
 
+<img src="{{ site.baseurl }}/assets/img/convolution-kernel-sliding.svg" alt="A worked example of convolution sliding a small kernel across an input image one position at a time, showing the multiply-and-sum calculation at each position and the resulting output value written into a new image." width="100%" />
+
 We place the kernel over every pixel, compute the sum, and write the result into a new image. Pixels at the border are special because the kernel would hang over the edge. There are two common fixes:
 
 1. **Ignore the border.** The output image becomes slightly smaller.

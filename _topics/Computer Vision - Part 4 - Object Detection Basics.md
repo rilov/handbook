@@ -64,16 +64,7 @@ h  = y2 - y
 
 ### Corner coordinates are useful for drawing
 
-```text
-(x1, y1)
-     ┌───────────┐
-     │           │
-     │   object  │  height = y2 - y1
-     │           │
-     └───────────┘
-              (x2, y2)
-        width = x2 - x1
-```
+<img src="{{ site.baseurl }}/assets/img/bounding-box-coordinates.svg" alt="A bounding box drawn on an image, with its top-left corner labelled (x1, y1) and bottom-right corner labelled (x2, y2). Width equals x2 minus x1, and height equals y2 minus y1." width="70%" />
 
 Coordinates are usually measured in pixels, with `(0, 0)` at the top-left of the image and `y` increasing downward.
 
@@ -96,17 +87,16 @@ This is common in robotics and industrial inspection when you know one item is i
 
 A modern detector follows a small number of clear steps:
 
-```text
-Image
-  ↓
-Backbone CNN  →  feature maps (compressed understanding of the image)
-  ↓
-Detection head  →  raw box coordinates and class scores
-  ↓
-Postprocessing  →  keep only the best boxes (NMS)
-  ↓
-Final predictions
-```
+<div class="mermaid">
+%%{init: {'theme':'neutral', 'themeVariables': {'fontSize':'15px', 'fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+graph TD
+    A["Image"] --> B["Backbone CNN<br/>→ feature maps"]
+    B --> C["Detection head<br/>→ raw box coordinates and class scores"]
+    C --> D["Postprocessing<br/>→ keep only the best boxes (NMS)"]
+    D --> E["Final predictions"]
+    classDef step fill:#dbeafe,stroke:#1d4ed8,stroke-width:1.5px,color:#111
+    class A,B,C,D,E step
+</div>
 
 ### Backbone
 
@@ -173,6 +163,8 @@ Box B (ground truth): `(30, 30, 80, 80)` → width 50, height 50, area 2500.
 The boxes overlap from `(30, 30)` to `(60, 60)`, so the overlap is `30 × 30 = 900`.
 
 The union is `2500 + 2500 - 900 = 4100`.
+
+<img src="{{ site.baseurl }}/assets/img/iou-worked-example.svg" alt="Two overlapping bounding boxes, the predicted box A and the ground truth box B, with their intersection region shaded orange. The calculation shows area of A is 2500, area of B is 2500, the overlap is 900, the union is 4100, giving an IoU of approximately 0.22." width="100%" />
 
 ```text
 IoU = 900 / 4100 ≈ 0.22

@@ -54,6 +54,8 @@ A typical set of anchors might be:
 
 These anchors are placed at every location on the feature map, so the network can focus on saying:
 
+<img src="{{ site.baseurl }}/assets/img/anchor-boxes-grid.svg" alt="Left panel: five differently-shaped anchor boxes, small square, medium square, large square, tall, and wide, all centred on the same point. Right panel: that same set of anchor shapes repeated at every cell of a feature map grid, producing thousands of anchors across the whole image." width="100%" />
+
 - Is there an object near this anchor?
 - If yes, how should the anchor be shifted or resized?
 - What class is the object?

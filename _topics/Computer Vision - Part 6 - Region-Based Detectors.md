@@ -40,6 +40,8 @@ The number of possible rectangles is enormous. For a normal photo there can be m
 
 Region-based detectors solve this by **proposing a small number of promising regions first**, then classifying only those regions.
 
+<img src="{{ site.baseurl }}/assets/img/rcnn-family-speed-comparison.svg" alt="Three pipelines compared on the same photo: R-CNN runs a CNN separately about 2000 times per image, very slow. Fast R-CNN runs the CNN once for a shared feature map but still waits about 2 seconds per image for Selective Search to propose regions. Faster R-CNN replaces Selective Search with a Region Proposal Network built into the same shared network, so proposing regions costs only about 10 milliseconds." width="100%" />
+
 ---
 
 ## 2. R-CNN (2014)
@@ -147,6 +149,8 @@ The RPN and the detection head share the same feature map, so the expensive CNN 
 ## 5. Region Proposal Network (RPN)
 
 The RPN slides a small network over the shared feature map. At every location it evaluates **anchor boxes** of different sizes and shapes.
+
+<img src="{{ site.baseurl }}/assets/img/rpn-anchors-explained.svg" alt="A small network slides over the shared convolutional feature map. At each position it proposes k anchor boxes of different scales and aspect ratios, and for each anchor outputs an objectness score and a box regression adjustment." width="100%" />
 
 ### Anchors
 

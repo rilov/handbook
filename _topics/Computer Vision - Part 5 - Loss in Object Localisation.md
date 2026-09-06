@@ -144,6 +144,8 @@ If two boxes do **not overlap at all**, the gradient of IoU with respect to the 
 
 **GIoU** solves the zero-overlap problem by comparing the area of the smallest enclosing rectangle with the union.
 
+<img src="{{ site.baseurl }}/assets/img/giou-diou-enclosing-box.svg" alt="Two non-overlapping boxes A and B inside their smallest enclosing box C. The empty space between A and B inside C is shaded yellow, the part GIoU penalises. A dashed red line between the two box centres shows the centre distance that DIoU and CIoU additionally penalise." width="100%" />
+
 ```text
             A ∪ B
 C = smallest box that contains both A and B

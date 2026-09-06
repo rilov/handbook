@@ -54,6 +54,8 @@ YOLO reframed detection as a single **regression problem**. Instead of proposing
 3. During inference, combine confidence and class probability to get the final score for each box.
 ```
 
+<img src="{{ site.baseurl }}/assets/img/yolo-grid-prediction.svg" alt="An image divided into a 7 by 7 grid. The cell containing the centre of an object is highlighted, and that cell is responsible for predicting a bounding box that can extend well beyond the cell's own borders. Each cell outputs x, y, w, h, a confidence score, and class probabilities, giving an overall output tensor shape of S by S by (B times 5 plus C)." width="100%" />
+
 For every grid cell, the output tensor looks like:
 
 ```text
