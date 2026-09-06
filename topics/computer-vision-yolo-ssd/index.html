@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Computer Vision - Part 6: One-Stage Detectors — YOLO and SSD</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/computer-vision">Computer Vision</a> &mdash;
+    </nav>
+    <h2>Computer Vision - Part 6: One-Stage Detectors — YOLO and SSD</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/computer-vision">Computer Vision</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="computer-vision--part-6-one-stage-detectors--yolo-and-ssd">Computer Vision — Part 6: One-Stage Detectors — YOLO and SSD</h1>
+
+<p>Two-stage detectors such as Faster R-CNN are accurate, but they are too slow for many real-time tasks. <strong>One-stage detectors</strong> predict boxes and classes in a single forward pass. They trade a small amount of accuracy for a large speed gain.</p>
+
+<p>This part explains the two most influential one-stage families: <strong>YOLO (You Only Look Once)</strong> and <strong>SSD (Single Shot MultiBox Detector)</strong>.</p>
+
+<hr />
+
+<h2 id="1-one-stage-vs-two-stage-detectors">1. One-stage vs two-stage detectors</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Two-stage (Faster R-CNN)</th>
+      <th>One-stage (YOLO/SSD)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Run CNN once → feature map</td>
+      <td>Run CNN once → feature maps</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Region Proposal Network proposes boxes</td>
+      <td>Predict boxes directly from feature maps</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Crop regions, classify and refine</td>
+      <td>Classify and refine in one pass</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Because the second stage is removed, one-stage detectors can run at 30, 60, or even hundreds of frames per second.</p>
+
+<p>The disadvantage is that one-stage detectors may struggle more with small or densely packed objects. They also balance more tasks at once in a single loss.</p>
+
+<hr />
+
+<h2 id="2-yolo--you-only-look-once">2. YOLO — You Only Look Once</h2>
+
+<p>YOLO reframed detection as a single <strong>regression problem</strong>. Instead of proposing regions and classifying them, YOLO divides the image into a grid and, in one shot, predicts boxes for every grid cell.</p>
+
+<h3 id="yolov1-idea">YOLOv1 idea</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Divide the image into an S × S grid (e.g. 7 × 7).
+2. Each grid cell predicts:
+   - B bounding boxes (default B = 2)
+   - a confidence score for each box
+   - a class probability distribution
+3. During inference, combine confidence and class probability to get the final score for each box.
+</code></pre></div></div>
+
+<p>For every grid cell, the output tensor looks like:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[ x, y, w, h, confidence, c1, c2, ..., cC ]
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">(x, y)</code> is the centre of the box relative to the grid cell.</li>
+  <li><code class="language-plaintext highlighter-rouge">(w, h)</code> is the width and height relative to the whole image.</li>
+  <li><code class="language-plaintext highlighter-rouge">confidence</code> is <code class="language-plaintext highlighter-rouge">Pr(object) × IoU</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">c1...cC</code> are class probabilities.</li>
+</ul>
+
+<p>The full prediction is a 3-D tensor:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>shape = (S, S, B * 5 + C)
+</code></pre></div></div>
+
+<p>For <code class="language-plaintext highlighter-rouge">S = 7</code>, <code class="language-plaintext highlighter-rouge">B = 2</code>, and <code class="language-plaintext highlighter-rouge">C = 20</code>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>shape = (7, 7, 30)
+</code></pre></div></div>
+
+<p>That is the entire output of the network for one image.</p>
+
+<h3 id="loss-in-yolov1">Loss in YOLOv1</h3>
+
+<p>The YOLOv1 loss has several parts:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = λ_coord * L_coord    (error in box centres and sizes)
+  + λ_noobj * L_conf_noobj  (confidence for empty cells)
+  + L_conf_obj              (confidence for cells with objects)
+  + L_cls                   (classification error)
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">λ_coord</code> is usually <code class="language-plaintext highlighter-rouge">5</code> to make the network pay more attention to getting boxes right. <code class="language-plaintext highlighter-rouge">λ_noobj</code> is usually <code class="language-plaintext highlighter-rouge">0.5</code> because most cells do not contain an object.</p>
+
+<h3 id="how-yolo-works-step-by-step">How YOLO works step by step</h3>
+
+<ol>
+  <li><strong>Image → CNN backbone</strong>: The image passes through a CNN to produce a feature map.</li>
+  <li><strong>Feature map → grid predictions</strong>: A few convolutional layers turn the feature map into an <code class="language-plaintext highlighter-rouge">S × S × (B * 5 + C)</code> tensor.</li>
+  <li><strong>Decode boxes</strong>: For each cell, turn <code class="language-plaintext highlighter-rouge">(x, y, w, h)</code> into real image coordinates.</li>
+  <li><strong>Compute scores</strong>: Multiply <code class="language-plaintext highlighter-rouge">confidence</code> by each class probability to get <code class="language-plaintext highlighter-rouge">confidence × class_prob</code> for every box and class.</li>
+  <li><strong>Threshold</strong>: Keep boxes whose score is above a threshold, such as <code class="language-plaintext highlighter-rouge">0.5</code>.</li>
+  <li><strong>Non-Maximum Suppression</strong>: Remove overlapping duplicates.</li>
+</ol>
+
+<hr />
+
+<h2 id="3-decoding-a-yolo-prediction">3. Decoding a YOLO prediction</h2>
+
+<p>Suppose a grid cell predicts:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x = 0.6, y = 0.4, w = 0.5, h = 0.3, confidence = 0.8
+dog = 0.7, cat = 0.2, bicycle = 0.1
+</code></pre></div></div>
+
+<p>If the cell is at column <code class="language-plaintext highlighter-rouge">i = 2</code> and row <code class="language-plaintext highlighter-rouge">j = 3</code> in a <code class="language-plaintext highlighter-rouge">7 × 7</code> grid on a <code class="language-plaintext highlighter-rouge">448 × 448</code> image:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cell_width  = 448 / 7 = 64
+cell_height = 448 / 7 = 64
+
+cell_top_left_x = i * cell_width  = 2 * 64 = 128
+cell_top_left_y = j * cell_height = 3 * 64 = 192
+
+box_centre_x = cell_top_left_x + x * cell_width  = 128 + 0.6 * 64 = 166.4
+box_centre_y = cell_top_left_y + y * cell_height = 192 + 0.4 * 64 = 217.6
+
+box_width  = w * image_width  = 0.5 * 448 = 224
+box_height = h * image_height = 0.3 * 448 = 134.4
+</code></pre></div></div>
+
+<p>The final box, in corner format, is:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>x1 = 166.4 - 224 / 2 = 54.4
+y1 = 217.6 - 134.4 / 2 = 150.4
+x2 = 166.4 + 224 / 2 = 278.4
+y2 = 217.6 + 134.4 / 2 = 284.8
+</code></pre></div></div>
+
+<p>The score for class “dog” for this box is:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score = confidence × P(dog) = 0.8 × 0.7 = 0.56
+</code></pre></div></div>
+
+<p>That score is compared against the threshold to decide whether to keep the box.</p>
+
+<hr />
+
+<h2 id="4-yolo-output-analysis">4. YOLO output analysis</h2>
+
+<p>A YOLO model produces a large tensor. The post-processing steps convert that tensor into clean boxes, labels, and confidence scores.</p>
+
+<h3 id="step-1-confidence-and-class-scores">Step 1: confidence and class scores</h3>
+
+<p>For each predicted box, the network gives:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">confidence</code> — how sure it is that an object exists here</li>
+  <li><code class="language-plaintext highlighter-rouge">class logits</code> — raw scores for each class</li>
+</ul>
+
+<p>During inference, the class logits are usually converted to probabilities with <strong>softmax</strong> or <strong>sigmoid</strong> depending on the YOLO version.</p>
+
+<p>For YOLOv3 and later, classes are predicted independently with sigmoid, so the same box can belong to multiple classes if desired.</p>
+
+<h3 id="step-2-score-thresholding">Step 2: score thresholding</h3>
+
+<p>Most predictions are garbage. A threshold, typically <code class="language-plaintext highlighter-rouge">0.25</code> to <code class="language-plaintext highlighter-rouge">0.5</code>, removes boxes with low confidence.</p>
+
+<h3 id="step-3-non-maximum-suppression-nms">Step 3: Non-Maximum Suppression (NMS)</h3>
+
+<p>One real object often triggers several grid cells and anchors. NMS keeps the highest-scoring box and removes boxes that overlap it too much.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Sort all boxes by score.
+2. Take the box with the highest score as the current box.
+3. Remove all boxes whose IoU with the current box is above a threshold (e.g. 0.45).
+4. Repeat with the next highest-scoring box until no boxes remain.
+</code></pre></div></div>
+
+<p>NMS is what turns thousands of raw predictions into a small number of clean detections.</p>
+
+<hr />
+
+<h2 id="5-ssd--single-shot-multibox-detector">5. SSD — Single Shot MultiBox Detector</h2>
+
+<p>SSD has the same one-stage philosophy as YOLO, but it uses feature maps at <strong>multiple scales</strong> instead of one grid.</p>
+
+<h3 id="multi-scale-feature-maps">Multi-scale feature maps</h3>
+
+<p>A CNN creates several feature maps as it processes an image. Earlier layers are large and contain fine details, which help detect <strong>small objects</strong>. Later layers are small and contain high-level patterns, which help detect <strong>large objects</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Layer 1  →  large feature map  →  small anchors  →  detect small objects
+Layer 2  →  medium feature map →  medium anchors
+Layer 3  →  small feature map   →  large anchors  →  detect large objects
+</code></pre></div></div>
+
+<p>SSD places anchors on many layers, then predicts class and offsets for every anchor.</p>
+
+<h3 id="default-boxes">Default boxes</h3>
+
+<p>SSD calls its anchor boxes <strong>default boxes</strong>. They are chosen from several aspect ratios and scales per layer.</p>
+
+<p>For each default box, the network predicts:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">c</code> class scores, including one for background</li>
+  <li><code class="language-plaintext highlighter-rouge">4</code> box offsets (delta values)</li>
+</ul>
+
+<h3 id="matching-strategy">Matching strategy</h3>
+
+<p>SSD matches each ground-truth box to the default box with the highest IoU. It also matches every default box whose IoU with any ground truth is above <code class="language-plaintext highlighter-rouge">0.5</code>. This means one object can be matched to multiple default boxes, giving the network more positive examples.</p>
+
+<h3 id="hard-negative-mining">Hard negative mining</h3>
+
+<p>Because most default boxes are background, positives are rare. SSD uses <strong>hard negative mining</strong>: it selects the background boxes with the highest loss, rather than using all of them. This keeps the training set balanced and focused on the most confusing negatives.</p>
+
+<hr />
+
+<h2 id="6-yolo-vs-ssd">6. YOLO vs SSD</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>YOLO</th>
+      <th>SSD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Grid/anchors</strong></td>
+      <td>Single grid in v1; multiple scales and anchors from v2 onward</td>
+      <td>Multiple feature-map scales with default boxes</td>
+    </tr>
+    <tr>
+      <td><strong>Speed</strong></td>
+      <td>Very fast, especially newer versions</td>
+      <td>Fast, slightly slower than modern YOLO</td>
+    </tr>
+    <tr>
+      <td><strong>Small objects</strong></td>
+      <td>Struggled in early versions; improved in YOLOv3+</td>
+      <td>Generally better because of multi-scale features</td>
+    </tr>
+    <tr>
+      <td><strong>Loss emphasis</strong></td>
+      <td>Strong weight on coordinate loss</td>
+      <td>Balanced classification and localisation loss</td>
+    </tr>
+    <tr>
+      <td><strong>Post-processing</strong></td>
+      <td>NMS on grid cells</td>
+      <td>NMS on all default boxes</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Both models are <strong>fully convolutional</strong>, so they can be run on images of different sizes.</p>
+
+<hr />
+
+<h2 id="7-code-simulate-a-yolo-style-output-and-decode-it">7. Code: simulate a YOLO-style output and decode it</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="k">def</span> <span class="nf">decode_yolo_cell</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">image_size</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    pred = [x, y, w, h, confidence, ...class scores...]
+    Returns box in corner format [x1, y1, x2, y2] and score for class 0.
+    </span><span class="sh">"""</span>
+    <span class="n">cell_w</span> <span class="o">=</span> <span class="n">image_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">S</span>
+    <span class="n">cell_h</span> <span class="o">=</span> <span class="n">image_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">S</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">pred</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">pred</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">pred</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">pred</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">confidence</span> <span class="o">=</span> <span class="n">pred</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+    <span class="n">class_scores</span> <span class="o">=</span> <span class="n">pred</span><span class="p">[</span><span class="mi">5</span><span class="p">:]</span>
+
+    <span class="n">cx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">cell_w</span> <span class="o">+</span> <span class="n">x</span> <span class="o">*</span> <span class="n">cell_w</span>
+    <span class="n">cy</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">cell_h</span> <span class="o">+</span> <span class="n">y</span> <span class="o">*</span> <span class="n">cell_h</span>
+
+    <span class="n">box_w</span> <span class="o">=</span> <span class="n">w</span> <span class="o">*</span> <span class="n">image_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">box_h</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">image_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">-</span> <span class="n">box_w</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="n">cy</span> <span class="o">-</span> <span class="n">box_h</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">box_w</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">y2</span> <span class="o">=</span> <span class="n">cy</span> <span class="o">+</span> <span class="n">box_h</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="n">best_class</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">class_scores</span><span class="p">)</span>
+    <span class="n">best_score</span> <span class="o">=</span> <span class="n">class_scores</span><span class="p">[</span><span class="n">best_class</span><span class="p">]</span>
+    <span class="n">final_score</span> <span class="o">=</span> <span class="n">confidence</span> <span class="o">*</span> <span class="n">best_score</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">],</span> <span class="n">final_score</span><span class="p">,</span> <span class="n">best_class</span>
+
+<span class="n">S</span> <span class="o">=</span> <span class="mi">7</span>
+<span class="n">image_size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">448</span><span class="p">,</span> <span class="mi">448</span><span class="p">)</span>
+
+<span class="c1"># Random prediction for cell (2, 3)
+</span><span class="n">pred</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+<span class="n">box</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">cls</span> <span class="o">=</span> <span class="nf">decode_yolo_cell</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">image_size</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Decoded box: </span><span class="si">{</span><span class="n">box</span><span class="si">}</span><span class="s">, class </span><span class="si">{</span><span class="n">cls</span><span class="si">}</span><span class="s">, score </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="8-summary">8. Summary</h2>
+
+<ul>
+  <li><strong>One-stage detectors</strong> perform classification and localisation in a single network pass. They are fast and suitable for real-time applications.</li>
+  <li><strong>YOLO</strong> divides the image into a grid and predicts boxes, confidence, and class probabilities directly from the grid cells.</li>
+  <li>A YOLO prediction is decoded by converting cell-relative <code class="language-plaintext highlighter-rouge">(x, y, w, h)</code> into image coordinates and multiplying confidence by class probability.</li>
+  <li><strong>NMS</strong> removes duplicate boxes for the same object.</li>
+  <li><strong>SSD</strong> uses anchors on multiple feature-map scales, which improves detection of small objects.</li>
+  <li>SSD uses <strong>hard negative mining</strong> to balance the huge number of background boxes.</li>
+  <li>YOLO and SSD are both fully convolutional and have influenced nearly all modern real-time detectors.</li>
+</ul>
+
+<p><strong>Next:</strong> <a href="/handbook/topics/computer-vision-yolo11-demo/">Part 7: YOLO Evolution and YOLO11 Demo</a></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">computer-vision</span>, <span class="tag">object-detection</span>, <span class="tag">yolo</span>, <span class="tag">ssd</span>, <span class="tag">one-stage-detectors</span>, <span class="tag">single-shot-detectors</span>, <span class="tag">non-maximum-suppression</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

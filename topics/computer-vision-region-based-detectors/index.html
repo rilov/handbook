@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Computer Vision - Part 4: Region-Based Object Detectors</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/computer-vision">Computer Vision</a> &mdash;
+    </nav>
+    <h2>Computer Vision - Part 4: Region-Based Object Detectors</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/computer-vision">Computer Vision</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="computer-vision--part-4-region-based-object-detectors">Computer Vision — Part 4: Region-Based Object Detectors</h1>
+
+<p>One way to find objects is to ask: “What regions of the image might contain something interesting?” If we can answer that question first, we only need to run an expensive classifier on a small number of candidate regions. Detectors that follow this idea are called <strong>region-based detectors</strong>.</p>
+
+<p>This part explains the R-CNN family from the first version to Faster R-CNN and shows why they dominated object detection for several years.</p>
+
+<hr />
+
+<h2 id="1-the-core-problem">1. The core problem</h2>
+
+<p>A photo has millions of pixels. Objects can appear anywhere and at any size.</p>
+
+<p>The naive solution would be:</p>
+
+<ol>
+  <li>Cut every possible rectangle out of the image.</li>
+  <li>Run a classifier on every rectangle.</li>
+  <li>Keep the rectangles that are confidently a known object.</li>
+</ol>
+
+<p>The number of possible rectangles is enormous. For a normal photo there can be millions. Running a CNN millions of times is far too slow.</p>
+
+<p>Region-based detectors solve this by <strong>proposing a small number of promising regions first</strong>, then classifying only those regions.</p>
+
+<hr />
+
+<h2 id="2-r-cnn-2014">2. R-CNN (2014)</h2>
+
+<p>R-CNN stands for <strong>Regions with CNN features</strong>. It was the first successful deep-learning approach to object detection.</p>
+
+<h3 id="pipeline">Pipeline</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Input image
+2. Run Selective Search to find about 2,000 candidate regions
+3. Crop and warp each region to a fixed size (e.g. 227 × 227)
+4. Run a CNN on each cropped region to extract features
+5. Run an SVM classifier on the features to get the class
+6. Run a linear regression to refine the box
+</code></pre></div></div>
+
+<h3 id="why-it-was-important">Why it was important</h3>
+
+<p>Before R-CNN, object detection relied on hand-designed features. R-CNN showed that features learned by a CNN, pretrained on ImageNet, could dramatically improve accuracy.</p>
+
+<h3 id="limitations">Limitations</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Limitation</th>
+      <th>Why it hurts</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Slow training</strong></td>
+      <td>Thousands of crops had to be stored on disk.</td>
+    </tr>
+    <tr>
+      <td><strong>Slow inference</strong></td>
+      <td>The CNN runs ~2,000 times per image.</td>
+    </tr>
+    <tr>
+      <td><strong>Not end-to-end</strong></td>
+      <td>The CNN, SVM, and bounding-box regressor were trained separately.</td>
+    </tr>
+    <tr>
+      <td><strong>Fixed-size warping</strong></td>
+      <td>Objects were distorted to fit the CNN input.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>R-CNN was accurate, but it was too slow for real-time use.</p>
+
+<hr />
+
+<h2 id="3-fast-r-cnn-2015">3. Fast R-CNN (2015)</h2>
+
+<p>Fast R-CNN fixed the biggest speed problem of R-CNN: it ran the CNN once instead of thousands of times.</p>
+
+<h3 id="the-key-insight">The key insight</h3>
+
+<p>A CNN produces a <strong>feature map</strong> — a smaller, dense representation of the whole image. Cropping a region from the original image and running it through the CNN gives a very similar result to cropping the same region directly from the feature map.</p>
+
+<p>So Fast R-CNN does:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Run the whole image through a CNN once → feature map
+2. Use Selective Search to get ~2,000 region proposals
+3. For each proposal, crop the matching patch from the feature map
+4. Run a small classifier and box regressor on each patch
+</code></pre></div></div>
+
+<h3 id="roi-pooling">RoI pooling</h3>
+
+<p>Feature maps are smaller than the original image. A proposal rectangle must be mapped to the feature-map coordinates. <strong>RoI pooling</strong> (Region of Interest pooling) crops the matching patch and resizes it to a fixed size so the next layers always receive the same shape.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original image:        800 × 600
+CNN stride:            16
+Feature map:           50 × 37.5  → rounded to 50 × 38
+A proposal (160, 120, 320, 240) maps to (10, 7, 20, 15) in the feature map
+RoI pool it to a fixed 7 × 7 patch
+</code></pre></div></div>
+
+<h3 id="benefits-over-r-cnn">Benefits over R-CNN</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>R-CNN</th>
+      <th>Fast R-CNN</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CNN runs ~2,000 times</td>
+      <td>CNN runs 1 time</td>
+    </tr>
+    <tr>
+      <td>Multi-stage training</td>
+      <td>Joint end-to-end training</td>
+    </tr>
+    <tr>
+      <td>Features stored on disk</td>
+      <td>Everything stays in memory</td>
+    </tr>
+    <tr>
+      <td>Much slower</td>
+      <td>Significantly faster</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="remaining-bottleneck">Remaining bottleneck</h3>
+
+<p>Selective Search still takes about 2 seconds per image and cannot run on a GPU. It became the new slowest part of the pipeline.</p>
+
+<hr />
+
+<h2 id="4-faster-r-cnn-2015">4. Faster R-CNN (2015)</h2>
+
+<p>Faster R-CNN removed Selective Search entirely. It asked the network itself to propose regions.</p>
+
+<h3 id="the-big-idea">The big idea</h3>
+
+<blockquote>
+  <p>If the CNN already looks at the whole image to build a feature map, why not also use that feature map to predict which rectangles are worth checking?</p>
+</blockquote>
+
+<p>The new module that does this is called the <strong>Region Proposal Network (RPN)</strong>.</p>
+
+<h3 id="faster-r-cnn-pipeline">Faster R-CNN pipeline</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image → shared CNN backbone → shared feature map
+                                  ↓
+                    ┌──────────────┴──────────────┐
+                    ↓                             ↓
+            Region Proposal Network (RPN)    detection head
+                    ↓                             ↓
+            candidate boxes                  class + refined boxes
+</code></pre></div></div>
+
+<p>The RPN and the detection head share the same feature map, so the expensive CNN computation only happens once.</p>
+
+<hr />
+
+<h2 id="5-region-proposal-network-rpn">5. Region Proposal Network (RPN)</h2>
+
+<p>The RPN slides a small network over the shared feature map. At every location it evaluates <strong>anchor boxes</strong> of different sizes and shapes.</p>
+
+<h3 id="anchors">Anchors</h3>
+
+<p>At each feature-map cell, the RPN tries <strong>9 anchors</strong> by default:</p>
+
+<ul>
+  <li>3 sizes: small, medium, large</li>
+  <li>3 aspect ratios: 1:1, 1:2, 2:1</li>
+</ul>
+
+<p><code class="language-plaintext highlighter-rouge">3 sizes × 3 ratios = 9 anchors</code></p>
+
+<p>For each anchor, the RPN outputs:</p>
+
+<ol>
+  <li><strong>Objectness score</strong> — is there probably an object here?</li>
+  <li><strong>Box regression</strong> — how should this anchor be shifted or resized to fit the real object?</li>
+</ol>
+
+<p>The RPN does <strong>not</strong> say what the object is. It only says “object vs. not object” and where the box should be.</p>
+
+<h3 id="non-maximum-suppression-in-the-rpn">Non-Maximum Suppression in the RPN</h3>
+
+<p>The RPN can produce tens of thousands of candidate boxes. Most overlap heavily. <strong>Non-Maximum Suppression (NMS)</strong> keeps only the best box from each cluster.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Sort all boxes by objectness score
+2. Pick the highest-scoring box
+3. Remove boxes that overlap it too much (IoU &gt; threshold, usually 0.7)
+4. Repeat until no boxes remain
+</code></pre></div></div>
+
+<p>After NMS, around 300 candidate boxes remain and are passed to the detection head.</p>
+
+<hr />
+
+<h2 id="6-two-stage-training">6. Two-stage training</h2>
+
+<p>Faster R-CNN has four loss terms that are trained jointly:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = L_rpn_cls + L_rpn_reg + L_cls + L_reg
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Loss</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>L_rpn_cls</strong></td>
+      <td>RPN objectness: is this anchor an object or background?</td>
+    </tr>
+    <tr>
+      <td><strong>L_rpn_reg</strong></td>
+      <td>RPN box refinement for positive anchors</td>
+    </tr>
+    <tr>
+      <td><strong>L_cls</strong></td>
+      <td>Final classifier: what class is the object?</td>
+    </tr>
+    <tr>
+      <td><strong>L_reg</strong></td>
+      <td>Final box refinement for detected objects</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In practice, training is done in alternating steps or with approximate joint training, but modern implementations train everything end-to-end.</p>
+
+<hr />
+
+<h2 id="7-fully-convolutional-networks-and-detection">7. Fully convolutional networks and detection</h2>
+
+<p>Modern detection networks are usually <strong>fully convolutional</strong>: every layer is a convolution. There are no fully-connected layers at the end.</p>
+
+<p>Why this matters:</p>
+
+<ul>
+  <li>A fully-connected layer requires a fixed input size. A fully convolutional network accepts any input size.</li>
+  <li>Feature maps keep spatial information, which is exactly what detection needs.</li>
+  <li>Faster R-CNN is fully convolutional up to the RoI pooling layer.</li>
+</ul>
+
+<p>The RPN is itself fully convolutional: a small 3 × 3 convolution slides over the feature map, and two 1 × 1 convolution heads produce objectness and box regression outputs.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Shared feature map (H × W × C)
+    ↓ 3 × 3 conv
+Intermediate features
+    ↓ 1 × 1 conv  → objectness scores  (H × W × 2k)
+    ↓ 1 × 1 conv  → box regressions    (H × W × 4k)
+</code></pre></div></div>
+
+<p>Here <code class="language-plaintext highlighter-rouge">k</code> is the number of anchors per cell, usually 9.</p>
+
+<hr />
+
+<h2 id="8-limitations-of-region-based-methods">8. Limitations of region-based methods</h2>
+
+<p>Faster R-CNN is accurate, but it still has drawbacks:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Limitation</th>
+      <th>Explanation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Two-stage pipeline</strong></td>
+      <td>Propose regions first, then classify. This adds latency.</td>
+    </tr>
+    <tr>
+      <td><strong>Slow for real-time</strong></td>
+      <td>Typical speed is 5-17 frames per second on a GPU.</td>
+    </tr>
+    <tr>
+      <td><strong>Anchor design</strong></td>
+      <td>Anchor sizes and ratios must be tuned for the dataset.</td>
+    </tr>
+    <tr>
+      <td><strong>Small objects</strong></td>
+      <td>Tiny objects may be missed because they occupy few feature-map cells.</td>
+    </tr>
+    <tr>
+      <td><strong>RoI pooling loses precision</strong></td>
+      <td>Quantising box coordinates to the feature grid loses sub-pixel accuracy.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>RoIAlign, introduced in Mask R-CNN, fixed the quantisation problem by using bilinear interpolation instead of rounding. This is especially important for instance segmentation.</p>
+
+<hr />
+
+<h2 id="9-run-faster-r-cnn-in-pytorch">9. Run Faster R-CNN in PyTorch</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torchvision</span>
+<span class="kn">from</span> <span class="n">torchvision.models.detection</span> <span class="kn">import</span> <span class="n">fasterrcnn_resnet50_fpn</span>
+<span class="kn">from</span> <span class="n">torchvision.transforms</span> <span class="kn">import</span> <span class="n">functional</span> <span class="k">as</span> <span class="n">F</span>
+<span class="kn">from</span> <span class="n">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+<span class="c1"># Load a pretrained model
+</span><span class="n">model</span> <span class="o">=</span> <span class="nf">fasterrcnn_resnet50_fpn</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+
+<span class="c1"># Load an image
+</span><span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="p">.</span><span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">street.jpg</span><span class="sh">"</span><span class="p">).</span><span class="nf">convert</span><span class="p">(</span><span class="sh">"</span><span class="s">RGB</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">image_tensor</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">to_tensor</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="c1"># Run inference
+</span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">predictions</span> <span class="o">=</span> <span class="nf">model</span><span class="p">([</span><span class="n">image_tensor</span><span class="p">])</span>
+
+<span class="c1"># predictions[0] is a dictionary with boxes, labels, scores
+</span><span class="n">boxes</span>   <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="sh">"</span><span class="s">boxes</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">labels</span>  <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="sh">"</span><span class="s">labels</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">scores</span>  <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="sh">"</span><span class="s">scores</span><span class="sh">"</span><span class="p">]</span>
+
+<span class="c1"># Show results above a confidence threshold
+</span><span class="k">for</span> <span class="n">box</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">boxes</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">scores</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Label </span><span class="si">{</span><span class="n">label</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">box</span><span class="p">.</span><span class="nf">tolist</span><span class="p">()</span><span class="si">}</span><span class="s">  score=</span><span class="si">{</span><span class="n">score</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The model returns COCO class indices, so <code class="language-plaintext highlighter-rouge">label</code> values map to classes such as person, car, dog, etc.</p>
+
+<hr />
+
+<h2 id="10-summary">10. Summary</h2>
+
+<ul>
+  <li>Region-based detectors first propose a small set of candidate regions, then classify them.</li>
+  <li><strong>R-CNN</strong> used Selective Search and ran a CNN thousands of times. Accurate but slow.</li>
+  <li><strong>Fast R-CNN</strong> ran the CNN once and used RoI pooling. Still relied on slow Selective Search.</li>
+  <li><strong>Faster R-CNN</strong> replaced Selective Search with the <strong>Region Proposal Network (RPN)</strong>, making proposals nearly free.</li>
+  <li>The RPN uses <strong>anchor boxes</strong> and produces objectness scores and box regressions.</li>
+  <li>Region-based detectors are accurate but slower than one-stage detectors.</li>
+  <li>Fully convolutional designs and shared feature maps are the key to efficient detection.</li>
+</ul>
+
+<p><strong>Next:</strong> <a href="/handbook/topics/computer-vision-anchor-boxes/">Part 5: Anchor Boxes</a></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">computer-vision</span>, <span class="tag">object-detection</span>, <span class="tag">region-based-detectors</span>, <span class="tag">rcnn</span>, <span class="tag">fast-rcnn</span>, <span class="tag">faster-rcnn</span>, <span class="tag">rpn</span>, <span class="tag">fcn</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

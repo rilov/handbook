@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Computer Vision - Part 3: Loss in Object Localisation</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/computer-vision">Computer Vision</a> &mdash;
+    </nav>
+    <h2>Computer Vision - Part 3: Loss in Object Localisation</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/computer-vision">Computer Vision</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="computer-vision--part-3-loss-in-object-localisation">Computer Vision — Part 3: Loss in Object Localisation</h1>
+
+<p>Object detection has two jobs: classify the object and place a box around it. The loss function tells the model how wrong it is and which way to improve.</p>
+
+<p>This part focuses on the <strong>localisation loss</strong>: the part of the total loss that measures how well the predicted bounding box matches the ground-truth box.</p>
+
+<hr />
+
+<h2 id="1-what-is-a-localisation-loss">1. What is a localisation loss?</h2>
+
+<p>A localisation loss takes two boxes and returns one number:</p>
+
+<ul>
+  <li><strong>0</strong> means the predicted box is exactly on top of the real box.</li>
+  <li>A <strong>large number</strong> means the box is far away, the wrong size, or the wrong shape.</li>
+</ul>
+
+<p>The model tries to make this number as small as possible during training.</p>
+
+<p>The total loss for an object detector usually combines several pieces:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>total loss = classification loss + localisation loss (+ confidence loss)
+</code></pre></div></div>
+
+<p>This part is about the <strong>localisation</strong> piece.</p>
+
+<hr />
+
+<h2 id="2-l2-loss-mean-squared-error">2. L2 loss (Mean Squared Error)</h2>
+
+<p>The simplest idea is to treat the four box numbers as plain coordinates and use the squared difference:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L2 = (x_true - x_pred)² + (y_true - y_pred)² + (w_true - w_pred)² + (h_true - h_pred)²
+</code></pre></div></div>
+
+<p>MSE is easy to compute but has problems for bounding boxes.</p>
+
+<h3 id="drawbacks">Drawbacks</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Why it matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Not scale-invariant</strong></td>
+      <td>A 10-pixel error on a small box is the same as a 10-pixel error on a large box.</td>
+    </tr>
+    <tr>
+      <td><strong>Ignores geometry</strong></td>
+      <td>It treats <code class="language-plaintext highlighter-rouge">(x, y, w, h)</code> as four unrelated numbers.</td>
+    </tr>
+    <tr>
+      <td><strong>Very sensitive to outliers</strong></td>
+      <td>A single large mistake is punished heavily because of the square.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>For these reasons, MSE alone is rarely used for boxes in modern detectors.</p>
+
+<hr />
+
+<h2 id="3-l1-loss-mean-absolute-error">3. L1 loss (Mean Absolute Error)</h2>
+
+<p>L1 uses the absolute difference instead of the square:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L1 = |x_true - x_pred| + |y_true - y_pred| + |w_true - w_pred| + |h_true - h_pred|
+</code></pre></div></div>
+
+<p>It is less sensitive to outliers than L2, but it is still not scale-invariant and still ignores geometry.</p>
+
+<hr />
+
+<h2 id="4-smooth-l1-loss-huber-loss">4. Smooth L1 loss (Huber loss)</h2>
+
+<p><strong>Smooth L1</strong> is the most common baseline for bounding-box regression. It behaves like L2 for small errors and L1 for large errors.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>           ⎧ 0.5 * (error)²            if |error| &lt; δ
+SmoothL1 = ⎨
+           ⎩ δ * |error| - 0.5 * δ²   if |error| ≥ δ
+</code></pre></div></div>
+
+<p>When <code class="language-plaintext highlighter-rouge">δ = 1.0</code>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>           ⎧ 0.5 * e²    if |e| &lt; 1
+SmoothL1 = ⎨
+           ⎩ |e| - 0.5   if |e| ≥ 1
+</code></pre></div></div>
+
+<h3 id="why-it-is-useful">Why it is useful</h3>
+
+<ul>
+  <li>Small errors get the gentle quadratic treatment, which helps training stability.</li>
+  <li>Large errors get the linear treatment, so a single bad prediction does not explode the gradient.</li>
+  <li>It is the default choice for Faster R-CNN and many two-stage detectors.</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+
+<span class="n">smooth_l1</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">SmoothL1Loss</span><span class="p">()</span>
+
+<span class="n">pred</span>   <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">50.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">150.0</span><span class="p">,</span> <span class="mf">150.0</span><span class="p">])</span>
+ <span class="n">target</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mf">55.0</span><span class="p">,</span> <span class="mf">35.0</span><span class="p">,</span> <span class="mf">145.0</span><span class="p">,</span> <span class="mf">155.0</span><span class="p">])</span>
+
+<span class="n">loss</span> <span class="o">=</span> <span class="nf">smooth_l1</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">())</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-iou-loss">5. IoU loss</h2>
+
+<p>A loss based directly on <strong>Intersection over Union</strong> is much more natural for bounding boxes because it uses the geometry of the boxes.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L_IoU = 1 - IoU(pred, true)
+</code></pre></div></div>
+
+<p>If the boxes perfectly overlap, IoU is <code class="language-plaintext highlighter-rouge">1</code> and the loss is <code class="language-plaintext highlighter-rouge">0</code>. If they do not overlap, IoU is <code class="language-plaintext highlighter-rouge">0</code> and the loss is <code class="language-plaintext highlighter-rouge">1</code>.</p>
+
+<h3 id="advantages">Advantages</h3>
+
+<ul>
+  <li>Scale-invariant: a 10-pixel error matters more for a small box.</li>
+  <li>Coupled: it measures the full box, not four separate numbers.</li>
+  <li>Matches the evaluation metric (mAP uses IoU).</li>
+</ul>
+
+<h3 id="limitation">Limitation</h3>
+
+<p>If two boxes do <strong>not overlap at all</strong>, the gradient of IoU with respect to the box parameters becomes <code class="language-plaintext highlighter-rouge">0</code>. The model gets no signal telling it which direction to move. Modern losses fix this.</p>
+
+<hr />
+
+<h2 id="6-generalised-iou-giou">6. Generalised IoU (GIoU)</h2>
+
+<p><strong>GIoU</strong> solves the zero-overlap problem by comparing the area of the smallest enclosing rectangle with the union.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            A ∪ B
+C = smallest box that contains both A and B
+
+            |A ∩ B|     |C - (A ∪ B)|
+GIoU = ───────────── - ───────────────
+          |A ∪ B|            |C|
+
+L_GIoU = 1 - GIoU
+</code></pre></div></div>
+
+<p>In plain English:</p>
+
+<ul>
+  <li>If the boxes overlap, the first term is IoU.</li>
+  <li>If they do not overlap, the second term pushes the boxes closer by measuring how much empty space is between them inside the enclosing box <code class="language-plaintext highlighter-rouge">C</code>.</li>
+</ul>
+
+<p>Even with no overlap, GIoU still gives a gradient and tells the model which way to move.</p>
+
+<hr />
+
+<h2 id="7-distance-iou-diou">7. Distance IoU (DIoU)</h2>
+
+<p>GIoU can be slow to converge because it only cares about area, not the distance between box centres. <strong>DIoU</strong> adds a centre-distance penalty.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>              ρ²(b, b_gt)
+DIoU = IoU - ─────────────
+                 c²
+
+L_DIou = 1 - DIoU
+</code></pre></div></div>
+
+<p>Where:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">b</code> and <code class="language-plaintext highlighter-rouge">b_gt</code> are the centre points of the predicted and ground-truth boxes.</li>
+  <li><code class="language-plaintext highlighter-rouge">ρ</code> is the Euclidean distance between the two centre points.</li>
+  <li><code class="language-plaintext highlighter-rouge">c</code> is the diagonal length of the smallest enclosing box.</li>
+</ul>
+
+<p>DIoU penalises the distance between centres directly, so boxes that are the right size but far apart still get a strong training signal.</p>
+
+<hr />
+
+<h2 id="8-complete-iou-ciou">8. Complete IoU (CIoU)</h2>
+
+<p><strong>CIoU</strong> adds three terms: overlap, centre distance, and aspect ratio.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                     ρ²(b, b_gt)        α * v
+CIoU = IoU - ───────────────────── - ─────────
+                    c²                 (1 - IoU) + α
+
+L_CIoU = 1 - CIoU
+</code></pre></div></div>
+
+<p>Where <code class="language-plaintext highlighter-rouge">v</code> measures how different the aspect ratios are:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>              4   ⎛        w_gt          h_gt      ⎞²
+v = ─────────── * ⎜ arctan ──── - arctan ──── ⎟
+       π²          ⎝        h_gt          h       ⎠
+</code></pre></div></div>
+
+<p>And <code class="language-plaintext highlighter-rouge">α</code> is a positive weighting term.</p>
+
+<p>CIoU is the most complete of the IoU-based losses and is often used in YOLOv4 and later.</p>
+
+<hr />
+
+<h2 id="9-comparison-table">9. Comparison table</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Loss</th>
+      <th>What it optimises</th>
+      <th>Best for</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>L2 / MSE</strong></td>
+      <td>Point distance</td>
+      <td>Not recommended for boxes</td>
+    </tr>
+    <tr>
+      <td><strong>L1</strong></td>
+      <td>Point distance</td>
+      <td>Not recommended for boxes</td>
+    </tr>
+    <tr>
+      <td><strong>Smooth L1</strong></td>
+      <td>Stable regression of box parameters</td>
+      <td>Two-stage detectors (Faster R-CNN)</td>
+    </tr>
+    <tr>
+      <td><strong>IoU</strong></td>
+      <td>Direct overlap</td>
+      <td>When IoU is non-zero</td>
+    </tr>
+    <tr>
+      <td><strong>GIoU</strong></td>
+      <td>Overlap + enclosure</td>
+      <td>Handling no-overlap cases</td>
+    </tr>
+    <tr>
+      <td><strong>DIoU</strong></td>
+      <td>Overlap + centre distance</td>
+      <td>Faster convergence</td>
+    </tr>
+    <tr>
+      <td><strong>CIoU</strong></td>
+      <td>Overlap + centre distance + aspect ratio</td>
+      <td>Best overall bounding-box loss (YOLOv4+)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-multi-task-loss-example">10. Multi-task loss example</h2>
+
+<p>A detector like Faster R-CNN has a combined loss:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = L_cls   +   λ * L_loc
+</code></pre></div></div>
+
+<p>Where:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">L_cls</code> is the classification loss (often cross-entropy).</li>
+  <li><code class="language-plaintext highlighter-rouge">L_loc</code> is the box regression loss (Smooth L1 for Faster R-CNN).</li>
+  <li><code class="language-plaintext highlighter-rouge">λ</code> is a weight that balances the two terms, often set to <code class="language-plaintext highlighter-rouge">1</code> or tuned.</li>
+</ul>
+
+<p>For one-stage detectors such as YOLO:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L = λ_coord * L_loc + λ_obj * L_conf + L_cls
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">L_coord</code> is localisation loss (CIoU in newer YOLO versions, MSE in YOLOv1-v3).</li>
+  <li><code class="language-plaintext highlighter-rouge">L_conf</code> is objectness confidence loss.</li>
+  <li><code class="language-plaintext highlighter-rouge">L_cls</code> is classification loss.</li>
+</ul>
+
+<hr />
+
+<h2 id="11-code-compute-iou-based-losses">11. Code: compute IoU-based losses</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+
+<span class="k">def</span> <span class="nf">box_iou</span><span class="p">(</span><span class="n">box_a</span><span class="p">,</span> <span class="n">box_b</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    box = [x1, y1, x2, y2]
+    Returns IoU for one pair of boxes.
+    </span><span class="sh">"""</span>
+    <span class="n">inter_x1</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">box_a</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">box_b</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">inter_y1</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">box_a</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">box_b</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">inter_x2</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">box_a</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">box_b</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">inter_y2</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">box_a</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">box_b</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+
+    <span class="n">inter_area</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">inter_x2</span> <span class="o">-</span> <span class="n">inter_x1</span><span class="p">)</span> <span class="o">*</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">inter_y2</span> <span class="o">-</span> <span class="n">inter_y1</span><span class="p">)</span>
+
+    <span class="n">area_a</span> <span class="o">=</span> <span class="p">(</span><span class="n">box_a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">box_a</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">box_a</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">box_a</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">area_b</span> <span class="o">=</span> <span class="p">(</span><span class="n">box_b</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">box_b</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">box_b</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">box_b</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">union_area</span> <span class="o">=</span> <span class="n">area_a</span> <span class="o">+</span> <span class="n">area_b</span> <span class="o">-</span> <span class="n">inter_area</span>
+    <span class="k">return</span> <span class="n">inter_area</span> <span class="o">/</span> <span class="n">union_area</span> <span class="k">if</span> <span class="n">union_area</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+<span class="k">def</span> <span class="nf">giou_loss</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">true</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    pred, true: [x1, y1, x2, y2]
+    </span><span class="sh">"""</span>
+    <span class="n">inter_x1</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">inter_y1</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">inter_x2</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">inter_y2</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+
+    <span class="n">inter_area</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">inter_x2</span> <span class="o">-</span> <span class="n">inter_x1</span><span class="p">)</span> <span class="o">*</span> <span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">inter_y2</span> <span class="o">-</span> <span class="n">inter_y1</span><span class="p">)</span>
+
+    <span class="n">area_p</span> <span class="o">=</span> <span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">area_t</span> <span class="o">=</span> <span class="p">(</span><span class="n">true</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">true</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">true</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">true</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">union_area</span> <span class="o">=</span> <span class="n">area_p</span> <span class="o">+</span> <span class="n">area_t</span> <span class="o">-</span> <span class="n">inter_area</span>
+    <span class="n">iou</span> <span class="o">=</span> <span class="n">inter_area</span> <span class="o">/</span> <span class="n">union_area</span> <span class="k">if</span> <span class="n">union_area</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Smallest enclosing box
+</span>    <span class="n">c_x1</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">c_y1</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">c_x2</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">c_y2</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">pred</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">true</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+    <span class="n">c_area</span> <span class="o">=</span> <span class="p">(</span><span class="n">c_x2</span> <span class="o">-</span> <span class="n">c_x1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">c_y2</span> <span class="o">-</span> <span class="n">c_y1</span><span class="p">)</span>
+
+    <span class="n">giou</span> <span class="o">=</span> <span class="n">iou</span> <span class="o">-</span> <span class="p">(</span><span class="n">c_area</span> <span class="o">-</span> <span class="n">union_area</span><span class="p">)</span> <span class="o">/</span> <span class="n">c_area</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">giou</span>
+
+<span class="n">pred</span>  <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">60</span><span class="p">]</span>
+<span class="n">true</span>  <span class="o">=</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mi">80</span><span class="p">]</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">IoU loss:</span><span class="sh">"</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="nf">box_iou</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">true</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">GIoU loss:</span><span class="sh">"</span><span class="p">,</span> <span class="nf">giou_loss</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">true</span><span class="p">))</span>
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="12-summary">12. Summary</h2>
+
+<ul>
+  <li>A <strong>localisation loss</strong> measures the difference between a predicted box and the ground-truth box.</li>
+  <li><strong>Smooth L1</strong> is robust and commonly used in two-stage detectors.</li>
+  <li><strong>IoU loss</strong> is geometric and matches the evaluation metric, but has no gradient when boxes do not overlap.</li>
+  <li><strong>GIoU</strong> handles the no-overlap case by using the enclosing box.</li>
+  <li><strong>DIoU</strong> adds a centre-distance term for faster convergence.</li>
+  <li><strong>CIoU</strong> also penalises aspect-ratio differences and is used in modern YOLO.</li>
+  <li>Real detectors combine localisation, classification, and confidence losses with weights.</li>
+</ul>
+
+<p><strong>Next:</strong> <a href="/handbook/topics/computer-vision-region-based-detectors/">Part 4: Region-Based Object Detectors</a></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">computer-vision</span>, <span class="tag">object-detection</span>, <span class="tag">loss-functions</span>, <span class="tag">iou</span>, <span class="tag">smooth-l1</span>, <span class="tag">giou</span>, <span class="tag">diou</span>, <span class="tag">ciou</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
