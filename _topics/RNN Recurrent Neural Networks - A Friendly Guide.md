@@ -1,7 +1,7 @@
 ---
-title: "Part 14: RNN - Recurrent Neural Networks - A Friendly Guide"
+title: "Part 15: RNN - Recurrent Neural Networks - A Friendly Guide"
 category: Deep Learning
-order: 14
+order: 15
 tags:
   - deep-learning
   - rnn
@@ -14,7 +14,7 @@ tags:
 summary: A beginner-friendly introduction to Recurrent Neural Networks. Learn why normal neural networks cannot handle sequences, how an RNN reads data step by step, and how to build one in PyTorch using simple everyday examples.
 ---
 
-# Part 14: RNN — Recurrent Neural Networks — A Friendly Guide
+# Part 15: RNN — Recurrent Neural Networks — A Friendly Guide
 
 Before we start, let us think about something simple.
 

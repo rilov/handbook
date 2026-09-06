@@ -1,7 +1,7 @@
 ---
-title: "Part 17: Activation and Output Functions — A Friendly Guide"
+title: "Part 18: Activation and Output Functions — A Friendly Guide"
 category: Deep Learning
-order: 17
+order: 18
 tags:
   - deep-learning
   - activation-functions
@@ -13,7 +13,7 @@ tags:
 summary: "A beginner-friendly guide to the most common activation and output functions in deep learning, with formulas, use cases, and a decision table."
 ---
 
-# Part 17: Activation and Output Functions — A Friendly Guide
+# Part 18: Activation and Output Functions — A Friendly Guide
 
 A neural network is just a long chain of calculations. At the end of each part, we need a function that turns numbers into useful outputs.
 

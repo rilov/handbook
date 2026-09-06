@@ -1,7 +1,7 @@
 ---
-title: "Part 16: RNN Use Cases - Time Series, Sequence Classification and Labelling - A Friendly Guide"
+title: "Part 17: RNN Use Cases - Time Series, Sequence Classification and Labelling - A Friendly Guide"
 category: Deep Learning
-order: 16
+order: 17
 tags:
   - deep-learning
   - rnn
@@ -15,7 +15,7 @@ tags:
 summary: A beginner-friendly guide to practical RNN applications. Learn how to use LSTM for time series forecasting, sequence classification, and sequence labelling with clear step-by-step Python examples.
 ---
 
-# Part 16: RNN Use Cases — Time Series, Sequence Classification, and Labelling — A Friendly Guide
+# Part 17: RNN Use Cases — Time Series, Sequence Classification, and Labelling — A Friendly Guide
 
 In Parts 14 and 15, you learned how RNNs and LSTMs work.
 

@@ -1,7 +1,7 @@
 ---
-title: "Part 15: LSTM and GRU - Solving the Memory Problem - A Friendly Guide"
+title: "Part 16: LSTM and GRU - Solving the Memory Problem - A Friendly Guide"
 category: Deep Learning
-order: 15
+order: 16
 tags:
   - deep-learning
   - lstm
@@ -15,7 +15,7 @@ tags:
 summary: A beginner-friendly guide to LSTM and GRU — the improved versions of RNN that can remember things from much longer ago. Learn why basic RNNs forget, how LSTM gates solve this, and how to use both in PyTorch.
 ---
 
-# Part 15: LSTM and GRU — Solving the Memory Problem — A Friendly Guide
+# Part 16: LSTM and GRU — Solving the Memory Problem — A Friendly Guide
 
 In Part 14, we learned how an RNN reads data step by step and keeps a hidden state — a small memory of what it has seen.
 
