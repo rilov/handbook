@@ -301,18 +301,9 @@ Suppose you want to classify emails as spam or not spam. Every email gets conver
 - `x1` = word_freq_technology → e.g. if "technology" makes up 2% of the words in an email, `x1 = 2.0`
 - `x2` = word_freq_money → e.g. if "money" makes up 5% of the words in an email, `x2 = 5.0`
 
-The intuition is that legitimate technology-related emails tend to use words like "technology" a lot but rarely mention "money," while spam emails (offers, prizes, financial scams) tend to do the opposite — mention "money" heavily and "technology" rarely. So plotting every email as a point `(x1, x2)`, you'd expect spam and non-spam emails to cluster in different regions:
+The intuition is that legitimate technology-related emails tend to use words like "technology" a lot but rarely mention "money," while spam emails (offers, prizes, financial scams) tend to do the opposite — mention "money" heavily and "technology" rarely. So plotting every email as a point `(x1, x2)`, you'd expect spam and non-spam emails to cluster in different regions, separated by a single line:
 
-```
-x2 (word_freq_money)
-  │
-  │      ● spam           ← above the line
-  │    ●
-  │  ────────────────       ← the hyperplane (the line itself)
-  │        ■  not spam    ← below the line
-  │      ■
-  └──────────────────────── x1 (word_freq_technology)
-```
+<img src="{{ site.baseurl }}/assets/img/svm-hyperplane-2d.svg" alt="Left panel: a scatter plot of spam and not-spam emails plotted by word frequency, separated by one straight hyperplane line. Right panel: the same data with three different valid separating lines drawn, posing the question of which one is best, answered in Part 2." width="100%" />
 
 A **hyperplane** in 2D is just a line that separates the two classes. You've almost certainly seen the *slope-intercept* form of a line before:
 
@@ -541,16 +532,7 @@ We are not equipped to solve this yet — that requires the **kernel trick**, co
 
 ## 6. Step 5: From "a" hyperplane to "the best" hyperplane
 
-Notice something important: for a dataset that is separable by a straight line, there isn't just *one* possible hyperplane — there are infinitely many:
-
-```
-      ●  ●  ●
-   ╲    ╲     ╲          ← three different valid separating lines
-    ╲    ╲     ╲
-      ■  ■  ■
-```
-
-All three lines above correctly separate the two classes on the training data. So which one should the model choose? This is exactly the question the next topic answers.
+Notice something important: for a dataset that is separable by a straight line, there isn't just *one* possible hyperplane — there are infinitely many, as shown in the right-hand panel of the diagram above. All of them correctly separate the two classes on the training data. So which one should the model choose? This is exactly the question the next topic answers.
 
 ---
 

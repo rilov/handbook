@@ -173,24 +173,9 @@ Where:
 
 ### 📊 What the Sigmoid Looks Like
 
-```
-σ(z)
- 1.0 ┤                              ╭──────────
-     │                          ╱
- 0.9 ┤                       ╱
-     │                     ╱
- 0.7 ┤                  ╱
-     │                ╱
- 0.5 ┤              ●  ← When z=0, σ(z)=0.5
-     │            ╱
- 0.3 ┤         ╱
-     │       ╱
- 0.1 ┤    ╱
-     │ ╱
- 0.0 ┤╱─────────────────────────
-     └─────────────────────────────────→ z
-       -6  -4  -2   0   2   4   6
-```
+<img src="{{ site.baseurl }}/assets/img/sigmoid-curve.svg" alt="Graph of the sigmoid S-curve showing how raw scores map to probabilities between 0 and 1, crossing 0.5 at z=0" width="80%" />
+
+At `z = 0`, the sigmoid outputs exactly `0.5` — the model is completely uncertain. As `z` moves further from 0 in either direction, the curve flattens out toward 0 or 1, meaning the model becomes increasingly confident.
 
 ### 🎯 Key Properties
 
@@ -335,23 +320,8 @@ For 1 feature (tenure in months):
 ```
 
 For 2 features (Tenure + Monthly Charges):
-```
-Monthly Charges ($)
-       │
-   100 ┤   ●●●●  ← All churned
-       │  ● ●●●     (high charges, short tenure)
-    80 ┤  ●●●
-       │   ╲          
-    60 ┤    ╲ Decision
-       │     ╲ Boundary
-    40 ┤      ╲      ○○
-       │       ╲    ○○○
-    20 ┤        ╲  ○○○○  ← All loyal
-       │         ╲○○○     (low charges, long tenure)
-     0 ┤──────────╲──────
-       └─────────────────→ Tenure (months)
-        0    10    20   30
-```
+
+<img src="{{ site.baseurl }}/assets/img/logistic-regression-decision-boundary.svg" alt="A scatter plot of customers by tenure and monthly charges. Churned customers, in red, cluster in the upper-left region with high charges and short tenure. Loyal customers, in green outlined circles, cluster in the lower-right region with low charges and long tenure. A black decision boundary line separates the two regions." width="85%" />
 
 The **line is the boundary** where the model is uncertain (50/50).
 

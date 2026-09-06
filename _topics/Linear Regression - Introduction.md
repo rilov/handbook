@@ -139,13 +139,7 @@ We square the errors for two reasons:
 Cost = Σ(y - ŷ)²
 ```
 
-**Visual:**
-```
-Actual point: ●
-Predicted:     |
-               |  ← Error
-               |
-```
+<img src="{{ site.baseurl }}/assets/img/linear-regression-best-fit-line.svg" alt="A scatter plot of house price versus square footage with a best-fit line drawn through the data. Red dashed vertical lines connect each actual data point down to the line, showing the residual error at that point. The cost function is the sum of the squared length of every residual line." width="90%" />
 
 **The line with the smallest cost is the best line!**
 

@@ -186,16 +186,7 @@ Most time series can be broken into three pieces:
 - **Seasonality:** a repeating pattern at fixed intervals (daily, weekly, yearly).
 - **Residuals / noise:** the leftover random variation after the trend and seasonality are removed.
 
-```
-Sales data:
-
-Actual series = Trend + Seasonality + Residual
-
-         /\                /\                  /\      .
-        /  \    /\        /  \    /\          /  \    /|  random
-_______/    \__/  \______/    \__/  \________/    \__/      wiggle
-    rising trend      repeating winter spike        noise
-```
+<img src="{{ site.baseurl }}/assets/img/time-series-decomposition.svg" alt="An observed time series broken down into three stacked components: an upward trend line, a repeating seasonal wave pattern, and leftover residual noise, which together add back up to the original observed series." width="100%" />
 
 ---
 

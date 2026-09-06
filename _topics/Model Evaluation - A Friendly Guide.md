@@ -210,6 +210,8 @@ print("F1:", f1_score(y_test, predictions, average="macro"))
 
 A **confusion matrix** shows exactly which classes get confused with which. It is the most honest view of a classifier's mistakes.
 
+<img src="{{ site.baseurl }}/assets/img/confusion-matrix-precision-recall.svg" alt="A 2x2 confusion matrix with predicted positive/negative as columns and actual positive/negative as rows: true positive and true negative cells shaded green, false positive and false negative cells shaded red. Precision is shown as true positives divided by the predicted-positive column (true positives plus false positives). Recall is shown as true positives divided by the actual-positive row (true positives plus false negatives)." width="100%" />
+
 ### Which mistakes are more expensive?
 
 The right metric depends on what the model is used for. A high score on the wrong metric can still be a bad model.

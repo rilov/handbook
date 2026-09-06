@@ -57,17 +57,7 @@ PCA asks a simple question: **which direction in your data has the most spread?*
 
 Consider a dataset of emails described by two features: suspicious word count and link count. If you plot them, the data forms a cloud. That cloud has a natural "long axis" — the direction where most of the variation lives.
 
-```
-Links
-  ↑
-5 |        ●  ●
-4 |      ●   ●  ●
-3 |    ●  ●     ●
-2 |  ●  ●
-1 | ●
-  +──────────────→ Suspicious words
-    1  2  3  4  5
-```
+<img src="{{ site.baseurl }}/assets/img/pca-principal-components.svg" alt="Left panel: a scatter plot of emails by suspicious word count and link count, forming a diagonal cloud. Right panel: the same cloud with a red PC1 axis drawn through its long diagonal spread, capturing most of the variance, and a blue PC2 axis perpendicular to it capturing the rest." width="100%" />
 
 The long diagonal axis is the **first principal component (PC1)**. It captures the most variance.
 
