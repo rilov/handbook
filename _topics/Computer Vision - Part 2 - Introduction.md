@@ -134,7 +134,7 @@ Convolutional neural networks (CNNs) learn their own features from data. Instead
 Pixels → edges → textures → shapes → object parts → whole objects → prediction
 ```
 
-This is the foundation of modern computer vision. CNNs are covered in detail in the Deep Learning section under [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}).
+This is the foundation of modern computer vision. The next part of this series, [Part 3: CNNs for Computer Vision]({{ site.baseurl }}/topics/computer-vision-cnn-primer/), covers just enough about how CNNs work to understand the detectors later in this series. For the full depth, formulas, and a real architecture walkthrough, see the Deep Learning section's [Part 9: Convolutional Neural Networks]({% link _topics/Convolutional Neural Networks - A Friendly Guide.md %}).
 
 ---
 
@@ -175,4 +175,4 @@ Computer vision is used in many places you already interact with:
 - Modern computer vision is dominated by **deep learning**, especially CNNs.
 - Vision connects to image processing, NLP, robotics, and generative AI.
 
-**Next:** [Part 3: Object Detection Basics]({{ site.baseurl }}/topics/computer-vision-object-detection-basics/)
+**Next:** [Part 3: CNNs for Computer Vision]({{ site.baseurl }}/topics/computer-vision-cnn-primer/)

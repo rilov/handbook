@@ -1,8 +1,8 @@
 ---
 layout: topic
-title: "Computer Vision - Part 4: Loss in Object Localisation"
+title: "Computer Vision - Part 5: Loss in Object Localisation"
 category: Computer Vision
-order: 4
+order: 5
 permalink: /topics/computer-vision-localisation-loss/
 tags:
   - computer-vision
@@ -18,7 +18,7 @@ tags:
 summary: "A simple guide to loss functions used for bounding-box regression, from L1/L2 and Smooth L1 to IoU, GIoU, DIoU, and CIoU, with formulas and code examples."
 ---
 
-# Computer Vision — Part 4: Loss in Object Localisation
+# Computer Vision — Part 5: Loss in Object Localisation
 
 Object detection has two jobs: classify the object and place a box around it. The loss function tells the model how wrong it is and which way to improve.
 
@@ -321,4 +321,4 @@ print("GIoU loss:", giou_loss(pred, true))
 - **CIoU** also penalises aspect-ratio differences and is used in modern YOLO.
 - Real detectors combine localisation, classification, and confidence losses with weights.
 
-**Next:** [Part 5: Region-Based Object Detectors]({{ site.baseurl }}/topics/computer-vision-region-based-detectors/)
+**Next:** [Part 6: Region-Based Object Detectors]({{ site.baseurl }}/topics/computer-vision-region-based-detectors/)

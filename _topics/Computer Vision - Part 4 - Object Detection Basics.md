@@ -1,8 +1,8 @@
 ---
 layout: topic
-title: "Computer Vision - Part 3: Object Detection Basics"
+title: "Computer Vision - Part 4: Object Detection Basics"
 category: Computer Vision
-order: 3
+order: 4
 permalink: /topics/computer-vision-object-detection-basics/
 tags:
   - computer-vision
@@ -16,7 +16,7 @@ tags:
 summary: "A beginner-friendly guide to object detection and localisation: bounding boxes, coordinate formats, the detection pipeline, IoU, precision, recall, and mAP."
 ---
 
-# Computer Vision — Part 3: Object Detection Basics
+# Computer Vision — Part 4: Object Detection Basics
 
 In the previous part we learned that computer vision lets machines understand images. One of the most important tasks is **object detection**: finding every object in an image, drawing a box around it, and saying what it is.
 
@@ -264,4 +264,4 @@ A two-stage detector is like an editor who first lists story ideas and then writ
 - **mAP** is the standard metric for detector quality.
 - Detectors are either **two-stage** or **one-stage**.
 
-**Next:** [Part 4: Loss in Object Localisation]({{ site.baseurl }}/topics/computer-vision-localisation-loss/)
+**Next:** [Part 5: Loss in Object Localisation]({{ site.baseurl }}/topics/computer-vision-localisation-loss/)

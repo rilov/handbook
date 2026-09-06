@@ -1,8 +1,8 @@
 ---
 layout: topic
-title: "Computer Vision - Part 5: Region-Based Object Detectors"
+title: "Computer Vision - Part 6: Region-Based Object Detectors"
 category: Computer Vision
-order: 5
+order: 6
 permalink: /topics/computer-vision-region-based-detectors/
 tags:
   - computer-vision
@@ -18,7 +18,7 @@ tags:
 summary: "A beginner-friendly guide to region-based object detectors: R-CNN, Fast R-CNN, Faster R-CNN, the Region Proposal Network, fully convolutional design, and the limits of two-stage detection."
 ---
 
-# Computer Vision — Part 5: Region-Based Object Detectors
+# Computer Vision — Part 6: Region-Based Object Detectors
 
 One way to find objects is to ask: "What regions of the image might contain something interesting?" If we can answer that question first, we only need to run an expensive classifier on a small number of candidate regions. Detectors that follow this idea are called **region-based detectors**.
 
@@ -284,4 +284,4 @@ The model returns COCO class indices, so `label` values map to classes such as p
 - Region-based detectors are accurate but slower than one-stage detectors.
 - Fully convolutional designs and shared feature maps are the key to efficient detection.
 
-**Next:** [Part 6: Anchor Boxes]({{ site.baseurl }}/topics/computer-vision-anchor-boxes/)
+**Next:** [Part 7: Anchor Boxes]({{ site.baseurl }}/topics/computer-vision-anchor-boxes/)

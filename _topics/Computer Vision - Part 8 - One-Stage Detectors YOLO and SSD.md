@@ -1,8 +1,8 @@
 ---
 layout: topic
-title: "Computer Vision - Part 7: One-Stage Detectors — YOLO and SSD"
+title: "Computer Vision - Part 8: One-Stage Detectors — YOLO and SSD"
 category: Computer Vision
-order: 7
+order: 8
 permalink: /topics/computer-vision-yolo-ssd/
 tags:
   - computer-vision
@@ -17,7 +17,7 @@ tags:
 summary: "A beginner-friendly guide to one-stage object detectors, with detailed explanations of YOLO and SSD: how they work, how to decode their outputs, and how non-maximum suppression produces the final boxes."
 ---
 
-# Computer Vision — Part 7: One-Stage Detectors — YOLO and SSD
+# Computer Vision — Part 8: One-Stage Detectors — YOLO and SSD
 
 Two-stage detectors such as Faster R-CNN are accurate, but they are too slow for many real-time tasks. **One-stage detectors** predict boxes and classes in a single forward pass. They trade a small amount of accuracy for a large speed gain.
 
@@ -288,4 +288,4 @@ print(f"Decoded box: {box}, class {cls}, score {score:.2f}")
 - SSD uses **hard negative mining** to balance the huge number of background boxes.
 - YOLO and SSD are both fully convolutional and have influenced nearly all modern real-time detectors.
 
-**Next:** [Part 8: YOLO Evolution and YOLO11 Demo]({{ site.baseurl }}/topics/computer-vision-yolo11-demo/)
+**Next:** [Part 9: YOLO Evolution and YOLO11 Demo]({{ site.baseurl }}/topics/computer-vision-yolo11-demo/)
