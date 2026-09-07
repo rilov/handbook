@@ -234,7 +234,14 @@ y2 = 217.6 + 134.4 / 2 = 284.8
 
 <h3 id="architecture-convolutional-predictors">Architecture: convolutional predictors</h3>
 
-<p>The SSD head is more than one small convolution. After a base network such as VGG-16, the network appends <strong>six auxiliary convolutional layers</strong>. These layers shrink the spatial size of the feature maps while increasing their depth. Because each later layer has a larger receptive field and learns more abstract patterns, the deeper layers are better at detecting <strong>larger objects</strong>; the earlier, higher-resolution layers keep fine detail and are better for <strong>smaller objects</strong>. This layered structure is the key to multi-scale detection.</p>
+<p>The SSD head is more than one small filter. After a base network such as VGG-16, it adds <strong>six extra convolutional layers</strong>. These layers make the feature maps smaller and deeper — like looking at a thumbnail that is packed with more labels. Because of this:</p>
+
+<ul>
+  <li>The <strong>early, high-resolution layers</strong> keep small details, so they are better for finding <strong>small objects</strong>.</li>
+  <li>The <strong>later, smaller layers</strong> see a bigger area at once, so they are better for finding <strong>large objects</strong>.</li>
+</ul>
+
+<p>In short, SSD uses these layers like a set of magnifying glasses at different zoom levels.</p>
 
 <h3 id="multi-scale-feature-maps">Multi-scale feature maps</h3>
 
@@ -249,13 +256,11 @@ Layer 3  →  small feature map   →  large anchors  →  detect large objects
 
 <h3 id="default-boxes">Default boxes</h3>
 
-<p>SSD calls its anchor boxes <strong>default boxes</strong>. They are chosen from several aspect ratios and scales per layer. Each location on a feature map is associated with <strong>4 or 6 default boundary boxes</strong>, and the network makes <strong>one prediction per default box</strong>.</p>
-
-<p>For each default box, the network predicts:</p>
+<p>SSD calls its anchor boxes <strong>default boxes</strong>. These are pre-made box shapes of different sizes and aspect ratios. At every location on a feature map, SSD tries <strong>4 or 6</strong> of these boxes. Each default box is a starting guess, and the network asks two questions:</p>
 
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">c</code> class scores, including one for background</li>
-  <li><code class="language-plaintext highlighter-rouge">4</code> box offsets (delta values)</li>
+  <li>Is this box on an object, or on background? (class score)</li>
+  <li>If it is on an object, how should I shift or resize the box to fit? (box offsets)</li>
 </ul>
 
 <h3 id="matching-strategy">Matching strategy</h3>
@@ -267,8 +272,8 @@ Layer 3  →  small feature map   →  large anchors  →  detect large objects
 <p>SSD’s total loss has two parts:</p>
 
 <ul>
-  <li><strong>Localization loss</strong> is computed on the positive matches and penalises errors in the predicted box offsets.</li>
-  <li><strong>Confidence loss</strong> is the classification cost. For every <strong>positive</strong> match, the loss penalises the confidence score of the true class. For every <strong>negative</strong> match, the loss penalises the confidence score for the background / “no object” class (class 0). The final loss is the sum of the localization and confidence losses over the selected positives and the hard-mined negatives.</li>
+  <li><strong>Localization loss</strong> — for positive matches, this measures how far the predicted box is from the ground-truth box. It tells the network how to shift and resize the box.</li>
+  <li><strong>Confidence loss</strong> — for every positive match, the network is encouraged to be confident about the correct object class. For every negative match, it is encouraged to be confident about the background / “no object” class. The final loss is the sum of these two.</li>
 </ul>
 
 <h3 id="hard-negative-mining">Hard negative mining</h3>
