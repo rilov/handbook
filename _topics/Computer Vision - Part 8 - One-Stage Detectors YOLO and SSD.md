@@ -187,6 +187,10 @@ NMS is what turns thousands of raw predictions into a small number of clean dete
 
 SSD has the same one-stage philosophy as YOLO, but it uses feature maps at **multiple scales** instead of one grid.
 
+### Architecture: convolutional predictors
+
+The SSD head is more than one small convolution. After a base network such as VGG-16, the network appends **six auxiliary convolutional layers**. These layers shrink the spatial size of the feature maps while increasing their depth. Because each later layer has a larger receptive field and learns more abstract patterns, the deeper layers are better at detecting **larger objects**; the earlier, higher-resolution layers keep fine detail and are better for **smaller objects**. This layered structure is the key to multi-scale detection.
+
 ### Multi-scale feature maps
 
 A CNN creates several feature maps as it processes an image. Earlier layers are large and contain fine details, which help detect **small objects**. Later layers are small and contain high-level patterns, which help detect **large objects**.
@@ -201,7 +205,7 @@ SSD places anchors on many layers, then predicts class and offsets for every anc
 
 ### Default boxes
 
-SSD calls its anchor boxes **default boxes**. They are chosen from several aspect ratios and scales per layer.
+SSD calls its anchor boxes **default boxes**. They are chosen from several aspect ratios and scales per layer. Each location on a feature map is associated with **4 or 6 default boundary boxes**, and the network makes **one prediction per default box**.
 
 For each default box, the network predicts:
 
@@ -211,6 +215,13 @@ For each default box, the network predicts:
 ### Matching strategy
 
 SSD matches each ground-truth box to the default box with the highest IoU. It also matches every default box whose IoU with any ground truth is above `0.5`. This means one object can be matched to multiple default boxes, giving the network more positive examples.
+
+### Localization and confidence loss
+
+SSD's total loss has two parts:
+
+- **Localization loss** is computed on the positive matches and penalises errors in the predicted box offsets.
+- **Confidence loss** is the classification cost. For every **positive** match, the loss penalises the confidence score of the true class. For every **negative** match, the loss penalises the confidence score for the background / "no object" class (class 0). The final loss is the sum of the localization and confidence losses over the selected positives and the hard-mined negatives.
 
 ### Hard negative mining
 
