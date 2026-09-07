@@ -189,7 +189,12 @@ SSD has the same one-stage philosophy as YOLO, but it uses feature maps at **mul
 
 ### Architecture: convolutional predictors
 
-The SSD head is more than one small convolution. After a base network such as VGG-16, the network appends **six auxiliary convolutional layers**. These layers shrink the spatial size of the feature maps while increasing their depth. Because each later layer has a larger receptive field and learns more abstract patterns, the deeper layers are better at detecting **larger objects**; the earlier, higher-resolution layers keep fine detail and are better for **smaller objects**. This layered structure is the key to multi-scale detection.
+The SSD head is more than one small filter. After a base network such as VGG-16, it adds **six extra convolutional layers**. These layers make the feature maps smaller and deeper — like looking at a thumbnail that is packed with more labels. Because of this:
+
+- The **early, high-resolution layers** keep small details, so they are better for finding **small objects**.
+- The **later, smaller layers** see a bigger area at once, so they are better for finding **large objects**.
+
+In short, SSD uses these layers like a set of magnifying glasses at different zoom levels.
 
 ### Multi-scale feature maps
 
@@ -205,12 +210,10 @@ SSD places anchors on many layers, then predicts class and offsets for every anc
 
 ### Default boxes
 
-SSD calls its anchor boxes **default boxes**. They are chosen from several aspect ratios and scales per layer. Each location on a feature map is associated with **4 or 6 default boundary boxes**, and the network makes **one prediction per default box**.
+SSD calls its anchor boxes **default boxes**. These are pre-made box shapes of different sizes and aspect ratios. At every location on a feature map, SSD tries **4 or 6** of these boxes. Each default box is a starting guess, and the network asks two questions:
 
-For each default box, the network predicts:
-
-- `c` class scores, including one for background
-- `4` box offsets (delta values)
+- Is this box on an object, or on background? (class score)
+- If it is on an object, how should I shift or resize the box to fit? (box offsets)
 
 ### Matching strategy
 
@@ -220,8 +223,8 @@ SSD matches each ground-truth box to the default box with the highest IoU. It al
 
 SSD's total loss has two parts:
 
-- **Localization loss** is computed on the positive matches and penalises errors in the predicted box offsets.
-- **Confidence loss** is the classification cost. For every **positive** match, the loss penalises the confidence score of the true class. For every **negative** match, the loss penalises the confidence score for the background / "no object" class (class 0). The final loss is the sum of the localization and confidence losses over the selected positives and the hard-mined negatives.
+- **Localization loss** — for positive matches, this measures how far the predicted box is from the ground-truth box. It tells the network how to shift and resize the box.
+- **Confidence loss** — for every positive match, the network is encouraged to be confident about the correct object class. For every negative match, it is encouraged to be confident about the background / "no object" class. The final loss is the sum of these two.
 
 ### Hard negative mining
 
