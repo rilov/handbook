@@ -17,6 +17,14 @@ Learn about LLMs, LangChain, RAG, agents, and building AI-powered applications �
 6. **[Part 6 - Project: Build Your Own AI Agent]({{ site.baseurl }}/topics/langchain-project-agent/)** — A hands-on project putting the previous five parts together.
 7. **[Part 7 - Observability with LangSmith: Debug and Monitor Your AI]({{ site.baseurl }}/topics/langchain-observability/)** — Tracing, debugging, and monitoring LLM applications in production.
 
+**Deep Learning for Generative AI — Context Behind Transformers:**
+
+1. **[Word Embeddings]({{ site.baseurl }}/topics/dl-genai-word-embeddings/)** — How computers turn words into meaningful numbers: one-hot encoding, Word2Vec, cosine similarity, and the embedding layer.
+2. **[Encoder-Decoder Architecture]({{ site.baseurl }}/topics/dl-genai-encoder-decoder/)** — The seq2seq model: how an encoder compresses a sentence into a context vector and a decoder generates the output one word at a time.
+3. **[Attention-Based Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-attention-encoder-decoder/)** — How attention lets the decoder look back at every encoder word instead of relying on a single vector.
+4. **[Math Behind Attention]({{ site.baseurl }}/topics/dl-genai-attention-math/)** — Dot products, scaling, softmax, and the Query-Key-Value framework with worked numerical examples.
+5. **[Drawbacks of Attention-Based Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-attention-drawbacks/)** — Sequential processing, vanishing gradients, and why the Transformer was invented.
+
 **Opinion, case studies, and explainers:**
 
 - **[Saturday Morning Coffee ☕ Thoughts on Agentic AI]({{ site.baseurl }}/topics/agentic-ai-saturday-thoughts/)** — Informal reflections on where agentic AI is heading.
