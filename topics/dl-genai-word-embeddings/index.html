@@ -191,43 +191,112 @@ Training pairs:
 
 <h2 id="5-the-magic-of-word-arithmetic">5. The magic of word arithmetic</h2>
 
-<p>Once you have good embeddings, you can do arithmetic with words:</p>
+<p>Once you have good embeddings, you can do arithmetic with words. The most famous example is:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>king - man + woman ≈ queen
 </code></pre></div></div>
 
-<p>This works because the embedding space captures relationships:</p>
+<p>That looks like magic, but it is really just vector addition and subtraction. Let’s break it down.</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vector("king") - vector("man") ≈ a "royalty" direction
-vector("queen") - vector("woman") ≈ the same "royalty" direction
+<h3 id="why-does-it-work">Why does it work?</h3>
+
+<p>During training, the network learns that certain <strong>directions</strong> in the vector space correspond to certain <strong>concepts</strong>. For example:</p>
+
+<ul>
+  <li>There is a direction that means <strong>“gender”</strong> — moving along it turns “man” into “woman” or “king” into “queen.”</li>
+  <li>There is a direction that means <strong>“royalty”</strong> — moving along it turns “man” into “king” or “woman” into “queen.”</li>
+</ul>
+
+<p>Think of it as a 2D map:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                  royalty →
+                ┌─────────────────────┐
+                │                     │
+     gender ↓   │  man ─────→ king    │
+                │   │           │     │
+                │   ↓           ↓     │
+                │  woman ────→ queen  │
+                │                     │
+                └─────────────────────┘
 </code></pre></div></div>
 
-<p>More examples:</p>
+<p>The arrow from “man” to “king” and the arrow from “woman” to “queen” point in the <strong>same direction</strong> (royalty). The arrow from “man” to “woman” and from “king” to “queen” also point in the same direction (gender).</p>
+
+<h3 id="worked-example-with-simple-numbers">Worked example with simple numbers</h3>
+
+<p>Suppose our embeddings are just 2 numbers — one for “royalty” and one for “gender”:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>man   = [1, 0]     (not royal, male)
+woman = [1, 1]     (not royal, female)
+king  = [5, 0]     (royal, male)
+queen = [5, 1]     (royal, female)
+</code></pre></div></div>
+
+<p>Now do the arithmetic:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>king - man + woman
+= [5, 0] - [1, 0] + [1, 1]
+= [4, 0] + [1, 1]
+= [5, 1]
+= queen  ✓
+</code></pre></div></div>
+
+<p>Step by step, what happened:</p>
+
+<ol>
+  <li><strong>king − man = [4, 0]</strong> — we removed the “man” part from “king,” leaving behind the pure concept of “royalty.”</li>
+  <li><strong>[4, 0] + woman = [5, 1]</strong> — we added that royalty concept to “woman,” giving us a royal woman — “queen.”</li>
+</ol>
+
+<h3 id="what-does-subtract-really-mean-here">What does “subtract” really mean here?</h3>
+
+<p>Subtracting one word vector from another isolates the <strong>difference</strong> between them. That difference is a concept:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>king - man    = the "royalty" concept    [4, 0]
+woman - man   = the "gender" concept     [0, 1]
+Paris - France = the "capital" concept
+walked - walk  = the "past tense" concept
+</code></pre></div></div>
+
+<p>When you add that concept to another word, you apply the same transformation:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>man   + (king - man)     = king     (make it royal)
+walk  + (walked - walk)  = walked   (make it past tense)
+France + (Paris - France) = Paris   (find the capital)
+</code></pre></div></div>
+
+<h3 id="more-examples">More examples</h3>
 
 <table>
   <thead>
     <tr>
-      <th>Operation</th>
+      <th>Question you are asking</th>
+      <th>Arithmetic</th>
       <th>Result</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Paris - France + Italy</td>
+      <td>What is the capital of Italy?</td>
+      <td>Paris − France + Italy</td>
       <td>≈ Rome</td>
     </tr>
     <tr>
-      <td>bigger - big + small</td>
+      <td>What is the opposite of “big” for “small”?</td>
+      <td>bigger − big + small</td>
       <td>≈ smaller</td>
     </tr>
     <tr>
-      <td>walked - walk + swim</td>
+      <td>What is the past tense of “swim”?</td>
+      <td>walked − walk + swim</td>
       <td>≈ swam</td>
     </tr>
   </tbody>
 </table>
 
-<p>This is not hard-coded — the network discovers these patterns from context alone.</p>
+<h3 id="the-key-insight">The key insight</h3>
+
+<p>Nobody programmed these relationships. The network discovered them <strong>on its own</strong> by reading billions of words and learning which words appear in similar contexts. The fact that simple vector arithmetic recovers human-like analogies is what makes word embeddings so powerful.</p>
 
 <hr />
 
