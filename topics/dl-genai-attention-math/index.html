@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 4: Math Behind Attention Mechanism</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 4: Math Behind Attention Mechanism</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-4-math-behind-attention-mechanism">Deep Learning for Generative AI — Part 4: Math Behind Attention Mechanism</h1>
+
+<p>Part 3 showed the intuition: the decoder looks back at all encoder states and focuses on the most relevant ones. This part shows the <strong>math</strong> that makes it work — step by step, with real numbers.</p>
+
+<hr />
+
+<h2 id="1-the-three-players-query-key-value">1. The three players: Query, Key, Value</h2>
+
+<p>Attention can be described with three simple concepts:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Role</th>
+      <th>What it is</th>
+      <th>Analogy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Query (Q)</strong></td>
+      <td>What the decoder is looking for right now</td>
+      <td>A search query you type into Google</td>
+    </tr>
+    <tr>
+      <td><strong>Key (K)</strong></td>
+      <td>A label for each encoder state</td>
+      <td>The title of each web page</td>
+    </tr>
+    <tr>
+      <td><strong>Value (V)</strong></td>
+      <td>The actual content of each encoder state</td>
+      <td>The content of each web page</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The decoder sends a <strong>query</strong>. It compares the query against every <strong>key</strong> to get a relevance score. Then it uses those scores to take a weighted sum of the <strong>values</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Compare Q with every K  →  scores
+2. Softmax(scores)          →  weights (add up to 1)
+3. Weighted sum of V        →  context vector
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="2-where-do-q-k-v-come-from">2. Where do Q, K, V come from?</h2>
+
+<p>In a typical encoder-decoder with attention:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q = decoder hidden state (what am I looking for?)
+K = encoder hidden states (what does each input word represent?)
+V = encoder hidden states (same as K in basic attention)
+</code></pre></div></div>
+
+<p>In the Transformer (which we will see later), Q, K, and V are created by multiplying the input by three different weight matrices.</p>
+
+<hr />
+
+<h2 id="3-dot-product-attention--the-simplest-version">3. Dot-product attention — the simplest version</h2>
+
+<p>The score between a query and a key is their <strong>dot product</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(Q, K_i) = Q · K_i = sum of element-wise products
+</code></pre></div></div>
+
+<h3 id="worked-example">Worked example</h3>
+
+<p>Suppose the decoder state (query) and three encoder states (keys) are 4-dimensional vectors:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q  = [1, 0, 1, 0]
+
+K1 = [1, 1, 0, 0]   (encoder state for "I")
+K2 = [0, 1, 1, 0]   (encoder state for "love")
+K3 = [1, 0, 1, 1]   (encoder state for "cats")
+</code></pre></div></div>
+
+<p>Compute the dot products:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(Q, K1) = 1×1 + 0×1 + 1×0 + 0×0 = 1
+score(Q, K2) = 1×0 + 0×1 + 1×1 + 0×0 = 1
+score(Q, K3) = 1×1 + 0×0 + 1×1 + 0×1 = 2
+</code></pre></div></div>
+
+<p>The query is most similar to K3 (“cats”) because their dot product is highest.</p>
+
+<hr />
+
+<h2 id="4-why-we-scale-the-d-trick">4. Why we scale: the √d trick</h2>
+
+<p>When vectors are long (e.g. 512 dimensions), dot products become very large numbers. Large inputs to softmax push the output toward 0 or 1 — the gradients become tiny and learning slows down.</p>
+
+<p>The fix is simple: <strong>divide by the square root of the dimension</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scaled_score(Q, K_i) = (Q · K_i) / √d
+</code></pre></div></div>
+
+<p>For <code class="language-plaintext highlighter-rouge">d = 4</code>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>√4 = 2
+
+scaled scores = [1/2, 1/2, 2/2] = [0.5, 0.5, 1.0]
+</code></pre></div></div>
+
+<p>This keeps the numbers in a reasonable range for softmax.</p>
+
+<hr />
+
+<h2 id="5-softmax-turning-scores-into-weights">5. Softmax: turning scores into weights</h2>
+
+<p>Softmax converts raw scores into probabilities that add up to 1:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>softmax(z_i) = e^(z_i) / Σ e^(z_j)
+</code></pre></div></div>
+
+<h3 id="worked-example-1">Worked example</h3>
+
+<p>Using our scaled scores <code class="language-plaintext highlighter-rouge">[0.5, 0.5, 1.0]</code>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>e^0.5 = 1.65
+e^0.5 = 1.65
+e^1.0 = 2.72
+
+sum = 1.65 + 1.65 + 2.72 = 6.02
+
+weights:
+  w1 = 1.65 / 6.02 = 0.27
+  w2 = 1.65 / 6.02 = 0.27
+  w3 = 2.72 / 6.02 = 0.45
+</code></pre></div></div>
+
+<p>The decoder pays 45% attention to “cats”, 27% to “I”, and 27% to “love.”</p>
+
+<hr />
+
+<h2 id="6-weighted-sum-the-context-vector">6. Weighted sum: the context vector</h2>
+
+<p>Now use the weights to blend the <strong>values</strong>. In basic attention, the values are the same as the keys:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>V1 = K1 = [1, 1, 0, 0]
+V2 = K2 = [0, 1, 1, 0]
+V3 = K3 = [1, 0, 1, 1]
+
+context = 0.27 × V1 + 0.27 × V2 + 0.45 × V3
+</code></pre></div></div>
+
+<p>Element by element:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>context[0] = 0.27×1 + 0.27×0 + 0.45×1 = 0.72
+context[1] = 0.27×1 + 0.27×1 + 0.45×0 = 0.54
+context[2] = 0.27×0 + 0.27×1 + 0.45×1 = 0.72
+context[3] = 0.27×0 + 0.27×0 + 0.45×1 = 0.45
+
+context = [0.72, 0.54, 0.72, 0.45]
+</code></pre></div></div>
+
+<p>This vector is a blend of all encoder states, leaning toward “cats.”</p>
+
+<hr />
+
+<h2 id="7-the-complete-formula">7. The complete formula</h2>
+
+<p>Putting it all together in one line:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Attention(Q, K, V) = softmax(Q · K^T / √d) · V
+</code></pre></div></div>
+
+<p>Where:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Q · K^T</code> computes all dot products at once (matrix multiplication)</li>
+  <li><code class="language-plaintext highlighter-rouge">/ √d</code> scales them down</li>
+  <li><code class="language-plaintext highlighter-rouge">softmax</code> turns them into weights</li>
+  <li><code class="language-plaintext highlighter-rouge">· V</code> takes the weighted sum</li>
+</ul>
+
+<p>This is the <strong>scaled dot-product attention</strong> formula from the famous “Attention Is All You Need” paper (Vaswani et al., 2017).</p>
+
+<hr />
+
+<h2 id="8-matrix-form-doing-it-all-at-once">8. Matrix form: doing it all at once</h2>
+
+<p>In practice, we process all decoder steps and all encoder states in parallel using matrices:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q shape = (seq_len_decoder, d)
+K shape = (seq_len_encoder, d)
+V shape = (seq_len_encoder, d)
+
+Step 1: Q · K^T  →  (seq_len_decoder, seq_len_encoder)   scores
+Step 2: / √d     →  (seq_len_decoder, seq_len_encoder)   scaled scores
+Step 3: softmax  →  (seq_len_decoder, seq_len_encoder)   weights
+Step 4: · V      →  (seq_len_decoder, d)                 context vectors
+</code></pre></div></div>
+
+<p>Each row of the output is the context vector for one decoder step.</p>
+
+<hr />
+
+<h2 id="9-additive-attention-bahdanau--the-alternative">9. Additive attention (Bahdanau) — the alternative</h2>
+
+<p>Before scaled dot-product, <strong>Bahdanau (2014)</strong> proposed additive attention:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>score(s_t, h_i) = v^T · tanh(W1 · s_t + W2 · h_i)
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">W1</code> and <code class="language-plaintext highlighter-rouge">W2</code> are learned weight matrices</li>
+  <li><code class="language-plaintext highlighter-rouge">v</code> is a learned vector</li>
+  <li><code class="language-plaintext highlighter-rouge">tanh</code> squashes the result</li>
+</ul>
+
+<h3 id="how-is-it-different">How is it different?</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Dot-product</th>
+      <th>Additive</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Score function</td>
+      <td>Simple dot product</td>
+      <td>Small neural network</td>
+    </tr>
+    <tr>
+      <td>Speed</td>
+      <td>Faster (just matrix multiply)</td>
+      <td>Slower (extra layers)</td>
+    </tr>
+    <tr>
+      <td>Flexibility</td>
+      <td>Less flexible</td>
+      <td>More flexible (learned scoring)</td>
+    </tr>
+    <tr>
+      <td>Used in</td>
+      <td>Transformer, modern models</td>
+      <td>Original seq2seq with attention</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In practice, scaled dot-product is used almost everywhere today because it is fast and works well.</p>
+
+<hr />
+
+<h2 id="10-pytorch-scaled-dot-product-attention">10. PyTorch: scaled dot-product attention</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn.functional</span> <span class="k">as</span> <span class="n">F</span>
+<span class="kn">import</span> <span class="n">math</span>
+
+<span class="k">def</span> <span class="nf">scaled_dot_product_attention</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">):</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">Q</span><span class="p">.</span><span class="nf">size</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">scores</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">matmul</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">.</span><span class="nf">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="n">math</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">matmul</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">context</span><span class="p">,</span> <span class="n">weights</span>
+
+<span class="c1"># Example
+</span><span class="n">Q</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]])</span>       <span class="c1"># (1, 4)
+</span><span class="n">K</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                   <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                   <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (3, 4)
+</span><span class="n">V</span> <span class="o">=</span> <span class="n">K</span><span class="p">.</span><span class="nf">clone</span><span class="p">()</span>
+
+<span class="n">context</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="nf">scaled_dot_product_attention</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Weights:</span><span class="sh">"</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>    <span class="c1"># tensor([[0.27, 0.27, 0.45]])
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Context:</span><span class="sh">"</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>    <span class="c1"># tensor([[0.72, 0.54, 0.72, 0.45]])
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="11-summary">11. Summary</h2>
+
+<ul>
+  <li>Attention uses three players: <strong>Query</strong> (what am I looking for?), <strong>Key</strong> (what does each word offer?), <strong>Value</strong> (the actual content).</li>
+  <li>The <strong>dot product</strong> <code class="language-plaintext highlighter-rouge">Q · K</code> measures how similar a query is to each key.</li>
+  <li><strong>Scaling</strong> by <code class="language-plaintext highlighter-rouge">√d</code> prevents large dot products from making softmax too sharp.</li>
+  <li><strong>Softmax</strong> turns raw scores into weights that add up to 1.</li>
+  <li>The <strong>weighted sum</strong> of values produces a context vector tuned to what the decoder needs right now.</li>
+  <li>The complete formula: <strong>Attention(Q, K, V) = softmax(Q · K^T / √d) · V</strong></li>
+  <li><strong>Additive attention</strong> (Bahdanau) uses a small network instead of a dot product — slower but more flexible.</li>
+</ul>
+
+<p><strong>Next:</strong> <a href="/handbook/topics/dl-genai-attention-drawbacks/">Part 5: Drawbacks of Attention-Based Encoder-Decoder Architecture</a></p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">attention</span>, <span class="tag">scaled-dot-product</span>, <span class="tag">softmax</span>, <span class="tag">query-key-value</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
