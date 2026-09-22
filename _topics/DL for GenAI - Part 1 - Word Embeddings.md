@@ -119,28 +119,93 @@ The network has one hidden layer. After training on millions of sentences, the h
 
 ## 5. The magic of word arithmetic
 
-Once you have good embeddings, you can do arithmetic with words:
+Once you have good embeddings, you can do arithmetic with words. The most famous example is:
 
 ```text
 king - man + woman ≈ queen
 ```
 
-This works because the embedding space captures relationships:
+That looks like magic, but it is really just vector addition and subtraction. Let's break it down.
+
+### Why does it work?
+
+During training, the network learns that certain **directions** in the vector space correspond to certain **concepts**. For example:
+
+- There is a direction that means **"gender"** — moving along it turns "man" into "woman" or "king" into "queen."
+- There is a direction that means **"royalty"** — moving along it turns "man" into "king" or "woman" into "queen."
+
+Think of it as a 2D map:
 
 ```text
-vector("king") - vector("man") ≈ a "royalty" direction
-vector("queen") - vector("woman") ≈ the same "royalty" direction
+                  royalty →
+                ┌─────────────────────┐
+                │                     │
+     gender ↓   │  man ─────→ king    │
+                │   │           │     │
+                │   ↓           ↓     │
+                │  woman ────→ queen  │
+                │                     │
+                └─────────────────────┘
 ```
 
-More examples:
+The arrow from "man" to "king" and the arrow from "woman" to "queen" point in the **same direction** (royalty). The arrow from "man" to "woman" and from "king" to "queen" also point in the same direction (gender).
 
-| Operation | Result |
-|-----------|--------|
-| Paris - France + Italy | ≈ Rome |
-| bigger - big + small | ≈ smaller |
-| walked - walk + swim | ≈ swam |
+### Worked example with simple numbers
 
-This is not hard-coded — the network discovers these patterns from context alone.
+Suppose our embeddings are just 2 numbers — one for "royalty" and one for "gender":
+
+```text
+man   = [1, 0]     (not royal, male)
+woman = [1, 1]     (not royal, female)
+king  = [5, 0]     (royal, male)
+queen = [5, 1]     (royal, female)
+```
+
+Now do the arithmetic:
+
+```text
+king - man + woman
+= [5, 0] - [1, 0] + [1, 1]
+= [4, 0] + [1, 1]
+= [5, 1]
+= queen  ✓
+```
+
+Step by step, what happened:
+
+1. **king − man = [4, 0]** — we removed the "man" part from "king," leaving behind the pure concept of "royalty."
+2. **[4, 0] + woman = [5, 1]** — we added that royalty concept to "woman," giving us a royal woman — "queen."
+
+### What does "subtract" really mean here?
+
+Subtracting one word vector from another isolates the **difference** between them. That difference is a concept:
+
+```text
+king - man    = the "royalty" concept    [4, 0]
+woman - man   = the "gender" concept     [0, 1]
+Paris - France = the "capital" concept
+walked - walk  = the "past tense" concept
+```
+
+When you add that concept to another word, you apply the same transformation:
+
+```text
+man   + (king - man)     = king     (make it royal)
+walk  + (walked - walk)  = walked   (make it past tense)
+France + (Paris - France) = Paris   (find the capital)
+```
+
+### More examples
+
+| Question you are asking | Arithmetic | Result |
+|------------------------|------------|--------|
+| What is the capital of Italy? | Paris − France + Italy | ≈ Rome |
+| What is the opposite of "big" for "small"? | bigger − big + small | ≈ smaller |
+| What is the past tense of "swim"? | walked − walk + swim | ≈ swam |
+
+### The key insight
+
+Nobody programmed these relationships. The network discovered them **on its own** by reading billions of words and learning which words appear in similar contexts. The fact that simple vector arithmetic recovers human-like analogies is what makes word embeddings so powerful.
 
 ---
 
