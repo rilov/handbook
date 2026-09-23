@@ -67,17 +67,58 @@ The context vector is the **only connection** between the encoder and the decode
 
 ---
 
-## 3. The encoder
+## 3. First step: every word becomes a vector
 
-The encoder is typically an **RNN** (Recurrent Neural Network), **LSTM**, or **GRU**. It reads the input sentence word by word and updates a hidden state at each step.
+Before the encoder can process anything, each word must be turned into a vector of numbers. This is the **embedding** step we covered in Part 1.
+
+Here is what happens to the sentence "I love cats":
+
+```text
+Step 1 — Tokenise:  split the sentence into words
+  "I love cats"  →  ["I", "love", "cats"]
+
+Step 2 — Look up index:  each word has a position in the vocabulary
+  "I"    → index 5
+  "love" → index 312
+  "cats" → index 87
+
+Step 3 — Look up embedding:  use the index to grab a row from the embedding matrix
+  index 5   → [0.12, -0.45, 0.78, 0.33, ...]   (e.g. 256 numbers)
+  index 312 → [0.91,  0.02, -0.64, 0.17, ...]
+  index 87  → [0.34,  0.88,  0.21, -0.55, ...]
+```
+
+So the sentence is now a **sequence of vectors** — one vector per word:
+
+```text
+"I love cats"
+      ↓
+[ [0.12, -0.45, 0.78, ...],    ← vector for "I"
+  [0.91,  0.02, -0.64, ...],   ← vector for "love"
+  [0.34,  0.88,  0.21, ...] ]  ← vector for "cats"
+```
+
+These embedding vectors are what the encoder actually receives. It never sees the raw words — it only sees numbers.
+
+**Where does the embedding matrix come from?** It can be pre-trained (like Word2Vec or GloVe from Part 1), or it can start with random numbers and be trained along with the rest of the network. Either way, the embedding matrix is updated during training so the vectors become more meaningful over time.
+
+---
+
+## 4. The encoder
+
+Now the encoder processes these word vectors **one at a time, in order**. The encoder is typically an **RNN** (Recurrent Neural Network), **LSTM**, or **GRU**.
+
+At each step, the encoder takes in the current word vector and combines it with what it has learned so far (the previous hidden state) to produce a new hidden state:
 
 ```text
 Input sentence: "I love cats"
 
-Step 1: Read "I"     → hidden state h1
-Step 2: Read "love"  → hidden state h2
-Step 3: Read "cats"  → hidden state h3  ← this is the context vector
+Step 1: Take vector for "I"     + nothing yet     → hidden state h1
+Step 2: Take vector for "love"  + h1              → hidden state h2
+Step 3: Take vector for "cats"  + h2              → hidden state h3  ← context vector
 ```
+
+Think of it like reading a book one word at a time. After reading "I" you have a vague idea. After reading "I love" you know more. After reading "I love cats" you have the full picture. Each hidden state is a running summary that grows richer with each word.
 
 The **final hidden state** (`h3` in this example) is the context vector. It is supposed to capture the meaning of the entire input sentence in one fixed-size vector.
 
@@ -87,16 +128,17 @@ The **final hidden state** (`h3` in this example) is the context vector. It is s
 h_t = f(W_h · h_{t-1} + W_x · x_t + b)
 ```
 
-- `x_t` is the embedding of the current word
-- `h_{t-1}` is the previous hidden state
+- `x_t` is the embedding vector of the current word (from the embedding matrix)
+- `h_{t-1}` is the previous hidden state (the running summary so far)
 - `W_h` and `W_x` are learned weight matrices
 - `f` is an activation function (like tanh)
+- `h_t` is the new hidden state — the updated summary after seeing this word
 
-Each step blends the new word with everything it has seen so far.
+Each step blends the new word vector with everything the encoder has seen so far. By the last step, the hidden state contains a compressed representation of the entire sentence.
 
 ---
 
-## 4. The context vector
+## 5. The context vector
 
 The context vector is the bridge between the encoder and decoder. It is a single vector (e.g. 256 or 512 numbers) that must summarise the entire input.
 
@@ -108,7 +150,7 @@ This is both the power and the weakness of this design. We will see the weakness
 
 ---
 
-## 5. The decoder
+## 6. The decoder
 
 The decoder is another RNN. It starts with the context vector as its initial hidden state and generates the output sentence one word at a time.
 
@@ -138,7 +180,7 @@ At each step the decoder:
 
 ---
 
-## 6. Putting it all together
+## 7. Putting it all together
 
 ```text
 ┌──────────────────────────┐      ┌──────────────────────────────┐
@@ -157,7 +199,7 @@ At each step the decoder:
 
 ---
 
-## 7. A concrete example: English → French
+## 8. A concrete example: English → French
 
 Let's walk through translating "I love cats" to "J'aime les chats."
 
@@ -187,7 +229,7 @@ Input token    Hidden state               Softmax output     Predicted word
 
 ---
 
-## 8. Loss function: cross-entropy
+## 9. Loss function: cross-entropy
 
 At each decoder step, the network predicts a probability distribution over the entire vocabulary. The loss measures how far that distribution is from the correct word.
 
@@ -202,7 +244,7 @@ The total loss for the sentence is the sum (or average) of the losses at each st
 
 ---
 
-## 9. Common applications
+## 10. Common applications
 
 | Task | Input | Output |
 |------|-------|--------|
@@ -216,7 +258,7 @@ In image captioning, the encoder is a **CNN** instead of an RNN — it compresse
 
 ---
 
-## 10. PyTorch sketch
+## 11. PyTorch sketch
 
 ```python
 import torch
@@ -251,7 +293,7 @@ The encoder reads the full input and returns a hidden state. The decoder takes t
 
 ---
 
-## 11. Summary
+## 12. Summary
 
 - The **encoder** reads the input sequence and compresses it into a **context vector**.
 - The **decoder** starts from the context vector and generates the output sequence one word at a time.
