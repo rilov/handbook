@@ -48,12 +48,22 @@ Step 2 — Decoder: use that vector to generate the output sentence, one word at
 
 ### Analogy: the interpreter
 
-Imagine an interpreter at the United Nations:
+Imagine an interpreter at the United Nations. A delegate speaks a full sentence in English, and the interpreter must repeat it in French.
 
-1. **Listening phase (encoder):** The interpreter listens to the entire English sentence and mentally understands the meaning.
-2. **Speaking phase (decoder):** The interpreter then speaks the same meaning in French, one word at a time.
+The interpreter works in two phases:
 
-The "understanding" in the interpreter's head is like the **context vector** that connects the encoder to the decoder.
+1. **Listening phase (encoder):** The interpreter listens to the **entire** English sentence from start to finish. While listening, they do not speak — they just build up an understanding of what was said. By the end of the sentence, the interpreter holds the full meaning in their head.
+
+2. **Speaking phase (decoder):** Now the interpreter opens their mouth and produces the French translation, one word at a time. They are no longer listening to the original English — they are working entirely from the understanding they built during the listening phase.
+
+The key point is what happens **between** these two phases. After listening and before speaking, the interpreter holds a mental summary — they know *what* the sentence means, even though they have not started translating yet. In the neural network, this mental summary is called the **context vector**. It is a list of numbers (e.g. 256 or 512 numbers) that represents the meaning of the entire input sentence.
+
+```text
+English sentence → [interpreter listens] → mental summary → [interpreter speaks] → French sentence
+English sentence → [encoder processes]   → context vector → [decoder generates]  → French sentence
+```
+
+The context vector is the **only connection** between the encoder and the decoder. The decoder never sees the original English words — it only gets this one vector. So the context vector must contain everything the decoder needs to produce the correct output.
 
 ---
 
