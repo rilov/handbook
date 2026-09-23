@@ -106,35 +106,104 @@ These embedding vectors are what the encoder actually receives. It never sees th
 
 ## 4. The encoder
 
-Now the encoder processes these word vectors **one at a time, in order**. The encoder is typically an **RNN** (Recurrent Neural Network), **LSTM**, or **GRU**.
+The encoder's job is to read the word vectors from section 3, **one at a time**, and build up a single summary of the whole sentence. The encoder is typically an **RNN** (Recurrent Neural Network), **LSTM**, or **GRU** — all of which work in the same general way described below.
 
-At each step, the encoder takes in the current word vector and combines it with what it has learned so far (the previous hidden state) to produce a new hidden state:
+### What is a hidden state?
+
+The hidden state is just a **list of numbers** (e.g. 256 numbers) that acts as the encoder's **memory**. It starts as all zeros — the encoder knows nothing yet. Every time it reads a new word, it updates this memory.
+
+Think of it like taking notes while listening to someone speak:
+
+- Before they start → your notepad is blank (hidden state = all zeros)
+- After hearing the first word → you jot down a rough note (hidden state h1)
+- After hearing the second word → you update your notes with the new information (hidden state h2)
+- After the last word → your notes now summarise everything that was said (final hidden state = context vector)
+
+The key idea: **the hidden state always has the same size** (e.g. always 256 numbers), no matter how many words you have read. It is a fixed-size notepad that keeps getting rewritten.
+
+### Walking through "I love cats"
+
+Let's say our hidden state has 4 numbers (real models use 256–512, but 4 is easier to follow).
+
+**Before starting:** the hidden state is zeros.
 
 ```text
-Input sentence: "I love cats"
-
-Step 1: Take vector for "I"     + nothing yet     → hidden state h1
-Step 2: Take vector for "love"  + h1              → hidden state h2
-Step 3: Take vector for "cats"  + h2              → hidden state h3  ← context vector
+h0 = [0, 0, 0, 0]   (encoder knows nothing)
 ```
 
-Think of it like reading a book one word at a time. After reading "I" you have a vague idea. After reading "I love" you know more. After reading "I love cats" you have the full picture. Each hidden state is a running summary that grows richer with each word.
+**Step 1 — Read "I":**
 
-The **final hidden state** (`h3` in this example) is the context vector. It is supposed to capture the meaning of the entire input sentence in one fixed-size vector.
-
-### What happens inside each step
+The encoder takes two inputs: the word vector for "I" and the current hidden state h0. It mixes them together (using learned weights) and produces a new hidden state:
 
 ```text
-h_t = f(W_h · h_{t-1} + W_x · x_t + b)
+Input:   word vector for "I" = [0.12, -0.45, 0.78, 0.33]
+         previous state  h0  = [0, 0, 0, 0]
+
+Output:  new state  h1 = [0.31, -0.12, 0.55, 0.08]
 ```
 
-- `x_t` is the embedding vector of the current word (from the embedding matrix)
-- `h_{t-1}` is the previous hidden state (the running summary so far)
-- `W_h` and `W_x` are learned weight matrices
-- `f` is an activation function (like tanh)
-- `h_t` is the new hidden state — the updated summary after seeing this word
+h1 now contains the encoder's understanding after reading just "I" — it knows *someone* is the subject.
 
-Each step blends the new word vector with everything the encoder has seen so far. By the last step, the hidden state contains a compressed representation of the entire sentence.
+**Step 2 — Read "love":**
+
+```text
+Input:   word vector for "love" = [0.91, 0.02, -0.64, 0.17]
+         previous state  h1     = [0.31, -0.12, 0.55, 0.08]
+
+Output:  new state  h2 = [0.68, 0.24, -0.11, 0.42]
+```
+
+h2 now captures "I love" — the encoder knows *someone loves something*.
+
+**Step 3 — Read "cats":**
+
+```text
+Input:   word vector for "cats" = [0.34, 0.88, 0.21, -0.55]
+         previous state  h2     = [0.68, 0.24, -0.11, 0.42]
+
+Output:  new state  h3 = [0.52, 0.71, 0.33, -0.19]
+```
+
+h3 now captures the meaning of the entire sentence "I love cats." This final hidden state **is** the context vector.
+
+```text
+context vector = h3 = [0.52, 0.71, 0.33, -0.19]
+```
+
+### How does the encoder "mix" the word vector with the hidden state?
+
+At each step, the encoder does a simple calculation:
+
+```text
+h_t = tanh(W_h × h_{t-1}  +  W_x × x_t  +  b)
+```
+
+Here is what each piece means:
+
+| Symbol | What it is | Plain English |
+|--------|-----------|---------------|
+| `x_t` | The embedding vector of the current word | The new word the encoder is reading right now |
+| `h_{t-1}` | The previous hidden state | The encoder's memory from all previous words |
+| `W_x` | A weight matrix for the word | "How much should I pay attention to this new word?" |
+| `W_h` | A weight matrix for the memory | "How much should I keep from my previous memory?" |
+| `b` | A bias term | A small adjustment (like a default starting point) |
+| `tanh` | An activation function | Squashes the result to stay between −1 and +1 |
+| `h_t` | The new hidden state | The encoder's updated memory after reading this word |
+
+The weight matrices `W_x` and `W_h` are **learned during training**. The network figures out for itself how to best combine new words with existing memory.
+
+### Analogy: mixing paint
+
+Think of each word vector as a new colour of paint. The hidden state is the colour in your bucket:
+
+1. Bucket starts empty (clear).
+2. Pour in "I" (blue) → bucket is now blue.
+3. Pour in "love" (red) → bucket is now purple (a mix of blue and red).
+4. Pour in "cats" (yellow) → bucket is now a brownish mix of all three.
+
+The final colour represents the whole sentence. You cannot separate the individual colours out again — they are blended. This is both the strength (compact summary) and the weakness (you lose individual word detail) of this approach.
+
+After the last word, the hidden state contains a compressed representation of the entire sentence. This is the **context vector** that gets passed to the decoder.
 
 ---
 
