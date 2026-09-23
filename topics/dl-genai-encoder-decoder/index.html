@@ -447,6 +447,71 @@ h1 = [0.41, 0.37]   (updated memory)
 
 <p>After the last word, the hidden state contains a compressed representation of the entire sentence. This is the <strong>context vector</strong> that gets passed to the decoder.</p>
 
+<h3 id="how-many-layers-do-the-encoder-and-decoder-have">How many layers do the encoder and decoder have?</h3>
+
+<p>So far we showed a <strong>single-layer</strong> RNN — one set of weights processes the word vectors. But in practice, encoder-decoders stack <strong>multiple layers</strong> on top of each other. This is called a <strong>stacked</strong> or <strong>deep</strong> RNN.</p>
+
+<h4 id="single-layer-what-we-showed-above">Single layer (what we showed above)</h4>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>word vectors:   x1 → x2 → x3
+                 ↓     ↓     ↓
+Layer 1:        h1 → h2 → h3  → context vector
+</code></pre></div></div>
+
+<p>One layer reads the words left to right and produces one hidden state per word.</p>
+
+<h4 id="stacked-layers-what-real-models-use">Stacked layers (what real models use)</h4>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>word vectors:    x1  →  x2  →  x3
+                  ↓      ↓      ↓
+Layer 1:        h1¹ → h2¹ → h3¹        (captures basic patterns)
+                  ↓      ↓      ↓
+Layer 2:        h1² → h2² → h3²        (captures deeper patterns)
+                  ↓      ↓      ↓
+Layer 3:        h1³ → h2³ → h3³        (captures even deeper patterns)
+                                 ↓
+                          context vector = h3³
+</code></pre></div></div>
+
+<p>Each layer takes the outputs of the layer below as its input. The bottom layer sees the raw word vectors. The next layer sees the hidden states from below, and learns <strong>higher-level patterns</strong> from them — like understanding phrase structure or sentence meaning rather than just individual words.</p>
+
+<h4 id="typical-numbers">Typical numbers</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Encoder layers</th>
+      <th>Decoder layers</th>
+      <th>Hidden size</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Simple seq2seq (tutorial)</td>
+      <td>1</td>
+      <td>1</td>
+      <td>256</td>
+    </tr>
+    <tr>
+      <td>Google’s original NMT (2016)</td>
+      <td>4</td>
+      <td>4</td>
+      <td>1,024</td>
+    </tr>
+    <tr>
+      <td>Larger production models</td>
+      <td>4–8</td>
+      <td>4–8</td>
+      <td>512–1,024</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>More layers = more capacity to learn complex patterns</strong>, but also slower to train and more likely to overfit on small datasets. The encoder and decoder usually have the <strong>same number of layers</strong> so the hidden states match in size when passing the context vector.</p>
+
+<p>The decoder works the same way — if it has 3 layers, each decoder step runs through all 3 layers before predicting the next word.</p>
+
 <hr />
 
 <h2 id="6-the-context-vector">6. The context vector</h2>
