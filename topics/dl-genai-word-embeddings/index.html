@@ -239,14 +239,44 @@ Training pairs:
 
 <h3 id="why-does-it-work">Why does it work?</h3>
 
-<p>During training, the network learns that certain <strong>directions</strong> in the vector space correspond to certain <strong>concepts</strong>. For example:</p>
+<p>To understand this, we need to think about <strong>what the training process actually does</strong> to the vectors.</p>
 
-<ul>
-  <li>There is a direction that means <strong>“gender”</strong> — moving along it turns “man” into “woman” or “king” into “queen.”</li>
-  <li>There is a direction that means <strong>“royalty”</strong> — moving along it turns “man” into “king” or “woman” into “queen.”</li>
-</ul>
+<h4 id="step-1-training-creates-clusters">Step 1: Training creates clusters</h4>
 
-<p>Think of it as a 2D map:</p>
+<p>Recall from section 3 that words appearing in similar contexts get similar vectors. So the training data naturally creates clusters:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cluster of "male person" words   → man, boy, he, him, father, king, prince ...
+Cluster of "female person" words → woman, girl, she, her, mother, queen, princess ...
+</code></pre></div></div>
+
+<p>Within each cluster, the words are close to each other. But the model also notices something deeper.</p>
+
+<h4 id="step-2-training-preserves-parallel-relationships">Step 2: Training preserves parallel relationships</h4>
+
+<p>Think about how “man” and “woman” appear in text. They show up in <strong>exactly the same patterns</strong>, just swapped:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"He is the king of England."     ↔  "She is the queen of England."
+"The man wore a crown."          ↔  "The woman wore a crown."
+"He became a prince at birth."   ↔  "She became a princess at birth."
+</code></pre></div></div>
+
+<p>Because these pairs always appear in mirror-image sentences, the model learns that the <strong>difference</strong> between each male word and its female counterpart is <strong>the same</strong>. In vector terms:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>woman - man  ≈  queen - king  ≈  princess - prince  ≈  she - he
+</code></pre></div></div>
+
+<p>All of these give roughly the same vector — a direction we can call <strong>“gender.”</strong></p>
+
+<p>The same thing happens for other relationships:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>king - man  ≈  queen - woman       → the "royalty" direction
+Paris - France  ≈  Tokyo - Japan   → the "capital city" direction
+walked - walk  ≈  swam - swim      → the "past tense" direction
+</code></pre></div></div>
+
+<h4 id="step-3-parallel-relationships-form-a-grid">Step 3: Parallel relationships form a grid</h4>
+
+<p>Because these differences are consistent, the words arrange themselves into a <strong>grid-like pattern</strong> in vector space:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                  royalty →
                 ┌─────────────────────┐
@@ -259,7 +289,59 @@ Training pairs:
                 └─────────────────────┘
 </code></pre></div></div>
 
-<p>The arrow from “man” to “king” and the arrow from “woman” to “queen” point in the <strong>same direction</strong> (royalty). The arrow from “man” to “woman” and from “king” to “queen” also point in the same direction (gender).</p>
+<p>The arrow from “man” to “king” and the arrow from “woman” to “queen” point in the <strong>same direction</strong> and have the <strong>same length</strong> (royalty). The arrow from “man” to “woman” and from “king” to “queen” also point in the same direction and have the same length (gender).</p>
+
+<p>This grid is not designed — it <strong>emerges</strong> from the training data. The model finds that organising words this way is the most efficient way to predict context, because it can reuse the same “gender” offset and the same “royalty” offset across many word pairs.</p>
+
+<h4 id="analogy-a-spreadsheet">Analogy: a spreadsheet</h4>
+
+<p>Think of it like a spreadsheet where each row is a person:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Person</th>
+      <th>Royalty score</th>
+      <th>Gender score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>man</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>woman</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>king</td>
+      <td>5</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>queen</td>
+      <td>5</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>If you want to go from “man” to “king,” you add 4 to the royalty column. If you want to go from “man” to “woman,” you add 1 to the gender column. These transformations work for <strong>any</strong> row — that is why the arithmetic works.</p>
+
+<h4 id="why--and-not-">Why “≈” and not “=”?</h4>
+
+<p>In practice, the result is <strong>approximate</strong> — <code class="language-plaintext highlighter-rouge">king - man + woman</code> gives a vector close to “queen” but not exactly equal. This is because:</p>
+
+<ul>
+  <li>Real embeddings have 300 dimensions, not 2, and the relationships are spread across many dimensions.</li>
+  <li>Words have multiple meanings and associations that create noise.</li>
+  <li>The training data is not perfectly balanced.</li>
+</ul>
+
+<p>So we find the word whose vector is <strong>closest</strong> (by cosine similarity) to the result, and that word is usually “queen.”</p>
 
 <h3 id="worked-example-with-simple-numbers">Worked example with simple numbers</h3>
 
