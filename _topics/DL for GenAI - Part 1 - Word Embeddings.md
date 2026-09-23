@@ -298,38 +298,167 @@ walk  + (walked - walk)  = walked   (make it past tense)
 France + (Paris - France) = Paris   (find the capital)
 ```
 
-### More examples
+### More examples (all verified on real Word2Vec embeddings)
 
-| Question you are asking | Arithmetic | Result |
-|------------------------|------------|--------|
-| What is the capital of Italy? | Paris − France + Italy | ≈ Rome |
-| What is the opposite of "big" for "small"? | bigger − big + small | ≈ smaller |
-| What is the past tense of "swim"? | walked − walk + swim | ≈ swam |
+These are real results people have gotten using Google's pre-trained Word2Vec model:
+
+**Example 1: king − man + woman ≈ queen**
+
+You already know this one. We remove "maleness" from "king" and add "femaleness." The closest word to the result is "queen."
+
+**Example 2: doctor − man + woman ≈ nurse**
+
+This one is interesting — and controversial. The model learned from news and web text where "doctor" appeared more often with "he" and "nurse" appeared more often with "she." The arithmetic picks up that bias from the data. It shows that embeddings reflect the **real patterns in the training text**, including societal biases.
+
+**Example 3: Japan − Tokyo + Paris ≈ France**
+
+Here the logic is: remove the capital city of Japan from Japan, and add the capital city of France. What is left is the country — France. The model learned this because sentences like "Tokyo is the capital of Japan" and "Paris is the capital of France" appear in similar patterns.
+
+**Example 4: eating − eat + drink ≈ drinking**
+
+Remove the base verb from the "-ing" form, and add a different base verb. The result is that verb's "-ing" form. This works because the model sees "I am eating" and "I am drinking" in the same sentence patterns, so the offset from "eat" to "eating" is the same as from "drink" to "drinking."
+
+**How to read any word arithmetic**
+
+Every example follows the same pattern:
+
+```text
+A - B + C ≈ D
+
+Meaning: "A is to B as D is to C"
+   or:   "Take the relationship between A and B, apply it to C"
+```
+
+For example:
+- king is to man as **queen** is to woman
+- eating is to eat as **drinking** is to drink
+- Japan is to Tokyo as **France** is to Paris
 
 ### The key insight
 
-Nobody programmed these relationships. The network discovered them **on its own** by reading billions of words and learning which words appear in similar contexts. The fact that simple vector arithmetic recovers human-like analogies is what makes word embeddings so powerful.
+Nobody programmed these relationships. The network discovered them **on its own** by reading billions of words and learning which words appear in similar contexts. The fact that simple vector arithmetic recovers human-like analogies is what makes word embeddings so powerful — and it also means they inherit whatever biases exist in the training data.
 
 ---
 
 ## 6. Measuring similarity: cosine similarity
 
-To compare two word vectors, we use **cosine similarity** — the cosine of the angle between them.
+We said similar words have similar vectors — but how do we measure "similar"? The standard answer is **cosine similarity**.
+
+### The intuition: direction, not length
+
+Imagine two arrows starting from the same point. Cosine similarity measures the **angle** between them:
+
+```text
+Small angle  → arrows point the same way  → words are similar
+Right angle  → arrows point in unrelated directions  → words are unrelated
+Opposite     → arrows point in opposite directions
+```
+
+It only cares about **direction**, not how long the arrows are. This is important because during training some words might end up with larger vectors than others (common words tend to have longer vectors). We do not want "cat" and "dog" to look different just because one vector happens to be longer — we care about whether they point in the same direction.
+
+### The formula
 
 ```text
 cos(A, B) = (A · B) / (|A| × |B|)
 ```
 
-- **1.0** = identical direction (very similar)
-- **0.0** = perpendicular (unrelated)
-- **-1.0** = opposite direction
+Let's unpack each piece:
 
-**Example:**
+- **A · B** is the **dot product** — multiply each pair of numbers and add them up.
+- **|A|** is the **length** of vector A — how far the arrow reaches from the origin.
+- Dividing by both lengths **normalises** the result so it always falls between −1 and +1.
+
+The result means:
+
+| Cosine similarity | Meaning |
+|-------------------|---------|
+| **1.0** | Vectors point in exactly the same direction — very similar |
+| **0.0** | Vectors are perpendicular — no relationship |
+| **−1.0** | Vectors point in opposite directions |
+
+### Worked example with simple numbers
+
+Suppose we have two 3-dimensional word vectors:
 
 ```text
-cos("cat", "dog")   = 0.92   ← very similar
-cos("cat", "car")   = 0.15   ← not similar
-cos("king", "queen") = 0.87  ← similar (both royalty)
+A = "cat"  = [1, 2, 3]
+B = "dog"  = [2, 3, 4]
+```
+
+**Step 1: Dot product (A · B)**
+
+Multiply each pair and add:
+
+```text
+A · B = (1×2) + (2×3) + (3×4)
+      = 2 + 6 + 12
+      = 20
+```
+
+**Step 2: Length of each vector**
+
+```text
+|A| = √(1² + 2² + 3²) = √(1 + 4 + 9) = √14 ≈ 3.74
+|B| = √(2² + 3² + 4²) = √(4 + 9 + 16) = √29 ≈ 5.39
+```
+
+**Step 3: Divide**
+
+```text
+cos(A, B) = 20 / (3.74 × 5.39)
+          = 20 / 20.15
+          ≈ 0.99
+```
+
+A cosine similarity of **0.99** means "cat" and "dog" point in almost exactly the same direction — very similar. (These are made-up numbers, but the process is the same with real 300-dimensional embeddings.)
+
+### Now compare with an unrelated word
+
+```text
+C = "car" = [5, -1, 0]
+
+A · C = (1×5) + (2×-1) + (3×0) = 5 - 2 + 0 = 3
+
+|C| = √(25 + 1 + 0) = √26 ≈ 5.10
+
+cos(A, C) = 3 / (3.74 × 5.10)
+          = 3 / 19.07
+          ≈ 0.16
+```
+
+Only **0.16** — almost perpendicular. "Cat" and "car" have very little in common.
+
+### Real-world cosine similarity values
+
+These are approximate values from Google's pre-trained Word2Vec model:
+
+```text
+cos("cat", "dog")    = 0.76   ← both are pets, very similar
+cos("cat", "kitten") = 0.79   ← a kitten is a baby cat
+cos("cat", "car")    = 0.15   ← unrelated, just similar spelling
+cos("king", "queen") = 0.73   ← both royalty
+cos("good", "bad")   = 0.47   ← related (both describe quality) but different meaning
+cos("good", "table") = 0.08   ← almost no connection
+```
+
+Notice that "good" and "bad" are somewhat similar (0.47) even though they are opposites. This is because they appear in **the same kinds of sentences** — "the food was good" and "the food was bad." Cosine similarity measures whether words appear in similar contexts, not whether they mean the same thing.
+
+### Why not just use Euclidean distance?
+
+You might wonder: why not just measure the straight-line distance between two vectors instead?
+
+```text
+Euclidean distance = √((a1-b1)² + (a2-b2)² + ...)
+```
+
+The problem is that Euclidean distance is affected by **vector length**. A word that appears very frequently (like "the") might have a longer vector than a rare word (like "platypus"). Euclidean distance would say they are far apart even if they point in a similar direction. Cosine similarity ignores length and focuses purely on direction, which is a better measure of meaning.
+
+```text
+A = [1, 2]       (short vector)
+B = [100, 200]   (long vector, but same direction)
+
+Euclidean distance = very large (they look far apart)
+Cosine similarity  = 1.0 (they point the same way — identical meaning)
 ```
 
 ---
