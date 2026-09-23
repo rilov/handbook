@@ -135,35 +135,139 @@ Step 3 — Look up embedding:  use the index to grab a row from the embedding ma
 
 <h2 id="4-the-encoder">4. The encoder</h2>
 
-<p>Now the encoder processes these word vectors <strong>one at a time, in order</strong>. The encoder is typically an <strong>RNN</strong> (Recurrent Neural Network), <strong>LSTM</strong>, or <strong>GRU</strong>.</p>
+<p>The encoder’s job is to read the word vectors from section 3, <strong>one at a time</strong>, and build up a single summary of the whole sentence. The encoder is typically an <strong>RNN</strong> (Recurrent Neural Network), <strong>LSTM</strong>, or <strong>GRU</strong> — all of which work in the same general way described below.</p>
 
-<p>At each step, the encoder takes in the current word vector and combines it with what it has learned so far (the previous hidden state) to produce a new hidden state:</p>
+<h3 id="what-is-a-hidden-state">What is a hidden state?</h3>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input sentence: "I love cats"
+<p>The hidden state is just a <strong>list of numbers</strong> (e.g. 256 numbers) that acts as the encoder’s <strong>memory</strong>. It starts as all zeros — the encoder knows nothing yet. Every time it reads a new word, it updates this memory.</p>
 
-Step 1: Take vector for "I"     + nothing yet     → hidden state h1
-Step 2: Take vector for "love"  + h1              → hidden state h2
-Step 3: Take vector for "cats"  + h2              → hidden state h3  ← context vector
-</code></pre></div></div>
-
-<p>Think of it like reading a book one word at a time. After reading “I” you have a vague idea. After reading “I love” you know more. After reading “I love cats” you have the full picture. Each hidden state is a running summary that grows richer with each word.</p>
-
-<p>The <strong>final hidden state</strong> (<code class="language-plaintext highlighter-rouge">h3</code> in this example) is the context vector. It is supposed to capture the meaning of the entire input sentence in one fixed-size vector.</p>
-
-<h3 id="what-happens-inside-each-step">What happens inside each step</h3>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h_t = f(W_h · h_{t-1} + W_x · x_t + b)
-</code></pre></div></div>
+<p>Think of it like taking notes while listening to someone speak:</p>
 
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">x_t</code> is the embedding vector of the current word (from the embedding matrix)</li>
-  <li><code class="language-plaintext highlighter-rouge">h_{t-1}</code> is the previous hidden state (the running summary so far)</li>
-  <li><code class="language-plaintext highlighter-rouge">W_h</code> and <code class="language-plaintext highlighter-rouge">W_x</code> are learned weight matrices</li>
-  <li><code class="language-plaintext highlighter-rouge">f</code> is an activation function (like tanh)</li>
-  <li><code class="language-plaintext highlighter-rouge">h_t</code> is the new hidden state — the updated summary after seeing this word</li>
+  <li>Before they start → your notepad is blank (hidden state = all zeros)</li>
+  <li>After hearing the first word → you jot down a rough note (hidden state h1)</li>
+  <li>After hearing the second word → you update your notes with the new information (hidden state h2)</li>
+  <li>After the last word → your notes now summarise everything that was said (final hidden state = context vector)</li>
 </ul>
 
-<p>Each step blends the new word vector with everything the encoder has seen so far. By the last step, the hidden state contains a compressed representation of the entire sentence.</p>
+<p>The key idea: <strong>the hidden state always has the same size</strong> (e.g. always 256 numbers), no matter how many words you have read. It is a fixed-size notepad that keeps getting rewritten.</p>
+
+<h3 id="walking-through-i-love-cats">Walking through “I love cats”</h3>
+
+<p>Let’s say our hidden state has 4 numbers (real models use 256–512, but 4 is easier to follow).</p>
+
+<p><strong>Before starting:</strong> the hidden state is zeros.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h0 = [0, 0, 0, 0]   (encoder knows nothing)
+</code></pre></div></div>
+
+<p><strong>Step 1 — Read “I”:</strong></p>
+
+<p>The encoder takes two inputs: the word vector for “I” and the current hidden state h0. It mixes them together (using learned weights) and produces a new hidden state:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:   word vector for "I" = [0.12, -0.45, 0.78, 0.33]
+         previous state  h0  = [0, 0, 0, 0]
+
+Output:  new state  h1 = [0.31, -0.12, 0.55, 0.08]
+</code></pre></div></div>
+
+<p>h1 now contains the encoder’s understanding after reading just “I” — it knows <em>someone</em> is the subject.</p>
+
+<p><strong>Step 2 — Read “love”:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:   word vector for "love" = [0.91, 0.02, -0.64, 0.17]
+         previous state  h1     = [0.31, -0.12, 0.55, 0.08]
+
+Output:  new state  h2 = [0.68, 0.24, -0.11, 0.42]
+</code></pre></div></div>
+
+<p>h2 now captures “I love” — the encoder knows <em>someone loves something</em>.</p>
+
+<p><strong>Step 3 — Read “cats”:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:   word vector for "cats" = [0.34, 0.88, 0.21, -0.55]
+         previous state  h2     = [0.68, 0.24, -0.11, 0.42]
+
+Output:  new state  h3 = [0.52, 0.71, 0.33, -0.19]
+</code></pre></div></div>
+
+<p>h3 now captures the meaning of the entire sentence “I love cats.” This final hidden state <strong>is</strong> the context vector.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>context vector = h3 = [0.52, 0.71, 0.33, -0.19]
+</code></pre></div></div>
+
+<h3 id="how-does-the-encoder-mix-the-word-vector-with-the-hidden-state">How does the encoder “mix” the word vector with the hidden state?</h3>
+
+<p>At each step, the encoder does a simple calculation:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h_t = tanh(W_h × h_{t-1}  +  W_x × x_t  +  b)
+</code></pre></div></div>
+
+<p>Here is what each piece means:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Symbol</th>
+      <th>What it is</th>
+      <th>Plain English</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">x_t</code></td>
+      <td>The embedding vector of the current word</td>
+      <td>The new word the encoder is reading right now</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">h_{t-1}</code></td>
+      <td>The previous hidden state</td>
+      <td>The encoder’s memory from all previous words</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">W_x</code></td>
+      <td>A weight matrix for the word</td>
+      <td>“How much should I pay attention to this new word?”</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">W_h</code></td>
+      <td>A weight matrix for the memory</td>
+      <td>“How much should I keep from my previous memory?”</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">b</code></td>
+      <td>A bias term</td>
+      <td>A small adjustment (like a default starting point)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">tanh</code></td>
+      <td>An activation function</td>
+      <td>Squashes the result to stay between −1 and +1</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">h_t</code></td>
+      <td>The new hidden state</td>
+      <td>The encoder’s updated memory after reading this word</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The weight matrices <code class="language-plaintext highlighter-rouge">W_x</code> and <code class="language-plaintext highlighter-rouge">W_h</code> are <strong>learned during training</strong>. The network figures out for itself how to best combine new words with existing memory.</p>
+
+<h3 id="analogy-mixing-paint">Analogy: mixing paint</h3>
+
+<p>Think of each word vector as a new colour of paint. The hidden state is the colour in your bucket:</p>
+
+<ol>
+  <li>Bucket starts empty (clear).</li>
+  <li>Pour in “I” (blue) → bucket is now blue.</li>
+  <li>Pour in “love” (red) → bucket is now purple (a mix of blue and red).</li>
+  <li>Pour in “cats” (yellow) → bucket is now a brownish mix of all three.</li>
+</ol>
+
+<p>The final colour represents the whole sentence. You cannot separate the individual colours out again — they are blended. This is both the strength (compact summary) and the weakness (you lose individual word detail) of this approach.</p>
+
+<p>After the last word, the hidden state contains a compressed representation of the entire sentence. This is the <strong>context vector</strong> that gets passed to the decoder.</p>
 
 <hr />
 
