@@ -53,7 +53,63 @@
 
 <hr />
 
-<h2 id="1-the-problem-variable-length-input--variable-length-output">1. The problem: variable-length input → variable-length output</h2>
+<h2 id="1-quick-refresher-what-is-a-neural-network">1. Quick refresher: what is a neural network?</h2>
+
+<p>Before we dive in, let’s make sure the basics are clear, because the encoder and decoder are both <strong>neural networks</strong>.</p>
+
+<h3 id="the-simplest-picture">The simplest picture</h3>
+
+<p>A neural network is a machine that takes numbers in, does math, and produces numbers out. It is made of <strong>layers</strong>, and each layer has <strong>weights</strong> (numbers that control the math).</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input numbers → [Layer 1] → [Layer 2] → ... → Output numbers
+                  weights      weights
+</code></pre></div></div>
+
+<h3 id="what-are-weights">What are weights?</h3>
+
+<p>Weights are just numbers stored in a matrix (a grid of numbers). They start as <strong>random values</strong> before training. Each weight controls how much one input number influences one output number — like a volume knob.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Example: a layer with 2 inputs and 2 outputs
+
+       input     weights          output
+       [0.8]     [[0.6, 0.1],     [?]
+       [0.2]      [0.2, 0.7]]     [?]
+
+output[0] = 0.6 × 0.8 + 0.1 × 0.2 = 0.50
+output[1] = 0.2 × 0.8 + 0.7 × 0.2 = 0.30
+
+output = [0.50, 0.30]
+</code></pre></div></div>
+
+<p>This is <strong>matrix multiplication</strong> — the core operation of every neural network. Every layer multiplies its input by its weight matrix to produce its output.</p>
+
+<h3 id="how-does-the-network-learn">How does the network learn?</h3>
+
+<ol>
+  <li><strong>Forward pass:</strong> Feed an input through the network and get a prediction.</li>
+  <li><strong>Loss:</strong> Compare the prediction to the correct answer. The difference is the <strong>loss</strong> (a single number — lower is better).</li>
+  <li><strong>Backpropagation:</strong> Calculate how much each weight contributed to the error, then nudge every weight slightly to reduce the loss.</li>
+  <li><strong>Repeat</strong> thousands of times with different examples. The weights gradually move from random values to values that produce good predictions.</li>
+</ol>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                  ┌──────────────────────────────────┐
+                  │  Forward pass: input → prediction │
+                  │  Compare with correct answer      │
+  Training loop:  │  Loss = how wrong the prediction  │
+                  │  Backpropagation: adjust weights   │
+                  │  Repeat with next example          │
+                  └──────────────────────────────────┘
+</code></pre></div></div>
+
+<p><strong>Nobody programs the weights by hand.</strong> The network discovers them by seeing thousands of examples and slowly adjusting. This is what “training” means.</p>
+
+<h3 id="why-does-this-matter-for-encoder-decoder">Why does this matter for encoder-decoder?</h3>
+
+<p>The encoder and decoder are both neural networks with their own weight matrices. When we later see terms like <code class="language-plaintext highlighter-rouge">W_h</code>, <code class="language-plaintext highlighter-rouge">W_x</code>, and <code class="language-plaintext highlighter-rouge">b</code>, those are just the weights inside these networks — numbers that start random and are learned during training through the process above.</p>
+
+<hr />
+
+<h2 id="2-the-problem-variable-length-input--variable-length-output">2. The problem: variable-length input → variable-length output</h2>
 
 <p>A normal neural network takes a fixed-size input and gives a fixed-size output. But sentences come in all sizes:</p>
 
@@ -65,7 +121,7 @@ Output: "Comment allez-vous ?"  (3 words, but could be 2 or 5)
 
 <hr />
 
-<h2 id="2-the-big-idea-compress-then-generate">2. The big idea: compress, then generate</h2>
+<h2 id="3-the-big-idea-compress-then-generate">3. The big idea: compress, then generate</h2>
 
 <p>The encoder-decoder solves this in two steps:</p>
 
@@ -98,7 +154,7 @@ English sentence → [encoder processes]   → context vector → [decoder gener
 
 <hr />
 
-<h2 id="3-first-step-every-word-becomes-a-vector">3. First step: every word becomes a vector</h2>
+<h2 id="4-first-step-every-word-becomes-a-vector">4. First step: every word becomes a vector</h2>
 
 <p>Before the encoder can process anything, each word must be turned into a vector of numbers. This is the <strong>embedding</strong> step we covered in Part 1.</p>
 
@@ -133,9 +189,9 @@ Step 3 — Look up embedding:  use the index to grab a row from the embedding ma
 
 <hr />
 
-<h2 id="4-the-encoder">4. The encoder</h2>
+<h2 id="5-the-encoder">5. The encoder</h2>
 
-<p>The encoder’s job is to read the word vectors from section 3, <strong>one at a time</strong>, and build up a single summary of the whole sentence. The encoder is typically an <strong>RNN</strong> (Recurrent Neural Network), <strong>LSTM</strong>, or <strong>GRU</strong> — all of which work in the same general way described below.</p>
+<p>The encoder’s job is to read the word vectors from section 4, <strong>one at a time</strong>, and build up a single summary of the whole sentence. The encoder is typically an <strong>RNN</strong> (Recurrent Neural Network), <strong>LSTM</strong>, or <strong>GRU</strong> — all of which work in the same general way described below.</p>
 
 <h3 id="what-is-a-hidden-state">What is a hidden state?</h3>
 
@@ -393,7 +449,7 @@ h1 = [0.41, 0.37]   (updated memory)
 
 <hr />
 
-<h2 id="5-the-context-vector">5. The context vector</h2>
+<h2 id="6-the-context-vector">6. The context vector</h2>
 
 <p>The context vector is the bridge between the encoder and decoder. It is a single vector (e.g. 256 or 512 numbers) that must summarise the entire input.</p>
 
@@ -404,7 +460,7 @@ h1 = [0.41, 0.37]   (updated memory)
 
 <hr />
 
-<h2 id="6-the-decoder">6. The decoder</h2>
+<h2 id="7-the-decoder">7. The decoder</h2>
 
 <p>The decoder is another RNN. It starts with the context vector as its initial hidden state and generates the output sentence one word at a time.</p>
 
@@ -452,7 +508,7 @@ Step 5: Input "chats"       → predict &lt;END&gt;    → stop
 
 <hr />
 
-<h2 id="7-putting-it-all-together">7. Putting it all together</h2>
+<h2 id="8-putting-it-all-together">8. Putting it all together</h2>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌──────────────────────────┐      ┌──────────────────────────────┐
 │         ENCODER          │      │           DECODER            │
@@ -470,7 +526,7 @@ Step 5: Input "chats"       → predict &lt;END&gt;    → stop
 
 <hr />
 
-<h2 id="8-a-concrete-example-english--french">8. A concrete example: English → French</h2>
+<h2 id="9-a-concrete-example-english--french">9. A concrete example: English → French</h2>
 
 <p>Let’s walk through translating “I love cats” to “J’aime les chats.”</p>
 
@@ -498,7 +554,7 @@ Context vector c = h3
 
 <hr />
 
-<h2 id="9-loss-function-cross-entropy">9. Loss function: cross-entropy</h2>
+<h2 id="10-loss-function-cross-entropy">10. Loss function: cross-entropy</h2>
 
 <p>At each decoder step, the network predicts a probability distribution over the entire vocabulary. The loss measures how far that distribution is from the correct word.</p>
 
@@ -512,7 +568,7 @@ Cross-entropy loss = -log(0.7) = 0.36
 
 <hr />
 
-<h2 id="10-common-applications">10. Common applications</h2>
+<h2 id="11-common-applications">11. Common applications</h2>
 
 <table>
   <thead>
@@ -555,7 +611,7 @@ Cross-entropy loss = -log(0.7) = 0.36
 
 <hr />
 
-<h2 id="11-pytorch-sketch">11. PyTorch sketch</h2>
+<h2 id="12-pytorch-sketch">12. PyTorch sketch</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
@@ -589,7 +645,7 @@ Cross-entropy loss = -log(0.7) = 0.36
 
 <hr />
 
-<h2 id="12-summary">12. Summary</h2>
+<h2 id="13-summary">13. Summary</h2>
 
 <ul>
   <li>The <strong>encoder</strong> reads the input sequence and compresses it into a <strong>context vector</strong>.</li>
