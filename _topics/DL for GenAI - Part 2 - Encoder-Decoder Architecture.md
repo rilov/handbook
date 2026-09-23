@@ -193,9 +193,21 @@ Plain addition would just pile numbers on top of each other — the encoder woul
 
 #### Worked example with real numbers
 
-Let's use tiny 2-dimensional vectors so you can follow every number.
+Let's use tiny 2-dimensional vectors so you can follow every number. In a real model these would be 256 or 512 dimensions — the math is identical, just bigger.
 
-**Given:**
+**Important: where does each number come from?**
+
+| Value | Where it comes from | In this example |
+|-------|-------------------|-----------------|
+| `h0` (previous hidden state) | The output of the **previous step**. At the very start of a sentence, it is initialised to all zeros. Here we use `[0.5, -0.3]` to show a mid-sentence step where the encoder already has some memory. | `[0.5, -0.3]` |
+| `x1` (word vector) | Looked up from the **embedding matrix** (section 3). The word "I" has an index in the vocabulary, and that index picks a row from the embedding table. | `[0.8, 0.2]` |
+| `W_h` (weight matrix for memory) | **Initialised randomly** before training, then **learned** by backpropagation. The network adjusts these numbers over thousands of training examples until they produce good translations. | `[[0.1, 0.4], [0.3, 0.2]]` |
+| `W_x` (weight matrix for word) | Same as W_h — **randomly initialised**, then **learned** during training. | `[[0.6, 0.1], [0.2, 0.7]]` |
+| `b` (bias) | Also **learned** during training. We set it to zero here to keep the example simple. | `[0.0, 0.0]` |
+
+So: `h0` comes from the previous step, `x1` comes from the embedding table, and `W_h`, `W_x`, `b` are all **learned parameters** that the network discovers during training. Nobody chooses these numbers by hand — the training process finds values that work.
+
+**Given (made-up numbers for illustration):**
 
 ```text
 Previous hidden state:  h0     = [0.5, -0.3]
