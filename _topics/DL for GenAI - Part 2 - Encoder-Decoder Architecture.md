@@ -24,7 +24,64 @@ The architecture that does this is called **encoder-decoder**, also known as **s
 
 ---
 
-## 1. The problem: variable-length input → variable-length output
+## 1. Quick refresher: what is a neural network?
+
+Before we dive in, let's make sure the basics are clear, because the encoder and decoder are both **neural networks**.
+
+### The simplest picture
+
+A neural network is a machine that takes numbers in, does math, and produces numbers out. It is made of **layers**, and each layer has **weights** (numbers that control the math).
+
+```text
+Input numbers → [Layer 1] → [Layer 2] → ... → Output numbers
+                  weights      weights
+```
+
+### What are weights?
+
+Weights are just numbers stored in a matrix (a grid of numbers). They start as **random values** before training. Each weight controls how much one input number influences one output number — like a volume knob.
+
+```text
+Example: a layer with 2 inputs and 2 outputs
+
+       input     weights          output
+       [0.8]     [[0.6, 0.1],     [?]
+       [0.2]      [0.2, 0.7]]     [?]
+
+output[0] = 0.6 × 0.8 + 0.1 × 0.2 = 0.50
+output[1] = 0.2 × 0.8 + 0.7 × 0.2 = 0.30
+
+output = [0.50, 0.30]
+```
+
+This is **matrix multiplication** — the core operation of every neural network. Every layer multiplies its input by its weight matrix to produce its output.
+
+### How does the network learn?
+
+1. **Forward pass:** Feed an input through the network and get a prediction.
+2. **Loss:** Compare the prediction to the correct answer. The difference is the **loss** (a single number — lower is better).
+3. **Backpropagation:** Calculate how much each weight contributed to the error, then nudge every weight slightly to reduce the loss.
+4. **Repeat** thousands of times with different examples. The weights gradually move from random values to values that produce good predictions.
+
+```text
+                  ┌──────────────────────────────────┐
+                  │  Forward pass: input → prediction │
+                  │  Compare with correct answer      │
+  Training loop:  │  Loss = how wrong the prediction  │
+                  │  Backpropagation: adjust weights   │
+                  │  Repeat with next example          │
+                  └──────────────────────────────────┘
+```
+
+**Nobody programs the weights by hand.** The network discovers them by seeing thousands of examples and slowly adjusting. This is what "training" means.
+
+### Why does this matter for encoder-decoder?
+
+The encoder and decoder are both neural networks with their own weight matrices. When we later see terms like `W_h`, `W_x`, and `b`, those are just the weights inside these networks — numbers that start random and are learned during training through the process above.
+
+---
+
+## 2. The problem: variable-length input → variable-length output
 
 A normal neural network takes a fixed-size input and gives a fixed-size output. But sentences come in all sizes:
 
@@ -37,7 +94,7 @@ We need a model that can handle **any length** on both sides.
 
 ---
 
-## 2. The big idea: compress, then generate
+## 3. The big idea: compress, then generate
 
 The encoder-decoder solves this in two steps:
 
@@ -67,7 +124,7 @@ The context vector is the **only connection** between the encoder and the decode
 
 ---
 
-## 3. First step: every word becomes a vector
+## 4. First step: every word becomes a vector
 
 Before the encoder can process anything, each word must be turned into a vector of numbers. This is the **embedding** step we covered in Part 1.
 
@@ -104,9 +161,9 @@ These embedding vectors are what the encoder actually receives. It never sees th
 
 ---
 
-## 4. The encoder
+## 5. The encoder
 
-The encoder's job is to read the word vectors from section 3, **one at a time**, and build up a single summary of the whole sentence. The encoder is typically an **RNN** (Recurrent Neural Network), **LSTM**, or **GRU** — all of which work in the same general way described below.
+The encoder's job is to read the word vectors from section 4, **one at a time**, and build up a single summary of the whole sentence. The encoder is typically an **RNN** (Recurrent Neural Network), **LSTM**, or **GRU** — all of which work in the same general way described below.
 
 ### What is a hidden state?
 
@@ -307,7 +364,7 @@ After the last word, the hidden state contains a compressed representation of th
 
 ---
 
-## 5. The context vector
+## 6. The context vector
 
 The context vector is the bridge between the encoder and decoder. It is a single vector (e.g. 256 or 512 numbers) that must summarise the entire input.
 
@@ -319,7 +376,7 @@ This is both the power and the weakness of this design. We will see the weakness
 
 ---
 
-## 6. The decoder
+## 7. The decoder
 
 The decoder is another RNN. It starts with the context vector as its initial hidden state and generates the output sentence one word at a time.
 
@@ -349,7 +406,7 @@ At each step the decoder:
 
 ---
 
-## 7. Putting it all together
+## 8. Putting it all together
 
 ```text
 ┌──────────────────────────┐      ┌──────────────────────────────┐
@@ -368,7 +425,7 @@ At each step the decoder:
 
 ---
 
-## 8. A concrete example: English → French
+## 9. A concrete example: English → French
 
 Let's walk through translating "I love cats" to "J'aime les chats."
 
@@ -398,7 +455,7 @@ Input token    Hidden state               Softmax output     Predicted word
 
 ---
 
-## 9. Loss function: cross-entropy
+## 10. Loss function: cross-entropy
 
 At each decoder step, the network predicts a probability distribution over the entire vocabulary. The loss measures how far that distribution is from the correct word.
 
@@ -413,7 +470,7 @@ The total loss for the sentence is the sum (or average) of the losses at each st
 
 ---
 
-## 10. Common applications
+## 11. Common applications
 
 | Task | Input | Output |
 |------|-------|--------|
@@ -427,7 +484,7 @@ In image captioning, the encoder is a **CNN** instead of an RNN — it compresse
 
 ---
 
-## 11. PyTorch sketch
+## 12. PyTorch sketch
 
 ```python
 import torch
@@ -462,7 +519,7 @@ The encoder reads the full input and returns a hidden state. The decoder takes t
 
 ---
 
-## 12. Summary
+## 13. Summary
 
 - The **encoder** reads the input sequence and compresses it into a **context vector**.
 - The **decoder** starts from the context vector and generates the output sequence one word at a time.
