@@ -362,6 +362,48 @@ The final colour represents the whole sentence. You cannot separate the individu
 
 After the last word, the hidden state contains a compressed representation of the entire sentence. This is the **context vector** that gets passed to the decoder.
 
+### How many layers do the encoder and decoder have?
+
+So far we showed a **single-layer** RNN — one set of weights processes the word vectors. But in practice, encoder-decoders stack **multiple layers** on top of each other. This is called a **stacked** or **deep** RNN.
+
+#### Single layer (what we showed above)
+
+```text
+word vectors:   x1 → x2 → x3
+                 ↓     ↓     ↓
+Layer 1:        h1 → h2 → h3  → context vector
+```
+
+One layer reads the words left to right and produces one hidden state per word.
+
+#### Stacked layers (what real models use)
+
+```text
+word vectors:    x1  →  x2  →  x3
+                  ↓      ↓      ↓
+Layer 1:        h1¹ → h2¹ → h3¹        (captures basic patterns)
+                  ↓      ↓      ↓
+Layer 2:        h1² → h2² → h3²        (captures deeper patterns)
+                  ↓      ↓      ↓
+Layer 3:        h1³ → h2³ → h3³        (captures even deeper patterns)
+                                 ↓
+                          context vector = h3³
+```
+
+Each layer takes the outputs of the layer below as its input. The bottom layer sees the raw word vectors. The next layer sees the hidden states from below, and learns **higher-level patterns** from them — like understanding phrase structure or sentence meaning rather than just individual words.
+
+#### Typical numbers
+
+| Model | Encoder layers | Decoder layers | Hidden size |
+|-------|---------------|----------------|-------------|
+| Simple seq2seq (tutorial) | 1 | 1 | 256 |
+| Google's original NMT (2016) | 4 | 4 | 1,024 |
+| Larger production models | 4–8 | 4–8 | 512–1,024 |
+
+**More layers = more capacity to learn complex patterns**, but also slower to train and more likely to overfit on small datasets. The encoder and decoder usually have the **same number of layers** so the hidden states match in size when passing the context vector.
+
+The decoder works the same way — if it has 3 layers, each decoder step runs through all 3 layers before predicting the next word.
+
 ---
 
 ## 6. The context vector
