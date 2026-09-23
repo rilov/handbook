@@ -49,7 +49,7 @@
 
 <p>In Part 1 we turned words into numbers (embeddings). Now we need a network that can read a <strong>whole sentence</strong> and produce a <strong>different sentence</strong> — for example, translating English to French or summarising a paragraph.</p>
 
-<p>The architecture that does this is called <strong>encoder-decoder</strong>, also known as <strong>sequence-to-sequence (seq2seq)</strong>.</p>
+<p>The architecture that does this is called <strong>encoder-decoder</strong>, also known as <strong>sequence-to-sequence (seq2seq)</strong>. The important thing to know upfront: the encoder and decoder are <strong>two separate neural networks</strong>, each with its own weights. They are trained together but they do different jobs.</p>
 
 <hr />
 
@@ -121,13 +121,26 @@ Output: "Comment allez-vous ?"  (3 words, but could be 2 or 5)
 
 <hr />
 
-<h2 id="3-the-big-idea-compress-then-generate">3. The big idea: compress, then generate</h2>
+<h2 id="3-the-big-idea-two-networks-working-together">3. The big idea: two networks working together</h2>
 
-<p>The encoder-decoder solves this in two steps:</p>
+<p>The encoder-decoder uses <strong>two separate neural networks</strong> that work as a team:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1 — Encoder: read the input sentence and compress it into a single vector
-Step 2 — Decoder: use that vector to generate the output sentence, one word at a time
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────┐         ┌─────────────────────────┐
+│    ENCODER (network 1)  │         │    DECODER (network 2)  │
+│                         │         │                         │
+│  Has its own weights    │ context │  Has its own weights    │
+│  Job: read the input    │ vector  │  Job: generate output   │
+│  sentence and compress  │────────→│  sentence, one word at  │
+│  it into a single vector│         │  a time                 │
+└─────────────────────────┘         └─────────────────────────┘
 </code></pre></div></div>
+
+<ul>
+  <li><strong>Network 1 (encoder):</strong> reads the input sentence and compresses it into a single vector.</li>
+  <li><strong>Network 2 (decoder):</strong> takes that vector and generates the output sentence, one word at a time.</li>
+</ul>
+
+<p>They have <strong>separate weight matrices</strong> — the encoder has its own <code class="language-plaintext highlighter-rouge">W_h</code> and <code class="language-plaintext highlighter-rouge">W_x</code>, and the decoder has its own different <code class="language-plaintext highlighter-rouge">W_h</code> and <code class="language-plaintext highlighter-rouge">W_x</code>. But they are trained <strong>together</strong> as one system: the loss from the decoder’s output flows back through both networks, so both sets of weights are updated at the same time.</p>
 
 <h3 id="analogy-the-interpreter">Analogy: the interpreter</h3>
 
