@@ -65,7 +65,47 @@ One-hot  "cat" = [1, 0, 0, 0, 0, ..., 0]    # 30,000 numbers, almost all zero
 Embedding "cat" = [0.25, -0.71, 0.33, 0.82]  # 4 numbers (in practice 50–300)
 ```
 
-Now "cat" and "dog" might have similar vectors because they both appear near words like "pet," "food," and "vet."
+### But how does the model know "cat" and "dog" are similar?
+
+The model never sees a dictionary or a picture. It learns from **context** — the words that appear around a word in real sentences. Consider these sentences from a training corpus:
+
+```text
+"The cat sat on the mat."
+"I took my cat to the vet."
+"She feeds her cat every morning."
+
+"The dog sat on the mat."
+"I took my dog to the vet."
+"She feeds her dog every morning."
+```
+
+Notice that "cat" and "dog" appear in almost **identical surroundings** — next to "sat," "vet," "feeds," "morning," "mat." The model's job during training is to predict a word from its neighbours (or vice versa). Because "cat" and "dog" have the **same neighbours**, the model is forced to give them **similar vectors** — otherwise it could not make good predictions for both.
+
+Now compare with the word "car":
+
+```text
+"The car drove down the highway."
+"I parked my car in the garage."
+"She washed her car on Sunday."
+```
+
+"Car" appears next to "drove," "highway," "parked," "garage" — completely different neighbours. So the model gives "car" a **very different vector** from "cat" or "dog."
+
+**In short:** words that keep the same company get similar vectors. Words that keep different company get different vectors. The model does not understand meaning — it just notices patterns in who appears next to whom, and that is enough to capture meaning.
+
+### Each number captures something
+
+The 50–300 numbers in an embedding are not random. During training, each dimension ends up loosely representing some property. For example, one dimension might roughly capture "is it alive?", another might capture "is it big or small?", another "is it a positive or negative word?"
+
+```text
+             is-alive?   size   positivity   ...
+"cat"     →  [ 0.9,      -0.3,    0.5,      ...]
+"dog"     →  [ 0.8,      -0.1,    0.6,      ...]   ← similar to cat
+"car"     →  [-0.7,       0.6,    0.2,      ...]   ← very different
+"truck"   →  [-0.8,       0.9,    0.1,      ...]   ← similar to car
+```
+
+Nobody labels these dimensions — the model discovers them on its own. The exact meaning of each dimension is not always clean or interpretable, but the overall pattern is: **similar words → similar numbers**.
 
 ### Analogy: GPS coordinates
 
@@ -77,6 +117,8 @@ Think of each word as a city on a map. The embedding is like the latitude and lo
 "car"     → (8.7, 1.2)     ← far from cat
 "truck"   → (8.5, 1.4)     ← close to car
 ```
+
+Just as GPS coordinates tell you which cities are near each other without needing a picture, embeddings tell you which words are related without needing a dictionary.
 
 ---
 
