@@ -172,20 +172,108 @@ context vector = h3 = [0.52, 0.71, 0.33, -0.19]
 
 ### How does the encoder "mix" the word vector with the hidden state?
 
-At each step, the encoder does a simple calculation:
+It is **not** simple vector addition. The encoder uses three operations: **matrix multiplication**, **addition**, and **squashing**. Here is the formula:
 
 ```text
 h_t = tanh(W_h × h_{t-1}  +  W_x × x_t  +  b)
 ```
 
-Here is what each piece means:
+That looks dense, so let's break it into three clear sub-steps:
+
+```text
+Sub-step 1:  Transform the memory      →  W_h × h_{t-1}      (matrix multiply)
+Sub-step 2:  Transform the new word     →  W_x × x_t          (matrix multiply)
+Sub-step 3:  Add them together + bias   →  result + b          (addition)
+Sub-step 4:  Squash to [-1, +1]         →  tanh(result)        (activation)
+```
+
+#### Why matrix multiplication and not just addition?
+
+Plain addition would just pile numbers on top of each other — the encoder would have no control over **which parts** of the word or memory matter. Matrix multiplication is like a set of **knobs and dials**: each weight in the matrix controls how much one input number influences one output number. This lets the encoder learn things like "pay a lot of attention to verbs but less to articles."
+
+#### Worked example with real numbers
+
+Let's use tiny 2-dimensional vectors so you can follow every number.
+
+**Given:**
+
+```text
+Previous hidden state:  h0     = [0.5, -0.3]
+New word vector:        x1     = [0.8,  0.2]    (the word "I")
+
+Weight matrix for memory:  W_h = [[0.1, 0.4],
+                                   [0.3, 0.2]]
+
+Weight matrix for word:    W_x = [[0.6, 0.1],
+                                   [0.2, 0.7]]
+
+Bias:                      b   = [0.0, 0.0]     (zero for simplicity)
+```
+
+**Sub-step 1 — Transform the memory (W_h × h0):**
+
+This is matrix-vector multiplication. Each output number is a dot product of one row of W_h with h0:
+
+```text
+row 1:  0.1 × 0.5  +  0.4 × (-0.3)  =  0.05 + (-0.12)  =  -0.07
+row 2:  0.3 × 0.5  +  0.2 × (-0.3)  =  0.15 + (-0.06)  =   0.09
+
+W_h × h0 = [-0.07, 0.09]
+```
+
+**Sub-step 2 — Transform the new word (W_x × x1):**
+
+```text
+row 1:  0.6 × 0.8  +  0.1 × 0.2  =  0.48 + 0.02  =  0.50
+row 2:  0.2 × 0.8  +  0.7 × 0.2  =  0.16 + 0.14  =  0.30
+
+W_x × x1 = [0.50, 0.30]
+```
+
+**Sub-step 3 — Add them together (+ bias):**
+
+```text
+[-0.07, 0.09]  +  [0.50, 0.30]  +  [0.0, 0.0]  =  [0.43, 0.39]
+```
+
+This is the only step that uses plain addition — and it is adding two **transformed** vectors, not the raw inputs.
+
+**Sub-step 4 — Squash with tanh:**
+
+tanh pushes every number into the range [−1, +1]:
+
+```text
+tanh(0.43) = 0.41
+tanh(0.39) = 0.37
+
+h1 = [0.41, 0.37]   ← the new hidden state
+```
+
+**Summary of what happened:**
+
+```text
+h0 = [0.5, -0.3]    (old memory)
+x1 = [0.8, 0.2]     (new word "I")
+        ↓
+   matrix multiply each with learned weights
+        ↓
+   add the two transformed results
+        ↓
+   squash with tanh
+        ↓
+h1 = [0.41, 0.37]   (updated memory)
+```
+
+The weight matrices decide **how much** of the old memory to keep and **how much** of the new word to absorb. During training, the network adjusts these weights so that the final hidden state captures the most useful information from the sentence.
+
+#### Quick reference table
 
 | Symbol | What it is | Plain English |
 |--------|-----------|---------------|
 | `x_t` | The embedding vector of the current word | The new word the encoder is reading right now |
 | `h_{t-1}` | The previous hidden state | The encoder's memory from all previous words |
-| `W_x` | A weight matrix for the word | "How much should I pay attention to this new word?" |
-| `W_h` | A weight matrix for the memory | "How much should I keep from my previous memory?" |
+| `W_x` | A weight matrix for the word | Controls how the new word is transformed |
+| `W_h` | A weight matrix for the memory | Controls how the old memory is transformed |
 | `b` | A bias term | A small adjustment (like a default starting point) |
 | `tanh` | An activation function | Squashes the result to stay between −1 and +1 |
 | `h_t` | The new hidden state | The encoder's updated memory after reading this word |
