@@ -20,7 +20,7 @@ summary: "A beginner-friendly guide to the encoder-decoder (seq2seq) architectur
 
 In Part 1 we turned words into numbers (embeddings). Now we need a network that can read a **whole sentence** and produce a **different sentence** — for example, translating English to French or summarising a paragraph.
 
-The architecture that does this is called **encoder-decoder**, also known as **sequence-to-sequence (seq2seq)**.
+The architecture that does this is called **encoder-decoder**, also known as **sequence-to-sequence (seq2seq)**. The important thing to know upfront: the encoder and decoder are **two separate neural networks**, each with its own weights. They are trained together but they do different jobs.
 
 ---
 
@@ -94,14 +94,25 @@ We need a model that can handle **any length** on both sides.
 
 ---
 
-## 3. The big idea: compress, then generate
+## 3. The big idea: two networks working together
 
-The encoder-decoder solves this in two steps:
+The encoder-decoder uses **two separate neural networks** that work as a team:
 
 ```text
-Step 1 — Encoder: read the input sentence and compress it into a single vector
-Step 2 — Decoder: use that vector to generate the output sentence, one word at a time
+┌─────────────────────────┐         ┌─────────────────────────┐
+│    ENCODER (network 1)  │         │    DECODER (network 2)  │
+│                         │         │                         │
+│  Has its own weights    │ context │  Has its own weights    │
+│  Job: read the input    │ vector  │  Job: generate output   │
+│  sentence and compress  │────────→│  sentence, one word at  │
+│  it into a single vector│         │  a time                 │
+└─────────────────────────┘         └─────────────────────────┘
 ```
+
+- **Network 1 (encoder):** reads the input sentence and compresses it into a single vector.
+- **Network 2 (decoder):** takes that vector and generates the output sentence, one word at a time.
+
+They have **separate weight matrices** — the encoder has its own `W_h` and `W_x`, and the decoder has its own different `W_h` and `W_x`. But they are trained **together** as one system: the loss from the decoder's output flows back through both networks, so both sets of weights are updated at the same time.
 
 ### Analogy: the interpreter
 
