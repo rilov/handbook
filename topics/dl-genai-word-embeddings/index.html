@@ -386,59 +386,187 @@ walk  + (walked - walk)  = walked   (make it past tense)
 France + (Paris - France) = Paris   (find the capital)
 </code></pre></div></div>
 
-<h3 id="more-examples">More examples</h3>
+<h3 id="more-examples-all-verified-on-real-word2vec-embeddings">More examples (all verified on real Word2Vec embeddings)</h3>
 
-<table>
-  <thead>
-    <tr>
-      <th>Question you are asking</th>
-      <th>Arithmetic</th>
-      <th>Result</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>What is the capital of Italy?</td>
-      <td>Paris − France + Italy</td>
-      <td>≈ Rome</td>
-    </tr>
-    <tr>
-      <td>What is the opposite of “big” for “small”?</td>
-      <td>bigger − big + small</td>
-      <td>≈ smaller</td>
-    </tr>
-    <tr>
-      <td>What is the past tense of “swim”?</td>
-      <td>walked − walk + swim</td>
-      <td>≈ swam</td>
-    </tr>
-  </tbody>
-</table>
+<p>These are real results people have gotten using Google’s pre-trained Word2Vec model:</p>
+
+<p><strong>Example 1: king − man + woman ≈ queen</strong></p>
+
+<p>You already know this one. We remove “maleness” from “king” and add “femaleness.” The closest word to the result is “queen.”</p>
+
+<p><strong>Example 2: doctor − man + woman ≈ nurse</strong></p>
+
+<p>This one is interesting — and controversial. The model learned from news and web text where “doctor” appeared more often with “he” and “nurse” appeared more often with “she.” The arithmetic picks up that bias from the data. It shows that embeddings reflect the <strong>real patterns in the training text</strong>, including societal biases.</p>
+
+<p><strong>Example 3: Japan − Tokyo + Paris ≈ France</strong></p>
+
+<p>Here the logic is: remove the capital city of Japan from Japan, and add the capital city of France. What is left is the country — France. The model learned this because sentences like “Tokyo is the capital of Japan” and “Paris is the capital of France” appear in similar patterns.</p>
+
+<p><strong>Example 4: eating − eat + drink ≈ drinking</strong></p>
+
+<p>Remove the base verb from the “-ing” form, and add a different base verb. The result is that verb’s “-ing” form. This works because the model sees “I am eating” and “I am drinking” in the same sentence patterns, so the offset from “eat” to “eating” is the same as from “drink” to “drinking.”</p>
+
+<p><strong>How to read any word arithmetic</strong></p>
+
+<p>Every example follows the same pattern:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A - B + C ≈ D
+
+Meaning: "A is to B as D is to C"
+   or:   "Take the relationship between A and B, apply it to C"
+</code></pre></div></div>
+
+<p>For example:</p>
+<ul>
+  <li>king is to man as <strong>queen</strong> is to woman</li>
+  <li>eating is to eat as <strong>drinking</strong> is to drink</li>
+  <li>Japan is to Tokyo as <strong>France</strong> is to Paris</li>
+</ul>
 
 <h3 id="the-key-insight">The key insight</h3>
 
-<p>Nobody programmed these relationships. The network discovered them <strong>on its own</strong> by reading billions of words and learning which words appear in similar contexts. The fact that simple vector arithmetic recovers human-like analogies is what makes word embeddings so powerful.</p>
+<p>Nobody programmed these relationships. The network discovered them <strong>on its own</strong> by reading billions of words and learning which words appear in similar contexts. The fact that simple vector arithmetic recovers human-like analogies is what makes word embeddings so powerful — and it also means they inherit whatever biases exist in the training data.</p>
 
 <hr />
 
 <h2 id="6-measuring-similarity-cosine-similarity">6. Measuring similarity: cosine similarity</h2>
 
-<p>To compare two word vectors, we use <strong>cosine similarity</strong> — the cosine of the angle between them.</p>
+<p>We said similar words have similar vectors — but how do we measure “similar”? The standard answer is <strong>cosine similarity</strong>.</p>
+
+<h3 id="the-intuition-direction-not-length">The intuition: direction, not length</h3>
+
+<p>Imagine two arrows starting from the same point. Cosine similarity measures the <strong>angle</strong> between them:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Small angle  → arrows point the same way  → words are similar
+Right angle  → arrows point in unrelated directions  → words are unrelated
+Opposite     → arrows point in opposite directions
+</code></pre></div></div>
+
+<p>It only cares about <strong>direction</strong>, not how long the arrows are. This is important because during training some words might end up with larger vectors than others (common words tend to have longer vectors). We do not want “cat” and “dog” to look different just because one vector happens to be longer — we care about whether they point in the same direction.</p>
+
+<h3 id="the-formula">The formula</h3>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cos(A, B) = (A · B) / (|A| × |B|)
 </code></pre></div></div>
 
+<p>Let’s unpack each piece:</p>
+
 <ul>
-  <li><strong>1.0</strong> = identical direction (very similar)</li>
-  <li><strong>0.0</strong> = perpendicular (unrelated)</li>
-  <li><strong>-1.0</strong> = opposite direction</li>
+  <li><strong>A · B</strong> is the <strong>dot product</strong> — multiply each pair of numbers and add them up.</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>**</td>
+          <td>A</td>
+          <td>** is the <strong>length</strong> of vector A — how far the arrow reaches from the origin.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>Dividing by both lengths <strong>normalises</strong> the result so it always falls between −1 and +1.</li>
 </ul>
 
-<p><strong>Example:</strong></p>
+<p>The result means:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cos("cat", "dog")   = 0.92   ← very similar
-cos("cat", "car")   = 0.15   ← not similar
-cos("king", "queen") = 0.87  ← similar (both royalty)
+<table>
+  <thead>
+    <tr>
+      <th>Cosine similarity</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1.0</strong></td>
+      <td>Vectors point in exactly the same direction — very similar</td>
+    </tr>
+    <tr>
+      <td><strong>0.0</strong></td>
+      <td>Vectors are perpendicular — no relationship</td>
+    </tr>
+    <tr>
+      <td><strong>−1.0</strong></td>
+      <td>Vectors point in opposite directions</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="worked-example-with-simple-numbers-1">Worked example with simple numbers</h3>
+
+<p>Suppose we have two 3-dimensional word vectors:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A = "cat"  = [1, 2, 3]
+B = "dog"  = [2, 3, 4]
+</code></pre></div></div>
+
+<p><strong>Step 1: Dot product (A · B)</strong></p>
+
+<p>Multiply each pair and add:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A · B = (1×2) + (2×3) + (3×4)
+      = 2 + 6 + 12
+      = 20
+</code></pre></div></div>
+
+<p><strong>Step 2: Length of each vector</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>|A| = √(1² + 2² + 3²) = √(1 + 4 + 9) = √14 ≈ 3.74
+|B| = √(2² + 3² + 4²) = √(4 + 9 + 16) = √29 ≈ 5.39
+</code></pre></div></div>
+
+<p><strong>Step 3: Divide</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cos(A, B) = 20 / (3.74 × 5.39)
+          = 20 / 20.15
+          ≈ 0.99
+</code></pre></div></div>
+
+<p>A cosine similarity of <strong>0.99</strong> means “cat” and “dog” point in almost exactly the same direction — very similar. (These are made-up numbers, but the process is the same with real 300-dimensional embeddings.)</p>
+
+<h3 id="now-compare-with-an-unrelated-word">Now compare with an unrelated word</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>C = "car" = [5, -1, 0]
+
+A · C = (1×5) + (2×-1) + (3×0) = 5 - 2 + 0 = 3
+
+|C| = √(25 + 1 + 0) = √26 ≈ 5.10
+
+cos(A, C) = 3 / (3.74 × 5.10)
+          = 3 / 19.07
+          ≈ 0.16
+</code></pre></div></div>
+
+<p>Only <strong>0.16</strong> — almost perpendicular. “Cat” and “car” have very little in common.</p>
+
+<h3 id="real-world-cosine-similarity-values">Real-world cosine similarity values</h3>
+
+<p>These are approximate values from Google’s pre-trained Word2Vec model:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cos("cat", "dog")    = 0.76   ← both are pets, very similar
+cos("cat", "kitten") = 0.79   ← a kitten is a baby cat
+cos("cat", "car")    = 0.15   ← unrelated, just similar spelling
+cos("king", "queen") = 0.73   ← both royalty
+cos("good", "bad")   = 0.47   ← related (both describe quality) but different meaning
+cos("good", "table") = 0.08   ← almost no connection
+</code></pre></div></div>
+
+<p>Notice that “good” and “bad” are somewhat similar (0.47) even though they are opposites. This is because they appear in <strong>the same kinds of sentences</strong> — “the food was good” and “the food was bad.” Cosine similarity measures whether words appear in similar contexts, not whether they mean the same thing.</p>
+
+<h3 id="why-not-just-use-euclidean-distance">Why not just use Euclidean distance?</h3>
+
+<p>You might wonder: why not just measure the straight-line distance between two vectors instead?</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Euclidean distance = √((a1-b1)² + (a2-b2)² + ...)
+</code></pre></div></div>
+
+<p>The problem is that Euclidean distance is affected by <strong>vector length</strong>. A word that appears very frequently (like “the”) might have a longer vector than a rare word (like “platypus”). Euclidean distance would say they are far apart even if they point in a similar direction. Cosine similarity ignores length and focuses purely on direction, which is a better measure of meaning.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A = [1, 2]       (short vector)
+B = [100, 200]   (long vector, but same direction)
+
+Euclidean distance = very large (they look far apart)
+Cosine similarity  = 1.0 (they point the same way — identical meaning)
 </code></pre></div></div>
 
 <hr />
