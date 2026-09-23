@@ -198,12 +198,93 @@ Output:  new state  h3 = [0.52, 0.71, 0.33, -0.19]
 
 <h3 id="how-does-the-encoder-mix-the-word-vector-with-the-hidden-state">How does the encoder “mix” the word vector with the hidden state?</h3>
 
-<p>At each step, the encoder does a simple calculation:</p>
+<p>It is <strong>not</strong> simple vector addition. The encoder uses three operations: <strong>matrix multiplication</strong>, <strong>addition</strong>, and <strong>squashing</strong>. Here is the formula:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h_t = tanh(W_h × h_{t-1}  +  W_x × x_t  +  b)
 </code></pre></div></div>
 
-<p>Here is what each piece means:</p>
+<p>That looks dense, so let’s break it into three clear sub-steps:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Sub-step 1:  Transform the memory      →  W_h × h_{t-1}      (matrix multiply)
+Sub-step 2:  Transform the new word     →  W_x × x_t          (matrix multiply)
+Sub-step 3:  Add them together + bias   →  result + b          (addition)
+Sub-step 4:  Squash to [-1, +1]         →  tanh(result)        (activation)
+</code></pre></div></div>
+
+<h4 id="why-matrix-multiplication-and-not-just-addition">Why matrix multiplication and not just addition?</h4>
+
+<p>Plain addition would just pile numbers on top of each other — the encoder would have no control over <strong>which parts</strong> of the word or memory matter. Matrix multiplication is like a set of <strong>knobs and dials</strong>: each weight in the matrix controls how much one input number influences one output number. This lets the encoder learn things like “pay a lot of attention to verbs but less to articles.”</p>
+
+<h4 id="worked-example-with-real-numbers">Worked example with real numbers</h4>
+
+<p>Let’s use tiny 2-dimensional vectors so you can follow every number.</p>
+
+<p><strong>Given:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Previous hidden state:  h0     = [0.5, -0.3]
+New word vector:        x1     = [0.8,  0.2]    (the word "I")
+
+Weight matrix for memory:  W_h = [[0.1, 0.4],
+                                   [0.3, 0.2]]
+
+Weight matrix for word:    W_x = [[0.6, 0.1],
+                                   [0.2, 0.7]]
+
+Bias:                      b   = [0.0, 0.0]     (zero for simplicity)
+</code></pre></div></div>
+
+<p><strong>Sub-step 1 — Transform the memory (W_h × h0):</strong></p>
+
+<p>This is matrix-vector multiplication. Each output number is a dot product of one row of W_h with h0:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>row 1:  0.1 × 0.5  +  0.4 × (-0.3)  =  0.05 + (-0.12)  =  -0.07
+row 2:  0.3 × 0.5  +  0.2 × (-0.3)  =  0.15 + (-0.06)  =   0.09
+
+W_h × h0 = [-0.07, 0.09]
+</code></pre></div></div>
+
+<p><strong>Sub-step 2 — Transform the new word (W_x × x1):</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>row 1:  0.6 × 0.8  +  0.1 × 0.2  =  0.48 + 0.02  =  0.50
+row 2:  0.2 × 0.8  +  0.7 × 0.2  =  0.16 + 0.14  =  0.30
+
+W_x × x1 = [0.50, 0.30]
+</code></pre></div></div>
+
+<p><strong>Sub-step 3 — Add them together (+ bias):</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[-0.07, 0.09]  +  [0.50, 0.30]  +  [0.0, 0.0]  =  [0.43, 0.39]
+</code></pre></div></div>
+
+<p>This is the only step that uses plain addition — and it is adding two <strong>transformed</strong> vectors, not the raw inputs.</p>
+
+<p><strong>Sub-step 4 — Squash with tanh:</strong></p>
+
+<p>tanh pushes every number into the range [−1, +1]:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tanh(0.43) = 0.41
+tanh(0.39) = 0.37
+
+h1 = [0.41, 0.37]   ← the new hidden state
+</code></pre></div></div>
+
+<p><strong>Summary of what happened:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h0 = [0.5, -0.3]    (old memory)
+x1 = [0.8, 0.2]     (new word "I")
+        ↓
+   matrix multiply each with learned weights
+        ↓
+   add the two transformed results
+        ↓
+   squash with tanh
+        ↓
+h1 = [0.41, 0.37]   (updated memory)
+</code></pre></div></div>
+
+<p>The weight matrices decide <strong>how much</strong> of the old memory to keep and <strong>how much</strong> of the new word to absorb. During training, the network adjusts these weights so that the final hidden state captures the most useful information from the sentence.</p>
+
+<h4 id="quick-reference-table">Quick reference table</h4>
 
 <table>
   <thead>
@@ -227,12 +308,12 @@ Output:  new state  h3 = [0.52, 0.71, 0.33, -0.19]
     <tr>
       <td><code class="language-plaintext highlighter-rouge">W_x</code></td>
       <td>A weight matrix for the word</td>
-      <td>“How much should I pay attention to this new word?”</td>
+      <td>Controls how the new word is transformed</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">W_h</code></td>
       <td>A weight matrix for the memory</td>
-      <td>“How much should I keep from my previous memory?”</td>
+      <td>Controls how the old memory is transformed</td>
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">b</code></td>
