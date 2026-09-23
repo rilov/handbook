@@ -171,12 +171,48 @@ That looks like magic, but it is really just vector addition and subtraction. Le
 
 ### Why does it work?
 
-During training, the network learns that certain **directions** in the vector space correspond to certain **concepts**. For example:
+To understand this, we need to think about **what the training process actually does** to the vectors.
 
-- There is a direction that means **"gender"** — moving along it turns "man" into "woman" or "king" into "queen."
-- There is a direction that means **"royalty"** — moving along it turns "man" into "king" or "woman" into "queen."
+#### Step 1: Training creates clusters
 
-Think of it as a 2D map:
+Recall from section 3 that words appearing in similar contexts get similar vectors. So the training data naturally creates clusters:
+
+```text
+Cluster of "male person" words   → man, boy, he, him, father, king, prince ...
+Cluster of "female person" words → woman, girl, she, her, mother, queen, princess ...
+```
+
+Within each cluster, the words are close to each other. But the model also notices something deeper.
+
+#### Step 2: Training preserves parallel relationships
+
+Think about how "man" and "woman" appear in text. They show up in **exactly the same patterns**, just swapped:
+
+```text
+"He is the king of England."     ↔  "She is the queen of England."
+"The man wore a crown."          ↔  "The woman wore a crown."
+"He became a prince at birth."   ↔  "She became a princess at birth."
+```
+
+Because these pairs always appear in mirror-image sentences, the model learns that the **difference** between each male word and its female counterpart is **the same**. In vector terms:
+
+```text
+woman - man  ≈  queen - king  ≈  princess - prince  ≈  she - he
+```
+
+All of these give roughly the same vector — a direction we can call **"gender."**
+
+The same thing happens for other relationships:
+
+```text
+king - man  ≈  queen - woman       → the "royalty" direction
+Paris - France  ≈  Tokyo - Japan   → the "capital city" direction
+walked - walk  ≈  swam - swim      → the "past tense" direction
+```
+
+#### Step 3: Parallel relationships form a grid
+
+Because these differences are consistent, the words arrange themselves into a **grid-like pattern** in vector space:
 
 ```text
                   royalty →
@@ -190,7 +226,32 @@ Think of it as a 2D map:
                 └─────────────────────┘
 ```
 
-The arrow from "man" to "king" and the arrow from "woman" to "queen" point in the **same direction** (royalty). The arrow from "man" to "woman" and from "king" to "queen" also point in the same direction (gender).
+The arrow from "man" to "king" and the arrow from "woman" to "queen" point in the **same direction** and have the **same length** (royalty). The arrow from "man" to "woman" and from "king" to "queen" also point in the same direction and have the same length (gender).
+
+This grid is not designed — it **emerges** from the training data. The model finds that organising words this way is the most efficient way to predict context, because it can reuse the same "gender" offset and the same "royalty" offset across many word pairs.
+
+#### Analogy: a spreadsheet
+
+Think of it like a spreadsheet where each row is a person:
+
+| Person | Royalty score | Gender score |
+|--------|--------------|--------------|
+| man    | 1            | 0            |
+| woman  | 1            | 1            |
+| king   | 5            | 0            |
+| queen  | 5            | 1            |
+
+If you want to go from "man" to "king," you add 4 to the royalty column. If you want to go from "man" to "woman," you add 1 to the gender column. These transformations work for **any** row — that is why the arithmetic works.
+
+#### Why "≈" and not "="?
+
+In practice, the result is **approximate** — `king - man + woman` gives a vector close to "queen" but not exactly equal. This is because:
+
+- Real embeddings have 300 dimensions, not 2, and the relationships are spread across many dimensions.
+- Words have multiple meanings and associations that create noise.
+- The training data is not perfectly balanced.
+
+So we find the word whose vector is **closest** (by cosine similarity) to the result, and that word is usually "queen."
 
 ### Worked example with simple numbers
 
