@@ -101,14 +101,14 @@ Everything that follows builds on these three facts:
 
 ## 2. The problem: variable-length input → variable-length output
 
-A normal neural network takes a fixed-size input and gives a fixed-size output. But sentences come in all sizes:
+Now that we know translation is done by neural networks, here is the first obstacle. The network from section 1 takes a **fixed-size** input and gives a **fixed-size** output. But sentences come in all sizes:
 
 ```text
 Input:  "How are you?"          (3 words)
 Output: "Comment allez-vous ?"  (3 words, but could be 2 or 5)
 ```
 
-We need a model that can handle **any length** on both sides.
+We need a model that can handle **any length** on both sides. The solution is the encoder-decoder architecture.
 
 ---
 
@@ -151,6 +151,8 @@ English sentence → [encoder processes]   → context vector → [decoder gener
 
 The context vector is the **only connection** between the encoder and the decoder. The decoder never sees the original English words — it only gets this one vector. So the context vector must contain everything the decoder needs to produce the correct output.
 
+That is the big picture. Now let's follow the pipeline step by step, starting with how words get into the encoder in the first place.
+
 ---
 
 ## 4. First step: every word becomes a vector
@@ -187,6 +189,8 @@ So the sentence is now a **sequence of vectors** — one vector per word:
 These embedding vectors are what the encoder actually receives. It never sees the raw words — it only sees numbers.
 
 **Where does the embedding matrix come from?** It can be pre-trained (like Word2Vec or GloVe from Part 1), or it can start with random numbers and be trained along with the rest of the network. Either way, the embedding matrix is updated during training so the vectors become more meaningful over time.
+
+We now have a sequence of word vectors. The next step is to feed them to the first of our two networks: the encoder.
 
 ---
 
@@ -321,7 +325,7 @@ Let's use tiny 2-dimensional vectors so you can follow every number. In a real m
 | Value | Where it comes from | In this example |
 |-------|-------------------|-----------------|
 | `h0` (previous hidden state) | The output of the **previous step**. At the very start of a sentence, it is initialised to all zeros. Here we use `[0.5, -0.3]` to show a mid-sentence step where the encoder already has some memory. | `[0.5, -0.3]` |
-| `x1` (word vector) | Looked up from the **embedding matrix** (section 3). The word "I" has an index in the vocabulary, and that index picks a row from the embedding table. | `[0.8, 0.2]` |
+| `x1` (word vector) | Looked up from the **embedding matrix** (section 4). The word "I" has an index in the vocabulary, and that index picks a row from the embedding table. | `[0.8, 0.2]` |
 | `W_h` (weight matrix for memory) | **Initialised randomly** before training, then **learned** by backpropagation. The network adjusts these numbers over thousands of training examples until they produce good translations. | `[[0.1, 0.4], [0.3, 0.2]]` |
 | `W_x` (weight matrix for word) | Same as W_h — **randomly initialised**, then **learned** during training. | `[[0.6, 0.1], [0.2, 0.7]]` |
 | `b` (bias) | Also **learned** during training. We set it to zero here to keep the example simple. | `[0.0, 0.0]` |
@@ -472,19 +476,24 @@ The decoder works the same way — if it has 3 layers, each decoder step runs th
 
 ## 6. The context vector
 
-The context vector is the bridge between the encoder and decoder. It is a single vector (e.g. 256 or 512 numbers) that must summarise the entire input.
+Let's zoom in on the hand-off between the two networks. From the walkthrough in section 5, the encoder's final hidden state was:
 
 ```text
-"I love cats" → context vector c = [0.42, -0.18, 0.91, ...]
+"I love cats" → context vector c = h3 = [0.52, 0.71, 0.33, -0.19]
 ```
 
-This is both the power and the weakness of this design. We will see the weakness in Part 5.
+This single vector (in real models 256 or 512 numbers) is the bridge between the encoder and decoder. It must summarise the **entire input sentence**, because it is the only thing the decoder receives.
+
+This is both the power and the weakness of this design:
+
+- **Power:** any input length gets compressed to the same fixed size, so the decoder always knows what to expect.
+- **Weakness:** a 50-word sentence must squeeze into the same space as a 3-word sentence — information gets lost. (This is the paint-mixing problem from section 5, and it is the main motivation for **attention** in Part 3.)
 
 ---
 
 ## 7. The decoder
 
-The decoder is another RNN. It starts with the context vector as its initial hidden state and generates the output sentence one word at a time.
+Now for the second network. The decoder is another RNN — it works with a hidden state just like the encoder, but its job is reversed: instead of reading words to build a summary, it **starts from the summary** (the context vector) and unfolds it into words, one at a time.
 
 ```text
 Initial state: context vector c
@@ -498,8 +507,16 @@ Step 5: Input "chats"       → predict <END>    → stop
 
 At each step the decoder:
 1. Takes the previous word (or `<START>` at the beginning)
-2. Updates its hidden state
-3. Predicts the next word using a softmax over the vocabulary
+2. Updates its hidden state — same mixing operation as the encoder, but with the decoder's own weights
+3. Predicts the next word using a **softmax** over the vocabulary
+
+**What is softmax?** The decoder's final layer produces one score for every word in the vocabulary (e.g. 30,000 scores). Softmax converts these scores into **probabilities** that add up to 1. The word with the highest probability is picked as the next output word:
+
+```text
+Decoder scores  →  softmax  →  P("J'") = 0.72, P("Je") = 0.15, P("Le") = 0.04, ...
+                                        ↓
+                              pick "J'" (highest probability)
+```
 
 ### Training vs inference
 
@@ -513,6 +530,8 @@ At each step the decoder:
 ---
 
 ## 8. Putting it all together
+
+Here is the whole pipeline in one picture — embeddings feed the encoder, the encoder compresses to a context vector, and the decoder unfolds it into the output sentence:
 
 ```text
 ┌──────────────────────────┐      ┌──────────────────────────────┐
