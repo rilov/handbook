@@ -204,11 +204,44 @@ Step 3 — Look up embedding:  use the index to grab a row from the embedding ma
 
 <h2 id="5-the-encoder">5. The encoder</h2>
 
-<p>The encoder’s job is to read the word vectors from section 4, <strong>one at a time</strong>, and build up a single summary of the whole sentence. The encoder is typically an <strong>RNN</strong> (Recurrent Neural Network), <strong>LSTM</strong>, or <strong>GRU</strong> — all of which work in the same general way described below.</p>
+<p>The encoder’s job is to read the word vectors from section 4, <strong>one at a time</strong>, and build up a single summary of the whole sentence.</p>
 
-<h3 id="what-is-a-hidden-state">What is a hidden state?</h3>
+<h3 id="the-problem-a-normal-network-has-no-memory">The problem: a normal network has no memory</h3>
 
-<p>The hidden state is just a <strong>list of numbers</strong> (e.g. 256 numbers) that acts as the encoder’s <strong>memory</strong>. It starts as all zeros — the encoder knows nothing yet. Every time it reads a new word, it updates this memory.</p>
+<p>Recall the neural network from section 1: numbers go in, math happens, numbers come out. Each input is processed <strong>independently</strong> — the network has no idea what it saw before.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal network:
+
+  input 1 → [network] → output 1     (forgets everything)
+  input 2 → [network] → output 2     (forgets everything)
+  input 3 → [network] → output 3     (forgets everything)
+</code></pre></div></div>
+
+<p>That is a problem for sentences, because <strong>word order and history matter</strong>. “The dog bit the man” and “The man bit the dog” contain the same words — the only difference is the sequence. To understand a sentence, the network must remember what came before.</p>
+
+<h3 id="the-solution-give-the-network-a-memory-this-is-the-rnn">The solution: give the network a memory (this is the RNN)</h3>
+
+<p>A <strong>Recurrent Neural Network (RNN)</strong> fixes this with one simple change: alongside the regular input, the network also receives <strong>its own output from the previous step</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>RNN:
+
+  word 1 + (nothing)          → [network] → memory 1
+  word 2 + memory 1           → [network] → memory 2
+  word 3 + memory 2           → [network] → memory 3
+</code></pre></div></div>
+
+<p>Each step, the network takes in two things: the <strong>new word</strong> and the <strong>memory of everything so far</strong>. It combines them and produces an <strong>updated memory</strong>. This is why it is called <em>recurrent</em> — the output loops back in as an input.</p>
+
+<h3 id="that-memory-has-a-name-the-hidden-state">That memory has a name: the hidden state</h3>
+
+<p>The memory that gets passed from step to step is called the <strong>hidden state</strong>. Concretely, it is just a <strong>list of numbers</strong> (e.g. 256 numbers):</p>
+
+<ul>
+  <li>It is called <em>hidden</em> because it is internal to the network — it is not the input and not the final output; it lives “hidden” in the middle.</li>
+  <li>It is called a <em>state</em> because it represents the network’s current state of understanding — everything it has absorbed from the sentence so far.</li>
+</ul>
+
+<p>It starts as all zeros — the encoder knows nothing yet. Every time it reads a new word, it updates this memory.</p>
 
 <p>Think of it like taking notes while listening to someone speak:</p>
 
@@ -220,6 +253,10 @@ Step 3 — Look up embedding:  use the index to grab a row from the embedding ma
 </ul>
 
 <p>The key idea: <strong>the hidden state always has the same size</strong> (e.g. always 256 numbers), no matter how many words you have read. It is a fixed-size notepad that keeps getting rewritten.</p>
+
+<blockquote>
+  <p><strong>Note:</strong> In practice the encoder is usually an <strong>LSTM</strong> or <strong>GRU</strong> rather than a plain RNN. These are improved versions of the RNN that are better at remembering things over long sentences, but the core idea — a hidden state updated word by word — is exactly the same.</p>
+</blockquote>
 
 <h3 id="walking-through-i-love-cats">Walking through “I love cats”</h3>
 
