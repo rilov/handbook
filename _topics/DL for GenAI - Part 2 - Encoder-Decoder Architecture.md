@@ -214,17 +214,51 @@ That is a problem for sentences, because **word order and history matter**. "The
 
 ### The solution: give the network a memory (this is the RNN)
 
-A **Recurrent Neural Network (RNN)** fixes this with one simple change: alongside the regular input, the network also receives **its own output from the previous step**.
+How do we fix a network that forgets? Simple idea: **whatever the network produced for the previous word, hand it back to the network along with the next word.**
+
+Compare the two side by side:
 
 ```text
-RNN:
+Normal network — each word processed alone:
 
-  word 1 + (nothing)          → [network] → memory 1
-  word 2 + memory 1           → [network] → memory 2
-  word 3 + memory 2           → [network] → memory 3
+  "I"    → [network] → result       (result is thrown away)
+  "love" → [network] → result       (knows nothing about "I")
+  "cats" → [network] → result       (knows nothing about "I love")
+
+
+RNN — each word processed together with the previous result:
+
+  "I"    + (blank memory)        → [network] → memory after "I"
+                                                    │
+                                     ┌──────────────┘
+                                     ↓
+  "love" + memory after "I"      → [network] → memory after "I love"
+                                                    │
+                                     ┌──────────────┘
+                                     ↓
+  "cats" + memory after "I love" → [network] → memory after "I love cats"
 ```
 
-Each step, the network takes in two things: the **new word** and the **memory of everything so far**. It combines them and produces an **updated memory**. This is why it is called *recurrent* — the output loops back in as an input.
+Notice what changed: the network now takes **two inputs at every step** instead of one:
+
+1. The **new word** (as a vector, from section 4)
+2. The **memory from the previous step** (what the network produced last time)
+
+And it produces **one output**: an updated memory that now includes the new word.
+
+**Important:** it is the **same network with the same weights** used at every step — not three different networks. The network is simply applied again and again, once per word, each time carrying its previous output forward.
+
+### Analogy: reading with a sticky note
+
+Imagine you can only see **one word at a time** through a small window, but you have a sticky note:
+
+1. You see "I" — you write on the note: *"someone is talking about themselves."*
+2. The window moves to "love" — you read your note, see the new word, and rewrite the note: *"this person loves something."*
+3. The window moves to "cats" — you read the note, see the new word, and rewrite: *"this person loves cats."*
+
+You never saw the whole sentence at once — but by always combining the **note (memory)** with the **current word**, you ended up understanding the full sentence. The RNN does exactly this.
+
+This is why it is called *recurrent* — "recurrent" means "happening repeatedly." The same operation repeats for every word, and the output of one step feeds back in as the input of the next.
 
 ### That memory has a name: the hidden state
 
