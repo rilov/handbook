@@ -174,11 +174,44 @@ These embedding vectors are what the encoder actually receives. It never sees th
 
 ## 5. The encoder
 
-The encoder's job is to read the word vectors from section 4, **one at a time**, and build up a single summary of the whole sentence. The encoder is typically an **RNN** (Recurrent Neural Network), **LSTM**, or **GRU** — all of which work in the same general way described below.
+The encoder's job is to read the word vectors from section 4, **one at a time**, and build up a single summary of the whole sentence.
 
-### What is a hidden state?
+### The problem: a normal network has no memory
 
-The hidden state is just a **list of numbers** (e.g. 256 numbers) that acts as the encoder's **memory**. It starts as all zeros — the encoder knows nothing yet. Every time it reads a new word, it updates this memory.
+Recall the neural network from section 1: numbers go in, math happens, numbers come out. Each input is processed **independently** — the network has no idea what it saw before.
+
+```text
+Normal network:
+
+  input 1 → [network] → output 1     (forgets everything)
+  input 2 → [network] → output 2     (forgets everything)
+  input 3 → [network] → output 3     (forgets everything)
+```
+
+That is a problem for sentences, because **word order and history matter**. "The dog bit the man" and "The man bit the dog" contain the same words — the only difference is the sequence. To understand a sentence, the network must remember what came before.
+
+### The solution: give the network a memory (this is the RNN)
+
+A **Recurrent Neural Network (RNN)** fixes this with one simple change: alongside the regular input, the network also receives **its own output from the previous step**.
+
+```text
+RNN:
+
+  word 1 + (nothing)          → [network] → memory 1
+  word 2 + memory 1           → [network] → memory 2
+  word 3 + memory 2           → [network] → memory 3
+```
+
+Each step, the network takes in two things: the **new word** and the **memory of everything so far**. It combines them and produces an **updated memory**. This is why it is called *recurrent* — the output loops back in as an input.
+
+### That memory has a name: the hidden state
+
+The memory that gets passed from step to step is called the **hidden state**. Concretely, it is just a **list of numbers** (e.g. 256 numbers):
+
+- It is called *hidden* because it is internal to the network — it is not the input and not the final output; it lives "hidden" in the middle.
+- It is called a *state* because it represents the network's current state of understanding — everything it has absorbed from the sentence so far.
+
+It starts as all zeros — the encoder knows nothing yet. Every time it reads a new word, it updates this memory.
 
 Think of it like taking notes while listening to someone speak:
 
@@ -188,6 +221,8 @@ Think of it like taking notes while listening to someone speak:
 - After the last word → your notes now summarise everything that was said (final hidden state = context vector)
 
 The key idea: **the hidden state always has the same size** (e.g. always 256 numbers), no matter how many words you have read. It is a fixed-size notepad that keeps getting rewritten.
+
+> **Note:** In practice the encoder is usually an **LSTM** or **GRU** rather than a plain RNN. These are improved versions of the RNN that are better at remembering things over long sentences, but the core idea — a hidden state updated word by word — is exactly the same.
 
 ### Walking through "I love cats"
 
