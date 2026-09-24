@@ -53,27 +53,41 @@
 
 <hr />
 
-<h2 id="1-quick-refresher-what-is-a-neural-network">1. Quick refresher: what is a neural network?</h2>
+<h2 id="1-the-foundation-translation-is-done-by-neural-networks">1. The foundation: translation is done by neural networks</h2>
 
-<p>Before we dive in, let’s make sure the basics are clear, because the encoder and decoder are both <strong>neural networks</strong>.</p>
+<p>Our goal in this article is to translate a sentence — say, English to French:</p>
 
-<h3 id="the-simplest-picture">The simplest picture</h3>
-
-<p>A neural network is a machine that takes numbers in, does math, and produces numbers out. It is made of <strong>layers</strong>, and each layer has <strong>weights</strong> (numbers that control the math).</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input numbers → [Layer 1] → [Layer 2] → ... → Output numbers
-                  weights      weights
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I love cats"  →  "J'aime les chats"
 </code></pre></div></div>
 
-<h3 id="what-are-weights">What are weights?</h3>
+<p>The machine that does this is built from <strong>neural networks</strong>. So before we look at the architecture, let’s understand what a neural network does <em>in the context of translation</em>.</p>
 
-<p>Weights are just numbers stored in a matrix (a grid of numbers). They start as <strong>random values</strong> before training. Each weight controls how much one input number influences one output number — like a volume knob.</p>
+<h3 id="a-neural-network-only-works-with-numbers">A neural network only works with numbers</h3>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Example: a layer with 2 inputs and 2 outputs
+<p>A neural network cannot read words. It takes <strong>numbers in</strong> and produces <strong>numbers out</strong>. So the entire translation pipeline is about numbers:</p>
 
-       input     weights          output
-       [0.8]     [[0.6, 0.1],     [?]
-       [0.2]      [0.2, 0.7]]     [?]
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I love cats"                                    "J'aime les chats"
+      ↓                                                  ↑
+convert words to numbers                    convert numbers back to words
+      ↓                                                  ↑
+[0.12, -0.45, ...]  →  [neural networks]  →  [0.87, 0.03, ...]
+</code></pre></div></div>
+
+<ul>
+  <li><strong>Going in:</strong> each word becomes a vector of numbers (the embeddings from Part 1).</li>
+  <li><strong>Inside:</strong> the networks transform these numbers step by step.</li>
+  <li><strong>Coming out:</strong> the final numbers are converted back into words (by picking the most likely word from the vocabulary).</li>
+</ul>
+
+<h3 id="how-does-the-network-transform-numbers-weights">How does the network transform numbers? Weights.</h3>
+
+<p>Inside the network are <strong>weights</strong> — grids of numbers (matrices). Every transformation is a matrix multiplication: the input numbers get multiplied by the weights to produce output numbers.</p>
+
+<p>Here is a tiny example. Say the word vector for “I” is <code class="language-plaintext highlighter-rouge">[0.8, 0.2]</code> and the network has this weight matrix:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>       input for "I"    weights           output
+       [0.8]            [[0.6, 0.1],      [?]
+       [0.2]             [0.2, 0.7]]      [?]
 
 output[0] = 0.6 × 0.8 + 0.1 × 0.2 = 0.50
 output[1] = 0.2 × 0.8 + 0.7 × 0.2 = 0.30
@@ -81,31 +95,38 @@ output[1] = 0.2 × 0.8 + 0.7 × 0.2 = 0.30
 output = [0.50, 0.30]
 </code></pre></div></div>
 
-<p>This is <strong>matrix multiplication</strong> — the core operation of every neural network. Every layer multiplies its input by its weight matrix to produce its output.</p>
+<p>The weights decide <strong>what the network pays attention to</strong> in the word vector. Different weights would produce a completely different output from the same word.</p>
 
-<h3 id="how-does-the-network-learn">How does the network learn?</h3>
+<h3 id="where-do-the-weights-come-from-training">Where do the weights come from? Training.</h3>
+
+<p>The weights start as <strong>random numbers</strong> — at that point the network produces garbage translations. Then we train it:</p>
 
 <ol>
-  <li><strong>Forward pass:</strong> Feed an input through the network and get a prediction.</li>
-  <li><strong>Loss:</strong> Compare the prediction to the correct answer. The difference is the <strong>loss</strong> (a single number — lower is better).</li>
-  <li><strong>Backpropagation:</strong> Calculate how much each weight contributed to the error, then nudge every weight slightly to reduce the loss.</li>
-  <li><strong>Repeat</strong> thousands of times with different examples. The weights gradually move from random values to values that produce good predictions.</li>
+  <li><strong>Show it an example:</strong> Feed in “I love cats” and let the network produce a translation attempt — maybe “Le chien mange” (garbage at first).</li>
+  <li><strong>Measure the error:</strong> Compare the attempt with the correct answer “J’aime les chats.” The difference is called the <strong>loss</strong>.</li>
+  <li><strong>Adjust the weights:</strong> A process called <strong>backpropagation</strong> figures out which weights caused the error and nudges each one slightly in the direction that reduces it.</li>
+  <li><strong>Repeat</strong> with millions of sentence pairs. Gradually the weights shift from random values to values that produce correct translations.</li>
 </ol>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                  ┌──────────────────────────────────┐
-                  │  Forward pass: input → prediction │
-                  │  Compare with correct answer      │
-  Training loop:  │  Loss = how wrong the prediction  │
-                  │  Backpropagation: adjust weights   │
-                  │  Repeat with next example          │
-                  └──────────────────────────────────┘
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                  ┌──────────────────────────────────────────────┐
+                  │  Feed in "I love cats" → get attempt          │
+  Training loop:  │  Compare with "J'aime les chats" → loss       │
+                  │  Backpropagation → nudge all weights slightly │
+                  │  Repeat with the next sentence pair           │
+                  └──────────────────────────────────────────────┘
 </code></pre></div></div>
 
-<p><strong>Nobody programs the weights by hand.</strong> The network discovers them by seeing thousands of examples and slowly adjusting. This is what “training” means.</p>
+<p><strong>Nobody programs the translation rules by hand.</strong> The network discovers them by seeing millions of translated sentence pairs and slowly adjusting its weights.</p>
 
-<h3 id="why-does-this-matter-for-encoder-decoder">Why does this matter for encoder-decoder?</h3>
+<h3 id="keep-this-in-mind-for-the-rest-of-the-article">Keep this in mind for the rest of the article</h3>
 
-<p>The encoder and decoder are both neural networks with their own weight matrices. When we later see terms like <code class="language-plaintext highlighter-rouge">W_h</code>, <code class="language-plaintext highlighter-rouge">W_x</code>, and <code class="language-plaintext highlighter-rouge">b</code>, those are just the weights inside these networks — numbers that start random and are learned during training through the process above.</p>
+<p>Everything that follows builds on these three facts:</p>
+
+<ol>
+  <li>The translator is made of <strong>neural networks</strong> that only handle numbers.</li>
+  <li>The transformations happen through <strong>weight matrices</strong> (like <code class="language-plaintext highlighter-rouge">W_h</code>, <code class="language-plaintext highlighter-rouge">W_x</code>, and <code class="language-plaintext highlighter-rouge">b</code> you will see later).</li>
+  <li>Those weights are <strong>learned from training data</strong>, not written by a person.</li>
+</ol>
 
 <hr />
 
