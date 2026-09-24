@@ -132,13 +132,13 @@ output = [0.50, 0.30]
 
 <h2 id="2-the-problem-variable-length-input--variable-length-output">2. The problem: variable-length input → variable-length output</h2>
 
-<p>A normal neural network takes a fixed-size input and gives a fixed-size output. But sentences come in all sizes:</p>
+<p>Now that we know translation is done by neural networks, here is the first obstacle. The network from section 1 takes a <strong>fixed-size</strong> input and gives a <strong>fixed-size</strong> output. But sentences come in all sizes:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  "How are you?"          (3 words)
 Output: "Comment allez-vous ?"  (3 words, but could be 2 or 5)
 </code></pre></div></div>
 
-<p>We need a model that can handle <strong>any length</strong> on both sides.</p>
+<p>We need a model that can handle <strong>any length</strong> on both sides. The solution is the encoder-decoder architecture.</p>
 
 <hr />
 
@@ -186,6 +186,8 @@ English sentence → [encoder processes]   → context vector → [decoder gener
 
 <p>The context vector is the <strong>only connection</strong> between the encoder and the decoder. The decoder never sees the original English words — it only gets this one vector. So the context vector must contain everything the decoder needs to produce the correct output.</p>
 
+<p>That is the big picture. Now let’s follow the pipeline step by step, starting with how words get into the encoder in the first place.</p>
+
 <hr />
 
 <h2 id="4-first-step-every-word-becomes-a-vector">4. First step: every word becomes a vector</h2>
@@ -220,6 +222,8 @@ Step 3 — Look up embedding:  use the index to grab a row from the embedding ma
 <p>These embedding vectors are what the encoder actually receives. It never sees the raw words — it only sees numbers.</p>
 
 <p><strong>Where does the embedding matrix come from?</strong> It can be pre-trained (like Word2Vec or GloVe from Part 1), or it can start with random numbers and be trained along with the rest of the network. Either way, the embedding matrix is updated during training so the vectors become more meaningful over time.</p>
+
+<p>We now have a sequence of word vectors. The next step is to feed them to the first of our two networks: the encoder.</p>
 
 <hr />
 
@@ -364,7 +368,7 @@ Sub-step 4:  Squash to [-1, +1]         →  tanh(result)        (activation)
     </tr>
     <tr>
       <td><code class="language-plaintext highlighter-rouge">x1</code> (word vector)</td>
-      <td>Looked up from the <strong>embedding matrix</strong> (section 3). The word “I” has an index in the vocabulary, and that index picks a row from the embedding table.</td>
+      <td>Looked up from the <strong>embedding matrix</strong> (section 4). The word “I” has an index in the vocabulary, and that index picks a row from the embedding table.</td>
       <td><code class="language-plaintext highlighter-rouge">[0.8, 0.2]</code></td>
     </tr>
     <tr>
@@ -587,18 +591,25 @@ Layer 3:        h1³ → h2³ → h3³        (captures even deeper patterns)
 
 <h2 id="6-the-context-vector">6. The context vector</h2>
 
-<p>The context vector is the bridge between the encoder and decoder. It is a single vector (e.g. 256 or 512 numbers) that must summarise the entire input.</p>
+<p>Let’s zoom in on the hand-off between the two networks. From the walkthrough in section 5, the encoder’s final hidden state was:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I love cats" → context vector c = [0.42, -0.18, 0.91, ...]
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I love cats" → context vector c = h3 = [0.52, 0.71, 0.33, -0.19]
 </code></pre></div></div>
 
-<p>This is both the power and the weakness of this design. We will see the weakness in Part 5.</p>
+<p>This single vector (in real models 256 or 512 numbers) is the bridge between the encoder and decoder. It must summarise the <strong>entire input sentence</strong>, because it is the only thing the decoder receives.</p>
+
+<p>This is both the power and the weakness of this design:</p>
+
+<ul>
+  <li><strong>Power:</strong> any input length gets compressed to the same fixed size, so the decoder always knows what to expect.</li>
+  <li><strong>Weakness:</strong> a 50-word sentence must squeeze into the same space as a 3-word sentence — information gets lost. (This is the paint-mixing problem from section 5, and it is the main motivation for <strong>attention</strong> in Part 3.)</li>
+</ul>
 
 <hr />
 
 <h2 id="7-the-decoder">7. The decoder</h2>
 
-<p>The decoder is another RNN. It starts with the context vector as its initial hidden state and generates the output sentence one word at a time.</p>
+<p>Now for the second network. The decoder is another RNN — it works with a hidden state just like the encoder, but its job is reversed: instead of reading words to build a summary, it <strong>starts from the summary</strong> (the context vector) and unfolds it into words, one at a time.</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Initial state: context vector c
 
@@ -612,9 +623,16 @@ Step 5: Input "chats"       → predict &lt;END&gt;    → stop
 <p>At each step the decoder:</p>
 <ol>
   <li>Takes the previous word (or <code class="language-plaintext highlighter-rouge">&lt;START&gt;</code> at the beginning)</li>
-  <li>Updates its hidden state</li>
-  <li>Predicts the next word using a softmax over the vocabulary</li>
+  <li>Updates its hidden state — same mixing operation as the encoder, but with the decoder’s own weights</li>
+  <li>Predicts the next word using a <strong>softmax</strong> over the vocabulary</li>
 </ol>
+
+<p><strong>What is softmax?</strong> The decoder’s final layer produces one score for every word in the vocabulary (e.g. 30,000 scores). Softmax converts these scores into <strong>probabilities</strong> that add up to 1. The word with the highest probability is picked as the next output word:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Decoder scores  →  softmax  →  P("J'") = 0.72, P("Je") = 0.15, P("Le") = 0.04, ...
+                                        ↓
+                              pick "J'" (highest probability)
+</code></pre></div></div>
 
 <h3 id="training-vs-inference">Training vs inference</h3>
 
@@ -645,6 +663,8 @@ Step 5: Input "chats"       → predict &lt;END&gt;    → stop
 <hr />
 
 <h2 id="8-putting-it-all-together">8. Putting it all together</h2>
+
+<p>Here is the whole pipeline in one picture — embeddings feed the encoder, the encoder compresses to a context vector, and the decoder unfolds it into the output sentence:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌──────────────────────────┐      ┌──────────────────────────────┐
 │         ENCODER          │      │           DECODER            │
