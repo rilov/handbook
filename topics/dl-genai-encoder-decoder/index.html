@@ -295,6 +295,80 @@ RNN — each word processed together with the previous result:
 
 <p>This is why it is called <em>recurrent</em> — “recurrent” means “happening repeatedly.” The same operation repeats for every word, and the output of one step feeds back in as the input of the next.</p>
 
+<h3 id="where-exactly-does-this-loop-live-inside-the-network">Where exactly does this loop live inside the network?</h3>
+
+<p>A neural network has three parts: an <strong>input layer</strong>, one or more <strong>middle (hidden) layers</strong>, and an <strong>output layer</strong>. The loop is <strong>not</strong> at the output layer — it happens at the <strong>middle layer</strong>.</p>
+
+<p>Here is a normal feed-forward network first:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal network (no memory):
+
+   input layer      middle layer      output layer
+   ┌─────────┐      ┌───────────┐     ┌──────────┐
+   │  word   │ ───→ │  neurons  │ ──→ │  result  │
+   │ vector  │      │ (compute) │     │          │
+   └─────────┘      └───────────┘     └──────────┘
+
+   Data flows straight through, left to right. Nothing is kept.
+</code></pre></div></div>
+
+<p>And here is the RNN — one added connection makes all the difference:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>RNN (with memory):
+
+   input layer      middle layer      output layer
+   ┌─────────┐      ┌───────────┐     ┌──────────┐
+   │  word   │ ───→ │  neurons  │ ──→ │  result  │
+   │ vector  │      │ (compute) │     │(optional)│
+   └─────────┘      └─────┬─────┘     └──────────┘
+                      ↑    │
+                      │    │  the middle layer's values
+                      └────┘  loop back into itself
+                              at the next time step
+</code></pre></div></div>
+
+<p>The values sitting in the middle layer after processing a word — those <strong>are the hidden state</strong>. At the next time step, they are fed back into the same middle layer along with the new word.</p>
+
+<p>Unrolled over time, it looks like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>              "I"              "love"            "cats"
+               │                 │                 │
+               ↓                 ↓                 ↓
+          ┌─────────┐       ┌─────────┐       ┌─────────┐
+  h0 ───→ │ middle  │ ─h1─→ │ middle  │ ─h2─→ │ middle  │ ─h3─→ context
+ (zeros)  │  layer  │       │  layer  │       │  layer  │       vector
+          └─────────┘       └─────────┘       └─────────┘
+          (same layer, same weights, applied 3 times)
+</code></pre></div></div>
+
+<p>Two things to notice:</p>
+
+<ul>
+  <li><strong>The hidden state h is the middle layer’s activations</strong> — not a separate storage box. “Passing the hidden state forward” literally means: take the middle layer’s numbers from this step and feed them into the middle layer at the next step.</li>
+  <li><strong>The output layer is optional for the encoder.</strong> The encoder does not need to produce a word at every step — we only care about its final hidden state (the context vector). The decoder, on the other hand, <em>does</em> use its output layer at every step to predict the next word.</li>
+</ul>
+
+<p><strong>What about stacked layers?</strong> If the encoder has 3 stacked layers (as shown later in this section), <strong>each layer has its own loop and its own hidden state</strong>. Layer 1’s hidden state feeds back into layer 1, layer 2’s into layer 2, and so on.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stacked RNN — every layer has its own loop:
+
+   word vector
+        ↓
+   ┌─────────┐ ←──┐
+   │ layer 1 │────┘   h¹ loops back into layer 1
+   └────┬────┘
+        ↓
+   ┌─────────┐ ←──┐
+   │ layer 2 │────┘   h² loops back into layer 2
+   └────┬────┘
+        ↓
+   ┌─────────┐ ←──┐
+   │ layer 3 │────┘   h³ loops back into layer 3
+   └────┬────┘
+        ↓
+     output
+</code></pre></div></div>
+
 <h3 id="that-memory-has-a-name-the-hidden-state">That memory has a name: the hidden state</h3>
 
 <p>The memory that gets passed from step to step is called the <strong>hidden state</strong>. Concretely, it is just a <strong>list of numbers</strong> (e.g. 256 numbers):</p>
