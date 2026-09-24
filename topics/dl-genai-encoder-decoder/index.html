@@ -246,16 +246,54 @@ Step 3 — Look up embedding:  use the index to grab a row from the embedding ma
 
 <h3 id="the-solution-give-the-network-a-memory-this-is-the-rnn">The solution: give the network a memory (this is the RNN)</h3>
 
-<p>A <strong>Recurrent Neural Network (RNN)</strong> fixes this with one simple change: alongside the regular input, the network also receives <strong>its own output from the previous step</strong>.</p>
+<p>How do we fix a network that forgets? Simple idea: <strong>whatever the network produced for the previous word, hand it back to the network along with the next word.</strong></p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>RNN:
+<p>Compare the two side by side:</p>
 
-  word 1 + (nothing)          → [network] → memory 1
-  word 2 + memory 1           → [network] → memory 2
-  word 3 + memory 2           → [network] → memory 3
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal network — each word processed alone:
+
+  "I"    → [network] → result       (result is thrown away)
+  "love" → [network] → result       (knows nothing about "I")
+  "cats" → [network] → result       (knows nothing about "I love")
+
+
+RNN — each word processed together with the previous result:
+
+  "I"    + (blank memory)        → [network] → memory after "I"
+                                                    │
+                                     ┌──────────────┘
+                                     ↓
+  "love" + memory after "I"      → [network] → memory after "I love"
+                                                    │
+                                     ┌──────────────┘
+                                     ↓
+  "cats" + memory after "I love" → [network] → memory after "I love cats"
 </code></pre></div></div>
 
-<p>Each step, the network takes in two things: the <strong>new word</strong> and the <strong>memory of everything so far</strong>. It combines them and produces an <strong>updated memory</strong>. This is why it is called <em>recurrent</em> — the output loops back in as an input.</p>
+<p>Notice what changed: the network now takes <strong>two inputs at every step</strong> instead of one:</p>
+
+<ol>
+  <li>The <strong>new word</strong> (as a vector, from section 4)</li>
+  <li>The <strong>memory from the previous step</strong> (what the network produced last time)</li>
+</ol>
+
+<p>And it produces <strong>one output</strong>: an updated memory that now includes the new word.</p>
+
+<p><strong>Important:</strong> it is the <strong>same network with the same weights</strong> used at every step — not three different networks. The network is simply applied again and again, once per word, each time carrying its previous output forward.</p>
+
+<h3 id="analogy-reading-with-a-sticky-note">Analogy: reading with a sticky note</h3>
+
+<p>Imagine you can only see <strong>one word at a time</strong> through a small window, but you have a sticky note:</p>
+
+<ol>
+  <li>You see “I” — you write on the note: <em>“someone is talking about themselves.”</em></li>
+  <li>The window moves to “love” — you read your note, see the new word, and rewrite the note: <em>“this person loves something.”</em></li>
+  <li>The window moves to “cats” — you read the note, see the new word, and rewrite: <em>“this person loves cats.”</em></li>
+</ol>
+
+<p>You never saw the whole sentence at once — but by always combining the <strong>note (memory)</strong> with the <strong>current word</strong>, you ended up understanding the full sentence. The RNN does exactly this.</p>
+
+<p>This is why it is called <em>recurrent</em> — “recurrent” means “happening repeatedly.” The same operation repeats for every word, and the output of one step feeds back in as the input of the next.</p>
 
 <h3 id="that-memory-has-a-name-the-hidden-state">That memory has a name: the hidden state</h3>
 
