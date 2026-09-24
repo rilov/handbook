@@ -24,29 +24,42 @@ The architecture that does this is called **encoder-decoder**, also known as **s
 
 ---
 
-## 1. Quick refresher: what is a neural network?
+## 1. The foundation: translation is done by neural networks
 
-Before we dive in, let's make sure the basics are clear, because the encoder and decoder are both **neural networks**.
-
-### The simplest picture
-
-A neural network is a machine that takes numbers in, does math, and produces numbers out. It is made of **layers**, and each layer has **weights** (numbers that control the math).
+Our goal in this article is to translate a sentence — say, English to French:
 
 ```text
-Input numbers → [Layer 1] → [Layer 2] → ... → Output numbers
-                  weights      weights
+"I love cats"  →  "J'aime les chats"
 ```
 
-### What are weights?
+The machine that does this is built from **neural networks**. So before we look at the architecture, let's understand what a neural network does *in the context of translation*.
 
-Weights are just numbers stored in a matrix (a grid of numbers). They start as **random values** before training. Each weight controls how much one input number influences one output number — like a volume knob.
+### A neural network only works with numbers
+
+A neural network cannot read words. It takes **numbers in** and produces **numbers out**. So the entire translation pipeline is about numbers:
 
 ```text
-Example: a layer with 2 inputs and 2 outputs
+"I love cats"                                    "J'aime les chats"
+      ↓                                                  ↑
+convert words to numbers                    convert numbers back to words
+      ↓                                                  ↑
+[0.12, -0.45, ...]  →  [neural networks]  →  [0.87, 0.03, ...]
+```
 
-       input     weights          output
-       [0.8]     [[0.6, 0.1],     [?]
-       [0.2]      [0.2, 0.7]]     [?]
+- **Going in:** each word becomes a vector of numbers (the embeddings from Part 1).
+- **Inside:** the networks transform these numbers step by step.
+- **Coming out:** the final numbers are converted back into words (by picking the most likely word from the vocabulary).
+
+### How does the network transform numbers? Weights.
+
+Inside the network are **weights** — grids of numbers (matrices). Every transformation is a matrix multiplication: the input numbers get multiplied by the weights to produce output numbers.
+
+Here is a tiny example. Say the word vector for "I" is `[0.8, 0.2]` and the network has this weight matrix:
+
+```text
+       input for "I"    weights           output
+       [0.8]            [[0.6, 0.1],      [?]
+       [0.2]             [0.2, 0.7]]      [?]
 
 output[0] = 0.6 × 0.8 + 0.1 × 0.2 = 0.50
 output[1] = 0.2 × 0.8 + 0.7 × 0.2 = 0.30
@@ -54,30 +67,35 @@ output[1] = 0.2 × 0.8 + 0.7 × 0.2 = 0.30
 output = [0.50, 0.30]
 ```
 
-This is **matrix multiplication** — the core operation of every neural network. Every layer multiplies its input by its weight matrix to produce its output.
+The weights decide **what the network pays attention to** in the word vector. Different weights would produce a completely different output from the same word.
 
-### How does the network learn?
+### Where do the weights come from? Training.
 
-1. **Forward pass:** Feed an input through the network and get a prediction.
-2. **Loss:** Compare the prediction to the correct answer. The difference is the **loss** (a single number — lower is better).
-3. **Backpropagation:** Calculate how much each weight contributed to the error, then nudge every weight slightly to reduce the loss.
-4. **Repeat** thousands of times with different examples. The weights gradually move from random values to values that produce good predictions.
+The weights start as **random numbers** — at that point the network produces garbage translations. Then we train it:
+
+1. **Show it an example:** Feed in "I love cats" and let the network produce a translation attempt — maybe "Le chien mange" (garbage at first).
+2. **Measure the error:** Compare the attempt with the correct answer "J'aime les chats." The difference is called the **loss**.
+3. **Adjust the weights:** A process called **backpropagation** figures out which weights caused the error and nudges each one slightly in the direction that reduces it.
+4. **Repeat** with millions of sentence pairs. Gradually the weights shift from random values to values that produce correct translations.
 
 ```text
-                  ┌──────────────────────────────────┐
-                  │  Forward pass: input → prediction │
-                  │  Compare with correct answer      │
-  Training loop:  │  Loss = how wrong the prediction  │
-                  │  Backpropagation: adjust weights   │
-                  │  Repeat with next example          │
-                  └──────────────────────────────────┘
+                  ┌──────────────────────────────────────────────┐
+                  │  Feed in "I love cats" → get attempt          │
+  Training loop:  │  Compare with "J'aime les chats" → loss       │
+                  │  Backpropagation → nudge all weights slightly │
+                  │  Repeat with the next sentence pair           │
+                  └──────────────────────────────────────────────┘
 ```
 
-**Nobody programs the weights by hand.** The network discovers them by seeing thousands of examples and slowly adjusting. This is what "training" means.
+**Nobody programs the translation rules by hand.** The network discovers them by seeing millions of translated sentence pairs and slowly adjusting its weights.
 
-### Why does this matter for encoder-decoder?
+### Keep this in mind for the rest of the article
 
-The encoder and decoder are both neural networks with their own weight matrices. When we later see terms like `W_h`, `W_x`, and `b`, those are just the weights inside these networks — numbers that start random and are learned during training through the process above.
+Everything that follows builds on these three facts:
+
+1. The translator is made of **neural networks** that only handle numbers.
+2. The transformations happen through **weight matrices** (like `W_h`, `W_x`, and `b` you will see later).
+3. Those weights are **learned from training data**, not written by a person.
 
 ---
 
