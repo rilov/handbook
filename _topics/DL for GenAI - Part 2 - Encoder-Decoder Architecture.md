@@ -260,6 +260,82 @@ You never saw the whole sentence at once — but by always combining the **note 
 
 This is why it is called *recurrent* — "recurrent" means "happening repeatedly." The same operation repeats for every word, and the output of one step feeds back in as the input of the next.
 
+### Where exactly does this loop live inside the network?
+
+A neural network has three parts: an **input layer**, one or more **middle (hidden) layers**, and an **output layer**. The loop is **not** at the output layer — it happens at the **middle layer**.
+
+Here is a normal feed-forward network first:
+
+```text
+Normal network (no memory):
+
+   input layer      middle layer      output layer
+   ┌─────────┐      ┌───────────┐     ┌──────────┐
+   │  word   │ ───→ │  neurons  │ ──→ │  result  │
+   │ vector  │      │ (compute) │     │          │
+   └─────────┘      └───────────┘     └──────────┘
+
+   Data flows straight through, left to right. Nothing is kept.
+```
+
+And here is the RNN — one added connection makes all the difference:
+
+```text
+RNN (with memory):
+
+   input layer      middle layer      output layer
+   ┌─────────┐      ┌───────────┐     ┌──────────┐
+   │  word   │ ───→ │  neurons  │ ──→ │  result  │
+   │ vector  │      │ (compute) │     │(optional)│
+   └─────────┘      └─────┬─────┘     └──────────┘
+                      ↑    │
+                      │    │  the middle layer's values
+                      └────┘  loop back into itself
+                              at the next time step
+```
+
+The values sitting in the middle layer after processing a word — those **are the hidden state**. At the next time step, they are fed back into the same middle layer along with the new word.
+
+Unrolled over time, it looks like this:
+
+```text
+              "I"              "love"            "cats"
+               │                 │                 │
+               ↓                 ↓                 ↓
+          ┌─────────┐       ┌─────────┐       ┌─────────┐
+  h0 ───→ │ middle  │ ─h1─→ │ middle  │ ─h2─→ │ middle  │ ─h3─→ context
+ (zeros)  │  layer  │       │  layer  │       │  layer  │       vector
+          └─────────┘       └─────────┘       └─────────┘
+          (same layer, same weights, applied 3 times)
+```
+
+Two things to notice:
+
+- **The hidden state h is the middle layer's activations** — not a separate storage box. "Passing the hidden state forward" literally means: take the middle layer's numbers from this step and feed them into the middle layer at the next step.
+- **The output layer is optional for the encoder.** The encoder does not need to produce a word at every step — we only care about its final hidden state (the context vector). The decoder, on the other hand, *does* use its output layer at every step to predict the next word.
+
+**What about stacked layers?** If the encoder has 3 stacked layers (as shown later in this section), **each layer has its own loop and its own hidden state**. Layer 1's hidden state feeds back into layer 1, layer 2's into layer 2, and so on.
+
+```text
+Stacked RNN — every layer has its own loop:
+
+   word vector
+        ↓
+   ┌─────────┐ ←──┐
+   │ layer 1 │────┘   h¹ loops back into layer 1
+   └────┬────┘
+        ↓
+   ┌─────────┐ ←──┐
+   │ layer 2 │────┘   h² loops back into layer 2
+   └────┬────┘
+        ↓
+   ┌─────────┐ ←──┐
+   │ layer 3 │────┘   h³ loops back into layer 3
+   └────┬────┘
+        ↓
+     output
+```
+
 ### That memory has a name: the hidden state
 
 The memory that gets passed from step to step is called the **hidden state**. Concretely, it is just a **list of numbers** (e.g. 256 numbers):
