@@ -336,6 +336,46 @@ Stacked RNN — every layer has its own loop:
      output
 ```
 
+### But wait — for images, the whole image goes in at once. Why not the whole sentence?
+
+If you have seen image networks (like CNNs), you know the **entire image** is fed into the first layer in one go, and there is **one forward pass**:
+
+```text
+Image network — ONE forward pass, whole input at once:
+
+  entire image (e.g. 224×224 pixels, all at once)
+        ↓
+   [layer 1] → [layer 2] → [layer 3] → "cat"
+
+  Run once. Done.
+```
+
+An RNN is different: the network runs **once per word** — a 3-word sentence means **3 forward passes** through the same network:
+
+```text
+RNN — THREE forward passes, one word each:
+
+  Pass 1:  "I"    + h0 → [network] → h1
+  Pass 2:  "love" + h1 → [network] → h2
+  Pass 3:  "cats" + h2 → [network] → h3
+
+  Run 3 times. The hidden state carries information between runs.
+```
+
+Why the difference?
+
+| | Image | Sentence |
+|---|---|---|
+| Size | Fixed (e.g. always 224×224 pixels) | Variable (3 words, 8 words, 50 words...) |
+| Input strategy | Whole input in one pass | One word per pass, repeated |
+| Memory between passes | Not needed — there is only one pass | The hidden state connects the passes |
+
+An image always has the same number of pixels, so you can build a network whose input layer exactly fits it. A sentence has no fixed size — you cannot build an input layer that fits "any number of words." The RNN's trick is to keep the network small (one word at a time) and run it repeatedly, using the hidden state to accumulate meaning across the runs.
+
+**In short:** an image network is *one big bite*; an RNN is *many small bites with a memory of what it has chewed so far*.
+
+> Fun fact: the Transformer architecture (coming in later parts) actually *does* take the whole sentence at once, more like an image network — that is one of the reasons it replaced RNNs. But it needs special tricks (positional encoding, attention) to handle variable lengths and word order.
+
 ### That memory has a name: the hidden state
 
 The memory that gets passed from step to step is called the **hidden state**. Concretely, it is just a **list of numbers** (e.g. 256 numbers):
