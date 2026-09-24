@@ -369,6 +369,67 @@ RNN — each word processed together with the previous result:
      output
 </code></pre></div></div>
 
+<h3 id="but-wait--for-images-the-whole-image-goes-in-at-once-why-not-the-whole-sentence">But wait — for images, the whole image goes in at once. Why not the whole sentence?</h3>
+
+<p>If you have seen image networks (like CNNs), you know the <strong>entire image</strong> is fed into the first layer in one go, and there is <strong>one forward pass</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image network — ONE forward pass, whole input at once:
+
+  entire image (e.g. 224×224 pixels, all at once)
+        ↓
+   [layer 1] → [layer 2] → [layer 3] → "cat"
+
+  Run once. Done.
+</code></pre></div></div>
+
+<p>An RNN is different: the network runs <strong>once per word</strong> — a 3-word sentence means <strong>3 forward passes</strong> through the same network:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>RNN — THREE forward passes, one word each:
+
+  Pass 1:  "I"    + h0 → [network] → h1
+  Pass 2:  "love" + h1 → [network] → h2
+  Pass 3:  "cats" + h2 → [network] → h3
+
+  Run 3 times. The hidden state carries information between runs.
+</code></pre></div></div>
+
+<p>Why the difference?</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Image</th>
+      <th>Sentence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Size</td>
+      <td>Fixed (e.g. always 224×224 pixels)</td>
+      <td>Variable (3 words, 8 words, 50 words…)</td>
+    </tr>
+    <tr>
+      <td>Input strategy</td>
+      <td>Whole input in one pass</td>
+      <td>One word per pass, repeated</td>
+    </tr>
+    <tr>
+      <td>Memory between passes</td>
+      <td>Not needed — there is only one pass</td>
+      <td>The hidden state connects the passes</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>An image always has the same number of pixels, so you can build a network whose input layer exactly fits it. A sentence has no fixed size — you cannot build an input layer that fits “any number of words.” The RNN’s trick is to keep the network small (one word at a time) and run it repeatedly, using the hidden state to accumulate meaning across the runs.</p>
+
+<p><strong>In short:</strong> an image network is <em>one big bite</em>; an RNN is <em>many small bites with a memory of what it has chewed so far</em>.</p>
+
+<blockquote>
+  <p>Fun fact: the Transformer architecture (coming in later parts) actually <em>does</em> take the whole sentence at once, more like an image network — that is one of the reasons it replaced RNNs. But it needs special tricks (positional encoding, attention) to handle variable lengths and word order.</p>
+</blockquote>
+
 <h3 id="that-memory-has-a-name-the-hidden-state">That memory has a name: the hidden state</h3>
 
 <p>The memory that gets passed from step to step is called the <strong>hidden state</strong>. Concretely, it is just a <strong>list of numbers</strong> (e.g. 256 numbers):</p>
