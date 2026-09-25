@@ -809,6 +809,51 @@ Step 5: Input "chats"       → predict &lt;END&gt;    → stop
 
 <h3 id="training-vs-inference">Training vs inference</h3>
 
+<p>The decoder behaves <strong>differently</strong> depending on whether it is being trained or being used. First, the two terms:</p>
+
+<ul>
+  <li><strong>Training:</strong> the model is learning. We have the correct translation (“J’aime les chats”) and we are adjusting the weights.</li>
+  <li><strong>Inference:</strong> the model is being used for real. There is no correct answer available — the model is on its own.</li>
+</ul>
+
+<p>The difference is in <strong>what we feed into each decoder step as the “previous word.”</strong></p>
+
+<h4 id="during-inference-the-model-uses-its-own-predictions">During inference: the model uses its own predictions</h4>
+
+<p>There is no other choice — we do not know the correct answer. Whatever the model predicted at step 1 becomes the input for step 2:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: &lt;START&gt;          → predicts "J'"
+Step 2: "J'" (own guess) → predicts "aime"
+Step 3: "aime"           → predicts "les"
+...
+</code></pre></div></div>
+
+<p>The danger: if the model makes a mistake early, that mistake is fed into the next step, which can cause another mistake — <strong>errors compound</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: &lt;START&gt;            → predicts "Le"  ✗ (wrong! should be "J'")
+Step 2: "Le" (wrong input) → predicts "chat" ✗ (now even more off track)
+Step 3: "chat"             → predicts "est"  ✗ (the sentence is derailed)
+</code></pre></div></div>
+
+<h4 id="during-training-we-feed-in-the-correct-word-instead-teacher-forcing">During training: we feed in the correct word instead (teacher forcing)</h4>
+
+<p>During training, we <strong>know</strong> the correct translation. So even if the model predicts the wrong word, we ignore its prediction and feed in the <strong>correct</strong> word for the next step:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: &lt;START&gt;              → predicts "Le"  ✗ (wrong — the loss records this mistake)
+Step 2: "J'" (correct word,  → predicts "aime" ✓ (back on track, because
+        not the model's guess)                     the input was corrected)
+Step 3: "aime" (correct)     → predicts "les"  ✓
+...
+</code></pre></div></div>
+
+<p>This is called <strong>teacher forcing</strong>. The model’s wrong prediction at step 1 still counts against it in the loss (so it learns from the mistake), but the mistake is <strong>not allowed to poison the following steps</strong>.</p>
+
+<p><strong>Why do this?</strong> Without teacher forcing, one early error would derail the whole sentence, and the model would waste time learning from garbage inputs at steps 2, 3, 4… With teacher forcing, every step trains on a sensible input, so learning is faster and more stable.</p>
+
+<p><strong>The trade-off:</strong> during training, the model always receives perfect inputs — it never practises recovering from its own mistakes. Then at inference time it suddenly has to live with its own (sometimes wrong) predictions. This mismatch is a known weakness called <strong>exposure bias</strong>.</p>
+
+<h4 id="summary">Summary</h4>
+
 <table>
   <thead>
     <tr>
@@ -819,19 +864,29 @@ Step 5: Input "chats"       → predict &lt;END&gt;    → stop
   </thead>
   <tbody>
     <tr>
+      <td>Do we know the correct answer?</td>
+      <td>Yes — it is in the training data</td>
+      <td>No</td>
+    </tr>
+    <tr>
       <td>Input to each step</td>
       <td>The <strong>correct</strong> previous word from the training data</td>
       <td>The word the model <strong>actually predicted</strong> at the previous step</td>
     </tr>
     <tr>
-      <td>Speed</td>
+      <td>What happens after a wrong prediction?</td>
+      <td>The mistake is recorded in the loss, but the next step still gets the correct word</td>
+      <td>The mistake is fed into the next step — errors compound</td>
+    </tr>
+    <tr>
+      <td>Speed and stability</td>
       <td>Faster, more stable</td>
       <td>Slower, errors can compound</td>
     </tr>
   </tbody>
 </table>
 
-<p><strong>Teacher forcing</strong> is like a teacher who always tells the student the right answer before asking the next question. It speeds up training but means the model never practises recovering from its own mistakes during training.</p>
+<p><strong>Analogy:</strong> teacher forcing is like a teacher who always tells the student the right answer before asking the next question. The student learns each question well, but never practises recovering after getting one wrong — which is exactly what they must do in the real exam (inference).</p>
 
 <hr />
 
