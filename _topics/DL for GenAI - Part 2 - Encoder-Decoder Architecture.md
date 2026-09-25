@@ -670,12 +670,60 @@ Decoder scores  →  softmax  →  P("J'") = 0.72, P("Je") = 0.15, P("Le") = 0.0
 
 ### Training vs inference
 
+The decoder behaves **differently** depending on whether it is being trained or being used. First, the two terms:
+
+- **Training:** the model is learning. We have the correct translation ("J'aime les chats") and we are adjusting the weights.
+- **Inference:** the model is being used for real. There is no correct answer available — the model is on its own.
+
+The difference is in **what we feed into each decoder step as the "previous word."**
+
+#### During inference: the model uses its own predictions
+
+There is no other choice — we do not know the correct answer. Whatever the model predicted at step 1 becomes the input for step 2:
+
+```text
+Step 1: <START>          → predicts "J'"
+Step 2: "J'" (own guess) → predicts "aime"
+Step 3: "aime"           → predicts "les"
+...
+```
+
+The danger: if the model makes a mistake early, that mistake is fed into the next step, which can cause another mistake — **errors compound**:
+
+```text
+Step 1: <START>            → predicts "Le"  ✗ (wrong! should be "J'")
+Step 2: "Le" (wrong input) → predicts "chat" ✗ (now even more off track)
+Step 3: "chat"             → predicts "est"  ✗ (the sentence is derailed)
+```
+
+#### During training: we feed in the correct word instead (teacher forcing)
+
+During training, we **know** the correct translation. So even if the model predicts the wrong word, we ignore its prediction and feed in the **correct** word for the next step:
+
+```text
+Step 1: <START>              → predicts "Le"  ✗ (wrong — the loss records this mistake)
+Step 2: "J'" (correct word,  → predicts "aime" ✓ (back on track, because
+        not the model's guess)                     the input was corrected)
+Step 3: "aime" (correct)     → predicts "les"  ✓
+...
+```
+
+This is called **teacher forcing**. The model's wrong prediction at step 1 still counts against it in the loss (so it learns from the mistake), but the mistake is **not allowed to poison the following steps**.
+
+**Why do this?** Without teacher forcing, one early error would derail the whole sentence, and the model would waste time learning from garbage inputs at steps 2, 3, 4... With teacher forcing, every step trains on a sensible input, so learning is faster and more stable.
+
+**The trade-off:** during training, the model always receives perfect inputs — it never practises recovering from its own mistakes. Then at inference time it suddenly has to live with its own (sometimes wrong) predictions. This mismatch is a known weakness called **exposure bias**.
+
+#### Summary
+
 | | Training (teacher forcing) | Inference |
 |---|---|---|
+| Do we know the correct answer? | Yes — it is in the training data | No |
 | Input to each step | The **correct** previous word from the training data | The word the model **actually predicted** at the previous step |
-| Speed | Faster, more stable | Slower, errors can compound |
+| What happens after a wrong prediction? | The mistake is recorded in the loss, but the next step still gets the correct word | The mistake is fed into the next step — errors compound |
+| Speed and stability | Faster, more stable | Slower, errors can compound |
 
-**Teacher forcing** is like a teacher who always tells the student the right answer before asking the next question. It speeds up training but means the model never practises recovering from its own mistakes during training.
+**Analogy:** teacher forcing is like a teacher who always tells the student the right answer before asking the next question. The student learns each question well, but never practises recovering after getting one wrong — which is exactly what they must do in the real exam (inference).
 
 ---
 
