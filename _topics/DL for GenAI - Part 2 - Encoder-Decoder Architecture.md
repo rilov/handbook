@@ -746,6 +746,92 @@ Here is the whole pipeline in one picture — embeddings feed the encoder, the e
 └──────────────────────────┘      └──────────────────────────────┘
 ```
 
+### Zooming in: the same picture at the neuron level
+
+The boxes above hide the actual neurons. Let's open them up. To keep the diagram readable, we use tiny sizes: word vectors with **3 numbers** and a hidden layer with **4 neurons** (real models: 256–512).
+
+First, one single encoder step — reading the word "I" — with every neuron and connection shown:
+
+```text
+ONE ENCODER STEP (reading "I"):
+
+  word vector          hidden layer            hidden state
+  for "I"              (4 neurons)             (the 4 outputs)
+  (3 numbers)
+
+    x[0] ●────┐
+              ├──→ ⬤ neuron 1 ──→  h[0]
+    x[1] ●────┤
+              ├──→ ⬤ neuron 2 ──→  h[1]
+    x[2] ●────┤
+              ├──→ ⬤ neuron 3 ──→  h[2]
+              │
+              └──→ ⬤ neuron 4 ──→  h[3]
+
+  Every input number connects to EVERY neuron (3 × 4 = 12 connections).
+  Each connection has its own weight — these 12 weights are the matrix W_x.
+```
+
+But remember, each neuron also receives the **previous hidden state** (the recurrent connection):
+
+```text
+ONE ENCODER STEP with the recurrent inputs shown:
+
+  word "I"                  4 hidden neurons
+  x[0] ●──────┐
+  x[1] ●──────┼────────→ ⬤  ⬤  ⬤  ⬤ ──→ new hidden state h1
+  x[2] ●──────┘              ↑ ↑ ↑ ↑              (4 numbers)
+                             │ │ │ │
+  previous hidden state      │ │ │ │
+  h0[0] ●────────────────────┘ │ │ │
+  h0[1] ●──────────────────────┘ │ │     each h0 value also connects
+  h0[2] ●────────────────────────┘ │     to EVERY neuron (4 × 4 = 16
+  h0[3] ●──────────────────────────┘     connections — the matrix W_h)
+
+  So each neuron receives 3 + 4 = 7 inputs and produces 1 output.
+  Neuron 1's output = tanh(weighted sum of its 7 inputs) = h1[0]
+```
+
+Now the **full encoder-decoder** at the neuron level, unrolled over time. The same 4 encoder neurons are reused at every step (shown as separate columns for clarity):
+
+```text
+        ENCODER (same 4 neurons reused each step)              DECODER (its own 4 neurons)
+
+        "I"        "love"      "cats"                  <START>      "J'"        "aime"
+         │           │           │                        │           │            │
+         ↓           ↓           ↓                        ↓           ↓            ↓
+       ┌───┐       ┌───┐       ┌───┐                    ┌───┐       ┌───┐       ┌───┐
+       │ ⬤ │       │ ⬤ │       │ ⬤ │                    │ ⬤ │       │ ⬤ │       │ ⬤ │
+h0 ──→ │ ⬤ │ ─h1─→ │ ⬤ │ ─h2─→ │ ⬤ │ ──── c = h3 ────→ │ ⬤ │ ─s1─→ │ ⬤ │ ─s2─→ │ ⬤ │ ...
+(zeros)│ ⬤ │       │ ⬤ │       │ ⬤ │    (context       │ ⬤ │       │ ⬤ │       │ ⬤ │
+       │ ⬤ │       │ ⬤ │       │ ⬤ │     vector)       │ ⬤ │       │ ⬤ │       │ ⬤ │
+       └───┘       └───┘       └───┘                    └───┘       └─┬─┘       └─┬─┘
+                                                          │           │           │
+                                                          ↓           ↓           ↓
+                                                       softmax     softmax     softmax
+                                                          │           │           │
+                                                        "J'"       "aime"      "les"
+```
+
+How to read this diagram:
+
+- **Each column of 4 circles** is the same hidden layer of 4 neurons, drawn once per time step.
+- **Encoder side:** the neurons read one word per step. The 4 output numbers (h1, h2, h3) flow to the right into the next step. No word is predicted — the encoder's output layer is not needed.
+- **The hand-off:** the encoder's final 4 numbers (h3) are copied into the decoder's neurons as their **starting hidden state**. This is the context vector — just 4 numbers passing from one network to the other.
+- **Decoder side:** different neurons with **different weights**. Each step, the neurons combine the previous word with their hidden state, then a **softmax output layer** (one neuron per vocabulary word, e.g. 30,000 output neurons) turns the hidden state into a word prediction.
+
+**Where are the weights in this picture?** Every arrow you see carries a weight:
+
+| Connection | Weight matrix | Size in this diagram |
+|-----------|---------------|---------------------|
+| word vector → encoder neurons | encoder's `W_x` | 3 × 4 = 12 weights |
+| previous hidden state → encoder neurons | encoder's `W_h` | 4 × 4 = 16 weights |
+| word vector → decoder neurons | decoder's `W_x` | 3 × 4 = 12 weights |
+| previous hidden state → decoder neurons | decoder's `W_h` | 4 × 4 = 16 weights |
+| decoder neurons → softmax output layer | decoder's output weights | 4 × vocabulary size |
+
+In a real model with 256-number embeddings and 512 neurons, the encoder's `W_x` alone is 256 × 512 = 131,072 weights — all learned during training.
+
 ---
 
 ## 9. A concrete example: English → French
