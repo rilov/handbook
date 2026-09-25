@@ -24,11 +24,27 @@ In Part 2 we saw the basic encoder-decoder model. Its biggest weakness is the **
 
 ---
 
-## 1. The bottleneck problem
+## 1. Quick recap of Part 2 — and the problem we left with
 
-Imagine you are translating a 50-word English paragraph into French. With the basic encoder-decoder, you must first read all 50 words, memorise everything in a single vector, and then start translating from memory.
+In Part 2 we built this pipeline. The encoder reads the sentence one word at a time, producing a hidden state after each word:
 
-For short sentences this works fine. For long ones, important details get lost — like trying to memorise a whole page before writing the translation.
+```text
+"I"    → h1   (understanding after "I")
+"love" → h2   (understanding after "I love")
+"cats" → h3   (understanding after "I love cats")
+```
+
+Then we did something wasteful: we **kept only h3** (calling it the context vector) and **threw away h1 and h2**. The decoder had to generate the entire French sentence from that single vector.
+
+```text
+Basic encoder-decoder:
+
+  h1 → thrown away  ✗
+  h2 → thrown away  ✗
+  h3 → the only thing the decoder gets
+```
+
+Remember the paint-mixing analogy from Part 2: by the end, all the words are blended into one colour, and you cannot recover the individual words. For a 3-word sentence this is fine. For a 50-word sentence, the early words fade away — like trying to memorise a whole page before writing the translation.
 
 ```text
 Short sentence  → context vector captures most information  ✓
@@ -37,70 +53,130 @@ Long sentence   → context vector loses early details        ✗
 
 ---
 
-## 2. The attention idea: look back at every word
+## 2. The attention idea: stop throwing away h1 and h2
 
-Instead of relying on one summary vector, the decoder can **peek back** at every encoder hidden state and decide which words are important right now.
+Here is the key insight, and it is surprisingly simple:
+
+> The encoder **already produced** a hidden state for every word — h1, h2, h3. Instead of keeping only the last one, **keep them all** and let the decoder look at any of them whenever it wants.
+
+```text
+With attention:
+
+  h1 (for "I")    → kept  ✓
+  h2 (for "love") → kept  ✓     the decoder can look at
+  h3 (for "cats") → kept  ✓     any of these, at any step
+```
+
+### But which one should the decoder look at?
+
+That depends on **what the decoder is doing right now**. Think about translating "I love cats" → "J'aime les chats":
+
+- When generating **"J'"** (= "I"), the decoder should look mostly at **h1** ("I")
+- When generating **"aime"** (= "love"), it should look mostly at **h2** ("love")
+- When generating **"chats"** (= "cats"), it should look mostly at **h3** ("cats")
+
+So the decoder needs a way to decide, at every step, **how much to look at each encoder hidden state**. That deciding mechanism is what we call **attention**. That's all attention is: a scoring system for "which input words matter to me right now?"
 
 ### Analogy: reading while translating
 
-A human translator does not memorise the whole paragraph first. They translate one phrase, then glance back at the source text to check what comes next. Attention does the same thing — it lets the decoder glance back at the entire input at every step.
+A human translator does not memorise the whole paragraph first and then write blind. They translate one phrase, then **glance back at the source text** to check what comes next. Attention gives the decoder that same ability — to glance back at the entire input at every step, focusing on the relevant part.
 
 ---
 
 ## 3. How attention works — step by step
 
-At each decoder step, attention answers: **"Which input words should I pay attention to right now?"**
+At each decoder step, attention answers one question: **"Which input words should I pay attention to right now?"** It does this in 4 steps. Let's walk through them slowly, with real numbers.
 
-### Setup
+### Setup: what we have to work with
 
-The encoder produces a hidden state for every input word:
+Two ingredients, both of which you already know from Part 2:
+
+1. **The encoder hidden states** — one per input word (we keep all of them now):
 
 ```text
 Input: "I love cats"
 
-Encoder hidden states:
-  h1 (for "I")
-  h2 (for "love")
-  h3 (for "cats")
+  h1 = [0.31, -0.12]    (encoder's understanding at "I")
+  h2 = [0.68,  0.24]    (encoder's understanding at "I love")
+  h3 = [0.52,  0.71]    (encoder's understanding at "I love cats")
+
+(2 numbers each to keep the math small — real models use 256–512)
 ```
 
-The decoder is about to generate the next output word. Its current hidden state is `s_t`.
-
-### Step 1: Compute alignment scores
-
-Compare the decoder state `s_t` with each encoder hidden state:
+2. **The decoder's current hidden state** `s_t` — the decoder's own memory of what it has generated so far. Say the decoder has just generated "J'aime les" and is about to generate the next word:
 
 ```text
-score(s_t, h1) = how relevant is "I" right now?       → e.g. 0.3
-score(s_t, h2) = how relevant is "love" right now?     → e.g. 2.1
-score(s_t, h3) = how relevant is "cats" right now?     → e.g. 4.5
+  s_t = [0.45, 0.80]    (decoder's memory: "I've said J'aime les,
+                          next I need the object noun")
 ```
 
-Higher score = more relevant. The score function can be a dot product, a small neural network, or other methods (more on this in Part 4).
+### Step 1: Score each encoder state — "how relevant are you to me right now?"
 
-### Step 2: Turn scores into weights with softmax
+The decoder compares its own state `s_t` with **each** encoder hidden state. The simplest comparison is the **dot product** (multiply matching positions, add up) — the same similarity idea as cosine similarity in Part 1:
 
 ```text
-weights = softmax([0.3, 2.1, 4.5])
-       = [0.01, 0.11, 0.88]
+score(s_t, h1) = 0.45 × 0.31 + 0.80 × (-0.12) = 0.14 - 0.10 = 0.04   ("I" — not relevant)
+score(s_t, h2) = 0.45 × 0.68 + 0.80 × 0.24    = 0.31 + 0.19 = 0.50   ("love" — a little)
+score(s_t, h3) = 0.45 × 0.52 + 0.80 × 0.71    = 0.23 + 0.57 = 0.80   ("cats" — very relevant!)
 ```
 
-The weights add up to 1. In this example, the decoder is paying 88% attention to "cats."
+Higher score = more relevant. Intuitively: the decoder needs an object noun next, and h3 ("cats") points in the most similar direction to what it is looking for.
 
-### Step 3: Compute the context vector (weighted sum)
+(The score can also be computed by a small neural network instead of a dot product — Part 4 covers the variations. The idea is the same.)
+
+### Step 2: Turn scores into percentages with softmax
+
+The raw scores `[0.04, 0.50, 0.80]` are useful, but we want them as clean **percentages that add up to 1**. That is exactly what softmax does (same softmax as the decoder's word prediction in Part 2):
 
 ```text
-context = 0.01 × h1 + 0.11 × h2 + 0.88 × h3
+weights = softmax([0.04, 0.50, 0.80]) = [0.21, 0.33, 0.46]
+
+Meaning:  pay 21% attention to "I"
+          pay 33% attention to "love"
+          pay 46% attention to "cats"   ← the winner
 ```
 
-This **attention context vector** is a blend of all encoder states, weighted by relevance. Unlike the basic model's fixed context vector, this one **changes at every decoder step**.
+These percentages are called **attention weights**.
 
-### Step 4: Use the context vector to predict
+### Step 3: Build a custom context vector — a weighted blend
 
-The decoder combines the attention context with its own hidden state to predict the next word:
+Now mix the encoder states together **according to the attention weights**. Each h is multiplied by its percentage, then everything is added up:
 
 ```text
-output = f(s_t, context)  →  "chats"
+context = 0.21 × h1           + 0.33 × h2           + 0.46 × h3
+        = 0.21 × [0.31,-0.12] + 0.33 × [0.68, 0.24] + 0.46 × [0.52, 0.71]
+        = [0.07, -0.03]       + [0.22, 0.08]        + [0.24, 0.33]
+        = [0.53, 0.38]
+```
+
+This is the **attention context vector**. It is mostly made of h3 ("cats") because that got the biggest weight — but it still carries a little of the other words.
+
+**The crucial difference from Part 2:** in the basic model, the context vector was computed **once** and never changed. Here, a **fresh context vector is built at every decoder step**, custom-blended for whatever the decoder needs right now.
+
+### Step 4: Use it to predict the next word
+
+The decoder combines this custom context vector with its own hidden state and predicts the next word through softmax (exactly like in Part 2):
+
+```text
+combine(s_t = [0.45, 0.80],  context = [0.53, 0.38])  →  softmax  →  "chats"
+```
+
+Then the decoder moves to the next step, its hidden state updates, and the whole attention process (steps 1–4) **runs again from scratch** — producing new scores, new weights, and a new context vector.
+
+### The 4 steps in one picture
+
+```text
+                 h1        h2        h3        (all encoder states, kept)
+                  │         │         │
+Step 1 (score):  0.04      0.50      0.80      "how relevant is each to me now?"
+                  │         │         │
+Step 2 (softmax): 21%       33%       46%      turn into percentages
+                  │         │         │
+Step 3 (blend):   └────────┼────────┘
+                            ↓
+                  context = [0.53, 0.38]       custom blend for this step
+                            ↓
+Step 4 (predict): decoder + context → "chats"
 ```
 
 ---
