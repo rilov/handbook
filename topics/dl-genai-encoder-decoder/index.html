@@ -908,6 +908,120 @@ Step 3: "aime" (correct)     → predicts "les"  ✓
 └──────────────────────────┘      └──────────────────────────────┘
 </code></pre></div></div>
 
+<h3 id="zooming-in-the-same-picture-at-the-neuron-level">Zooming in: the same picture at the neuron level</h3>
+
+<p>The boxes above hide the actual neurons. Let’s open them up. To keep the diagram readable, we use tiny sizes: word vectors with <strong>3 numbers</strong> and a hidden layer with <strong>4 neurons</strong> (real models: 256–512).</p>
+
+<p>First, one single encoder step — reading the word “I” — with every neuron and connection shown:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ONE ENCODER STEP (reading "I"):
+
+  word vector          hidden layer            hidden state
+  for "I"              (4 neurons)             (the 4 outputs)
+  (3 numbers)
+
+    x[0] ●────┐
+              ├──→ ⬤ neuron 1 ──→  h[0]
+    x[1] ●────┤
+              ├──→ ⬤ neuron 2 ──→  h[1]
+    x[2] ●────┤
+              ├──→ ⬤ neuron 3 ──→  h[2]
+              │
+              └──→ ⬤ neuron 4 ──→  h[3]
+
+  Every input number connects to EVERY neuron (3 × 4 = 12 connections).
+  Each connection has its own weight — these 12 weights are the matrix W_x.
+</code></pre></div></div>
+
+<p>But remember, each neuron also receives the <strong>previous hidden state</strong> (the recurrent connection):</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ONE ENCODER STEP with the recurrent inputs shown:
+
+  word "I"                  4 hidden neurons
+  x[0] ●──────┐
+  x[1] ●──────┼────────→ ⬤  ⬤  ⬤  ⬤ ──→ new hidden state h1
+  x[2] ●──────┘              ↑ ↑ ↑ ↑              (4 numbers)
+                             │ │ │ │
+  previous hidden state      │ │ │ │
+  h0[0] ●────────────────────┘ │ │ │
+  h0[1] ●──────────────────────┘ │ │     each h0 value also connects
+  h0[2] ●────────────────────────┘ │     to EVERY neuron (4 × 4 = 16
+  h0[3] ●──────────────────────────┘     connections — the matrix W_h)
+
+  So each neuron receives 3 + 4 = 7 inputs and produces 1 output.
+  Neuron 1's output = tanh(weighted sum of its 7 inputs) = h1[0]
+</code></pre></div></div>
+
+<p>Now the <strong>full encoder-decoder</strong> at the neuron level, unrolled over time. The same 4 encoder neurons are reused at every step (shown as separate columns for clarity):</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        ENCODER (same 4 neurons reused each step)              DECODER (its own 4 neurons)
+
+        "I"        "love"      "cats"                  &lt;START&gt;      "J'"        "aime"
+         │           │           │                        │           │            │
+         ↓           ↓           ↓                        ↓           ↓            ↓
+       ┌───┐       ┌───┐       ┌───┐                    ┌───┐       ┌───┐       ┌───┐
+       │ ⬤ │       │ ⬤ │       │ ⬤ │                    │ ⬤ │       │ ⬤ │       │ ⬤ │
+h0 ──→ │ ⬤ │ ─h1─→ │ ⬤ │ ─h2─→ │ ⬤ │ ──── c = h3 ────→ │ ⬤ │ ─s1─→ │ ⬤ │ ─s2─→ │ ⬤ │ ...
+(zeros)│ ⬤ │       │ ⬤ │       │ ⬤ │    (context       │ ⬤ │       │ ⬤ │       │ ⬤ │
+       │ ⬤ │       │ ⬤ │       │ ⬤ │     vector)       │ ⬤ │       │ ⬤ │       │ ⬤ │
+       └───┘       └───┘       └───┘                    └───┘       └─┬─┘       └─┬─┘
+                                                          │           │           │
+                                                          ↓           ↓           ↓
+                                                       softmax     softmax     softmax
+                                                          │           │           │
+                                                        "J'"       "aime"      "les"
+</code></pre></div></div>
+
+<p>How to read this diagram:</p>
+
+<ul>
+  <li><strong>Each column of 4 circles</strong> is the same hidden layer of 4 neurons, drawn once per time step.</li>
+  <li><strong>Encoder side:</strong> the neurons read one word per step. The 4 output numbers (h1, h2, h3) flow to the right into the next step. No word is predicted — the encoder’s output layer is not needed.</li>
+  <li><strong>The hand-off:</strong> the encoder’s final 4 numbers (h3) are copied into the decoder’s neurons as their <strong>starting hidden state</strong>. This is the context vector — just 4 numbers passing from one network to the other.</li>
+  <li><strong>Decoder side:</strong> different neurons with <strong>different weights</strong>. Each step, the neurons combine the previous word with their hidden state, then a <strong>softmax output layer</strong> (one neuron per vocabulary word, e.g. 30,000 output neurons) turns the hidden state into a word prediction.</li>
+</ul>
+
+<p><strong>Where are the weights in this picture?</strong> Every arrow you see carries a weight:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Connection</th>
+      <th>Weight matrix</th>
+      <th>Size in this diagram</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>word vector → encoder neurons</td>
+      <td>encoder’s <code class="language-plaintext highlighter-rouge">W_x</code></td>
+      <td>3 × 4 = 12 weights</td>
+    </tr>
+    <tr>
+      <td>previous hidden state → encoder neurons</td>
+      <td>encoder’s <code class="language-plaintext highlighter-rouge">W_h</code></td>
+      <td>4 × 4 = 16 weights</td>
+    </tr>
+    <tr>
+      <td>word vector → decoder neurons</td>
+      <td>decoder’s <code class="language-plaintext highlighter-rouge">W_x</code></td>
+      <td>3 × 4 = 12 weights</td>
+    </tr>
+    <tr>
+      <td>previous hidden state → decoder neurons</td>
+      <td>decoder’s <code class="language-plaintext highlighter-rouge">W_h</code></td>
+      <td>4 × 4 = 16 weights</td>
+    </tr>
+    <tr>
+      <td>decoder neurons → softmax output layer</td>
+      <td>decoder’s output weights</td>
+      <td>4 × vocabulary size</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In a real model with 256-number embeddings and 512 neurons, the encoder’s <code class="language-plaintext highlighter-rouge">W_x</code> alone is 256 × 512 = 131,072 weights — all learned during training.</p>
+
 <hr />
 
 <h2 id="9-a-concrete-example-english--french">9. A concrete example: English → French</h2>
