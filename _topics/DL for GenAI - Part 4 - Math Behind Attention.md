@@ -166,7 +166,66 @@ This vector is a blend of all encoder states, leaning toward "cats."
 
 ---
 
-## 7. The complete formula
+## 7. What actually changes in the decoder: c becomes c_i
+
+The encoder has done its job — it produced a hidden state for every input word. **All the changes happen in the decoder.** Let's see exactly what changed compared to Part 2.
+
+### The three basic tenets of decoding
+
+In Part 2, the decoder updated its state at every step using three ingredients:
+
+```text
+s_i = f( s_{i-1},   y_{i-1},   c )
+         │          │          │
+         │          │          └─ context from the encoder
+         │          └─ previous output word (what I just generated)
+         └─ previous decoder state (my own memory)
+```
+
+### Spot the difference
+
+Here is the decoder with attention. Compare the two formulas — what changed?
+
+```text
+Without attention (Part 2):   s_i = f( s_{i-1},  y_{i-1},  c   )
+With attention:               s_i = f( s_{i-1},  y_{i-1},  c_i )
+                                                            ↑
+                                             the ONLY difference
+```
+
+The first two ingredients are untouched: the decoder still uses its **previous state** and the **previous output word**. The only change is the third ingredient:
+
+- **Before:** `c` — one fixed context vector, computed once, reused at every step.
+- **After:** `c_i` — a **fresh context vector for step i**, rebuilt at every step. At step 1 the decoder uses c₁, at step 2 it uses c₂, and so on.
+
+The word "context" gets a new **interpretation**: it is no longer "the summary of the whole sentence" but "**the summary of what I need right now**." Since the context is now enriched, the decoder state s_i that absorbs it becomes enriched too — a better context at every step leads to a better memory at every step, which leads to better predictions.
+
+### The formula for c_i
+
+And how is c_i computed? Exactly what we did in sections 3–6, written as one formula:
+
+```text
+        n
+c_i  =  Σ  α_ij × h_j
+       j=1
+
+where:
+  h_j   = encoder hidden state for input word j       (sections 3: the keys/values)
+  α_ij  = attention weight of word j at decoder step i (sections 4–5: scored, scaled, softmaxed)
+  n     = number of input words
+```
+
+In words: **the context at step i is the weighted sum of all encoder hidden states, where the weights α_ij are computed fresh at every step i.** Using our worked example from section 6:
+
+```text
+c_i = 0.27 × h1 + 0.27 × h2 + 0.45 × h3 = [0.72, 0.54, 0.72, 0.45]
+```
+
+At the next decoder step, the query changes, so the weights α change, so c changes — that is the whole trick.
+
+---
+
+## 8. The complete formula
 
 Putting it all together in one line:
 
@@ -184,7 +243,7 @@ This is the **scaled dot-product attention** formula from the famous "Attention 
 
 ---
 
-## 8. Matrix form: doing it all at once
+## 9. Matrix form: doing it all at once
 
 In practice, we process all decoder steps and all encoder states in parallel using matrices:
 
@@ -203,7 +262,7 @@ Each row of the output is the context vector for one decoder step.
 
 ---
 
-## 9. Additive attention (Bahdanau) — the alternative
+## 10. Additive attention (Bahdanau) — the alternative
 
 Before scaled dot-product, **Bahdanau (2014)** proposed additive attention:
 
@@ -228,7 +287,7 @@ In practice, scaled dot-product is used almost everywhere today because it is fa
 
 ---
 
-## 10. PyTorch: scaled dot-product attention
+## 11. PyTorch: scaled dot-product attention
 
 ```python
 import torch
@@ -256,13 +315,14 @@ print("Context:", context)    # tensor([[0.72, 0.54, 0.72, 0.45]])
 
 ---
 
-## 11. Summary
+## 12. Summary
 
 - Attention uses three players: **Query** (what am I looking for?), **Key** (what does each word offer?), **Value** (the actual content).
 - The **dot product** `Q · K` measures how similar a query is to each key.
 - **Scaling** by `√d` prevents large dot products from making softmax too sharp.
 - **Softmax** turns raw scores into weights that add up to 1.
-- The **weighted sum** of values produces a context vector tuned to what the decoder needs right now.
+- The **weighted sum** of values produces a context vector tuned to what the decoder needs right now: **c_i = Σ α_ij × h_j**.
+- In the decoder, the **only change** from Part 2 is that the fixed context `c` becomes a per-step context `c_i`: `s_i = f(s_{i-1}, y_{i-1}, c_i)`. The previous state and previous output stay the same.
 - The complete formula: **Attention(Q, K, V) = softmax(Q · K^T / √d) · V**
 - **Additive attention** (Bahdanau) uses a small network instead of a dot product — slower but more flexible.
 
