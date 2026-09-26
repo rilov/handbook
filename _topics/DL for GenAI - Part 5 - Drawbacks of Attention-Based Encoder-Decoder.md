@@ -56,6 +56,18 @@ Imagine a factory where each worker must wait for the previous worker to finish 
 
 A Transformer, by contrast, is like giving every worker their own copy of the product — they all work at the same time.
 
+### Pause and think: what would the ideal mechanism look like?
+
+The problem is that h1, h2, h3... must be computed **one after another**. So ask yourself: what if there were a mechanism that could produce **all** the hidden states **at once, in parallel**?
+
+```text
+Sequential (RNN):   h1 → then h2 → then h3 → ... → then h50   (50 steps)
+
+Parallel (ideal):   h1, h2, h3, ..., h50  all computed at the same time   (1 step)
+```
+
+That would be dramatically faster — and it is exactly the question that leads to the Transformer (section 8). Keep it in mind as we go through the remaining drawbacks.
+
 ---
 
 ## 3. Problem 2: long-range dependencies
