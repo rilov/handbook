@@ -260,9 +260,87 @@ where:
 
 <p>At the next decoder step, the query changes, so the weights α change, so c changes — that is the whole trick.</p>
 
+<h3 id="this-is-called-a-convex-combination">This is called a “convex combination”</h3>
+
+<p>The fancy math name for this weighted sum is a <strong>convex combination</strong>: a blend where all the weights are <strong>between 0 and 1</strong> and they <strong>sum to exactly 1</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c_i = α_i1 × h1 + α_i2 × h2 + α_i3 × h3
+
+with:  0 ≤ α_ij ≤ 1   and   α_i1 + α_i2 + α_i3 = 1
+</code></pre></div></div>
+
+<p>Why does this matter? Because it makes the result a true <strong>percentage-based blend</strong> — like a recipe: “27% of h1, 27% of h2, 45% of h3.” The context can never be bigger or wilder than the ingredients; it always stays inside the “space” spanned by the encoder states. This is exactly why we need <strong>softmax</strong> in the pipeline — it is the tool that guarantees both conditions (all weights in [0,1], summing to 1).</p>
+
+<h3 id="getting-the-notation-straight-e_ij-vs-α_ij">Getting the notation straight: e_ij vs α_ij</h3>
+
+<p>Two symbols that are easy to confuse:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>e_ij  =  raw attention SCORE   (any number — can be negative, can be large)
+α_ij  =  attention WEIGHT      (between 0 and 1, all weights sum to 1)
+
+              softmax
+  e_ij  ────────────────→  α_ij
+</code></pre></div></div>
+
+<p>Both carry two subscripts, read the same way: <strong>at decoder step i, for encoder word j</strong>. Softmax converts scores into weights:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>           exp(e_ij)
+α_ij = ───────────────────
+        Σ_k exp(e_ik)
+</code></pre></div></div>
+
+<p>Two things the exponential does for us:</p>
+
+<ul>
+  <li><strong>Negative scores become positive.</strong> <code class="language-plaintext highlighter-rouge">exp(-2) = 0.14</code> — still a valid (small) weight. Without this, a negative score would break the “weights between 0 and 1” requirement.</li>
+  <li><strong>The denominator normalises.</strong> Dividing by the sum of all exponentials guarantees the weights add up to exactly 1.</li>
+</ul>
+
 <hr />
 
-<h2 id="8-the-complete-formula">8. The complete formula</h2>
+<h2 id="8-where-do-the-scores-come-from-a-learnable-alignment-function">8. Where do the scores come from? A learnable alignment function</h2>
+
+<p>One question remains: how is the raw score <code class="language-plaintext highlighter-rouge">e_ij</code> computed? Could we just hard-code the rules — “at step 1 focus on word 1, at step 2 focus on word 2”?</p>
+
+<p><strong>No — and this is the most important point.</strong> Where to focus changes with every sentence:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>English → French:   "I love cats"     → "J'aime les chats"      (roughly in order)
+English → German:   "I have seen him" → "Ich habe ihn gesehen"  (verb jumps to the end!)
+English → Japanese: subject-verb-object → subject-object-verb    (order changes completely)
+</code></pre></div></div>
+
+<p>No human could sit and label, for every possible sentence, which word to focus on at every step. So <strong>what to focus on must itself be learned</strong> by the model during training — just like every other weight.</p>
+
+<h3 id="the-alignment-function">The alignment function</h3>
+
+<p>The score is produced by a small <strong>learnable function</strong> <code class="language-plaintext highlighter-rouge">a</code>, called the <strong>alignment function</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>e_ij = a(s_{i-1}, h_j)
+</code></pre></div></div>
+
+<p>Read it as: <em>“to score encoder word j at my step i, compare <strong>my current context</strong> (the decoder’s previous state s_{i-1}) against <strong>that word’s encoder state</strong> h_j.”</em></p>
+
+<p>What the decoder has at step i:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  s_{i-1}   — the decoder's own state so far  ("here is what I have generated and what I need next")
+  h1 ... hn — all the encoder states           ("here is what each input word means")
+
+  e_i1 = a(s_{i-1}, h1)     score for word 1
+  e_i2 = a(s_{i-1}, h2)     score for word 2
+  e_i3 = a(s_{i-1}, h3)     score for word 3
+</code></pre></div></div>
+
+<p>The function <code class="language-plaintext highlighter-rouge">a</code> contains <strong>learnable weight matrices</strong> (like every other part of the network). During training, backpropagation adjusts them: whenever the model focuses on the wrong words and produces a bad translation, the loss pushes the alignment weights toward better focusing. Over millions of examples, the model <strong>learns where to look</strong> — nobody tells it.</p>
+
+<p>The dot product from section 3 is the simplest possible alignment function (no extra weights). The <strong>additive (Bahdanau) attention</strong> in section 11 is a richer one, with learned matrices <code class="language-plaintext highlighter-rouge">W1</code>, <code class="language-plaintext highlighter-rouge">W2</code> and vector <code class="language-plaintext highlighter-rouge">v</code>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Dot product:   a(s, h) = s · h                          (no parameters)
+Bahdanau:      a(s, h) = vᵀ · tanh(W1·s + W2·h)         (learned parameters)
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="9-the-complete-formula">9. The complete formula</h2>
 
 <p>Putting it all together in one line:</p>
 
@@ -281,7 +359,7 @@ where:
 
 <hr />
 
-<h2 id="9-matrix-form-doing-it-all-at-once">9. Matrix form: doing it all at once</h2>
+<h2 id="10-matrix-form-doing-it-all-at-once">10. Matrix form: doing it all at once</h2>
 
 <p>In practice, we process all decoder steps and all encoder states in parallel using matrices:</p>
 
@@ -299,7 +377,7 @@ Step 4: · V      →  (seq_len_decoder, d)                 context vectors
 
 <hr />
 
-<h2 id="10-additive-attention-bahdanau--the-alternative">10. Additive attention (Bahdanau) — the alternative</h2>
+<h2 id="11-additive-attention-bahdanau--the-alternative">11. Additive attention (Bahdanau) — the alternative</h2>
 
 <p>Before scaled dot-product, <strong>Bahdanau (2014)</strong> proposed additive attention:</p>
 
@@ -350,7 +428,7 @@ Step 4: · V      →  (seq_len_decoder, d)                 context vectors
 
 <hr />
 
-<h2 id="11-pytorch-scaled-dot-product-attention">11. PyTorch: scaled dot-product attention</h2>
+<h2 id="12-pytorch-scaled-dot-product-attention">12. PyTorch: scaled dot-product attention</h2>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
 <span class="kn">import</span> <span class="n">torch.nn.functional</span> <span class="k">as</span> <span class="n">F</span>
@@ -377,14 +455,15 @@ Step 4: · V      →  (seq_len_decoder, d)                 context vectors
 
 <hr />
 
-<h2 id="12-summary">12. Summary</h2>
+<h2 id="13-summary">13. Summary</h2>
 
 <ul>
   <li>Attention uses three players: <strong>Query</strong> (what am I looking for?), <strong>Key</strong> (what does each word offer?), <strong>Value</strong> (the actual content).</li>
   <li>The <strong>dot product</strong> <code class="language-plaintext highlighter-rouge">Q · K</code> measures how similar a query is to each key.</li>
   <li><strong>Scaling</strong> by <code class="language-plaintext highlighter-rouge">√d</code> prevents large dot products from making softmax too sharp.</li>
   <li><strong>Softmax</strong> turns raw scores into weights that add up to 1.</li>
-  <li>The <strong>weighted sum</strong> of values produces a context vector tuned to what the decoder needs right now: <strong>c_i = Σ α_ij × h_j</strong>.</li>
+  <li>The <strong>weighted sum</strong> of values produces a context vector tuned to what the decoder needs right now: <strong>c_i = Σ α_ij × h_j</strong> — a <strong>convex combination</strong> (weights in [0,1], summing to 1).</li>
+  <li>Raw scores <code class="language-plaintext highlighter-rouge">e_ij</code> come from a <strong>learnable alignment function</strong> <code class="language-plaintext highlighter-rouge">e_ij = a(s_{i-1}, h_j)</code> — where to focus is learned during training, never hand-coded.</li>
   <li>In the decoder, the <strong>only change</strong> from Part 2 is that the fixed context <code class="language-plaintext highlighter-rouge">c</code> becomes a per-step context <code class="language-plaintext highlighter-rouge">c_i</code>: <code class="language-plaintext highlighter-rouge">s_i = f(s_{i-1}, y_{i-1}, c_i)</code>. The previous state and previous output stay the same.</li>
   <li>The complete formula: <strong>Attention(Q, K, V) = softmax(Q · K^T / √d) · V</strong></li>
   <li><strong>Additive attention</strong> (Bahdanau) uses a small network instead of a dot product — slower but more flexible.</li>
