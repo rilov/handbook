@@ -223,9 +223,92 @@ c_i = 0.27 × h1 + 0.27 × h2 + 0.45 × h3 = [0.72, 0.54, 0.72, 0.45]
 
 At the next decoder step, the query changes, so the weights α change, so c changes — that is the whole trick.
 
+### This is called a "convex combination"
+
+The fancy math name for this weighted sum is a **convex combination**: a blend where all the weights are **between 0 and 1** and they **sum to exactly 1**.
+
+```text
+c_i = α_i1 × h1 + α_i2 × h2 + α_i3 × h3
+
+with:  0 ≤ α_ij ≤ 1   and   α_i1 + α_i2 + α_i3 = 1
+```
+
+Why does this matter? Because it makes the result a true **percentage-based blend** — like a recipe: "27% of h1, 27% of h2, 45% of h3." The context can never be bigger or wilder than the ingredients; it always stays inside the "space" spanned by the encoder states. This is exactly why we need **softmax** in the pipeline — it is the tool that guarantees both conditions (all weights in [0,1], summing to 1).
+
+### Getting the notation straight: e_ij vs α_ij
+
+Two symbols that are easy to confuse:
+
+```text
+e_ij  =  raw attention SCORE   (any number — can be negative, can be large)
+α_ij  =  attention WEIGHT      (between 0 and 1, all weights sum to 1)
+
+              softmax
+  e_ij  ────────────────→  α_ij
+```
+
+Both carry two subscripts, read the same way: **at decoder step i, for encoder word j**. Softmax converts scores into weights:
+
+```text
+           exp(e_ij)
+α_ij = ───────────────────
+        Σ_k exp(e_ik)
+```
+
+Two things the exponential does for us:
+
+- **Negative scores become positive.** `exp(-2) = 0.14` — still a valid (small) weight. Without this, a negative score would break the "weights between 0 and 1" requirement.
+- **The denominator normalises.** Dividing by the sum of all exponentials guarantees the weights add up to exactly 1.
+
 ---
 
-## 8. The complete formula
+## 8. Where do the scores come from? A learnable alignment function
+
+One question remains: how is the raw score `e_ij` computed? Could we just hard-code the rules — "at step 1 focus on word 1, at step 2 focus on word 2"?
+
+**No — and this is the most important point.** Where to focus changes with every sentence:
+
+```text
+English → French:   "I love cats"     → "J'aime les chats"      (roughly in order)
+English → German:   "I have seen him" → "Ich habe ihn gesehen"  (verb jumps to the end!)
+English → Japanese: subject-verb-object → subject-object-verb    (order changes completely)
+```
+
+No human could sit and label, for every possible sentence, which word to focus on at every step. So **what to focus on must itself be learned** by the model during training — just like every other weight.
+
+### The alignment function
+
+The score is produced by a small **learnable function** `a`, called the **alignment function**:
+
+```text
+e_ij = a(s_{i-1}, h_j)
+```
+
+Read it as: *"to score encoder word j at my step i, compare **my current context** (the decoder's previous state s_{i-1}) against **that word's encoder state** h_j."*
+
+What the decoder has at step i:
+
+```text
+  s_{i-1}   — the decoder's own state so far  ("here is what I have generated and what I need next")
+  h1 ... hn — all the encoder states           ("here is what each input word means")
+
+  e_i1 = a(s_{i-1}, h1)     score for word 1
+  e_i2 = a(s_{i-1}, h2)     score for word 2
+  e_i3 = a(s_{i-1}, h3)     score for word 3
+```
+
+The function `a` contains **learnable weight matrices** (like every other part of the network). During training, backpropagation adjusts them: whenever the model focuses on the wrong words and produces a bad translation, the loss pushes the alignment weights toward better focusing. Over millions of examples, the model **learns where to look** — nobody tells it.
+
+The dot product from section 3 is the simplest possible alignment function (no extra weights). The **additive (Bahdanau) attention** in section 11 is a richer one, with learned matrices `W1`, `W2` and vector `v`:
+
+```text
+Dot product:   a(s, h) = s · h                          (no parameters)
+Bahdanau:      a(s, h) = vᵀ · tanh(W1·s + W2·h)         (learned parameters)
+```
+
+---
+
+## 9. The complete formula
 
 Putting it all together in one line:
 
@@ -243,7 +326,7 @@ This is the **scaled dot-product attention** formula from the famous "Attention 
 
 ---
 
-## 9. Matrix form: doing it all at once
+## 10. Matrix form: doing it all at once
 
 In practice, we process all decoder steps and all encoder states in parallel using matrices:
 
@@ -262,7 +345,7 @@ Each row of the output is the context vector for one decoder step.
 
 ---
 
-## 10. Additive attention (Bahdanau) — the alternative
+## 11. Additive attention (Bahdanau) — the alternative
 
 Before scaled dot-product, **Bahdanau (2014)** proposed additive attention:
 
@@ -287,7 +370,7 @@ In practice, scaled dot-product is used almost everywhere today because it is fa
 
 ---
 
-## 11. PyTorch: scaled dot-product attention
+## 12. PyTorch: scaled dot-product attention
 
 ```python
 import torch
@@ -315,13 +398,14 @@ print("Context:", context)    # tensor([[0.72, 0.54, 0.72, 0.45]])
 
 ---
 
-## 12. Summary
+## 13. Summary
 
 - Attention uses three players: **Query** (what am I looking for?), **Key** (what does each word offer?), **Value** (the actual content).
 - The **dot product** `Q · K` measures how similar a query is to each key.
 - **Scaling** by `√d` prevents large dot products from making softmax too sharp.
 - **Softmax** turns raw scores into weights that add up to 1.
-- The **weighted sum** of values produces a context vector tuned to what the decoder needs right now: **c_i = Σ α_ij × h_j**.
+- The **weighted sum** of values produces a context vector tuned to what the decoder needs right now: **c_i = Σ α_ij × h_j** — a **convex combination** (weights in [0,1], summing to 1).
+- Raw scores `e_ij` come from a **learnable alignment function** `e_ij = a(s_{i-1}, h_j)` — where to focus is learned during training, never hand-coded.
 - In the decoder, the **only change** from Part 2 is that the fixed context `c` becomes a per-step context `c_i`: `s_i = f(s_{i-1}, y_{i-1}, c_i)`. The previous state and previous output stay the same.
 - The complete formula: **Attention(Q, K, V) = softmax(Q · K^T / √d) · V**
 - **Additive attention** (Bahdanau) uses a small network instead of a dot product — slower but more flexible.
