@@ -256,3 +256,5 @@ X (N × D1)  →  Q, K, V (N × D2)  →  scores and A (N × N)  →  Z (N × D2
 - Divide by **√D2**, then **softmax** each row so the weights are positive and add to 1.
 - **A × V** blends everyone's values into rich vectors **Z** (N × D2).
 - Training is the search for W_Q, W_K, W_V that make these blends as useful as possible.
+
+**Next up:** run all of this yourself in about 15 lines of Python in [Part 10: Self-Attention in Code with NumPy]({{ site.baseurl }}/topics/dl-genai-self-attention-numpy/).
