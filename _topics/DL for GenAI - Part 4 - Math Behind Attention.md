@@ -20,6 +20,8 @@ summary: "A beginner-friendly walkthrough of the math behind attention — dot p
 
 Part 3 showed the intuition: the decoder looks back at all encoder states and focuses on the most relevant ones. This part shows the **math** that makes it work — step by step, with real numbers.
 
+> **Where this fits:** this is the math of **attention v1** — the decoder of an RNN encoder-decoder attending to encoder states (Bahdanau/Luong style). The Transformer's **self-attention** reuses the same ingredients (dot products, scaling, softmax, Q/K/V) but applies them differently — that version is covered in [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/). Learn the ingredients here once, and Part 9 becomes easy.
+
 ---
 
 ## 1. The three players: Query, Key, Value

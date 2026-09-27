@@ -326,3 +326,5 @@ The same code works for **self-attention in the decoder** too. The only extra st
 - Self-attention is a handful of **matrix multiplications**, and NumPy does each in one line.
 - Every word is handled **at the same time**.
 - Random weights give random-looking attention. **Training** is what makes it meaningful.
+
+**Next up:** most modern models keep only *half* of the Transformer. Find out which half and why in [Part 11: Transformer Variants — Encoder-Only, Decoder-Only, Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-transformer-variants/).

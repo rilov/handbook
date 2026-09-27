@@ -29,7 +29,11 @@ Learn about LLMs, LangChain, RAG, agents, and building AI-powered applications �
 8. **[The Transformer Architecture, Explained Simply]({{ site.baseurl }}/topics/dl-genai-transformer-architecture/)** — Every box in the Transformer diagram: embeddings, positional encoding, multi-head attention, add & norm, feed-forward, masking, cross-attention, and generating the output.
 9. **[The Math Behind Self-Attention]({{ site.baseurl }}/topics/dl-genai-self-attention-math/)** — The magic is a matrix: X, W_Q, W_K, W_V and softmax(QKᵀ/√d)V, with a fully worked 3-word example.
 10. **[Self-Attention in Code with NumPy]({{ site.baseurl }}/topics/dl-genai-self-attention-numpy/)** — Build self-attention from scratch in about 15 lines of NumPy on "I drink hot coffee", with every output explained in plain words.
-11. **[The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/)** — The whole Transformer in one sitting with zero math: reading, writing one word at a time, training with cross-entropy loss, and what the "context limit" means inside each layer.
+11. **[Transformer Variants — Encoder-Only, Decoder-Only, Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-transformer-variants/)** — Why the industry split the Transformer into three families: BERT for understanding, GPT for generating, T5 for transforming — and how to pick the right one.
+
+**Short on time? Read the one-sitting recap instead (or first):**
+
+- **[The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/)** — The whole Transformer in one sitting with zero math: reading, writing one word at a time, training with cross-entropy loss, and what the "context limit" means inside each layer. Works as a standalone introduction or as a recap of Parts 6–11.
 
 **Opinion, case studies, and explainers:**
 

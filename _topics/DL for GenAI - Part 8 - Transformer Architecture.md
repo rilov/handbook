@@ -87,7 +87,7 @@ Every encoder layer has the same two main parts: **multi-head self-attention**, 
 
 ### Box 3: Multi-Head Self-Attention (several discussions at once)
 
-This is the group project from Parts 6 and 7: every word makes a Query, Key and Value, and each word ends up with a weighted blend of the other words' values.
+This is the group project from [Part 6]({{ site.baseurl }}/topics/dl-genai-transformer-intro/) and [Part 7]({{ site.baseurl }}/topics/dl-genai-transformer-case-study/): every word makes a Query, Key and Value, and each word ends up with a weighted blend of the other words' values. (No re-explanation needed here — if Q, K, V feel fuzzy, revisit Part 6 first.)
 
 **Multi-head** just means the team holds **several discussions at the same time**, each with a different focus:
 
@@ -231,6 +231,8 @@ The same building blocks power modern AI. Different models keep different halves
 | Decoder-only | Just the decoder (without cross-attention) | Generating text | GPT-style chatbots and most modern LLMs |
 
 A chatbot that writes an answer word by word is doing the loop from section 7. There's just no separate encoder: your question simply becomes the start of the "output so far".
+
+These three families — why they exist and how to pick between them — get a full part of their own: [Part 11: Transformer Variants]({{ site.baseurl }}/topics/dl-genai-transformer-variants/).
 
 ---
 

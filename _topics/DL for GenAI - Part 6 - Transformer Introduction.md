@@ -278,4 +278,4 @@ This solves precisely the drawbacks from Part 5: no more sequential computation,
 - Attention = your queries get answered by whoever's keys match them, and you walk away with a **weighted blend of the group's values**.
 - Everything is computed **in parallel** — like team members reading independently at the same time — which is exactly what the RNN could not do.
 
-**Next up:** the actual math of self-attention — how Q, K, V are computed from word vectors using learned matrices, and how the "discussion" becomes matrix multiplication.
+**Next up:** watch the encoder enrich a real sentence, word by word, in [Part 7: Transformer Case Study — Python Program]({{ site.baseurl }}/topics/dl-genai-transformer-case-study/). (The actual math of self-attention — how Q, K, V are computed with learned matrices — comes in [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/).)

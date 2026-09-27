@@ -525,7 +525,7 @@ Word2Vec and GloVe give each word **one** vector, no matter the context. But man
 "bank" in "bank account"  → finance
 ```
 
-Both get the same vector. This is a big problem. Later models like **ELMo**, **BERT**, and **GPT** solve this by producing **contextual embeddings** — a different vector for the same word depending on the sentence. We will see these in later parts.
+Both get the same vector. This is a big problem. Later models like **ELMo**, **BERT**, and **GPT** solve this by producing **contextual embeddings** — a different vector for the same word depending on the sentence. The mechanism that makes this possible (self-attention) is built up in Parts 6–10, and the models themselves appear in [Part 11: Transformer Variants]({{ site.baseurl }}/topics/dl-genai-transformer-variants/).
 
 ---
 

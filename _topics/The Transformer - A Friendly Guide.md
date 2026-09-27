@@ -2,7 +2,7 @@
 layout: topic
 title: "The Transformer - A Friendly Guide"
 category: Generative AI
-order: 111
+order: 112
 permalink: /topics/transformer-friendly-guide/
 tags:
   - generative-ai
@@ -345,6 +345,6 @@ That's also why long-context research focuses exactly here: smarter seat numbers
 
 ## Where to Go Deeper
 
-- The step-by-step series: [Part 6: Transformer Introduction]({{ site.baseurl }}/topics/dl-genai-transformer-intro/) through [Part 10: Self-Attention in Code]({{ site.baseurl }}/topics/dl-genai-self-attention-numpy/)
+- The step-by-step series: [Part 6: Transformer Introduction]({{ site.baseurl }}/topics/dl-genai-transformer-intro/) through [Part 11: Transformer Variants]({{ site.baseurl }}/topics/dl-genai-transformer-variants/)
 - Jay Alammar's [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) — the classic visual walkthrough, one notch more technical than this guide
 - The original paper: *Attention Is All You Need* (2017)

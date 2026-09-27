@@ -77,7 +77,7 @@ World   → Q6, K6, V6
 | Key (K) | "What can I offer others?" |
 | Value (V) | "Here is my information." |
 
-*How* each word computes these three comes in the math part. For now, let's see what happens with them.
+(Just a quick recap — the full group project analogy is in [Part 6, section 4]({{ site.baseurl }}/topics/dl-genai-transformer-intro/).) *How* each word computes these three comes in [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/). For now, let's see what happens with them.
 
 ---
 

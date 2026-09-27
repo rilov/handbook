@@ -23,6 +23,8 @@ People often call GPT and Transformers "magic". Here's a better word: **matrix**
 
 Everything we described with the group project analogy (queries, keys, values, "who listens to whom") comes down to **a few matrix multiplications**. In this part we'll write them down and then work through a tiny example by hand, so you can see every number.
 
+> **Where this fits:** [Part 4]({{ site.baseurl }}/topics/dl-genai-attention-math/) covered the math of **attention v1** — an RNN decoder attending to encoder states. This part covers **self-attention** — words in the *same* sequence attending to each other, which is what the Transformer runs on. Same ingredients (dot products, scaling, softmax, Q/K/V), different recipe: here Q, K and V all come from the same sentence via three learned matrices.
+
 If you need a refresher on dot products or softmax, Part 4 covers them. Here we only use what we need.
 
 ---
