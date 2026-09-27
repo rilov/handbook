@@ -39,6 +39,8 @@ Seeing the progression also helps you choose the right version for a real projec
 
 ## 2. The YOLO family
 
+<img src="{{ site.baseurl }}/assets/img/yolo-version-timeline.svg" alt="Timeline of YOLO versions from v1 in 2016 through v2, v3, v4, v5, v6, v7, v8, v9/v10, to YOLO11 in 2024. Each point names one key idea introduced by that version, from the original grid with two boxes per cell, through k-means anchors, three-scale detection, bags of freebies, easier PyTorch training, anchor-free heads, NMS-free training, and finally YOLO11's C3k2/C2PSA backbone with a decoupled head." width="100%" />
+
 | Version | Year | Key ideas |
 |---|---|---|
 | **YOLOv1** | 2016 | First single-network detector. Image divided into an S × S grid; each cell predicts B boxes and C classes. Fast but poor at small objects. |
@@ -71,12 +73,35 @@ The details change, but the core idea stays the same: **one forward pass predict
 
 ## 4. What is YOLO11?
 
-**YOLO11** is the current Ultralytics YOLO model. It is not a new research paper with a radically different idea; it is the next iteration of the YOLOv8-style architecture with:
+**YOLO11** is the current stable Ultralytics YOLO model, developed by Glenn Jocher's team. It is not a new research paper with a radically different idea; it is the next iteration of the YOLOv8-style architecture, focused on efficiency, architectural refinement, and multi-task versatility.
 
-- a refreshed **C3k2** block in the backbone and neck for better gradient flow and efficiency
-- improved scaling from **n** (nano) to **x** (extra large)
-- updated training augmentation recipes
-- support for object detection, instance segmentation, pose estimation, classification, and oriented bounding boxes
+The architecture is **task-agnostic**: the same backbone/neck/head skeleton, with small head changes, powers detection, instance segmentation, pose estimation, classification, and oriented bounding boxes.
+
+<img src="{{ site.baseurl }}/assets/img/yolo11-architecture.svg" alt="YOLO11 architecture as a backbone, neck, and head. The backbone uses C3k2 blocks and C2PSA spatial-attention blocks to turn raw pixels into compact multi-scale feature maps. The neck is a PAN plus FPN feature-fusion network that acts as a two-way highway, sending deep semantic meaning down and sharp early detail up so small objects are not lost. The head is decoupled into a separate box branch and class branch, is anchor-free, and predicts object centres directly; some variants remove non-maximum suppression entirely for end-to-end inference." width="100%" />
+
+### Backbone: the feature extractor
+
+The backbone looks at raw pixels and shrinks the image down into a small set of important features. YOLO11 introduces two structural changes here:
+
+- **C3k2** — a CSP (cross-stage partial) block built from two smaller convolutions instead of one large one, which is cheaper to run on modern GPUs.
+- **C2PSA** — a cross-stage partial block with spatial attention, which helps the network focus on the most relevant regions of the feature map.
+
+### Neck: feature fusion
+
+The neck combines high-resolution detail from early layers with the semantic meaning built up in deep layers. YOLO11 uses an optimised **PAN-FPN** (Path Aggregation Network + Feature Pyramid Network): a two-way information highway where deep, high-level meaning flows down and sharp, low-level pixel detail flows back up. This shortcut of early detail into the final layers is what keeps small objects from being lost as data flows through the network.
+
+### Head: decoupled and anchor-free
+
+Unlike having one head predict both class and box together, YOLO11 uses a **decoupled head** — a separate branch predicts the bounding box and a separate branch predicts the class. This leads to faster convergence during training.
+
+The head is also **anchor-free**, inherited from YOLOv8: it predicts the centre of the object directly instead of fitting predefined anchor boxes, which makes it more flexible for objects of unusual shapes and sizes.
+
+### Key efficiency improvements
+
+- **Optimised convolutions** — heavy standard convolutions are replaced with depth-wise and point-wise alternatives wherever possible, increasing frames per second.
+- **Improved spatial pyramid pooling** — an updated pooling module helps the network understand objects at very different scales, improving accuracy.
+- **NMS-free option** — some YOLO11 variants support fully end-to-end detection, removing the non-maximum-suppression post-processing step entirely and reducing latency (earlier versions always needed an NMS pass to remove duplicate, noisy boxes).
+- **Mixed-precision support** — native FP8 and INT8 quantisation lets the model run extremely fast on both enterprise GPUs (e.g. H100) and edge devices.
 
 The most important thing for a beginner is that YOLO11 keeps the same simple Python API as YOLOv8 while providing better accuracy and speed.
 
@@ -177,13 +202,13 @@ Ultralytics provides five standard sizes:
 
 | Model | Suffix | Speed | Accuracy | Use case |
 |---|---|---|---|---|
-| YOLO11n | `n` | Fastest | Lowest | Edge devices, mobile, CPU |
-| YOLO11s | `s` | Fast | Low | Raspberry Pi, small GPU |
-| YOLO11m | `m` | Medium | Good | Balanced desktop GPU use |
-| YOLO11l | `l` | Slower | Better | Server GPU |
-| YOLO11x | `x` | Slowest | Best | Research, powerful GPU |
+| YOLO11n | `n` | Fastest | Moderate | Nano — Raspberry Pi, IoT and mobile edge devices |
+| YOLO11s | `s` | Fast | Good | Small GPUs, research and prototyping |
+| YOLO11m | `m` | Medium | Better | Balanced speed/accuracy on desktop GPUs |
+| YOLO11l | `l` | Slower | High | Server-side processing, plenty of VRAM |
+| YOLO11x | `x` | Slowest | Best | Enterprise/commercial serving on data-centre GPUs (e.g. NVIDIA A100) |
 
-Start with `yolo11n.pt` for prototypes and switch to a larger model only when accuracy is not good enough.
+Start with `yolo11n.pt` for prototypes and switch to a larger model only when accuracy is not good enough. In practice, `n`/`s` cover edge and research use, `m` is the general-purpose sweet spot, and `l`/`x` are reserved for server-side deployments where GPU memory is not the bottleneck.
 
 ---
 

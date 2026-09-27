@@ -110,7 +110,7 @@ import torch.nn as nn
 smooth_l1 = nn.SmoothL1Loss()
 
 pred   = torch.tensor([50.0, 30.0, 150.0, 150.0])
- target = torch.tensor([55.0, 35.0, 145.0, 155.0])
+target = torch.tensor([55.0, 35.0, 145.0, 155.0])
 
 loss = smooth_l1(pred, target)
 print(loss.item())

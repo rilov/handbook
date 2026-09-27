@@ -105,6 +105,10 @@ A proposal (160, 120, 320, 240) maps to (10, 7, 20, 15) in the feature map
 RoI pool it to a fixed 7 × 7 patch
 ```
 
+<img src="{{ site.baseurl }}/assets/img/roi-pooling-explained.svg" alt="A proposal rectangle on the original 800 by 600 image maps, via the CNN's stride of 16, to a smaller region on the 50 by 38 feature map. RoI pooling then buckets that region into a fixed 7 by 7 grid and max-pools each bucket, so every proposal, regardless of its original size or aspect ratio, produces the same fixed-size patch for the classifier and box regressor." width="100%" />
+
+Every proposal is divided into the same number of buckets (7 × 7 here), and each bucket is max-pooled down to one value — a big proposal and a tiny proposal both end up as a 7 × 7 patch, just pooled over regions of different sizes.
+
 ### Benefits over R-CNN
 
 | R-CNN | Fast R-CNN |

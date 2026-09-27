@@ -224,6 +224,8 @@ Recall = ───────────────────────�
 
 If we sort all predictions by confidence and plot precision against recall, the area under the curve is called **Average Precision (AP)**. It summarises how well the detector finds one class.
 
+<img src="{{ site.baseurl }}/assets/img/precision-recall-ap-curve.svg" alt="A precision-recall curve starting near perfect precision at low recall, when only the highest-confidence predictions are counted, and falling towards low precision as recall approaches 1 and lower-confidence predictions are included. The shaded area under this curve is the Average Precision for one class." width="90%" />
+
 **Mean Average Precision (mAP)** is the average AP over all object classes. It is the standard score for comparing object detectors.
 
 ```text
