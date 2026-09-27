@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 8: The Transformer Architecture, Explained Simply</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 8: The Transformer Architecture, Explained Simply</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-8-the-transformer-architecture-explained-simply">Deep Learning for Generative AI — Part 8: The Transformer Architecture, Explained Simply</h1>
+
+<p>In Part 6 we learned the big idea (Query, Key, Value and the group project). In Part 7 we watched the encoder enrich the words of one sentence.</p>
+
+<p>Now let’s open the whole machine and look at <strong>every box</strong> in it. Still no heavy math. By the end you should be able to look at the famous Transformer diagram and explain each part to a friend.</p>
+
+<p>We’ll use the same example as Part 7:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input  (English):  Python program to print Hello World
+Output (code):     print ( "Hello World" )
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="1-the-full-blueprint">1. The full blueprint</h2>
+
+<p><img src="/handbook/assets/img/transformer-architecture-overview.svg" alt="The Transformer blueprint. On the left, the encoder: the input sentence goes through input embedding, positional encoding, then an encoder layer made of multi-head self-attention, add and norm, feed-forward network, add and norm, repeated six times, producing rich vectors z1 to z6. On the right, the decoder: the output so far goes through output embedding and positional encoding, then a decoder layer made of masked self-attention, cross-attention that looks at the encoder output, and a feed-forward network, each followed by add and norm, repeated six times. Finally a linear and softmax layer scores every possible next word, and the chosen word is fed back into the decoder input." style="width:100%;max-width:900px;" /></p>
+
+<p>Think of it as a company with <strong>two departments</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Department</th>
+      <th>Job</th>
+      <th>Analogy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Encoder</strong> (left, blue)</td>
+      <td>Read and understand the input</td>
+      <td>The reading team that studies the request</td>
+    </tr>
+    <tr>
+      <td><strong>Decoder</strong> (right, green)</td>
+      <td>Write the output, one word at a time</td>
+      <td>The writing team that drafts the answer, checking the reading team’s notes as it goes</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The numbered boxes are the seven pieces we’ll walk through. Once you know those seven, you know the Transformer.</p>
+
+<hr />
+
+<h2 id="2-box-1-input-embedding-words-become-numbers">2. Box 1: Input Embedding (words become numbers)</h2>
+
+<p>Computers can’t read words, only numbers. So each word is first turned into a vector, exactly as in Part 1 (Word Embeddings).</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Python"  → [0.21, -0.40, 0.88, ...]
+"program" → [0.19, -0.35, 0.72, ...]
+...
+</code></pre></div></div>
+
+<p>In the original Transformer each vector has <strong>512 numbers</strong>. Words with similar meanings get similar vectors.</p>
+
+<p><strong>Problem:</strong> these starting vectors describe each word <strong>alone</strong>. “program” gets the same vector whether it means code or a TV show. Fixing that is the job of everything that follows.</p>
+
+<hr />
+
+<h2 id="3-box-2-positional-encoding-giving-every-word-a-seat-number">3. Box 2: Positional Encoding (giving every word a seat number)</h2>
+
+<p>Here’s a surprise. Attention looks at all the words <strong>at the same time</strong>. That’s what makes it fast, but it also means it has <strong>no idea of word order</strong>. To plain attention, these two sentences look the same:</p>
+
+<p><img src="/handbook/assets/img/transformer-positional-encoding.svg" alt="Without positions, 'dog bites man' and 'man bites dog' look like the same bag of three words, so the two sentences look identical. With positional encoding, each word gets a seat number: in sentence A dog is seat 1 and man is seat 3, in sentence B man is seat 1 and dog is seat 3, so the model knows who bit whom. The input to the Transformer is the word embedding plus a position vector." style="width:100%;max-width:900px;" /></p>
+
+<p>The fix is simple: <strong>add a position vector to every word vector</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>input to the Transformer = word embedding (what it means) + position vector (where it sits)
+</code></pre></div></div>
+
+<p><strong>Analogy:</strong> a cinema ticket. The ticket says <em>who</em> you are and <em>which seat</em> you’re in. Two people with the same name in different seats are clearly different.</p>
+
+<p>The original paper builds these position vectors from sine and cosine waves of different speeds, so every position gets a unique pattern. You don’t need the formula yet. Just remember: <strong>meaning + position goes in</strong>.</p>
+
+<hr />
+
+<h2 id="4-the-encoder-layer">4. The encoder layer</h2>
+
+<p>Every encoder layer has the same two main parts: <strong>multi-head self-attention</strong>, then a <strong>feed-forward network</strong>. After each part comes a small <strong>Add &amp; Norm</strong> step.</p>
+
+<h3 id="box-3-multi-head-self-attention-several-discussions-at-once">Box 3: Multi-Head Self-Attention (several discussions at once)</h3>
+
+<p>This is the group project from Parts 6 and 7: every word makes a Query, Key and Value, and each word ends up with a weighted blend of the other words’ values.</p>
+
+<p><strong>Multi-head</strong> just means the team holds <strong>several discussions at the same time</strong>, each with a different focus:</p>
+
+<p><img src="/handbook/assets/img/transformer-multi-head-attention.svg" alt="Three attention heads for the word 'program'. Head 1, meaning, asks what kind of program it is and listens mostly to Python (0.55). Head 2, action, asks what the program does and listens mostly to print (0.50). Head 3, content, asks what the program will print and listens mostly to Hello and World (0.30 each). The heads' answers are joined together into one richer vector. The original Transformer uses 8 heads." style="width:100%;max-width:900px;" /></p>
+
+<ul>
+  <li>Head 1 might learn “what kind of thing is this?” (program → Python).</li>
+  <li>Head 2 might learn “what action is involved?” (program → print).</li>
+  <li>Head 3 might learn “what is the content?” (program → Hello, World).</li>
+</ul>
+
+<p>Each head produces its own answer. The answers are joined side by side and mixed into one vector. One discussion can only focus on one thing, but eight discussions can cover grammar, meaning, and more, all at once.</p>
+
+<blockquote>
+  <p>The heads above are illustrative. In a real model <strong>nobody assigns the topics</strong>. Each head discovers its own focus during training.</p>
+</blockquote>
+
+<h3 id="add--norm-keep-your-notes-then-tidy-up">Add &amp; Norm (keep your notes, then tidy up)</h3>
+
+<p>After attention, two small housekeeping steps happen:</p>
+
+<ul>
+  <li><strong>Add</strong> (a <em>residual connection</em>): add the word’s original vector back to the attention result. <em>Analogy:</em> after a group discussion, you don’t throw away your own notes. You keep them and add what you learned. This also helps training on very deep networks (the same trick ResNet uses in vision).</li>
+  <li><strong>Norm</strong> (<em>layer normalisation</em>): rescale the numbers so they stay in a steady, sensible range. <em>Analogy:</em> adjusting the volume so nobody is shouting or whispering.</li>
+</ul>
+
+<h3 id="box-4-feed-forward-network-think-it-over-alone">Box 4: Feed-Forward Network (think it over alone)</h3>
+
+<p>After the discussion, each word goes through a small ordinary neural network <strong>by itself</strong>, with no looking at other words.</p>
+
+<p><em>Analogy:</em> after the team meeting, everyone goes home and thinks quietly about what they heard. The discussion is where words <strong>share</strong>. The feed-forward step is where each word <strong>processes</strong>.</p>
+
+<p>In the original paper this network widens each vector from 512 to 2048 numbers and then squeezes it back to 512.</p>
+
+<h3 id="stacked-six-times">Stacked six times</h3>
+
+<p>One encoder layer = attention → add &amp; norm → feed-forward → add &amp; norm. The original Transformer <strong>stacks six</strong> of these, one after another.</p>
+
+<p><em>Analogy:</em> reading a hard book several times. First pass: who’s who. Later passes: deeper meaning. Each layer builds on the understanding of the one below.</p>
+
+<p>The encoder’s final output is <code class="language-plaintext highlighter-rouge">z1 … z6</code>, one rich vector per input word, exactly what Part 7 described.</p>
+
+<hr />
+
+<h2 id="5-the-decoder-layer">5. The decoder layer</h2>
+
+<p>The decoder looks almost the same, with <strong>one extra attention</strong> and <strong>one rule</strong>.</p>
+
+<h3 id="box-5-masked-self-attention-no-peeking-at-future-words">Box 5: Masked Self-Attention (no peeking at future words)</h3>
+
+<p>The decoder first lets the words it has <strong>written so far</strong> discuss with each other. But there’s a rule: a word may only look at itself and the words <strong>before</strong> it.</p>
+
+<p><img src="/handbook/assets/img/transformer-masked-attention.svg" alt="A five by five grid for the output words start, print, open bracket, Hello World, close bracket. Each word can look at itself and the words before it (green ticks, forming a lower triangle) but not the words after it (grey crosses). The mask exists because during training the whole correct answer is given at once, and without it a word could copy the next word. Exam analogy: you may re-read what you have written, but not the answer key." style="width:100%;max-width:900px;" /></p>
+
+<p>Why? During training the decoder is shown the whole correct answer at once, so it can learn from all positions in parallel. Without the mask, the position after “print” could simply peek at “(“ and copy it. It would learn nothing.</p>
+
+<p><em>Analogy:</em> an exam. You can re-read your own earlier answers, but you can’t look at the answer key.</p>
+
+<h3 id="box-6-cross-attention-checking-the-reading-teams-notes">Box 6: Cross-Attention (checking the reading team’s notes)</h3>
+
+<p>Next, the decoder asks the encoder for help. In cross-attention:</p>
+
+<ul>
+  <li>the <strong>Queries</strong> come from the decoder (“what do I need to write next?”)</li>
+  <li>the <strong>Keys and Values</strong> come from the encoder’s <code class="language-plaintext highlighter-rouge">z1 … z6</code> (“here is what the input says”)</li>
+</ul>
+
+<p>So when the decoder is about to write the text inside the brackets, its query matches the keys of <strong>Hello</strong> and <strong>World</strong>, and it pulls in their meaning.</p>
+
+<p><em>Analogy:</em> the writing team glancing back at the reading team’s notes before writing each word.</p>
+
+<p>This is the same “decoder looks back at the encoder” idea from Part 3, now built entirely from Query, Key and Value.</p>
+
+<h3 id="then-feed-forward-add--norm-stacked-six-times">Then: Feed-Forward, Add &amp; Norm, stacked six times</h3>
+
+<p>Exactly as in the encoder. One decoder layer = masked self-attention → cross-attention → feed-forward, each followed by add &amp; norm, and six layers stacked.</p>
+
+<hr />
+
+<h2 id="6-box-7-linear--softmax-picking-the-next-word">6. Box 7: Linear + Softmax (picking the next word)</h2>
+
+<p>At the top, the decoder has one vector for the current position. It must turn that into an actual word.</p>
+
+<ol>
+  <li><strong>Linear:</strong> give a score to <strong>every word in the vocabulary</strong> (tens of thousands of possible words).</li>
+  <li><strong>Softmax:</strong> turn those scores into probabilities that add up to 1.</li>
+</ol>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>After "&lt;start&gt; print (" the model might say:
+
+  "Hello World"   0.82   ← pick this one
+  "Hi"            0.06
+  )               0.04
+  ...everything else shares the remaining 0.08
+</code></pre></div></div>
+
+<p><em>Analogy:</em> a multiple-choice question with thousands of options, where the model writes down how confident it is in each.</p>
+
+<blockquote>
+  <p>Real models split text into <strong>tokens</strong>, which are often pieces of words. Treating <code class="language-plaintext highlighter-rouge">"Hello World"</code> as one token here just keeps the example tidy.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="7-putting-it-all-together-writing-the-code">7. Putting it all together: writing the code</h2>
+
+<p>The encoder reads the input <strong>once</strong>. The decoder then runs in a loop, adding one word per step, until it produces a special <code class="language-plaintext highlighter-rouge">&lt;end&gt;</code> word:</p>
+
+<p><img src="/handbook/assets/img/transformer-generation-steps.svg" alt="Five generation steps. Step 1: input start, the Transformer predicts print. Step 2: input start print, predicts open bracket. Step 3: input start print open bracket, predicts Hello World. Step 4: adds Hello World, predicts close bracket. Step 5: the full line, predicts end, so it stops. The encoder reads the input once; the decoder runs once per new word with everything written so far." style="width:100%;max-width:900px;" /></p>
+
+<p>Final output:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Hello World</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Here is the whole journey in one list:</p>
+
+<ol>
+  <li><strong>Embed</strong> the input words and <strong>add positions</strong>.</li>
+  <li><strong>Encoder</strong> × 6: words discuss (multi-head self-attention), then think alone (feed-forward). Result: <code class="language-plaintext highlighter-rouge">z1 … z6</code>.</li>
+  <li><strong>Decoder</strong> starts with <code class="language-plaintext highlighter-rouge">&lt;start&gt;</code>, embeds it and adds positions.</li>
+  <li><strong>Decoder</strong> × 6: look at what’s been written (masked), check the encoder’s notes (cross-attention), then think alone (feed-forward).</li>
+  <li><strong>Linear + Softmax</strong> picks the next word.</li>
+  <li>Add that word to the output and go back to step 3, until <code class="language-plaintext highlighter-rouge">&lt;end&gt;</code>.</li>
+</ol>
+
+<hr />
+
+<h2 id="8-the-original-numbers">8. The original numbers</h2>
+
+<p>From the 2017 paper <em>Attention Is All You Need</em> (base model):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Setting</th>
+      <th>Value</th>
+      <th>What it means</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Encoder layers</td>
+      <td>6</td>
+      <td>Six stacked encoder layers</td>
+    </tr>
+    <tr>
+      <td>Decoder layers</td>
+      <td>6</td>
+      <td>Six stacked decoder layers</td>
+    </tr>
+    <tr>
+      <td>Vector size (d_model)</td>
+      <td>512</td>
+      <td>Numbers per word vector</td>
+    </tr>
+    <tr>
+      <td>Attention heads</td>
+      <td>8</td>
+      <td>Eight discussions at once</td>
+    </tr>
+    <tr>
+      <td>Size per head</td>
+      <td>64</td>
+      <td>512 ÷ 8</td>
+    </tr>
+    <tr>
+      <td>Feed-forward size</td>
+      <td>2048</td>
+      <td>Temporary width inside the feed-forward network</td>
+    </tr>
+    <tr>
+      <td>Parameters</td>
+      <td>~65 million</td>
+      <td>Tiny next to today’s large language models</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="9-where-you-meet-this-today">9. Where you meet this today</h2>
+
+<p>The same building blocks power modern AI. Different models keep different halves:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Keeps</th>
+      <th>Good at</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Encoder–decoder</td>
+      <td>Both halves</td>
+      <td>Turning one sequence into another</td>
+      <td>Original Transformer, T5 (translation, summarisation)</td>
+    </tr>
+    <tr>
+      <td>Encoder-only</td>
+      <td>Just the encoder</td>
+      <td>Understanding text</td>
+      <td>BERT (search, classification)</td>
+    </tr>
+    <tr>
+      <td>Decoder-only</td>
+      <td>Just the decoder (without cross-attention)</td>
+      <td>Generating text</td>
+      <td>GPT-style chatbots and most modern LLMs</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A chatbot that writes an answer word by word is doing the loop from section 7. There’s just no separate encoder: your question simply becomes the start of the “output so far”.</p>
+
+<hr />
+
+<h2 id="10-summary">10. Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Box</th>
+      <th>Name</th>
+      <th>One-line job</th>
+      <th>Analogy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Input Embedding</td>
+      <td>Words → vectors</td>
+      <td>A dictionary of number codes</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Positional Encoding</td>
+      <td>Add word order</td>
+      <td>A seat number on a cinema ticket</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Multi-Head Self-Attention</td>
+      <td>Words share information</td>
+      <td>Several group discussions at once</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>Add &amp; Norm</td>
+      <td>Keep the original, tidy the numbers</td>
+      <td>Keep your notes; adjust the volume</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Feed-Forward</td>
+      <td>Each word processes alone</td>
+      <td>Thinking it over at home</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Masked Self-Attention</td>
+      <td>Look only at words written so far</td>
+      <td>No peeking at the answer key</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Cross-Attention</td>
+      <td>Decoder checks the input</td>
+      <td>Glancing at the reading team’s notes</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Linear + Softmax</td>
+      <td>Choose the next word</td>
+      <td>A multiple-choice answer with confidences</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Next up:</strong> the math. How are Q, K and V actually computed, and how does attention turn into a few matrix multiplications? See <a href="/handbook/topics/dl-genai-self-attention-math/">Part 9: The Math Behind Self-Attention</a>.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">attention</span>, <span class="tag">multi-head-attention</span>, <span class="tag">positional-encoding</span>, <span class="tag">encoder-decoder</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

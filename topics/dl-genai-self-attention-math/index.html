@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 9: The Math Behind Self-Attention (The Magic Is a Matrix)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 9: The Math Behind Self-Attention (The Magic Is a Matrix)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-9-the-math-behind-self-attention-the-magic-is-a-matrix">Deep Learning for Generative AI — Part 9: The Math Behind Self-Attention (The Magic Is a Matrix)</h1>
+
+<p>People often call GPT and Transformers “magic”. Here’s a better word: <strong>matrix</strong>.</p>
+
+<p>Everything we described with the group project analogy (queries, keys, values, “who listens to whom”) comes down to <strong>a few matrix multiplications</strong>. In this part we’ll write them down and then work through a tiny example by hand, so you can see every number.</p>
+
+<p>If you need a refresher on dot products or softmax, Part 4 covers them. Here we only use what we need.</p>
+
+<hr />
+
+<h2 id="1-setting-up-the-notation">1. Setting up the notation</h2>
+
+<p>Take a sentence with <strong>N</strong> words. We’ll use a new, tiny example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"cats chase mice"      →   N = 3 words
+</code></pre></div></div>
+
+<p>We need two sizes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Symbol</th>
+      <th>Meaning</th>
+      <th>In our example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>N</strong></td>
+      <td>Number of words in the input</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td><strong>D1</strong></td>
+      <td>Length of each word’s <strong>starting</strong> vector (its plain embedding)</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <td><strong>D2</strong></td>
+      <td>Length of each word’s <strong>rich</strong> vector <code class="language-plaintext highlighter-rouge">z</code> (the model size we want)</td>
+      <td>2</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The starting vectors <code class="language-plaintext highlighter-rouge">x1, x2, x3</code> are plain, “static” descriptions of each word. They are the same no matter what sentence the word is in. The whole point of attention is to turn them into <strong>rich</strong> vectors <code class="language-plaintext highlighter-rouge">z1, z2, z3</code> that know about their neighbours.</p>
+
+<p>(Real models use sizes like D1 = D2 = 512. We use tiny sizes so you can check the arithmetic.)</p>
+
+<hr />
+
+<h2 id="2-stack-the-words-into-one-matrix-x">2. Stack the words into one matrix, X</h2>
+
+<p>Instead of handling words one at a time, we stack them as <strong>rows</strong> of one matrix:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            ← D1 = 4 columns →
+X =  cats   [ 1   0   1   0 ]      row 1 = x1
+     chase  [ 0   2   0   1 ]      row 2 = x2
+     mice   [ 1   1   0   0 ]      row 3 = x3
+
+size: N × D1 = 3 × 4
+</code></pre></div></div>
+
+<p><strong>One row per word.</strong> That’s all X is. The numbers here are made up to keep things simple.</p>
+
+<hr />
+
+<h2 id="3-the-three-learnable-matrices-w_q-w_k-w_v">3. The three learnable matrices: W_Q, W_K, W_V</h2>
+
+<p>Where do queries, keys and values come from? From three matrices the Transformer <strong>learns during training</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Matrix</th>
+      <th>Size</th>
+      <th>Produces</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>W_Q</strong> (query weights)</td>
+      <td>D1 × D2</td>
+      <td>Queries: what each word is looking for</td>
+    </tr>
+    <tr>
+      <td><strong>W_K</strong> (key weights)</td>
+      <td>D1 × D2</td>
+      <td>Keys: what each word can offer</td>
+    </tr>
+    <tr>
+      <td><strong>W_V</strong> (value weights)</td>
+      <td>D1 × D2</td>
+      <td>Values: what each word actually knows</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>“Learnable” means they start as random numbers and get adjusted, bit by bit, during training. Here’s the chain that makes them so important:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>good W_Q, W_K, W_V
+   → good queries, keys and values
+      → good attention weights
+         → good rich representations
+            → good translations / answers
+</code></pre></div></div>
+
+<p>Training a Transformer’s attention is essentially the search for the best W_Q, W_K and W_V.</p>
+
+<hr />
+
+<h2 id="4-step-1-get-q-k-v-with-one-multiplication-each">4. Step 1: get Q, K, V with one multiplication each</h2>
+
+<p><img src="/handbook/assets/img/self-attention-matrix-flow.svg" alt="Step 1: the input matrix X of size N by D1 is multiplied by the learned matrix W_Q of size D1 by D2 to give Q of size N by D2, one query per word. Likewise K equals X times W_K and V equals X times W_V. Step 2: Q times K transpose gives an N by N matrix of match scores; dividing by the square root of D2 and applying softmax gives the weights A, whose rows add to 1; A times V gives Z, of size N by D2, the rich vectors. The whole of self-attention in one line: Z equals softmax of Q K transpose over root D2, times V." style="width:100%;max-width:900px;" /></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q = X × W_Q        (N × D1) × (D1 × D2)  =  N × D2
+K = X × W_K        same shape
+V = X × W_V        same shape
+</code></pre></div></div>
+
+<p>One multiplication gives the queries of <strong>all</strong> words at once, with row 1 for cats, row 2 for chase, row 3 for mice. No loop over words. This is why Transformers are so fast on GPUs.</p>
+
+<p>Let’s use these small learned matrices (again, made-up numbers):</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>W_Q = [ 1 0 ]     W_K = [ 0 1 ]     W_V = [ 1 0 ]
+      [ 0 1 ]           [ 1 0 ]           [ 0 1 ]
+      [ 1 0 ]           [ 1 0 ]           [ 1 1 ]
+      [ 0 1 ]           [ 0 1 ]           [ 0 0 ]
+</code></pre></div></div>
+
+<p>Multiply X by each one (each entry is “row of X” · “column of W”):</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            Q            K            V
+cats    [ 2  0 ]     [ 1  1 ]     [ 2  1 ]
+chase   [ 0  3 ]     [ 2  1 ]     [ 0  2 ]
+mice    [ 1  1 ]     [ 1  1 ]     [ 1  1 ]
+</code></pre></div></div>
+
+<p>Check one: the query of <strong>cats</strong> = <code class="language-plaintext highlighter-rouge">[1 0 1 0] × W_Q</code> → first column: 1·1 + 0·0 + 1·1 + 0·0 = <strong>2</strong>, second column: 1·0 + 0·1 + 1·0 + 0·1 = <strong>0</strong>. So <code class="language-plaintext highlighter-rouge">q_cats = [2, 0]</code>. ✓</p>
+
+<hr />
+
+<h2 id="5-step-2-queries-meet-keys-with-qkᵀ">5. Step 2: queries meet keys with QKᵀ</h2>
+
+<p>In the group project, you listen most to the friend whose <strong>key matches your query</strong>. “Match” in math is the <strong>dot product</strong>: bigger when two vectors point the same way.</p>
+
+<p>To match every query with every key in one go, multiply Q by the <strong>transpose</strong> of K (Kᵀ: flip rows into columns):</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q × Kᵀ    (N × D2) × (D2 × N)  =  N × N
+</code></pre></div></div>
+
+<p>The result is an <strong>N × N table of scores</strong>. Row i, column j = how well word i’s query matches word j’s key.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                    keys of →   cats   chase   mice
+scores = Q Kᵀ =   cats query  [  2      4      2  ]
+                  chase query [  3      3      3  ]
+                  mice query  [  2      3      2  ]
+</code></pre></div></div>
+
+<p>Check one: cats’ query <code class="language-plaintext highlighter-rouge">[2, 0]</code> · chase’s key <code class="language-plaintext highlighter-rouge">[2, 1]</code> = 2·2 + 0·1 = <strong>4</strong>. That’s the highest score in the cats row, so <strong>cats wants to listen to chase the most</strong>.</p>
+
+<hr />
+
+<h2 id="6-step-3-scale-then-softmax-to-get-weights">6. Step 3: scale, then softmax to get weights</h2>
+
+<p>Two small steps turn scores into attention weights.</p>
+
+<p><strong>Scale by √D2.</strong> Divide every score by √D2 (here √2 ≈ 1.41). With big vectors, dot products get very large and softmax becomes too “extreme” (one word gets everything). Scaling keeps things calm. The original paper uses exactly this.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scores ÷ √2 =  [ 1.41  2.83  1.41 ]
+               [ 2.12  2.12  2.12 ]
+               [ 1.41  2.12  1.41 ]
+</code></pre></div></div>
+
+<p><strong>Softmax each row.</strong> We want weights that are positive and <strong>add up to 1</strong> (a convex combination, as in Part 4). Softmax does exactly this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>softmax(z)_i = e^(z_i) / (e^(z_1) + e^(z_2) + ... + e^(z_n))
+</code></pre></div></div>
+
+<p>Quick example with the numbers 1, 2, 3:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>e^1 = 2.72    e^2 = 7.39    e^3 = 20.09     total = 30.20
+
+weights = 2.72/30.20, 7.39/30.20, 20.09/30.20  =  0.09, 0.24, 0.67   (adds to 1 ✓)
+</code></pre></div></div>
+
+<p>Because <code class="language-plaintext highlighter-rouge">e^x</code> is always positive, softmax works even when scores are negative, and the biggest score always gets the biggest share.</p>
+
+<p>Applying softmax to each row of our scaled scores gives the <strong>attention weights A</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                  cats   chase   mice
+A =   cats     [ 0.16   0.67   0.16 ]     ← cats listens mostly to chase
+      chase    [ 0.33   0.33   0.33 ]     ← chase listens to everyone equally
+      mice     [ 0.25   0.50   0.25 ]     ← mice leans towards chase
+
+(each row adds to 1, allowing for rounding)
+</code></pre></div></div>
+
+<p>Notice the <strong>chase</strong> row: its query matched every key equally (all scores were 3), so it splits its attention evenly. In a trained model, W_Q and W_K would be tuned so the useful words stand out.</p>
+
+<hr />
+
+<h2 id="7-step-4-blend-the-values-with-a--v">7. Step 4: blend the values with A × V</h2>
+
+<p>Last step, the “collective knowledge” from the group project. Each word’s new vector is a <strong>weighted blend of everyone’s values</strong>, using its row of A:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Z = A × V     (N × N) × (N × D2)  =  N × D2
+</code></pre></div></div>
+
+<p>For <strong>cats</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z_cats = 0.16 × v_cats + 0.67 × v_chase + 0.16 × v_mice
+       = 0.16 × [2, 1]  + 0.67 × [0, 2]  + 0.16 × [1, 1]
+       = [0.49, 1.67]
+</code></pre></div></div>
+
+<p>Doing all three rows at once:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            Z
+cats    [ 0.49  1.67 ]
+chase   [ 1.00  1.33 ]
+mice    [ 0.74  1.50 ]
+</code></pre></div></div>
+
+<p>We started with plain <code class="language-plaintext highlighter-rouge">3 × 4</code> word vectors and ended with <strong>rich <code class="language-plaintext highlighter-rouge">3 × 2</code> vectors</strong>, one per word. Each is built from the whole sentence. “cats” now carries a lot of “chase” in it: it’s no longer just <em>cats</em>, it’s <em>cats that are doing the chasing</em>.</p>
+
+<hr />
+
+<h2 id="8-the-whole-thing-in-one-line">8. The whole thing in one line</h2>
+
+<p>Every step above fits in one famous formula:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Z = softmax( Q Kᵀ / √D2 ) × V        where  Q = X W_Q,  K = X W_K,  V = X W_V
+</code></pre></div></div>
+
+<p>Read it right to left with the group project in mind:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Piece</th>
+      <th>Math</th>
+      <th>Group project meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">X W_Q</code>, <code class="language-plaintext highlighter-rouge">X W_K</code>, <code class="language-plaintext highlighter-rouge">X W_V</code></td>
+      <td>Three matrix multiplications</td>
+      <td>Everyone reads alone and forms questions, insights, understanding</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Q Kᵀ</code></td>
+      <td>Dot product of every query with every key</td>
+      <td>Whose insights answer whose questions?</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">/ √D2</code></td>
+      <td>Scaling</td>
+      <td>Keep the discussion calm</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">softmax(...)</code></td>
+      <td>Rows become weights that add to 1</td>
+      <td>How much you listen to each friend</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">× V</code></td>
+      <td>Weighted sum of values</td>
+      <td>Walk away with the group’s collective knowledge</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>And the shapes:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X (N × D1)  →  Q, K, V (N × D2)  →  scores and A (N × N)  →  Z (N × D2)
+</code></pre></div></div>
+
+<p><strong>Multi-head attention</strong> (Part 8) simply runs this whole recipe several times in parallel, each head with its own W_Q, W_K and W_V, and then joins the results.</p>
+
+<hr />
+
+<h2 id="9-summary">9. Summary</h2>
+
+<ul>
+  <li>The “magic” of Transformers is <strong>matrix multiplication</strong>.</li>
+  <li>Stack the N word vectors as rows of <strong>X</strong> (N × D1).</li>
+  <li>Three <strong>learned</strong> matrices W_Q, W_K, W_V (D1 × D2) turn X into <strong>Q, K, V</strong> (N × D2) in one multiplication each.</li>
+  <li><strong>Q Kᵀ</strong> gives an N × N table of how well each word’s query matches each word’s key.</li>
+  <li>Divide by <strong>√D2</strong>, then <strong>softmax</strong> each row so the weights are positive and add to 1.</li>
+  <li><strong>A × V</strong> blends everyone’s values into rich vectors <strong>Z</strong> (N × D2).</li>
+  <li>Training is the search for W_Q, W_K, W_V that make these blends as useful as possible.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">self-attention</span>, <span class="tag">query-key-value</span>, <span class="tag">softmax</span>, <span class="tag">matrix-multiplication</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
