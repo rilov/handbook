@@ -69,6 +69,8 @@
 
 <h2 id="2-the-yolo-family">2. The YOLO family</h2>
 
+<p><img src="/handbook/assets/img/yolo-version-timeline.svg" alt="Timeline of YOLO versions from v1 in 2016 through v2, v3, v4, v5, v6, v7, v8, v9/v10, to YOLO11 in 2024. Each point names one key idea introduced by that version, from the original grid with two boxes per cell, through k-means anchors, three-scale detection, bags of freebies, easier PyTorch training, anchor-free heads, NMS-free training, and finally YOLO11's C3k2/C2PSA backbone with a decoupled head." width="100%" /></p>
+
 <table>
   <thead>
     <tr>
@@ -176,13 +178,38 @@
 
 <h2 id="4-what-is-yolo11">4. What is YOLO11?</h2>
 
-<p><strong>YOLO11</strong> is the current Ultralytics YOLO model. It is not a new research paper with a radically different idea; it is the next iteration of the YOLOv8-style architecture with:</p>
+<p><strong>YOLO11</strong> is the current stable Ultralytics YOLO model, developed by Glenn Jocher’s team. It is not a new research paper with a radically different idea; it is the next iteration of the YOLOv8-style architecture, focused on efficiency, architectural refinement, and multi-task versatility.</p>
+
+<p>The architecture is <strong>task-agnostic</strong>: the same backbone/neck/head skeleton, with small head changes, powers detection, instance segmentation, pose estimation, classification, and oriented bounding boxes.</p>
+
+<p><img src="/handbook/assets/img/yolo11-architecture.svg" alt="YOLO11 architecture as a backbone, neck, and head. The backbone uses C3k2 blocks and C2PSA spatial-attention blocks to turn raw pixels into compact multi-scale feature maps. The neck is a PAN plus FPN feature-fusion network that acts as a two-way highway, sending deep semantic meaning down and sharp early detail up so small objects are not lost. The head is decoupled into a separate box branch and class branch, is anchor-free, and predicts object centres directly; some variants remove non-maximum suppression entirely for end-to-end inference." width="100%" /></p>
+
+<h3 id="backbone-the-feature-extractor">Backbone: the feature extractor</h3>
+
+<p>The backbone looks at raw pixels and shrinks the image down into a small set of important features. YOLO11 introduces two structural changes here:</p>
 
 <ul>
-  <li>a refreshed <strong>C3k2</strong> block in the backbone and neck for better gradient flow and efficiency</li>
-  <li>improved scaling from <strong>n</strong> (nano) to <strong>x</strong> (extra large)</li>
-  <li>updated training augmentation recipes</li>
-  <li>support for object detection, instance segmentation, pose estimation, classification, and oriented bounding boxes</li>
+  <li><strong>C3k2</strong> — a CSP (cross-stage partial) block built from two smaller convolutions instead of one large one, which is cheaper to run on modern GPUs.</li>
+  <li><strong>C2PSA</strong> — a cross-stage partial block with spatial attention, which helps the network focus on the most relevant regions of the feature map.</li>
+</ul>
+
+<h3 id="neck-feature-fusion">Neck: feature fusion</h3>
+
+<p>The neck combines high-resolution detail from early layers with the semantic meaning built up in deep layers. YOLO11 uses an optimised <strong>PAN-FPN</strong> (Path Aggregation Network + Feature Pyramid Network): a two-way information highway where deep, high-level meaning flows down and sharp, low-level pixel detail flows back up. This shortcut of early detail into the final layers is what keeps small objects from being lost as data flows through the network.</p>
+
+<h3 id="head-decoupled-and-anchor-free">Head: decoupled and anchor-free</h3>
+
+<p>Unlike having one head predict both class and box together, YOLO11 uses a <strong>decoupled head</strong> — a separate branch predicts the bounding box and a separate branch predicts the class. This leads to faster convergence during training.</p>
+
+<p>The head is also <strong>anchor-free</strong>, inherited from YOLOv8: it predicts the centre of the object directly instead of fitting predefined anchor boxes, which makes it more flexible for objects of unusual shapes and sizes.</p>
+
+<h3 id="key-efficiency-improvements">Key efficiency improvements</h3>
+
+<ul>
+  <li><strong>Optimised convolutions</strong> — heavy standard convolutions are replaced with depth-wise and point-wise alternatives wherever possible, increasing frames per second.</li>
+  <li><strong>Improved spatial pyramid pooling</strong> — an updated pooling module helps the network understand objects at very different scales, improving accuracy.</li>
+  <li><strong>NMS-free option</strong> — some YOLO11 variants support fully end-to-end detection, removing the non-maximum-suppression post-processing step entirely and reducing latency (earlier versions always needed an NMS pass to remove duplicate, noisy boxes).</li>
+  <li><strong>Mixed-precision support</strong> — native FP8 and INT8 quantisation lets the model run extremely fast on both enterprise GPUs (e.g. H100) and edge devices.</li>
 </ul>
 
 <p>The most important thing for a beginner is that YOLO11 keeps the same simple Python API as YOLOv8 while providing better accuracy and speed.</p>
@@ -311,41 +338,41 @@
       <td>YOLO11n</td>
       <td><code class="language-plaintext highlighter-rouge">n</code></td>
       <td>Fastest</td>
-      <td>Lowest</td>
-      <td>Edge devices, mobile, CPU</td>
+      <td>Moderate</td>
+      <td>Nano — Raspberry Pi, IoT and mobile edge devices</td>
     </tr>
     <tr>
       <td>YOLO11s</td>
       <td><code class="language-plaintext highlighter-rouge">s</code></td>
       <td>Fast</td>
-      <td>Low</td>
-      <td>Raspberry Pi, small GPU</td>
+      <td>Good</td>
+      <td>Small GPUs, research and prototyping</td>
     </tr>
     <tr>
       <td>YOLO11m</td>
       <td><code class="language-plaintext highlighter-rouge">m</code></td>
       <td>Medium</td>
-      <td>Good</td>
-      <td>Balanced desktop GPU use</td>
+      <td>Better</td>
+      <td>Balanced speed/accuracy on desktop GPUs</td>
     </tr>
     <tr>
       <td>YOLO11l</td>
       <td><code class="language-plaintext highlighter-rouge">l</code></td>
       <td>Slower</td>
-      <td>Better</td>
-      <td>Server GPU</td>
+      <td>High</td>
+      <td>Server-side processing, plenty of VRAM</td>
     </tr>
     <tr>
       <td>YOLO11x</td>
       <td><code class="language-plaintext highlighter-rouge">x</code></td>
       <td>Slowest</td>
       <td>Best</td>
-      <td>Research, powerful GPU</td>
+      <td>Enterprise/commercial serving on data-centre GPUs (e.g. NVIDIA A100)</td>
     </tr>
   </tbody>
 </table>
 
-<p>Start with <code class="language-plaintext highlighter-rouge">yolo11n.pt</code> for prototypes and switch to a larger model only when accuracy is not good enough.</p>
+<p>Start with <code class="language-plaintext highlighter-rouge">yolo11n.pt</code> for prototypes and switch to a larger model only when accuracy is not good enough. In practice, <code class="language-plaintext highlighter-rouge">n</code>/<code class="language-plaintext highlighter-rouge">s</code> cover edge and research use, <code class="language-plaintext highlighter-rouge">m</code> is the general-purpose sweet spot, and <code class="language-plaintext highlighter-rouge">l</code>/<code class="language-plaintext highlighter-rouge">x</code> are reserved for server-side deployments where GPU memory is not the bottleneck.</p>
 
 <hr />
 

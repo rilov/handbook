@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 7: Transformer Case Study — Python Program</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 7: Transformer Case Study — Python Program</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-7-transformer-case-study--python-program">Deep Learning for Generative AI — Part 7: Transformer Case Study — Python Program</h1>
+
+<p>In Part 6 we met the Transformer and the group project analogy. Now let’s watch it work on one real example.</p>
+
+<p>Still <strong>no math</strong> here. We only want a high-level glimpse of what the encoder does.</p>
+
+<hr />
+
+<h2 id="1-the-task">1. The task</h2>
+
+<p>The input sentence has 6 words:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Position</th>
+      <th>1</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+      <th>5</th>
+      <th>6</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Word</td>
+      <td>Python</td>
+      <td>program</td>
+      <td>to</td>
+      <td>print</td>
+      <td>Hello</td>
+      <td>World</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The goal: translate this English sentence into actual Python code.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Python program to print Hello World"   →   print("Hello World")
+</code></pre></div></div>
+
+<p>Let’s focus on the <strong>encoder</strong> first.</p>
+
+<hr />
+
+<h2 id="2-the-encoders-job-6-words-in-6-rich-vectors-out">2. The encoder’s job: 6 words in, 6 rich vectors out</h2>
+
+<p>The encoder takes the 6 words and gives back <strong>6 vectors</strong>, one per word:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Python   program   to   print   Hello   World
+  ↓         ↓       ↓     ↓       ↓       ↓
+  z1        z2      z3    z4      z5      z6
+</code></pre></div></div>
+
+<p>Each <code class="language-plaintext highlighter-rouge">z</code> is a <strong>richer representation</strong> of its word. It captures what the word means <em>in this sentence</em>, not just on its own. These rich vectors are what help the decoder produce the right code later.</p>
+
+<hr />
+
+<h2 id="3-every-word-builds-its-query-key-value">3. Every word builds its Query, Key, Value</h2>
+
+<p>Back to the group project: the 6 words are the team members. The team’s goal is to understand itself better.</p>
+
+<p>Step one: each word comes up with its own Query, Key and Value.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Python  → Q1, K1, V1
+program → Q2, K2, V2
+to      → Q3, K3, V3
+print   → Q4, K4, V4
+Hello   → Q5, K5, V5
+World   → Q6, K6, V6
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Simple meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Query (Q)</td>
+      <td>“What am I looking for?”</td>
+    </tr>
+    <tr>
+      <td>Key (K)</td>
+      <td>“What can I offer others?”</td>
+    </tr>
+    <tr>
+      <td>Value (V)</td>
+      <td>“Here is my information.”</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><em>How</em> each word computes these three comes in the math part. For now, let’s see what happens with them.</p>
+
+<hr />
+
+<h2 id="4-example-what-does-program-pay-attention-to">4. Example: what does “program” pay attention to?</h2>
+
+<p>On its own, the word <strong>program</strong> is unclear. It could mean:</p>
+
+<ul>
+  <li>a TV show or an event</li>
+  <li>a celebration schedule</li>
+  <li>computer code ✅</li>
+</ul>
+
+<p>So the query of “program” is basically: <em>“What kind of program am I?”</em></p>
+
+<p>The word that answers this best is <strong>Python</strong>. Its key matches program’s query strongly, so <strong>program pays a lot of attention to Python</strong>.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>“program” looks at…</th>
+      <th>Attention</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Python</td>
+      <td>🔴 Very high</td>
+      <td>Tells it what kind of program it is</td>
+    </tr>
+    <tr>
+      <td>program (itself)</td>
+      <td>🔴 High</td>
+      <td>Its own meaning still matters</td>
+    </tr>
+    <tr>
+      <td>print</td>
+      <td>🟡 Some</td>
+      <td>Hints at code</td>
+    </tr>
+    <tr>
+      <td>Hello</td>
+      <td>🟡 Some</td>
+      <td>Part of the task</td>
+    </tr>
+    <tr>
+      <td>World</td>
+      <td>🟡 Some</td>
+      <td>Part of the task</td>
+    </tr>
+    <tr>
+      <td>to</td>
+      <td>⚪ Very low</td>
+      <td>Adds almost no meaning</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In the group project, “to” is the friend who doesn’t answer many of your questions, so you barely listen to them.</p>
+
+<p>The same thing happens in the other direction. <strong>Python</strong> could also mean a snake, so it pays attention to <strong>program</strong> and <strong>print</strong> to learn that it means the programming language.</p>
+
+<hr />
+
+<h2 id="5-building-the-new-representation">5. Building the new representation</h2>
+
+<p>The new vector for “program”, <code class="language-plaintext highlighter-rouge">z2</code>, is a weighted mix of every word’s value:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>z2 = α1·V1 + α2·V2 + α3·V3 + α4·V4 + α5·V5 + α6·V6
+</code></pre></div></div>
+
+<ul>
+  <li>The <code class="language-plaintext highlighter-rouge">α</code> values are the <strong>attention weights</strong>.</li>
+  <li>They always <strong>add up to 1</strong>: <code class="language-plaintext highlighter-rouge">α1 + α2 + ... + α6 = 1</code>. This makes it a <strong>convex combination</strong>, as in Part 4.</li>
+  <li>So if <code class="language-plaintext highlighter-rouge">α1</code> (Python) and <code class="language-plaintext highlighter-rouge">α2</code> (program) are big, the others must be small.</li>
+</ul>
+
+<p>Every word does this at the same time, in parallel, which gives <code class="language-plaintext highlighter-rouge">z1</code> to <code class="language-plaintext highlighter-rouge">z6</code>.</p>
+
+<hr />
+
+<h2 id="6-summary">6. Summary</h2>
+
+<ul>
+  <li>The encoder turns 6 plain words into 6 <strong>rich vectors</strong> <code class="language-plaintext highlighter-rouge">z1...z6</code>, each aware of its context.</li>
+  <li>Each word builds its own <strong>Query, Key and Value</strong>.</li>
+  <li>A word pays more attention to the words whose <strong>keys match its query</strong>. “program” listens most to “Python” and hardly at all to “to”.</li>
+  <li>Its new vector is a <strong>weighted mix of all values</strong>, and the weights add up to 1.</li>
+</ul>
+
+<p><strong>Next up:</strong> the math. How are Q, K, V computed, and how are the attention weights <code class="language-plaintext highlighter-rouge">α</code> calculated?</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">attention</span>, <span class="tag">query-key-value</span>, <span class="tag">self-attention</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>

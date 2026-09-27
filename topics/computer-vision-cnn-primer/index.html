@@ -105,7 +105,22 @@
 
 <p>This is why, in the rest of this series, you’ll keep running into a phrase like “a CNN pretrained on ImageNet.” It means exactly this: somebody else’s already-trained backbone, reused as the very first stage of a detector, so the detector doesn’t have to relearn what an edge or a fur patch looks like from zero.</p>
 
-<h2 id="6-summary">6. Summary</h2>
+<h2 id="6-where-do-these-backbones-actually-come-from">6. Where do these backbones actually come from?</h2>
+
+<p>“A CNN pretrained on ImageNet” is not one single thing — it’s a lineage of named architectures, each one solving a specific limitation of the one before it. You don’t need to memorise their internals, but you will keep seeing these names (ResNet especially, as the backbone inside Faster R-CNN, SSD, and many YOLO versions), so it helps to know roughly what each one contributed.</p>
+
+<p><img src="/handbook/assets/img/landmark-cnn-architectures.svg" alt="Four landmark CNN architectures compared. AlexNet in 2012 proved deep CNNs scale with data and GPUs, using large kernels, ReLU, and dropout. VGGNet in 2014 stacked many small 3x3 kernels in uniform blocks, showing that uniform depth gives richer, reusable features. GoogLeNet in 2014 introduced the inception module, running several kernel sizes in parallel and concatenating the results for multi-scale patterns with fewer parameters. ResNet in 2015 added skip connections that carry input past a block so the network learns a residual, letting networks with hundreds of layers train reliably." width="100%" /></p>
+
+<ul>
+  <li><strong>AlexNet (2012)</strong> was the model that kicked off the deep learning era in vision. It showed that a genuinely deep CNN, trained on a large dataset (ImageNet) using GPUs, could beat every hand-crafted feature method that came before it. It used large convolutional kernels together with ReLU activations and dropout to train reliably.</li>
+  <li><strong>VGGNet (2014)</strong> simplified the design: instead of varying kernel sizes, it stacked many small <code class="language-plaintext highlighter-rouge">3 × 3</code> kernels in uniform blocks, over and over, and just made the network deeper. This uniform, repetitive structure turned out to learn very rich, very reusable features, which is exactly why VGG16 is still used today as a simple teaching example and a solid general-purpose backbone (see <a href="/handbook/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/">Part 9’s full VGG16 walkthrough</a> in the Deep Learning section).</li>
+  <li><strong>GoogLeNet (2014)</strong> took a different approach: its <strong>inception module</strong> runs several kernel sizes (<code class="language-plaintext highlighter-rouge">1×1</code>, <code class="language-plaintext highlighter-rouge">3×3</code>, <code class="language-plaintext highlighter-rouge">5×5</code>) and a pooling branch <em>in parallel</em> on the same input, then concatenates all their outputs together. This lets one layer notice patterns at several different scales at once, while actually using fewer parameters than a single large-kernel layer would.</li>
+  <li><strong>ResNet (2015)</strong> solved a problem that showed up once networks got very deep: adding more layers was making accuracy <em>worse</em>, not better, because gradients had trouble flowing all the way back through so many layers during training. ResNet’s fix was the <strong>skip connection</strong> — a shortcut that carries a block’s input forward and adds it to the block’s output, so the block only has to learn the <em>residual</em> (the difference), not the whole transformation from scratch. This made it possible to train networks with hundreds of layers reliably, and the skip-connection idea has since spread far beyond computer vision.</li>
+</ul>
+
+<p>Each of these ideas — scaling up, uniform depth, multi-scale parallel branches, and skip connections — keeps reappearing in the backbones used by the detectors later in this series.</p>
+
+<h2 id="7-summary">7. Summary</h2>
 
 <ul>
   <li>A convolutional layer is Part 1’s sliding filter, except now the filter’s numbers are <strong>learned</strong> from photos, not chosen by hand.</li>
@@ -114,6 +129,7 @@
   <li><strong>Pooling</strong> shrinks the feature maps between layers, for speed, and for a little tolerance to things shifting slightly.</li>
   <li>A stack of convolution and pooling layers, with no final decision on top, is called a <strong>backbone</strong>, a reusable notebook of visual patterns.</li>
   <li>Detectors almost always start from a backbone <strong>pretrained</strong> on a huge, general dataset like ImageNet, rather than starting from nothing.</li>
+  <li>Landmark backbones each solved a specific problem: <strong>AlexNet</strong> proved deep CNNs scale with data and GPUs, <strong>VGGNet</strong> showed uniform stacked-depth learns rich features, <strong>GoogLeNet</strong> captured multiple scales at once with parallel inception modules, and <strong>ResNet</strong> used skip connections to train networks hundreds of layers deep.</li>
 </ul>
 
 <p>For the full mathematical depth behind everything above, exact output-size and parameter-count formulas, how learning actually flows backward through a filter, and a complete layer-by-layer walkthrough of a real architecture (VGG16), see <a href="/handbook/topics/Convolutional%20Neural%20Networks%20-%20A%20Friendly%20Guide/">Part 9: Convolutional Neural Networks</a> in the Deep Learning section.</p>

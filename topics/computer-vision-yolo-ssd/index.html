@@ -102,6 +102,10 @@
 3. During inference, combine confidence and class probability to get the final score for each box.
 </code></pre></div></div>
 
+<p>An object is only assigned to a grid cell if its <strong>centroid</strong> falls inside that cell — even if its bounding box leaks into neighbouring cells. This one-centroid-one-cell rule is what stops the same object from being registered twice by different cells.</p>
+
+<p>The grid size <code class="language-plaintext highlighter-rouge">S</code> is a speed/accuracy dial. A coarse grid (e.g. 3 × 3) trains and runs faster but misses fine detail and struggles with small or closely-packed objects. A finer grid (e.g. 7 × 7 or higher) is more sensitive to detail and more accurate, at the cost of a larger output tensor and slower training and inference. The right choice depends on how small and how densely packed the objects in the target dataset are.</p>
+
 <p><img src="/handbook/assets/img/yolo-grid-prediction.svg" alt="An image divided into a 7 by 7 grid. The cell containing the centre of an object is highlighted, and that cell is responsible for predicting a bounding box that can extend well beyond the cell's own borders. Each cell outputs x, y, w, h, a confidence score, and class probabilities, giving an overall output tensor shape of S by S by (B times 5 plus C)." width="100%" /></p>
 
 <p>For every grid cell, the output tensor looks like:</p>
@@ -127,6 +131,19 @@
 </code></pre></div></div>
 
 <p>That is the entire output of the network for one image.</p>
+
+<h3 id="multiple-objects-in-the-same-grid-cell">Multiple objects in the same grid cell</h3>
+
+<p>A single grid cell can only “own” one prediction slot per box. But what if two objects — say a cyclist and their bike — have centroids that fall in the same cell? A plain grid cell cannot register both at once.</p>
+
+<p>This is exactly the problem <a href="/handbook/topics/computer-vision-anchor-boxes/">anchor boxes</a> solve. Instead of predicting one box per cell, YOLO predicts <code class="language-plaintext highlighter-rouge">A</code> boxes per cell, one per anchor shape (a tall anchor for the cyclist, a wide anchor for the motorbike, for example). Each anchor gets its own confidence, box offsets, and class vector, and they are concatenated into a single output:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>output length per cell = C + 5 * A
+</code></pre></div></div>
+
+<p>where <code class="language-plaintext highlighter-rouge">A</code> is the number of anchor boxes tried at that cell. The person is matched to whichever anchor shape overlaps it best, the motorbike is matched to a different anchor, and both can be reported out of the same cell without colliding.</p>
+
+<p>At inference, the network never predicts a box from scratch — it predicts a confidence, an objectness/class score, and small offsets <em>for each tiled anchor</em>, then uses those offsets to nudge the anchor towards the real object. Anchors that don’t match any training class are dropped, the rest are filtered by confidence score, and <a href="#4-yolo-output-analysis">non-maximum suppression</a> picks the best survivor per object.</p>
 
 <h3 id="loss-in-yolov1">Loss in YOLOv1</h3>
 
@@ -253,6 +270,8 @@ Layer 3  →  small feature map   →  large anchors  →  detect large objects
 </code></pre></div></div>
 
 <p>SSD places anchors on many layers, then predicts class and offsets for every anchor.</p>
+
+<p><img src="/handbook/assets/img/ssd-multiscale-default-boxes.svg" alt="Three feature maps at different depths in SSD. The early, high-resolution feature map has many small cells with small default boxes and detects small objects. The middle feature map has fewer, medium-sized cells with medium default boxes. The late, coarse feature map has few large cells with large default boxes and detects large objects. Every cell on every scale tries several default boxes of different aspect ratios." width="100%" /></p>
 
 <h3 id="default-boxes">Default boxes</h3>
 
