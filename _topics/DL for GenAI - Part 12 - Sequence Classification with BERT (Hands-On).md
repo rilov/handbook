@@ -217,4 +217,4 @@ That's the same **linear + softmax** confidence vote from [Part 8]({{ site.baseu
 - The whole downstream task lives in a **small classification head** reading the `[CLS]` summary vector.
 - With more data, the loop scales unchanged — or switch to Hugging Face's `Trainer` API, which wraps the same steps with batching, evaluation, and checkpointing.
 
-**Next up:** see the whole machine again in one sitting, with zero math, in [The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/) — including how training works and what the "context limit" means inside each layer.
+**Next up:** classification needed labels — but the same pre-trained encoders can power search, similarity, and clustering with *no* labels and *no* training at all. See [Part 13: Sentence Embeddings with Sentence Transformers]({{ site.baseurl }}/topics/dl-genai-sentence-transformers/).
