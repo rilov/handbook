@@ -131,4 +131,4 @@ Every word does this at the same time, in parallel, which gives `z1` to `z6`.
 - A word pays more attention to the words whose **keys match its query**. "program" listens most to "Python" and hardly at all to "to".
 - Its new vector is a **weighted mix of all values**, and the weights add up to 1.
 
-**Next up:** the math. How are Q, K, V computed, and how are the attention weights `α` calculated?
+**Next up:** the full Transformer blueprint, box by box, in [Part 8: The Transformer Architecture]({{ site.baseurl }}/topics/dl-genai-transformer-architecture/). After that, [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/) shows how Q, K, V and the attention weights `α` are actually calculated.

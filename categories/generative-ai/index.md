@@ -26,6 +26,8 @@ Learn about LLMs, LangChain, RAG, agents, and building AI-powered applications �
 5. **[Drawbacks of Attention-Based Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-attention-drawbacks/)** — Sequential processing, vanishing gradients, and why the Transformer was invented.
 6. **[Introduction to the Transformer]({{ site.baseurl }}/topics/dl-genai-transformer-intro/)** — Why encoder-decoder stays, what changes, and the group project analogy for Query, Key, and Value.
 7. **[Transformer Case Study — Python Program]({{ site.baseurl }}/topics/dl-genai-transformer-case-study/)** — A simple walk-through of the encoder on "Python program to print Hello World", showing how each word attends to the others.
+8. **[The Transformer Architecture, Explained Simply]({{ site.baseurl }}/topics/dl-genai-transformer-architecture/)** — Every box in the Transformer diagram: embeddings, positional encoding, multi-head attention, add & norm, feed-forward, masking, cross-attention, and generating the output.
+9. **[The Math Behind Self-Attention]({{ site.baseurl }}/topics/dl-genai-self-attention-math/)** — The magic is a matrix: X, W_Q, W_K, W_V and softmax(QKᵀ/√d)V, with a fully worked 3-word example.
 
 **Opinion, case studies, and explainers:**
 
