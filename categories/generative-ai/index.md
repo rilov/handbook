@@ -24,6 +24,8 @@ Learn about LLMs, LangChain, RAG, agents, and building AI-powered applications �
 3. **[Attention-Based Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-attention-encoder-decoder/)** — How attention lets the decoder look back at every encoder word instead of relying on a single vector.
 4. **[Math Behind Attention]({{ site.baseurl }}/topics/dl-genai-attention-math/)** — Dot products, scaling, softmax, and the Query-Key-Value framework with worked numerical examples.
 5. **[Drawbacks of Attention-Based Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-attention-drawbacks/)** — Sequential processing, vanishing gradients, and why the Transformer was invented.
+6. **[Introduction to the Transformer]({{ site.baseurl }}/topics/dl-genai-transformer-intro/)** — Why encoder-decoder stays, what changes, and the group project analogy for Query, Key, and Value.
+7. **[Transformer Case Study — Python Program]({{ site.baseurl }}/topics/dl-genai-transformer-case-study/)** — A simple walk-through of the encoder on "Python program to print Hello World", showing how each word attends to the others.
 
 **Opinion, case studies, and explainers:**
 
