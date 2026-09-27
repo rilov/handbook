@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 10: Self-Attention in Code with NumPy</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 10: Self-Attention in Code with NumPy</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-10-self-attention-in-code-with-numpy">Deep Learning for Generative AI — Part 10: Self-Attention in Code with NumPy</h1>
+
+<p>In Part 9 we worked through self-attention by hand. Now we’ll let the computer do it.</p>
+
+<p>We’ll build self-attention in <strong>about 15 lines of Python</strong> using NumPy, a library for working with tables of numbers (matrices). We run one step at a time, print the result, and explain what it means in plain words.</p>
+
+<p>You don’t need anything installed. Copy the code into <strong><a href="https://colab.research.google.com/">Google Colab</a></strong> (free, runs in your browser), or into any Python where <code class="language-plaintext highlighter-rouge">numpy</code> is available, and you’ll get exactly the same numbers.</p>
+
+<hr />
+
+<h2 id="1-our-example">1. Our example</h2>
+
+<p>A 4-word sentence:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I drink hot coffee"
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Symbol</th>
+      <th>Meaning</th>
+      <th>Our value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>N</strong></td>
+      <td>Number of words</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <td><strong>D1</strong></td>
+      <td>Length of each word’s starting vector</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td><strong>D2</strong></td>
+      <td>Length of each word’s rich vector (the size we want)</td>
+      <td>5</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>So we start with 4 short vectors (3 numbers each) and want to end with 4 richer vectors (5 numbers each).</p>
+
+<hr />
+
+<h2 id="2-step-0-import-numpy">2. Step 0: import NumPy</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="n">np</span><span class="p">.</span><span class="nf">set_printoptions</span><span class="p">(</span><span class="n">precision</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">suppress</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>   <span class="c1"># print numbers with 2 decimals
+</span>
+<span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">I</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">drink</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">hot</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">coffee</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">N</span><span class="p">,</span> <span class="n">D1</span><span class="p">,</span> <span class="n">D2</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span>
+<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">default_rng</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>   <span class="c1"># a random number generator with a fixed "seed"
+</span></code></pre></div></div>
+
+<p><strong>What’s a seed?</strong> Random numbers from a computer are really a very long, fixed list. The seed picks where in the list to start. Using the same seed (16) means <strong>you get exactly the same “random” numbers as this page</strong>.</p>
+
+<hr />
+
+<h2 id="3-step-1-the-input-matrix-x">3. Step 1: the input matrix X</h2>
+
+<p>In a real model, X would hold the word embeddings (Part 1). Here we just make up random numbers between 0 and 1:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">X</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">D1</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">X shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">X</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X shape: (4, 3)
+[[0.57 0.43 0.09]     ← I
+ [0.35 0.62 0.02]     ← drink
+ [0.87 0.85 0.04]     ← hot
+ [0.8  0.18 0.7 ]]    ← coffee
+</code></pre></div></div>
+
+<p><strong>In plain words:</strong> a table with <strong>one row per word</strong>, 4 rows and 3 columns. These are the plain, “starting” descriptions of each word. They don’t know anything about the other words yet.</p>
+
+<p><code class="language-plaintext highlighter-rouge">uniform(0, 1)</code> just means “any number between 0 and 1 is equally likely”, like spinning a fair dial.</p>
+
+<hr />
+
+<h2 id="4-step-2-the-three-weight-matrices">4. Step 2: the three weight matrices</h2>
+
+<p>Next we need <strong>W_Q</strong>, <strong>W_K</strong> and <strong>W_V</strong>, the three matrices that create queries, keys and values.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">W_Q</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">D1</span><span class="p">,</span> <span class="n">D2</span><span class="p">))</span>
+<span class="n">W_K</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">D1</span><span class="p">,</span> <span class="n">D2</span><span class="p">))</span>
+<span class="n">W_V</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">D1</span><span class="p">,</span> <span class="n">D2</span><span class="p">))</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">W_Q shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">W_Q</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">W_Q</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>W_Q shape: (3, 5)
+[[-1.38  0.77  1.83  1.94  0.65]
+ [-1.35 -0.42 -0.89  1.82 -0.8 ]
+ [ 0.24 -0.37 -1.45 -0.46  1.08]]
+</code></pre></div></div>
+
+<p><strong>Important:</strong> in a real Transformer these are <strong>not random</strong>. They are <strong>learned during training</strong>. We fill them with random numbers here to show one snapshot, like a model that hasn’t started learning yet.</p>
+
+<p><strong>Why size 3 × 5?</strong> It has to “fit” X. A 4 × <strong>3</strong> table can only be multiplied by a <strong>3</strong> × something table: the inner numbers must match. The 5 is our chosen D2, so the result will have 5 columns.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X      ×   W_Q    =   Q
+(4×3)      (3×5)      (4×5)
+   └── must match ─┘
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-step-3-get-q-k-and-v">5. Step 3: get Q, K and V</h2>
+
+<p>Three multiplications. In NumPy, <code class="language-plaintext highlighter-rouge">@</code> means matrix multiplication:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Q</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_Q</span>     <span class="c1"># queries: what each word is looking for
+</span><span class="n">K</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_K</span>     <span class="c1"># keys:    what each word can offer
+</span><span class="n">V</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_V</span>     <span class="c1"># values:  what each word actually knows
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Q shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">Q</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q shape: (4, 5)
+[[-1.34  0.22  0.52  1.84  0.13]     ← query of "I"
+ [-1.31 -0.    0.06  1.8  -0.25]     ← query of "drink"
+ [-2.35  0.29  0.78  3.23 -0.07]     ← query of "hot"
+ [-1.19  0.28  0.3   1.57  1.13]]    ← query of "coffee"
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>K (4, 5)                                  V (4, 5)
+[[ 0.26  1.1  -0.37 -0.19  0.99]  I       [[ 0.36 -0.33  1.24 -0.77  0.98]
+ [ 0.35  1.04 -0.75  0.58  1.2 ]  drink    [ 0.02 -0.86  1.44 -0.11  0.66]
+ [ 0.36  1.74 -0.89  0.12  1.98]  hot      [ 0.36 -0.95  2.22 -0.95  1.61]
+ [ 0.97  2.08  0.34 -1.37 -0.22]] coffee   [ 1.29  0.95  1.3  -1.82  0.94]]
+</code></pre></div></div>
+
+<p><strong>In plain words:</strong> each table has <strong>4 rows (one per word)</strong> and <strong>5 columns</strong> (D2). So every word now has its own query, key and value, each 5 numbers long.</p>
+
+<p>Notice: <strong>one line of code handles all 4 words at once</strong>. No loop, no waiting for the previous word. That’s why Transformers are fast.</p>
+
+<hr />
+
+<h2 id="6-step-4-match-every-query-with-every-key">6. Step 4: match every query with every key</h2>
+
+<p>How much should each word listen to each other word? Compare its <strong>query</strong> with every word’s <strong>key</strong>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">scores</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">@</span> <span class="n">K</span><span class="p">.</span><span class="n">T</span>        <span class="c1"># K.T means "K transposed": rows turned into columns
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">scores shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">scores</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scores shape: (4, 4)
+          I      drink   hot    coffee
+I      [[-0.52   0.59  -0.11  -3.21]
+drink   [-0.95   0.24  -0.81  -3.67]
+hot     [-1.25   0.7   -0.79  -5.81]
+coffee  [ 0.7    1.91   2.2   -2.87]]
+</code></pre></div></div>
+
+<p><strong>Why 4 × 4?</strong> Every word (row) gets a score with every word (column), including itself. 4 words × 4 words = 16 scores.</p>
+
+<p><strong>What is a score?</strong> A score is a <strong>dot product</strong>: multiply the two lists of numbers position by position, then add everything up. Two lists that “agree” (big numbers in the same places, same signs) give a big total. Lists that disagree give a small or negative total.</p>
+
+<p>For example, <code class="language-plaintext highlighter-rouge">coffee</code> vs <code class="language-plaintext highlighter-rouge">hot</code> = <strong>2.2</strong>, the biggest in its row. So coffee’s query best matches hot’s key.</p>
+
+<p><strong>What does a negative score mean?</strong> Just “a poor match”. It doesn’t mean “hate”. Softmax will turn it into a small weight in the next step.</p>
+
+<hr />
+
+<h2 id="7-step-5-turn-scores-into-weights-scale--softmax">7. Step 5: turn scores into weights (scale + softmax)</h2>
+
+<p>We want weights that are <strong>between 0 and 1</strong> and <strong>add up to 1</strong> in every row, like slicing a pie. Two small steps:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">scaled</span> <span class="o">=</span> <span class="n">scores</span> <span class="o">/</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">D2</span><span class="p">)</span>           <span class="c1"># 1) calm the numbers down
+</span>
+<span class="k">def</span> <span class="nf">softmax</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>                         <span class="c1"># 2) turn each row into a "pie"
+</span>    <span class="n">e</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">e</span> <span class="o">/</span> <span class="n">e</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">A</span> <span class="o">=</span> <span class="nf">softmax</span><span class="p">(</span><span class="n">scaled</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">A shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">A</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">row sums:</span><span class="sh">"</span><span class="p">,</span> <span class="n">A</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A shape: (4, 4)
+          I     drink  hot   coffee
+I      [[0.24  0.4   0.29  0.07]
+drink   [0.25  0.42  0.26  0.07]
+hot     [0.21  0.5   0.26  0.03]
+coffee  [0.21  0.35  0.4   0.04]]
+row sums: [1. 1. 1. 1.]
+</code></pre></div></div>
+
+<p><strong>Why divide by √D2?</strong> With long vectors, dot products can become huge, and softmax would then give one word nearly all the attention. Dividing by √D2 (here √5 ≈ 2.24) keeps the numbers in a sensible range. Think of it as turning the volume down before comparing.</p>
+
+<p><strong>What does softmax do, in simple terms?</strong></p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">np.exp(z)</code> turns every number into a <strong>positive</strong> number. Bigger stays bigger, and negatives become small positives.</li>
+  <li>Divide each by the <strong>row total</strong>, so each row adds up to 1.</li>
+</ol>
+
+<p>A tiny example with three scores:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scores:        -0.5     0.2     0.9
+exp:            0.61    1.22    2.46      (total = 4.29)
+÷ total:        0.14    0.28    0.57      ← adds up to 1, biggest score gets the biggest slice
+</code></pre></div></div>
+
+<p><img src="/handbook/assets/img/self-attention-numpy-heatmap.svg" alt="A four by four heatmap of the attention weights. Row I: 0.24, 0.40, 0.29, 0.07. Row drink: 0.25, 0.42, 0.26, 0.07. Row hot: 0.21, 0.50, 0.26, 0.03. Row coffee: 0.21, 0.35, 0.40, 0.04. Darker cells mean more attention. Coffee gives 40 percent of its attention to hot and 35 percent to drink. The weights are random, so the pattern is luck; training is what makes patterns meaningful." style="width:100%;max-width:900px;" /></p>
+
+<p><strong>Reading the result:</strong> “coffee” puts <strong>40%</strong> of its attention on “hot” and <strong>35%</strong> on “drink”. Almost nobody pays attention to “coffee” itself.</p>
+
+<blockquote>
+  <p><strong>Be careful:</strong> our weight matrices are random, so this nice-looking pattern is <strong>luck</strong>. In a trained model, W_Q and W_K are tuned so that patterns like “coffee → hot” appear because they’re actually useful.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="8-step-6-blend-the-values-into-rich-vectors">8. Step 6: blend the values into rich vectors</h2>
+
+<p>Last step. Each word’s new vector is a <strong>weighted blend of all the values</strong>, using its row of A as the recipe:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Z</span> <span class="o">=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">V</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Z shape:</span><span class="sh">"</span><span class="p">,</span> <span class="n">Z</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Z shape: (4, 5)
+[[ 0.29 -0.63  1.61 -0.64  1.03]     ← new "I"
+ [ 0.28 -0.62  1.59 -0.62  1.01]     ← new "drink"
+ [ 0.21 -0.72  1.6  -0.51  0.98]     ← new "hot"
+ [ 0.28 -0.71  1.71 -0.65  1.12]]    ← new "coffee"
+</code></pre></div></div>
+
+<p>Let’s check the first number for “coffee” ourselves. Its recipe (row of A) is 0.21 of I, 0.35 of drink, 0.40 of hot and 0.04 of coffee. Take the first number of each word’s value:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.21 × 0.36  +  0.35 × 0.02  +  0.40 × 0.36  +  0.04 × 1.29
+=  0.076     +  0.007       +  0.144       +  0.052
+≈  0.28  ✓
+</code></pre></div></div>
+
+<p><strong>Like a smoothie recipe:</strong> A says how much of each fruit (value) goes in, and Z is the smoothie. Every word gets its own recipe, so every word gets its own smoothie.</p>
+
+<p><strong>We did it:</strong> we turned a <strong>4 × 3</strong> table of plain word vectors into a <strong>4 × 5</strong> table of richer vectors, where each word now carries information from the whole sentence.</p>
+
+<hr />
+
+<h2 id="9-the-whole-thing-in-one-block">9. The whole thing in one block</h2>
+
+<p>Here is everything together. Paste it into Colab and run it:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="n">np</span><span class="p">.</span><span class="nf">set_printoptions</span><span class="p">(</span><span class="n">precision</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">suppress</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">N</span><span class="p">,</span> <span class="n">D1</span><span class="p">,</span> <span class="n">D2</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span>                       <span class="c1"># 4 words, start size 3, target size 5
+</span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">default_rng</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+
+<span class="n">X</span>   <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">D1</span><span class="p">))</span>     <span class="c1"># starting word vectors
+</span><span class="n">W_Q</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">D1</span><span class="p">,</span> <span class="n">D2</span><span class="p">))</span>   <span class="c1"># learned in real models
+</span><span class="n">W_K</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">D1</span><span class="p">,</span> <span class="n">D2</span><span class="p">))</span>
+<span class="n">W_V</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="nf">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">D1</span><span class="p">,</span> <span class="n">D2</span><span class="p">))</span>
+
+<span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_Q</span><span class="p">,</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_K</span><span class="p">,</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_V</span>       <span class="c1"># queries, keys, values
+</span>
+<span class="n">scores</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">@</span> <span class="n">K</span><span class="p">.</span><span class="n">T</span> <span class="o">/</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">D2</span><span class="p">)</span>            <span class="c1"># how well each query matches each key
+</span><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="n">scores</span><span class="p">).</span><span class="nf">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>   <span class="c1"># softmax
+</span><span class="n">Z</span> <span class="o">=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">V</span>                                 <span class="c1"># blend the values
+</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span>                                  <span class="c1"># 4 rich vectors, 5 numbers each
+</span></code></pre></div></div>
+
+<p>That is <strong>self-attention</strong>. The line <code class="language-plaintext highlighter-rouge">Z = A @ V</code> with <code class="language-plaintext highlighter-rouge">A = softmax(Q Kᵀ / √D2)</code> is exactly the formula from Part 9:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Z = softmax( Q Kᵀ / √D2 ) × V
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="10-where-does-training-come-in">10. Where does training come in?</h2>
+
+<p>Nothing above “learned” anything. We used random W_Q, W_K and W_V. In a real model:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>start:   W_Q, W_K, W_V are random            → attention is messy, results are poor
+train:   show the model lots of examples, and nudge W_Q, W_K, W_V
+         a tiny bit after each mistake
+end:     W_Q, W_K, W_V are well tuned         → queries and keys match in useful ways
+                                             → attention weights make sense
+                                             → rich vectors Z are genuinely useful
+</code></pre></div></div>
+
+<p>The training process only changes <strong>these three matrices</strong> (plus the other layers from Part 8). Get them right, and everything else falls into place.</p>
+
+<p>The same code works for <strong>self-attention in the decoder</strong> too. The only extra step there is the <strong>mask</strong> from Part 8: set the scores for future words to a huge negative number before softmax, so their weight becomes 0.</p>
+
+<hr />
+
+<h2 id="11-summary">11. Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Code</th>
+      <th>Shape</th>
+      <th>Plain meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Input</td>
+      <td><code class="language-plaintext highlighter-rouge">X</code></td>
+      <td>4 × 3</td>
+      <td>One starting vector per word</td>
+    </tr>
+    <tr>
+      <td>Weights</td>
+      <td><code class="language-plaintext highlighter-rouge">W_Q, W_K, W_V</code></td>
+      <td>3 × 5</td>
+      <td>Learned in training (random here)</td>
+    </tr>
+    <tr>
+      <td>Q, K, V</td>
+      <td><code class="language-plaintext highlighter-rouge">X @ W_Q</code> …</td>
+      <td>4 × 5</td>
+      <td>Each word’s question, offer, knowledge</td>
+    </tr>
+    <tr>
+      <td>Scores</td>
+      <td><code class="language-plaintext highlighter-rouge">Q @ K.T</code></td>
+      <td>4 × 4</td>
+      <td>How well every query matches every key</td>
+    </tr>
+    <tr>
+      <td>Weights</td>
+      <td><code class="language-plaintext highlighter-rouge">softmax(scores / √D2)</code></td>
+      <td>4 × 4</td>
+      <td>Each row is a pie that adds up to 1</td>
+    </tr>
+    <tr>
+      <td>Output</td>
+      <td><code class="language-plaintext highlighter-rouge">A @ V</code></td>
+      <td>4 × 5</td>
+      <td>A custom blend of values for each word</td>
+    </tr>
+  </tbody>
+</table>
+
+<ul>
+  <li>Self-attention is a handful of <strong>matrix multiplications</strong>, and NumPy does each in one line.</li>
+  <li>Every word is handled <strong>at the same time</strong>.</li>
+  <li>Random weights give random-looking attention. <strong>Training</strong> is what makes it meaningful.</li>
+</ul>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">self-attention</span>, <span class="tag">numpy</span>, <span class="tag">python</span>, <span class="tag">query-key-value</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
