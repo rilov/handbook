@@ -834,7 +834,228 @@ In a real model with 256-number embeddings and 512 neurons, the encoder's `W_x` 
 
 ---
 
-## 9. A concrete example: English → French
+## 9. Layer by layer: what goes in, and what each layer adds
+
+So far we have talked about "the encoder" and "the decoder" as boxes with a loop. Now let's look at the whole translator the way you would look at **any** neural network: an **input layer**, some **layers in the middle**, and an **output layer**. For every layer we'll answer three questions:
+
+1. What goes **in**?
+2. What comes **out**?
+3. What does this layer **add** that wasn't there before?
+
+Here is the full picture, with tiny sizes so every neuron can be drawn:
+
+<img src="{{ site.baseurl }}/assets/img/encoder-decoder-layer-by-layer.svg" alt="The translator drawn as a neural network. Encoder, one step reading 'cats': an input layer of six neurons, one per English word (I, love, cats, dogs, you, the), with only 'cats' set to 1; an embedding layer of three neurons; and a recurrent layer of four tanh neurons whose output loops back in as memory. After the last word, the recurrent layer's four numbers become the context vector. Decoder, first step: the context vector becomes the starting memory of the decoder's recurrent layer. An input layer of six neurons, one per French word, with only START set to 1; an embedding layer of three neurons; a recurrent layer of four neurons; an output layer of six neurons giving scores -1.2, 3.1, 1.1, 0.9, 0.4, 0.2; and softmax turning them into probabilities 0.01, 0.72, 0.10, 0.08, 0.05, 0.04, so J' is picked." style="width:100%;max-width:900px;">
+
+We'll use a pretend world with only **6 English words** and **6 French words**, embeddings of **3 numbers**, and a recurrent layer of **4 neurons**. Real models are much bigger, but the layers are exactly the same.
+
+### The encoder's layers
+
+#### Layer 1 — Input layer: "Which word is this?"
+
+The input layer has **one neuron per word in the vocabulary**. To feed in a word, we switch **its** neuron on (1) and every other neuron off (0). This is called **one-hot encoding**:
+
+```text
+English vocabulary:   I   love   cats   dogs   you   the
+"cats" goes in as:  [ 0,   0,     1,     0,     0,    0 ]
+```
+
+- **In:** the word (as its position in the vocabulary)
+- **Out:** 6 numbers, a single 1 and the rest 0s
+- **Adds:** only *identity*. It says **which** word this is, but nothing about what it means. "cats" and "dogs" look just as different as "cats" and "the".
+- **Learned weights:** none. It's just a switchboard.
+
+In a real model the vocabulary might have 10,000 words, so the input layer has 10,000 neurons with exactly one of them on. (In code, libraries skip building this long list and just pass the word's index, but the idea is the same.)
+
+#### Layer 2 — Embedding layer: "What does this word mean?"
+
+Every input neuron connects to every embedding neuron. The weights on those connections form the **embedding matrix**, one row of 3 numbers per vocabulary word:
+
+```text
+Embedding matrix (6 words × 3 numbers), learned in training:
+
+          e1      e2      e3
+I      [ 0.12   -0.45    0.78 ]
+love   [ 0.91    0.02   -0.64 ]
+cats   [ 0.34    0.88    0.21 ]   ← similar to "dogs"
+dogs   [ 0.30    0.85    0.25 ]   ← similar to "cats"
+you    [ 0.15   -0.40    0.70 ]   ← similar to "I"
+the    [ 0.05    0.10    0.02 ]
+```
+
+Each embedding neuron adds up (input × weight) over all 6 inputs. Because only "cats" is 1 and everything else is 0, **every row except the "cats" row gets multiplied by 0 and disappears**:
+
+```text
+e1 = 0×0.12 + 0×0.91 + 1×0.34 + 0×0.30 + 0×0.15 + 0×0.05 = 0.34
+e2 = ...                1×0.88 ...                      = 0.88
+e3 = ...                1×0.21 ...                      = 0.21
+
+"cats" → [0.34, 0.88, 0.21]     (exactly the "cats" row)
+```
+
+So the embedding layer is simply **"look up the word's row"**. That is the same lookup we did in section 4, now seen as a layer of neurons.
+
+- **In:** the one-hot vector (6 numbers)
+- **Out:** 3 meaningful numbers
+- **Adds:** *meaning*. Words used in similar ways get similar numbers, so "cats" is now close to "dogs" and "I" is close to "you". (That's all of Part 1, in one layer.)
+- **Learned weights:** the embedding matrix (6 × 3 = 18 weights). There's no activation function, so it's a pure lookup.
+
+#### Layer 3 — Recurrent layer: "What does the sentence mean so far?"
+
+This is the hidden layer with the loop from section 5. Each of its 4 neurons receives **7 inputs**:
+
+- the 3 numbers from the embedding layer (the current word)
+- its **own 4 outputs from the previous word** (the memory)
+
+Each neuron multiplies every input by a weight, adds them up with a bias, and squashes the total with **tanh**:
+
+```text
+h_t = tanh(W_x × x_t  +  W_h × h_{t-1}  +  b)
+```
+
+The fully worked example with real numbers is in section 5.
+
+- **In:** the word's 3 embedding numbers + the previous 4 memory numbers
+- **Out:** 4 new memory numbers (the hidden state)
+- **Adds:** *memory and order*. This is the only layer that knows what came **before**. After "cats", its 4 numbers describe "I love cats", not just "cats".
+- **Learned weights:** `W_x` (3 × 4 = 12), `W_h` (4 × 4 = 16) and `b` (4), so 32 in total.
+
+The encoder runs layers 1 → 2 → 3 **once per word**, reusing the same weights each time. After the last word, the recurrent layer's 4 numbers are the **context vector**.
+
+If the encoder has **stacked** recurrent layers (section 5), each extra layer takes the 4 numbers from the layer below as its input and adds **deeper patterns**, such as phrases and overall meaning rather than single words.
+
+#### No output layer
+
+The encoder never has to name a word, so it needs no output layer. Its only product is the context vector.
+
+### The decoder's layers
+
+#### Layer 1 — Input layer: "Which word did I just say?"
+
+Same idea as the encoder's input layer, but over the **French** vocabulary. At the very first step there's no previous word yet, so we switch on the special `<START>` neuron:
+
+```text
+French vocabulary:  <START>   J'   aime   les   chats   <END>
+first step:        [   1,      0,    0,    0,     0,      0   ]
+```
+
+- **Adds:** identity of the previous word (or "we're just starting").
+- **Learned weights:** none.
+
+#### Layer 2 — Embedding layer: "What does that word mean?"
+
+It works exactly like the encoder's embedding layer, but with its **own** French embedding matrix (6 × 3).
+
+- **Adds:** meaning of the previous French word.
+- **Learned weights:** the French embedding matrix.
+
+#### Layer 3 — Recurrent layer: "What have I said, and what was the input about?"
+
+It's the same kind of layer as in the encoder, with its own `W_x`, `W_h` and `b`. There's one big difference: its memory does **not** start at zeros. It starts as the **context vector** from the encoder.
+
+- **In:** the previous word's 3 embedding numbers + 4 memory numbers (the context vector at step 1)
+- **Out:** 4 new memory numbers
+- **Adds:** the link between **what the input sentence meant** and **what has been written so far**.
+- **Learned weights:** 32 (its own set).
+
+#### Layer 4 — Output layer: "How good is each possible next word?"
+
+The output layer has **one neuron per French word**. Each is connected to all 4 recurrent neurons, and each produces one **score** (also called a *logit*). There's no tanh here: the scores can be any size.
+
+```text
+<START>   J'    aime   les    chats   <END>
+ -1.2    3.1    1.1    0.9    0.4     0.2
+```
+
+- **In:** 4 memory numbers
+- **Out:** 6 scores, one per French word
+- **Adds:** a *vote* for every possible next word.
+- **Learned weights:** 4 × 6 = 24 weights + 6 biases = 30.
+
+#### Layer 5 — Softmax: "How sure am I?"
+
+Softmax turns the scores into **probabilities** that add up to 1. It makes each score positive with `e^score`, then divides by the total:
+
+```text
+word       score    e^score    ÷ total (30.67)
+<START>    -1.2       0.30       0.01
+J'          3.1      22.20       0.72   ← highest, so pick "J'"
+aime        1.1       3.00       0.10
+les         0.9       2.46       0.08
+chats       0.4       1.49       0.05
+<END>       0.2       1.22       0.04
+                    ------      -----
+                     30.67       1.00
+```
+
+- **Adds:** confidence. The model now says "72% sure the first word is J'".
+- **Learned weights:** none. Softmax is a fixed formula.
+
+The decoder outputs **"J'"**. At the next step, "J'" is switched on in the decoder's input layer, and all five layers run again, until the model picks `<END>`.
+
+### All the layers on one page
+
+| # | Layer | Neurons (toy → real) | What goes in | What comes out | What it adds | Learned? |
+|---|---|---|---|---|---|---|
+| E1 | Encoder input | 6 → ~10,000 | A word | One-hot (single 1) | Which word | No |
+| E2 | Encoder embedding | 3 → 256 | One-hot | Word vector | Meaning of the word | Yes: embedding matrix |
+| E3 | Encoder recurrent | 4 → 512 | Word vector + own memory | New memory | Order and memory of the sentence | Yes: `W_x`, `W_h`, `b` |
+| — | Context vector | 4 → 512 | Final memory | Same numbers | The hand-off to the decoder | No (just copied) |
+| D1 | Decoder input | 6 → ~12,000 | Previous word | One-hot | Which word was just said | No |
+| D2 | Decoder embedding | 3 → 256 | One-hot | Word vector | Meaning of that word | Yes: its own embedding matrix |
+| D3 | Decoder recurrent | 4 → 512 | Word vector + memory (starts as context) | New memory | Links input meaning to output so far | Yes: its own `W_x`, `W_h`, `b` |
+| D4 | Output layer | 6 → ~12,000 | Memory | One score per word | A vote for every next word | Yes: output weights + bias |
+| D5 | Softmax | 6 → ~12,000 | Scores | Probabilities | Confidence (adds to 1) | No |
+
+### Following the sizes through the network
+
+```text
+ENCODER (runs once per input word)
+  word "cats"
+    → input layer        [6]     one-hot
+    → embedding layer    [3]     meaning
+    → recurrent layer    [4]     meaning so far   ──┐ loops back for the next word
+                                                    │
+  after the last word:   context vector [4] ────────┘
+                                   │
+DECODER (runs once per output word)│
+  previous word "<START>"          │
+    → input layer        [6]       │
+    → embedding layer    [3]       ↓
+    → recurrent layer    [4]   ← starts from the context vector
+    → output layer       [6]     one score per French word
+    → softmax            [6]     probabilities → pick "J'"
+```
+
+### How many weights is that?
+
+| Part | Toy model | Real model (10k English words, 12k French, 256 embedding, 512 neurons) |
+|---|---|---|
+| Encoder embedding | 6 × 3 = 18 | 10,000 × 256 = 2,560,000 |
+| Encoder recurrent (`W_x` + `W_h` + `b`) | 12 + 16 + 4 = 32 | 131,072 + 262,144 + 512 = 393,728 |
+| Decoder embedding | 6 × 3 = 18 | 12,000 × 256 = 3,072,000 |
+| Decoder recurrent | 32 | 393,728 |
+| Output layer (weights + bias) | 24 + 6 = 30 | 6,144,000 + 12,000 = 6,156,000 |
+| **Total** | **130** | **≈ 12.6 million** |
+
+Two things stand out. The **embedding and output layers hold most of the weights**, because they have one row or neuron per vocabulary word. And the recurrent layers are small but do the "thinking". (An LSTM or GRU has about 3–4 times more recurrent weights than this plain RNN, but the same layer structure.)
+
+### Where does training fit in?
+
+The loss is measured at the very **end**, by comparing softmax's probabilities with the correct word (section 11). Backpropagation then walks **backwards through the layers**, nudging every learned weight on the way:
+
+```text
+softmax → output layer → decoder recurrent → decoder embedding
+                               ↓
+                        context vector
+                               ↓
+                encoder recurrent → encoder embedding
+```
+
+The input layers and softmax have nothing to learn, so the error just passes through them. Every other layer in the table gets a little better with each training example.
+
+---
+
+## 10. A concrete example: English → French
 
 Let's walk through translating "I love cats" to "J'aime les chats."
 
@@ -864,7 +1085,7 @@ Input token    Hidden state               Softmax output     Predicted word
 
 ---
 
-## 10. Loss function: cross-entropy
+## 11. Loss function: cross-entropy
 
 At each decoder step, the network predicts a probability distribution over the entire vocabulary. The loss measures how far that distribution is from the correct word.
 
@@ -879,7 +1100,7 @@ The total loss for the sentence is the sum (or average) of the losses at each st
 
 ---
 
-## 11. Common applications
+## 12. Common applications
 
 | Task | Input | Output |
 |------|-------|--------|
@@ -893,7 +1114,7 @@ In image captioning, the encoder is a **CNN** instead of an RNN — it compresse
 
 ---
 
-## 12. PyTorch sketch
+## 13. PyTorch sketch
 
 ```python
 import torch
@@ -928,10 +1149,11 @@ The encoder reads the full input and returns a hidden state. The decoder takes t
 
 ---
 
-## 13. Summary
+## 14. Summary
 
 - The **encoder** reads the input sequence and compresses it into a **context vector**.
 - The **decoder** starts from the context vector and generates the output sequence one word at a time.
+- As a neural network, each side is a stack of layers: **input** (which word) → **embedding** (what it means) → **recurrent** (what the sentence means so far), and the decoder adds an **output layer** (a score per word) and **softmax** (probabilities).
 - During training, **teacher forcing** feeds the correct previous word to the decoder; during inference, the model uses its own predictions.
 - The loss is **cross-entropy** at each output step, and backpropagation trains both encoder and decoder together.
 - This architecture powers translation, summarisation, chatbots, and more.
