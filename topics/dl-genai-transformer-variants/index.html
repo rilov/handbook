@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 11: Transformer Variants — Encoder-Only, Decoder-Only, Encoder-Decoder</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 11: Transformer Variants — Encoder-Only, Decoder-Only, Encoder-Decoder</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-11-transformer-variants--encoder-only-decoder-only-encoder-decoder">Deep Learning for Generative AI — Part 11: Transformer Variants — Encoder-Only, Decoder-Only, Encoder-Decoder</h1>
+
+<p>In Parts 6–10 we built up the full Transformer: an encoder that reads and a decoder that writes. But look at the models making headlines today and you’ll notice something odd — most of them <strong>threw half of the machine away</strong>.</p>
+
+<p>This part explains why, and introduces the three families every modern model belongs to.</p>
+
+<hr />
+
+<h2 id="1-different-tasks-need-different-ways-of-reading">1. Different tasks need different ways of reading</h2>
+
+<p>A single one-size-fits-all architecture is often computationally inefficient. Different NLP tasks need <strong>different patterns of information access</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>The task feels like…</th>
+      <th>What it needs</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Understanding</strong></td>
+      <td>See every word at once — the whole sentence, both directions</td>
+      <td>“Is this review positive?” — you need the full sentence before judging</td>
+    </tr>
+    <tr>
+      <td><strong>Creating</strong></td>
+      <td>Write one word at a time, like a human speaking or writing a story</td>
+      <td>“Continue this story…”</td>
+    </tr>
+    <tr>
+      <td><strong>Transforming</strong></td>
+      <td>Read one full sequence, then map it to an entirely different one</td>
+      <td>English sentence → French translation</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>So the industry branched the Transformer into <strong>three distinct variants</strong>, each keeping only the parts its task needs:</p>
+
+<div class="mermaid">
+flowchart TB
+    T["🤖 The full Transformer<br />(encoder + decoder)"]
+
+    T --&gt; E["📖 Encoder-only<br />(auto-encoding)<br /><b>BERT</b>"]
+    T --&gt; D["✍️ Decoder-only<br />(autoregressive)<br /><b>GPT</b>"]
+    T --&gt; ED["🔄 Encoder-decoder<br />(sequence-to-sequence)<br /><b>T5</b>"]
+
+    E --&gt; EU["Understanding:<br />classification, search, NER"]
+    D --&gt; DU["Generating:<br />chatbots, stories, code"]
+    ED --&gt; EDU["Transforming:<br />translation, summarisation"]
+
+    style T fill:#dbeafe,stroke:#2563eb
+    style E fill:#dcfce7,stroke:#16a34a
+    style D fill:#fef3c7,stroke:#d97706
+    style ED fill:#f3e8ff,stroke:#9333ea
+</div>
+
+<hr />
+
+<h2 id="2-encoder-only-models-auto-encoding-bert-the-reader">2. Encoder-only models (auto-encoding): BERT, the reader</h2>
+
+<p><strong>Keep:</strong> the encoder stack. <strong>Throw away:</strong> the decoder.</p>
+
+<p>An encoder-only model (also called an <strong>auto-encoding</strong> model) is just stacked encoder layers. Its hallmark is <strong>fully bidirectional self-attention</strong>: every word can attend to every other word — past <em>and</em> future — at the same time.</p>
+
+<p>If the model is looking at the 5th word of a 10-word sentence, it simultaneously sees words 1–4 (the past) <strong>and</strong> words 6–10 (the future). It has a <strong>global view</strong> of the input.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Sentence:  The bank will not [word 5] the loan application
+                              ↑
+              word 5 sees everything on BOTH sides at once
+</code></pre></div></div>
+
+<p>This makes it incredibly powerful at building <strong>rich contextual representations</strong>. Instead of a word having one fixed meaning, the model refines its understanding of each word using the complete sentence context — this is exactly the contextual embedding idea promised back in <a href="/handbook/topics/dl-genai-word-embeddings/">Part 1</a>: “bank” near “loan” gets a money-vector, “bank” near “river” gets a geography-vector.</p>
+
+<p><strong>The trade-off:</strong> there is no mechanism for generating new tokens. A pure encoder-only model <strong>cannot write a story for you</strong>. Its outputs are contextual embeddings — dense vectors, perfectly aligned with the input positions, one per input token. These models are <strong>the readers of the table</strong>.</p>
+
+<h3 id="how-bert-is-trained-masked-language-modelling">How BERT is trained: masked language modelling</h3>
+
+<p>BERT (<strong>B</strong>idirectional <strong>E</strong>ncoder <strong>R</strong>epresentations from <strong>T</strong>ransformers) changed the game by changing <em>how</em> we train. Instead of predicting the next word, it plays <strong>fill in the blanks</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Original:  I drink hot coffee every morning
+Masked:    I drink [MASK] coffee every [MASK]
+Model:     guess the blanked words using BOTH sides
+</code></pre></div></div>
+
+<p>Roughly 15% of the words are blanked out, and the model’s job is to use the words on the left <strong>and</strong> the right to guess what fits. If you only looked in one direction, you’d lose half the context — this forces the model to learn <strong>deep bidirectional relationships</strong>.</p>
+
+<p>BERT was additionally trained with <strong>next sentence prediction</strong>: show it two sentences and ask whether sentence B logically follows sentence A.</p>
+
+<blockquote>
+  <p>This “learn by filling blanks on unlabelled text” trick is a form of <strong>self-supervised learning</strong> — covered in depth in <a href="/handbook/_topics/Self-Supervised%20Learning%20-%20A%20Friendly%20Guide/">Self-Supervised Learning - A Friendly Guide</a>, including runnable BERT and GPT examples.</p>
+</blockquote>
+
+<p><strong>Best at:</strong> sentiment classification, semantic search, named entity recognition, question answering — anything where the whole input is available up front and the job is to <em>understand</em> it.</p>
+
+<hr />
+
+<h2 id="3-decoder-only-models-autoregressive-gpt-the-writer">3. Decoder-only models (autoregressive): GPT, the writer</h2>
+
+<p><strong>Keep:</strong> the decoder stack (minus cross-attention — there’s no encoder to look at). <strong>Throw away:</strong> the encoder.</p>
+
+<p>An <strong>autoregressive</strong> model generates text <strong>one token at a time</strong>, each new token conditioned on everything written so far — exactly the masked self-attention from <a href="/handbook/topics/dl-genai-transformer-architecture/">Part 8</a>: look back as much as you like, never peek ahead.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>The cat sat on the ___        → "mat"  (97%)
+The cat sat on the mat and ___ → "purred" (61%)
+</code></pre></div></div>
+
+<p><strong>Training is beautifully simple:</strong> take any text on the internet, hide the next word, ask the model to predict it. No labels needed, infinite training data. Repeat over trillions of words.</p>
+
+<p><strong>The trade-off:</strong> it only ever sees the past, never the future — so its understanding of a full sentence is less naturally bidirectional than BERT’s. But it can <strong>generate</strong>, and that turned out to be the killer feature.</p>
+
+<p><strong>Best at:</strong> chatbots, story and code generation, and — with enough scale — nearly everything. GPT-style decoder-only models are what power most modern LLMs (ChatGPT, Claude, Gemini). Your question isn’t fed to a separate encoder; it simply becomes the beginning of the “text so far”.</p>
+
+<hr />
+
+<h2 id="4-encoder-decoder-models-sequence-to-sequence-t5-the-translator">4. Encoder-decoder models (sequence-to-sequence): T5, the translator</h2>
+
+<p><strong>Keep:</strong> everything. This is the original Transformer from Parts 6–10.</p>
+
+<p>Use it when you take one full sequence and map it to an <strong>entirely different sequence</strong>: English sentence → French translation, long article → short summary, English request → Python code.</p>
+
+<p>The encoder gets the bidirectional global view of the input (like BERT); the decoder writes autoregressively (like GPT), glancing at the encoder’s notes through cross-attention. Best of both — at the cost of running both.</p>
+
+<p><strong>Best at:</strong> translation, summarisation, and structured transformation tasks. Examples: the original Transformer, T5, BART.</p>
+
+<hr />
+
+<h2 id="5-the-three-families-side-by-side">5. The three families side by side</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Encoder-only</th>
+      <th>Decoder-only</th>
+      <th>Encoder-decoder</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Also called</td>
+      <td>Auto-encoding</td>
+      <td>Autoregressive</td>
+      <td>Sequence-to-sequence</td>
+    </tr>
+    <tr>
+      <td>Attention</td>
+      <td>Bidirectional (sees both sides)</td>
+      <td>Causal / masked (past only)</td>
+      <td>Bidirectional in, causal out</td>
+    </tr>
+    <tr>
+      <td>Output</td>
+      <td>Contextual embeddings (one per input token)</td>
+      <td>New tokens, one at a time</td>
+      <td>New tokens, one at a time</td>
+    </tr>
+    <tr>
+      <td>Can generate text?</td>
+      <td>❌</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>Trained by</td>
+      <td>Fill in the blanks (masked LM)</td>
+      <td>Predict the next word</td>
+      <td>Map input pairs to outputs</td>
+    </tr>
+    <tr>
+      <td>Famous example</td>
+      <td>BERT</td>
+      <td>GPT</td>
+      <td>T5, original Transformer</td>
+    </tr>
+    <tr>
+      <td>Analogy</td>
+      <td>The reader who understands every nuance</td>
+      <td>The storyteller who never stops</td>
+      <td>The translator with a notepad</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mermaid">
+flowchart LR
+    subgraph tasks["Pick by task"]
+        U["Understand text?<br />→ Encoder-only"]
+        G["Generate text?<br />→ Decoder-only"]
+        X["Transform text?<br />→ Encoder-decoder"]
+    end
+
+    style U fill:#dcfce7,stroke:#16a34a
+    style G fill:#fef3c7,stroke:#d97706
+    style X fill:#f3e8ff,stroke:#9333ea
+</div>
+
+<hr />
+
+<h2 id="6-summary">6. Summary</h2>
+
+<ul>
+  <li>One size doesn’t fit all: <strong>understanding</strong>, <strong>creating</strong>, and <strong>transforming</strong> need different patterns of information access, so the Transformer split into three families.</li>
+  <li><strong>Encoder-only (BERT):</strong> fully bidirectional, outputs contextual embeddings, cannot generate — the reader. Trained by masking words and guessing them from both sides.</li>
+  <li><strong>Decoder-only (GPT):</strong> autoregressive, writes one token at a time using only the past — the writer. Trained by next-word prediction on unlabelled text. Powers most modern LLMs.</li>
+  <li><strong>Encoder-decoder (T5):</strong> the full original machine — bidirectional reading plus autoregressive writing — the translator.</li>
+  <li>These also deliver the <strong>contextual embeddings</strong> promised in Part 1: the same word finally gets a different vector in different sentences.</li>
+</ul>
+
+<p><strong>Next up:</strong> see the whole machine again in one sitting, with zero math, in <a href="/handbook/topics/transformer-friendly-guide/">The Transformer - A Friendly Guide</a> — including how training works and what the “context limit” means inside each layer.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">bert</span>, <span class="tag">gpt</span>, <span class="tag">t5</span>, <span class="tag">encoder-only</span>, <span class="tag">decoder-only</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
