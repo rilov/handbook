@@ -162,4 +162,4 @@ flowchart LR
 - **Encoder-decoder (T5):** the full original machine — bidirectional reading plus autoregressive writing — the translator.
 - These also deliver the **contextual embeddings** promised in Part 1: the same word finally gets a different vector in different sentences.
 
-**Next up:** see the whole machine again in one sitting, with zero math, in [The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/) — including how training works and what the "context limit" means inside each layer.
+**Next up:** put the encoder-only reader to work — load a pre-trained BERT from Hugging Face and fine-tune it for sentiment classification in [Part 12: Sequence Classification with BERT (Hands-On)]({{ site.baseurl }}/topics/dl-genai-bert-sequence-classification/).
