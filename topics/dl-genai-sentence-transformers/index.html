@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 13: Sentence Embeddings with Sentence Transformers (Hands-On)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 13: Sentence Embeddings with Sentence Transformers (Hands-On)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-13-sentence-embeddings-with-sentence-transformers-hands-on">Deep Learning for Generative AI — Part 13: Sentence Embeddings with Sentence Transformers (Hands-On)</h1>
+
+<p><a href="/handbook/topics/dl-genai-bert-sequence-classification/">Part 12</a> reused a pre-trained BERT for classification. This part reuses a pre-trained model for something even more versatile: turning <strong>whole sentences and documents into fixed-length vectors</strong>.</p>
+
+<p>Once text lives in vector space, three very different tasks become the <em>same</em> operation — measuring distance:</p>
+
+<div class="mermaid">
+flowchart LR
+    D["📄 Documents"] --&gt; M["🤖 Sentence Transformer<br />(all-mpnet-base-v2)"]
+    M --&gt; V["📍 One vector<br />per document"]
+
+    V --&gt; S["🔍 Semantic search"]
+    V --&gt; C["🔗 Document similarity"]
+    V --&gt; K["🧩 Clustering"]
+
+    style D fill:#fef3c7,stroke:#d97706
+    style M fill:#dbeafe,stroke:#2563eb
+    style V fill:#d1fae5,stroke:#059669
+</div>
+
+<p>The key insight of this whole part: <strong>we compute the embeddings once and reuse them for all three tasks. No model training happens anywhere.</strong></p>
+
+<hr />
+
+<h2 id="1-from-word-vectors-to-sentence-vectors">1. From word vectors to sentence vectors</h2>
+
+<p><a href="/handbook/topics/dl-genai-word-embeddings/">Part 1</a> gave every <strong>word</strong> a vector. But most real questions are about <strong>sentences and documents</strong>:</p>
+
+<ul>
+  <li>“Find the support ticket most similar to this one”</li>
+  <li>“Which FAQ answers this customer’s question?”</li>
+  <li>“Group these 10,000 reviews by topic”</li>
+</ul>
+
+<p><strong>Why not just average the word vectors?</strong> Because averaging destroys meaning:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The movie was not good, it was terrible"
+"The movie was not terrible, it was good"
+</code></pre></div></div>
+
+<p>Same words, opposite meanings — identical average. A sentence embedding model reads the whole sentence <em>in context</em> (using the bidirectional encoder from <a href="/handbook/topics/dl-genai-transformer-variants/">Part 11</a>) and produces <strong>one vector that captures the sentence’s meaning</strong>.</p>
+
+<h3 id="the-model-all-mpnet-base-v2">The model: all-mpnet-base-v2</h3>
+
+<p>We’ll use <a href="https://huggingface.co/sentence-transformers/all-mpnet-base-v2"><code class="language-plaintext highlighter-rouge">all-mpnet-base-v2</code></a>, the workhorse of the Sentence Transformers library:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Property</th>
+      <th>Value</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Encoder</td>
+      <td>MPNet (a BERT-style Transformer)</td>
+      <td>The bidirectional “reader” from Part 11</td>
+    </tr>
+    <tr>
+      <td>Output</td>
+      <td>768 numbers per text</td>
+      <td>Fixed length, no matter how long the input</td>
+    </tr>
+    <tr>
+      <td>Training</td>
+      <td>Bi-encoder setup on 1+ billion sentence pairs</td>
+      <td>Trained so <em>similar sentences get nearby vectors</em></td>
+    </tr>
+    <tr>
+      <td>Max input</td>
+      <td>384 word pieces</td>
+      <td>Longer texts are truncated</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>What’s a bi-encoder?</strong> During training, pairs of related sentences (a question and its answer, a title and its article) were pushed <strong>close together</strong> in vector space, while unrelated pairs were pushed apart. That’s the special sauce: raw BERT understands language, but a bi-encoder is <em>specifically tuned so that distance = semantic relatedness</em>.</p>
+
+<p><strong>Analogy:</strong> think of the embedding space as a giant library where the librarian shelves books by <em>meaning</em>, not alphabet. Books about pasta sit together; books about rockets sit in another aisle — even if one is titled “Fettuccine Forever” and the other “Noodles of Italy”.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>sentence-transformers scikit-learn
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="2-encode-a-small-document-collection">2. Encode a small document collection</h2>
+
+<p>Nine short documents across three hidden topics — cooking, space, and football:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sentence_transformers</span> <span class="kn">import</span> <span class="n">SentenceTransformer</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="nc">SentenceTransformer</span><span class="p">(</span><span class="sh">"</span><span class="s">all-mpnet-base-v2</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">How to cook perfect pasta al dente</span><span class="sh">"</span><span class="p">,</span>              <span class="c1"># 0 cooking
+</span>    <span class="sh">"</span><span class="s">A beginner</span><span class="sh">'</span><span class="s">s guide to baking sourdough bread</span><span class="sh">"</span><span class="p">,</span>    <span class="c1"># 1 cooking
+</span>    <span class="sh">"</span><span class="s">Ten quick dinner recipes for busy weeknights</span><span class="sh">"</span><span class="p">,</span>    <span class="c1"># 2 cooking
+</span>    <span class="sh">"</span><span class="s">NASA announces new mission to explore Europa</span><span class="sh">"</span><span class="p">,</span>    <span class="c1"># 3 space
+</span>    <span class="sh">"</span><span class="s">The James Webb telescope captures distant galaxies</span><span class="sh">"</span><span class="p">,</span> <span class="c1"># 4 space
+</span>    <span class="sh">"</span><span class="s">How rockets escape Earth</span><span class="sh">'</span><span class="s">s gravity</span><span class="sh">"</span><span class="p">,</span>              <span class="c1"># 5 space
+</span>    <span class="sh">"</span><span class="s">Liverpool wins the Champions League final</span><span class="sh">"</span><span class="p">,</span>       <span class="c1"># 6 football
+</span>    <span class="sh">"</span><span class="s">Transfer rumours: star striker heading to Madrid</span><span class="sh">"</span><span class="p">,</span><span class="c1"># 7 football
+</span>    <span class="sh">"</span><span class="s">Tactical analysis of the 4-3-3 formation</span><span class="sh">"</span><span class="p">,</span>        <span class="c1"># 8 football
+</span><span class="p">]</span>
+
+<span class="n">embeddings</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">embeddings</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(9, 768)
+</code></pre></div></div>
+
+<p>That’s it. Nine documents, nine vectors, 768 numbers each. Short title or long paragraph — always 768 numbers, which is what makes everything downstream simple.</p>
+
+<p>Each document is now <strong>a point in a shared embedding space</strong> where distance reflects semantic relatedness:</p>
+
+<div class="mermaid">
+flowchart TB
+    subgraph space["The embedding space (conceptually)"]
+        subgraph c1["🍝 cooking corner"]
+            P["pasta"] ~~~ B["sourdough"] ~~~ R["recipes"]
+        end
+        subgraph c2["🚀 space corner"]
+            N["Europa"] ~~~ W["Webb"] ~~~ RK["rockets"]
+        end
+        subgraph c3["⚽ football corner"]
+            L["Liverpool"] ~~~ T["transfers"] ~~~ F["4-3-3"]
+        end
+    end
+
+    style c1 fill:#fef3c7,stroke:#d97706
+    style c2 fill:#dbeafe,stroke:#2563eb
+    style c3 fill:#dcfce7,stroke:#16a34a
+</div>
+
+<hr />
+
+<h2 id="3-task-1-semantic-search">3. Task 1: Semantic search</h2>
+
+<p><strong>Keyword search fails</strong> when the words don’t match: search “italian noodles” and a keyword engine finds nothing above — no document contains either word. Semantic search finds the pasta document anyway, because <em>meaning</em> matches.</p>
+
+<p>The recipe:</p>
+
+<ol>
+  <li>Encode the query <strong>with the same model</strong> (critical — vectors from different models live in different spaces and can’t be compared)</li>
+  <li>Compute similarity between the query vector and every document vector</li>
+  <li>Rank and return the top hits</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sentence_transformers</span> <span class="kn">import</span> <span class="n">util</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="sh">"</span><span class="s">italian noodles</span><span class="sh">"</span>
+<span class="n">query_embedding</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+
+<span class="n">scores</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">cos_sim</span><span class="p">(</span><span class="n">query_embedding</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">scores</span><span class="p">.</span><span class="nf">argsort</span><span class="p">(</span><span class="n">descending</span><span class="o">=</span><span class="bp">True</span><span class="p">)[:</span><span class="mi">3</span><span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">scores</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">  </span><span class="si">{</span><span class="n">documents</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.532  How to cook perfect pasta al dente
+0.341  Ten quick dinner recipes for busy weeknights
+0.286  A beginner's guide to baking sourdough bread
+</code></pre></div></div>
+
+<p>Not a single shared word with the query — pure meaning matching. Two more queries to build intuition:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query: "how do spaceships leave the planet"
+0.647  How rockets escape Earth's gravity          ← "spaceships/leave/planet" ≈ "rockets/escape/Earth"
+0.402  NASA announces new mission to explore Europa
+0.311  The James Webb telescope captures distant galaxies
+
+Query: "which team won the cup"
+0.578  Liverpool wins the Champions League final   ← "team/won/cup" ≈ "Liverpool/wins/final"
+0.334  Transfer rumours: star striker heading to Madrid
+0.269  Tactical analysis of the 4-3-3 formation
+</code></pre></div></div>
+
+<p><strong>About the scores:</strong> cosine similarity ranges from -1 to 1. In practice with this model, ~0.6+ is a strong match, ~0.3–0.5 is topically related, and below ~0.2 is mostly unrelated. The <em>ranking</em> matters more than the absolute numbers.</p>
+
+<p><strong>Real-world uses:</strong> FAQ bots (“customers phrase questions 100 different ways”), searching internal wikis, e-commerce search (“warm jacket for hiking” → finds “insulated trekking parka”), and the retrieval step of RAG — this is exactly what the vector store does in <a href="/handbook/topics/langchain-rag-basics/">RAG Basics</a>.</p>
+
+<hr />
+
+<h2 id="4-task-2-document-to-document-similarity">4. Task 2: Document-to-document similarity</h2>
+
+<p>No query this time — we compare <strong>every document against every other document</strong> by building the full similarity matrix:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">sim_matrix</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">cos_sim</span><span class="p">(</span><span class="n">embeddings</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">sim_matrix</span><span class="p">.</span><span class="n">shape</span><span class="p">)</span>   <span class="c1"># (9, 9)
+</span></code></pre></div></div>
+
+<p>Conceptually (values rounded, 1.00 diagonal = each doc vs itself):</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            pasta  bread  recipes europa  webb  rocket  lpool  trans  tactic
+pasta       1.00   0.45   0.51    0.05   0.03   0.08    0.02   0.04   0.06
+bread       0.45   1.00   0.42    0.04   0.02   0.05    0.01   0.03   0.02
+recipes     0.51   0.42   1.00    0.03   0.02   0.04    0.05   0.06   0.04
+europa      0.05   0.04   0.03    1.00   0.48   0.44    0.03   0.05   0.02
+webb        0.03   0.02   0.02    0.48   1.00   0.39    0.02   0.03   0.01
+rocket      0.08   0.05   0.04    0.44   0.39   1.00    0.04   0.02   0.03
+lpool       0.02   0.01   0.05    0.03   0.02   0.04    1.00   0.47   0.41
+trans       0.04   0.03   0.06    0.05   0.03   0.02    0.47   1.00   0.36
+tactic      0.06   0.02   0.04    0.02   0.01   0.03    0.41   0.36   1.00
+</code></pre></div></div>
+
+<p>Three bright blocks along the diagonal — the three topics — with near-zero everywhere else. The model discovered the topic structure without being told it exists.</p>
+
+<p>To find the closest match for one selected document (say index 3, the Europa mission):</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">doc_idx</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">scores</span> <span class="o">=</span> <span class="n">sim_matrix</span><span class="p">[</span><span class="n">doc_idx</span><span class="p">].</span><span class="nf">clone</span><span class="p">()</span>
+<span class="n">scores</span><span class="p">[</span><span class="n">doc_idx</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>                      <span class="c1"># exclude the document itself
+</span>
+<span class="n">best</span> <span class="o">=</span> <span class="n">scores</span><span class="p">.</span><span class="nf">argmax</span><span class="p">()</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Most similar to: </span><span class="si">{</span><span class="n">documents</span><span class="p">[</span><span class="n">doc_idx</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  → </span><span class="si">{</span><span class="n">documents</span><span class="p">[</span><span class="n">best</span><span class="p">]</span><span class="si">}</span><span class="s">  (</span><span class="si">{</span><span class="n">scores</span><span class="p">[</span><span class="n">best</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">3</span><span class="n">f</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Most similar to: NASA announces new mission to explore Europa
+  → The James Webb telescope captures distant galaxies  (0.478)
+</code></pre></div></div>
+
+<p><strong>Real-world uses:</strong> “related articles” widgets on news sites, detecting duplicate support tickets or bug reports, plagiarism and near-duplicate detection, “customers who viewed this also viewed” for content.</p>
+
+<hr />
+
+<h2 id="5-task-3-unsupervised-clustering-with-k-means">5. Task 3: Unsupervised clustering with k-means</h2>
+
+<p>We never labelled the documents — but the labels are already <em>implicit in the geometry</em>. Feed the embedding vectors straight into k-means (the algorithm itself is explained in <a href="/handbook/_topics/K-Means%20Clustering/">K-Means Clustering</a>):</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">sklearn.cluster</span> <span class="kn">import</span> <span class="n">KMeans</span>
+
+<span class="n">kmeans</span> <span class="o">=</span> <span class="nc">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">cluster_ids</span> <span class="o">=</span> <span class="n">kmeans</span><span class="p">.</span><span class="nf">fit_predict</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">cluster</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Cluster </span><span class="si">{</span><span class="n">cluster</span><span class="si">}</span><span class="s">:</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">doc</span><span class="p">,</span> <span class="n">cid</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">documents</span><span class="p">,</span> <span class="n">cluster_ids</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cid</span> <span class="o">==</span> <span class="n">cluster</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  - </span><span class="si">{</span><span class="n">doc</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cluster 0:
+  - NASA announces new mission to explore Europa
+  - The James Webb telescope captures distant galaxies
+  - How rockets escape Earth's gravity
+
+Cluster 1:
+  - How to cook perfect pasta al dente
+  - A beginner's guide to baking sourdough bread
+  - Ten quick dinner recipes for busy weeknights
+
+Cluster 2:
+  - Liverpool wins the Champions League final
+  - Transfer rumours: star striker heading to Madrid
+  - Tactical analysis of the 4-3-3 formation
+</code></pre></div></div>
+
+<p>A perfect 3-way split into space, cooking, and football — with <strong>zero labels and zero training</strong>. K-means simply grouped points that sit near each other, and the embedding model had already placed same-topic documents nearby.</p>
+
+<p><strong>Two practical notes:</strong></p>
+
+<ul>
+  <li><strong>Choosing k:</strong> here we knew there were 3 topics. In real projects you don’t — use the elbow method or silhouette score (covered in the K-Means guide), or try a few values and inspect the clusters.</li>
+  <li><strong>Inspect, always:</strong> print a few documents per cluster like we did above. Clusters are only useful if a human can name them (“ah, this cluster is billing complaints”).</li>
+</ul>
+
+<p><strong>Real-world uses:</strong> grouping thousands of open-ended survey answers into themes, organising support tickets before routing rules exist, discovering trending discussion topics, deduplicating a scraped dataset.</p>
+
+<hr />
+
+<h2 id="6-the-big-picture-one-set-of-vectors-three-tasks">6. The big picture: one set of vectors, three tasks</h2>
+
+<p>Notice what we did <strong>not</strong> do in this entire part: we never trained anything. The workflow was:</p>
+
+<div class="mermaid">
+flowchart LR
+    A["Encode once<br />model.encode(docs)"] --&gt; B["Reuse everywhere"]
+    B --&gt; S["Search:<br />query vs docs"]
+    B --&gt; C["Similarity:<br />docs vs docs"]
+    B --&gt; K["Clustering:<br />k-means on vectors"]
+
+    style A fill:#dbeafe,stroke:#2563eb
+    style B fill:#d1fae5,stroke:#059669
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Operation on the vectors</th>
+      <th>Needs labels?</th>
+      <th>Needs training?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Semantic search</td>
+      <td>query vector vs all doc vectors, rank</td>
+      <td>❌</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>Document similarity</td>
+      <td>all doc vectors vs each other (matrix)</td>
+      <td>❌</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>Clustering</td>
+      <td>k-means on the doc vectors</td>
+      <td>❌</td>
+      <td>❌</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Compare with Part 12: BERT classification needed labelled examples and a fine-tuning loop. Sentence embeddings need <strong>neither</strong> — the bi-encoder pre-training already did the hard work of making distance meaningful.</p>
+
+<hr />
+
+<h2 id="7-common-pitfalls">7. Common pitfalls</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pitfall</th>
+      <th>What goes wrong</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Mixing models</td>
+      <td>Query encoded with model A, documents with model B — similarities are garbage</td>
+      <td>Always encode query and documents with the <strong>same</strong> model</td>
+    </tr>
+    <tr>
+      <td>Very long documents</td>
+      <td>Anything past ~384 word pieces is silently truncated</td>
+      <td>Split long documents into chunks and embed each chunk</td>
+    </tr>
+    <tr>
+      <td>Trusting absolute scores</td>
+      <td>“0.5 must mean 50% similar” — it doesn’t</td>
+      <td>Use scores for <em>ranking</em>; calibrate thresholds on your own data</td>
+    </tr>
+    <tr>
+      <td>Wrong model for the job</td>
+      <td><code class="language-plaintext highlighter-rouge">all-mpnet-base-v2</code> is English-focused</td>
+      <td>For other languages use a multilingual model like <code class="language-plaintext highlighter-rouge">paraphrase-multilingual-mpnet-base-v2</code></td>
+    </tr>
+    <tr>
+      <td>Recomputing embeddings</td>
+      <td>Encoding the whole corpus on every query</td>
+      <td>Encode once, store the vectors (in production: a vector database)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="8-summary">8. Summary</h2>
+
+<ul>
+  <li>A <strong>Sentence Transformer</strong> maps whole sentences/documents to <strong>fixed-length vectors</strong> (768 numbers for <code class="language-plaintext highlighter-rouge">all-mpnet-base-v2</code>), where <strong>distance = semantic relatedness</strong> thanks to bi-encoder training on a billion sentence pairs.</li>
+  <li><strong>Semantic search:</strong> encode the query with the same model, rank documents by cosine similarity — matches by meaning, not keywords.</li>
+  <li><strong>Document similarity:</strong> a full similarity matrix compares every pair of documents directly, no query needed.</li>
+  <li><strong>Clustering:</strong> k-means on the raw embedding vectors groups documents by topic with zero labels.</li>
+  <li>The same embeddings are <strong>computed once and reused</strong> for all three tasks — no model training happens at any point.</li>
+  <li>These are exactly the embeddings that power the vector store in <a href="/handbook/topics/langchain-rag-basics/">RAG</a> — this part is the “how does retrieval actually work” behind it.</li>
+</ul>
+
+<p><strong>Next up:</strong> see the whole Transformer again in one sitting, with zero math, in <a href="/handbook/topics/transformer-friendly-guide/">The Transformer - A Friendly Guide</a> — including how training works and what the “context limit” means inside each layer.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">sentence-transformers</span>, <span class="tag">embeddings</span>, <span class="tag">semantic-search</span>, <span class="tag">clustering</span>, <span class="tag">similarity</span>, <span class="tag">hands-on</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
