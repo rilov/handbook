@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 12: Sequence Classification with BERT (Hands-On)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 12: Sequence Classification with BERT (Hands-On)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-12-sequence-classification-with-bert-hands-on">Deep Learning for Generative AI — Part 12: Sequence Classification with BERT (Hands-On)</h1>
+
+<p><a href="/handbook/topics/dl-genai-transformer-variants/">Part 11</a> introduced BERT as the encoder-only “reader”: bidirectional attention, rich contextual embeddings, brilliant at understanding — unable to generate.</p>
+
+<p>In this part we put the reader to work. We’ll take a <strong>pre-trained</strong> BERT model, teach it <strong>sentiment classification</strong> with just a few labelled sentences, and run it on text it has never seen. All in plain Python you can paste into any notebook.</p>
+
+<hr />
+
+<h2 id="1-why-reuse-a-pre-trained-model">1. Why reuse a pre-trained model?</h2>
+
+<p>BERT is one of the most influential models in modern NLP — and one reason is that you almost never train it from scratch. Google already did that, on billions of words, using masked language modelling (<a href="/handbook/_topics/Self-Supervised%20Learning%20-%20A%20Friendly%20Guide/">how that works</a>).</p>
+
+<p>Instead, we <strong>fine-tune</strong>: take the pre-trained model, which already understands English deeply, and adapt it to a <em>downstream task</em> — here, sentiment classification.</p>
+
+<p><strong>Analogy:</strong> you don’t teach a literature professor the English language before asking them to sort book reviews into “liked it” and “hated it”. You give them ten examples of each and they get the idea immediately. Fine-tuning is exactly that: a tiny bit of task-specific training on top of a mountain of general knowledge.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pre-training  (Google, weeks, billions of words)  →  understands language
+Fine-tuning   (you, minutes, a few examples)      →  understands YOUR task
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="2-why-hugging-face">2. Why Hugging Face?</h2>
+
+<p><a href="https://huggingface.co/">Hugging Face</a> is the standard place to get pre-trained NLP models. We use it because:</p>
+
+<ul>
+  <li><strong>Thousands of pre-trained models</strong>, one line to download</li>
+  <li><strong>Easy, consistent APIs</strong> — the same code works for BERT, RoBERTa, DistilBERT…</li>
+  <li><strong>Production-ready tools</strong> — tokenizers, training utilities, model hosting</li>
+</ul>
+
+<p>Install the two packages we need (<code class="language-plaintext highlighter-rouge">transformers</code> for the model and tokenizer, <code class="language-plaintext highlighter-rouge">torch</code> for running it):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>transformers torch
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-load-pre-trained-bert-with-a-classification-head">3. Load pre-trained BERT with a classification head</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">transformers</code> package gives us BERT <strong>with a classification head already attached</strong> — a small linear layer sitting on top of the encoder that maps BERT’s understanding to our labels:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">AutoTokenizer</span><span class="p">,</span> <span class="n">AutoModelForSequenceClassification</span>
+
+<span class="n">model_name</span> <span class="o">=</span> <span class="sh">"</span><span class="s">bert-base-uncased</span><span class="sh">"</span>
+
+<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="p">,</span>
+    <span class="n">num_labels</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>          <span class="c1"># 0 = negative, 1 = positive
+</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Two things happen here:</p>
+
+<ol>
+  <li>The <strong>encoder stack</strong> (12 layers, 110M parameters) downloads with all its pre-trained weights — the mountain of language knowledge.</li>
+  <li>A fresh <strong>classification head</strong> is bolted on top with <strong>random weights</strong>. You’ll even see a warning saying some weights were “newly initialized” and that you should train the model on a downstream task — that’s expected, and it’s exactly what we’re about to do.</li>
+</ol>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[CLS] token's rich vector  →  classification head  →  2 scores (neg, pos)
+</code></pre></div></div>
+
+<p>BERT reads the whole sentence bidirectionally, and the special <code class="language-plaintext highlighter-rouge">[CLS]</code> token’s final vector acts as a summary of the entire sequence — the classification head reads just that.</p>
+
+<hr />
+
+<h2 id="4-tokenize-the-text-properly">4. Tokenize the text properly</h2>
+
+<p>BERT can’t take raw strings. Its tokenizer does three jobs:</p>
+
+<ol>
+  <li><strong>Split words into WordPiece tokens</strong> — common words stay whole, rare words split into pieces (“unbelievable” → <code class="language-plaintext highlighter-rouge">un</code>, <code class="language-plaintext highlighter-rouge">##believ</code>, <code class="language-plaintext highlighter-rouge">##able</code>), so no word is ever “unknown”</li>
+  <li><strong>Add special tokens</strong> — <code class="language-plaintext highlighter-rouge">[CLS]</code> at the start (the summary slot) and <code class="language-plaintext highlighter-rouge">[SEP]</code> at the end</li>
+  <li><strong>Build the attention mask</strong> — 1 for real tokens, 0 for padding, so attention ignores the padding</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">inputs</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">I absolutely loved this movie!</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span>     <span class="c1"># PyTorch tensors
+</span>    <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+    <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">tokenizer</span><span class="p">.</span><span class="nf">convert_ids_to_tokens</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="sh">"</span><span class="s">input_ids</span><span class="sh">"</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>['[CLS]', 'i', 'absolutely', 'loved', 'this', 'movie', '!', '[SEP]']
+</code></pre></div></div>
+
+<p>The tokenizer and the model <strong>must come from the same checkpoint</strong> — the token IDs are the vocabulary the model was pre-trained with. That’s why we load both with the same <code class="language-plaintext highlighter-rouge">model_name</code>.</p>
+
+<hr />
+
+<h2 id="5-fine-tune-on-a-few-labelled-sentences">5. Fine-tune on a few labelled sentences</h2>
+
+<p>Real projects use thousands of examples, but the mechanics are identical with six — and six is enough to watch it work. A plain PyTorch training loop:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+
+<span class="n">texts</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">I absolutely loved this movie!</span><span class="sh">"</span><span class="p">,</span>          <span class="c1"># positive
+</span>    <span class="sh">"</span><span class="s">What a fantastic experience.</span><span class="sh">"</span><span class="p">,</span>            <span class="c1"># positive
+</span>    <span class="sh">"</span><span class="s">Best purchase I have made all year.</span><span class="sh">"</span><span class="p">,</span>     <span class="c1"># positive
+</span>    <span class="sh">"</span><span class="s">This was a complete waste of time.</span><span class="sh">"</span><span class="p">,</span>      <span class="c1"># negative
+</span>    <span class="sh">"</span><span class="s">Terrible acting and a boring plot.</span><span class="sh">"</span><span class="p">,</span>      <span class="c1"># negative
+</span>    <span class="sh">"</span><span class="s">I want my money back.</span><span class="sh">"</span><span class="p">,</span>                   <span class="c1"># negative
+</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+<span class="n">batch</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span><span class="n">texts</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">AdamW</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">2e-5</span><span class="p">)</span>
+
+<span class="n">model</span><span class="p">.</span><span class="nf">train</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="o">**</span><span class="n">batch</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">outputs</span><span class="p">.</span><span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>      <span class="c1"># cross-entropy loss, computed for us
+</span>    <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">epoch </span><span class="si">{</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="si">}</span><span class="s">: loss = </span><span class="si">{</span><span class="n">outputs</span><span class="p">.</span><span class="n">loss</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>epoch 1: loss = 0.7123
+epoch 2: loss = 0.5241
+epoch 3: loss = 0.3187
+epoch 4: loss = 0.1904
+epoch 5: loss = 0.0982
+</code></pre></div></div>
+
+<p>Notes on what just happened:</p>
+
+<ul>
+  <li>Passing <code class="language-plaintext highlighter-rouge">labels=</code> makes the model compute the <strong>cross-entropy loss</strong> for us — the same “wanted vs got” measure from <a href="/handbook/topics/transformer-friendly-guide/">the friendly guide</a></li>
+  <li>The tiny learning rate (<code class="language-plaintext highlighter-rouge">2e-5</code>) is deliberate: we want to <em>gently nudge</em> the pre-trained weights, not bulldoze the language knowledge</li>
+  <li>The loss falling epoch after epoch is the classification head (and, gently, the encoder) learning what “positive” and “negative” look like</li>
+</ul>
+
+<hr />
+
+<h2 id="6-run-inference-and-interpret-the-outputs">6. Run inference and interpret the outputs</h2>
+
+<p>Now feed the model sentences it has never seen:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span><span class="p">.</span><span class="nf">eval</span><span class="p">()</span>
+
+<span class="n">new_texts</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">An unforgettable, brilliant film.</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">I fell asleep halfway through.</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">batch</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span><span class="n">new_texts</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">logits</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="o">**</span><span class="n">batch</span><span class="p">).</span><span class="n">logits</span>
+
+<span class="n">probs</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">preds</span> <span class="o">=</span> <span class="n">probs</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">text</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">new_texts</span><span class="p">,</span> <span class="n">probs</span><span class="p">,</span> <span class="n">preds</span><span class="p">):</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="sh">"</span><span class="s">positive</span><span class="sh">"</span> <span class="k">if</span> <span class="n">pred</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sh">"</span><span class="s">negative</span><span class="sh">"</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="mi">8</span><span class="n">s</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="n">pred</span><span class="p">]</span><span class="si">:</span><span class="p">.</span><span class="mi">0</span><span class="o">%</span><span class="si">}</span><span class="s">)  </span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>positive (97%)  An unforgettable, brilliant film.
+negative (94%)  I fell asleep halfway through.
+</code></pre></div></div>
+
+<p>Reading the output chain:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>logits    raw scores, one per label          [-2.1,  1.4]
+softmax   turn scores into probabilities     [0.03,  0.97]
+argmax    pick the biggest                   1  →  "positive"
+</code></pre></div></div>
+
+<p>That’s the same <strong>linear + softmax</strong> confidence vote from <a href="/handbook/topics/dl-genai-transformer-architecture/">Part 8</a> — just voting over 2 labels instead of a whole vocabulary.</p>
+
+<hr />
+
+<h2 id="7-summary">7. Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Tool</th>
+      <th>One-line job</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Load model</td>
+      <td><code class="language-plaintext highlighter-rouge">AutoModelForSequenceClassification</code></td>
+      <td>Pre-trained encoder + fresh classification head</td>
+    </tr>
+    <tr>
+      <td>Load tokenizer</td>
+      <td><code class="language-plaintext highlighter-rouge">AutoTokenizer</code></td>
+      <td>Same checkpoint as the model, always</td>
+    </tr>
+    <tr>
+      <td>Tokenize</td>
+      <td><code class="language-plaintext highlighter-rouge">tokenizer(...)</code></td>
+      <td>WordPiece + <code class="language-plaintext highlighter-rouge">[CLS]</code>/<code class="language-plaintext highlighter-rouge">[SEP]</code> + attention mask</td>
+    </tr>
+    <tr>
+      <td>Fine-tune</td>
+      <td>plain PyTorch loop, <code class="language-plaintext highlighter-rouge">lr=2e-5</code></td>
+      <td>Gently adapt to the downstream task</td>
+    </tr>
+    <tr>
+      <td>Predict</td>
+      <td><code class="language-plaintext highlighter-rouge">logits → softmax → argmax</code></td>
+      <td>Scores → probabilities → label</td>
+    </tr>
+  </tbody>
+</table>
+
+<ul>
+  <li><strong>Don’t train from scratch</strong> — fine-tune a pre-trained model and inherit billions of words of language understanding for free.</li>
+  <li>BERT is the <strong>encoder-only reader</strong> from Part 11 put to work: bidirectional understanding in, one classification out.</li>
+  <li>The whole downstream task lives in a <strong>small classification head</strong> reading the <code class="language-plaintext highlighter-rouge">[CLS]</code> summary vector.</li>
+  <li>With more data, the loop scales unchanged — or switch to Hugging Face’s <code class="language-plaintext highlighter-rouge">Trainer</code> API, which wraps the same steps with batching, evaluation, and checkpointing.</li>
+</ul>
+
+<p><strong>Next up:</strong> see the whole machine again in one sitting, with zero math, in <a href="/handbook/topics/transformer-friendly-guide/">The Transformer - A Friendly Guide</a> — including how training works and what the “context limit” means inside each layer.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">bert</span>, <span class="tag">hugging-face</span>, <span class="tag">fine-tuning</span>, <span class="tag">sentiment-analysis</span>, <span class="tag">sequence-classification</span>, <span class="tag">hands-on</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
