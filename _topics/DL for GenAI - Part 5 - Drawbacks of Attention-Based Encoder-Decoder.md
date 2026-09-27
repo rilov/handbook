@@ -205,4 +205,6 @@ The Transformer is the foundation of **GPT**, **BERT**, **T5**, and every modern
 - These problems motivated the **Transformer** architecture, which removed recurrence entirely and relies only on attention.
 - Understanding these drawbacks explains **why** Transformers were needed and **why** they work so well.
 
-This concludes the "Context Behind Transformers" series. You now have the background to understand how and why the Transformer was designed.
+You now have the background to understand how and why the Transformer was designed.
+
+**Next:** [Part 6: Introduction to the Transformer]({{ site.baseurl }}/topics/dl-genai-transformer-intro/)
