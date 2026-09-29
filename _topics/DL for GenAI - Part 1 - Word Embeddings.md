@@ -54,6 +54,24 @@ One-hot encoding gives each word a unique index in a long vector of zeros.
 
 Think of it like giving every student in a school a locker number. The number tells you *which* locker, but nothing about the student.
 
+### Where does the index come from?
+
+Before training, the tokenizer builds a **vocabulary** (or loads one that was built earlier). The vocabulary is a fixed lookup table that assigns every known token a unique integer ID:
+
+```text
+Vocabulary (token → ID)
+cat → 0
+sat → 1
+on  → 2
+mat → 3
+```
+
+This is the mapping used by the one-hot table above. The IDs are just addresses. `cat` is not more or less meaningful because its ID is 0; the tokenizer could have assigned it a different unused ID. What matters is that the same vocabulary mapping is used every time so `cat` always selects row 0.
+
+Real vocabularies usually reserve additional IDs for special tokens such as `<PAD>` (padding) and `<UNK>` (unknown). Modern tokenizers often avoid unknown words by splitting them into known **subword tokens**.
+
+The vocabulary mapping is fixed while the model trains. The numbers stored in the embedding rows are the part that training learns.
+
 ---
 
 ## 3. Word embeddings: dense, meaningful vectors
@@ -474,13 +492,13 @@ Embedding size  = D (e.g. 300 dimensions)
 Embedding matrix E has shape (V, D)
 ```
 
-When the network sees word index `i`, it grabs row `i` from the matrix:
+The tokenizer first uses its fixed vocabulary mapping to turn a token into an ID `i`. The embedding layer then grabs row `i` from the matrix:
 
 ```text
-word "cat" → index 42 → E[42] = [0.25, -0.71, 0.33, ...]
+token "cat" → vocabulary ID 42 → E[42] = [0.25, -0.71, 0.33, ...]
 ```
 
-During training, the numbers in `E` are updated by backpropagation, just like any other weights.
+The ID `42` is only the row address; it does not describe the meaning of "cat." During training, the vocabulary-to-ID mapping stays fixed, while the numbers in `E` are updated by backpropagation just like any other weights.
 
 ### PyTorch example
 

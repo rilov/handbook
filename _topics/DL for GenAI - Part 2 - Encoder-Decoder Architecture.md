@@ -159,36 +159,43 @@ That is the big picture. Now let's follow the pipeline step by step, starting wi
 
 Before the encoder can process anything, each word must be turned into a vector of numbers. This is the **embedding** step we covered in Part 1.
 
-Here is what happens to the sentence "I love cats":
+Here is what happens to the sentence "I love cats." We will use the same tiny six-word English vocabulary throughout this article:
 
 ```text
-Step 1 — Tokenise:  split the sentence into words
+Step 1 — Tokenise:  split the sentence into tokens
   "I love cats"  →  ["I", "love", "cats"]
 
-Step 2 — Look up index:  each word has a position in the vocabulary
-  "I"    → index 5
-  "love" → index 312
-  "cats" → index 87
+Step 2 — Convert each token to its ID using the tokenizer's vocabulary
 
-Step 3 — Look up embedding:  use the index to grab a row from the embedding matrix
-  index 5   → [0.12, -0.45, 0.78, 0.33, ...]   (e.g. 256 numbers)
-  index 312 → [0.91,  0.02, -0.64, 0.17, ...]
-  index 87  → [0.34,  0.88,  0.21, -0.55, ...]
+  Token:   I   love   cats   dogs   you   the
+  ID:      0     1      2      3     4     5
+
+  ["I", "love", "cats"]  →  [0, 1, 2]
+
+Step 3 — Use each ID as a row number in the embedding matrix
+
+  Row 0 ("I")    → [0.12, -0.45,  0.78]
+  Row 1 ("love") → [0.91,  0.02, -0.64]
+  Row 2 ("cats") → [0.34,  0.88,  0.21]
 ```
+
+Where did IDs 0, 1, and 2 come from? Before training, the tokenizer builds this **token → ID vocabulary mapping**, or loads a vocabulary that was built earlier. Once assigned, the IDs stay fixed: every occurrence of `"cats"` becomes `2`, and `2` always selects row 2. The ID itself contains no meaning—it is only an address, like a row number in a spreadsheet. The values stored at that address are what the model learns.
+
+This walkthrough uses whole words to keep the architecture easy to see. Modern tokenizers often split text into **subword tokens**, but the mechanism is unchanged: each token has a fixed vocabulary ID, and that ID selects one embedding row. Real embedding rows also contain many more values, such as 256 instead of the 3 shown here.
 
 So the sentence is now a **sequence of vectors** — one vector per word:
 
 ```text
 "I love cats"
       ↓
-[ [0.12, -0.45, 0.78, ...],    ← vector for "I"
-  [0.91,  0.02, -0.64, ...],   ← vector for "love"
-  [0.34,  0.88,  0.21, ...] ]  ← vector for "cats"
+[ [0.12, -0.45, 0.78],    ← vector for "I"
+  [0.91,  0.02, -0.64],   ← vector for "love"
+  [0.34,  0.88,  0.21] ]  ← vector for "cats"
 ```
 
 These embedding vectors are what the encoder actually receives. It never sees the raw words — it only sees numbers.
 
-**Where does the embedding matrix come from?** It can be pre-trained (like Word2Vec or GloVe from Part 1), or it can start with random numbers and be trained along with the rest of the network. Either way, the embedding matrix is updated during training so the vectors become more meaningful over time.
+**Where does the embedding matrix come from?** It has one row for every entry in the tokenizer's vocabulary. Its values can come from pre-trained embeddings (like Word2Vec or GloVe from Part 1), or they can start as random numbers and be trained along with the rest of the network. Training updates the values inside the rows so the vectors become more meaningful; it does not keep changing which token ID selects which row.
 
 We now have a sequence of word vectors. The next step is to feed them to the first of our two networks: the encoder.
 
@@ -856,10 +863,11 @@ The input layer has **one neuron per word in the vocabulary**. To feed in a word
 
 ```text
 English vocabulary:   I   love   cats   dogs   you   the
+Token ID:             0     1      2      3     4     5
 "cats" goes in as:  [ 0,   0,     1,     0,     0,    0 ]
 ```
 
-- **In:** the word (as its position in the vocabulary)
+- **In:** the word's fixed token ID from the vocabulary
 - **Out:** 6 numbers, a single 1 and the rest 0s
 - **Adds:** only *identity*. It says **which** word this is, but nothing about what it means. "cats" and "dogs" look just as different as "cats" and "the".
 - **Learned weights:** none. It's just a switchboard.
