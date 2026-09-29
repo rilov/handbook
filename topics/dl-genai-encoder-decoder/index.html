@@ -194,34 +194,41 @@ English sentence → [encoder processes]   → context vector → [decoder gener
 
 <p>Before the encoder can process anything, each word must be turned into a vector of numbers. This is the <strong>embedding</strong> step we covered in Part 1.</p>
 
-<p>Here is what happens to the sentence “I love cats”:</p>
+<p>Here is what happens to the sentence “I love cats.” We will use the same tiny six-word English vocabulary throughout this article:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1 — Tokenise:  split the sentence into words
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1 — Tokenise:  split the sentence into tokens
   "I love cats"  →  ["I", "love", "cats"]
 
-Step 2 — Look up index:  each word has a position in the vocabulary
-  "I"    → index 5
-  "love" → index 312
-  "cats" → index 87
+Step 2 — Convert each token to its ID using the tokenizer's vocabulary
 
-Step 3 — Look up embedding:  use the index to grab a row from the embedding matrix
-  index 5   → [0.12, -0.45, 0.78, 0.33, ...]   (e.g. 256 numbers)
-  index 312 → [0.91,  0.02, -0.64, 0.17, ...]
-  index 87  → [0.34,  0.88,  0.21, -0.55, ...]
+  Token:   I   love   cats   dogs   you   the
+  ID:      0     1      2      3     4     5
+
+  ["I", "love", "cats"]  →  [0, 1, 2]
+
+Step 3 — Use each ID as a row number in the embedding matrix
+
+  Row 0 ("I")    → [0.12, -0.45,  0.78]
+  Row 1 ("love") → [0.91,  0.02, -0.64]
+  Row 2 ("cats") → [0.34,  0.88,  0.21]
 </code></pre></div></div>
+
+<p>Where did IDs 0, 1, and 2 come from? Before training, the tokenizer builds this <strong>token → ID vocabulary mapping</strong>, or loads a vocabulary that was built earlier. Once assigned, the IDs stay fixed: every occurrence of <code class="language-plaintext highlighter-rouge">"cats"</code> becomes <code class="language-plaintext highlighter-rouge">2</code>, and <code class="language-plaintext highlighter-rouge">2</code> always selects row 2. The ID itself contains no meaning—it is only an address, like a row number in a spreadsheet. The values stored at that address are what the model learns.</p>
+
+<p>This walkthrough uses whole words to keep the architecture easy to see. Modern tokenizers often split text into <strong>subword tokens</strong>, but the mechanism is unchanged: each token has a fixed vocabulary ID, and that ID selects one embedding row. Real embedding rows also contain many more values, such as 256 instead of the 3 shown here.</p>
 
 <p>So the sentence is now a <strong>sequence of vectors</strong> — one vector per word:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"I love cats"
       ↓
-[ [0.12, -0.45, 0.78, ...],    ← vector for "I"
-  [0.91,  0.02, -0.64, ...],   ← vector for "love"
-  [0.34,  0.88,  0.21, ...] ]  ← vector for "cats"
+[ [0.12, -0.45, 0.78],    ← vector for "I"
+  [0.91,  0.02, -0.64],   ← vector for "love"
+  [0.34,  0.88,  0.21] ]  ← vector for "cats"
 </code></pre></div></div>
 
 <p>These embedding vectors are what the encoder actually receives. It never sees the raw words — it only sees numbers.</p>
 
-<p><strong>Where does the embedding matrix come from?</strong> It can be pre-trained (like Word2Vec or GloVe from Part 1), or it can start with random numbers and be trained along with the rest of the network. Either way, the embedding matrix is updated during training so the vectors become more meaningful over time.</p>
+<p><strong>Where does the embedding matrix come from?</strong> It has one row for every entry in the tokenizer’s vocabulary. Its values can come from pre-trained embeddings (like Word2Vec or GloVe from Part 1), or they can start as random numbers and be trained along with the rest of the network. Training updates the values inside the rows so the vectors become more meaningful; it does not keep changing which token ID selects which row.</p>
 
 <p>We now have a sequence of word vectors. The next step is to feed them to the first of our two networks: the encoder.</p>
 
@@ -1047,11 +1054,12 @@ h0 ──→ │ ⬤ │ ─h1─→ │ ⬤ │ ─h2─→ │ ⬤ │ ──�
 <p>The input layer has <strong>one neuron per word in the vocabulary</strong>. To feed in a word, we switch <strong>its</strong> neuron on (1) and every other neuron off (0). This is called <strong>one-hot encoding</strong>:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>English vocabulary:   I   love   cats   dogs   you   the
+Token ID:             0     1      2      3     4     5
 "cats" goes in as:  [ 0,   0,     1,     0,     0,    0 ]
 </code></pre></div></div>
 
 <ul>
-  <li><strong>In:</strong> the word (as its position in the vocabulary)</li>
+  <li><strong>In:</strong> the word’s fixed token ID from the vocabulary</li>
   <li><strong>Out:</strong> 6 numbers, a single 1 and the rest 0s</li>
   <li><strong>Adds:</strong> only <em>identity</em>. It says <strong>which</strong> word this is, but nothing about what it means. “cats” and “dogs” look just as different as “cats” and “the”.</li>
   <li><strong>Learned weights:</strong> none. It’s just a switchboard.</li>

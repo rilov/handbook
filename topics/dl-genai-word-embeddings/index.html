@@ -110,6 +110,23 @@
 
 <p>Think of it like giving every student in a school a locker number. The number tells you <em>which</em> locker, but nothing about the student.</p>
 
+<h3 id="where-does-the-index-come-from">Where does the index come from?</h3>
+
+<p>Before training, the tokenizer builds a <strong>vocabulary</strong> (or loads one that was built earlier). The vocabulary is a fixed lookup table that assigns every known token a unique integer ID:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Vocabulary (token → ID)
+cat → 0
+sat → 1
+on  → 2
+mat → 3
+</code></pre></div></div>
+
+<p>This is the mapping used by the one-hot table above. The IDs are just addresses. <code class="language-plaintext highlighter-rouge">cat</code> is not more or less meaningful because its ID is 0; the tokenizer could have assigned it a different unused ID. What matters is that the same vocabulary mapping is used every time so <code class="language-plaintext highlighter-rouge">cat</code> always selects row 0.</p>
+
+<p>Real vocabularies usually reserve additional IDs for special tokens such as <code class="language-plaintext highlighter-rouge">&lt;PAD&gt;</code> (padding) and <code class="language-plaintext highlighter-rouge">&lt;UNK&gt;</code> (unknown). Modern tokenizers often avoid unknown words by splitting them into known <strong>subword tokens</strong>.</p>
+
+<p>The vocabulary mapping is fixed while the model trains. The numbers stored in the embedding rows are the part that training learns.</p>
+
 <hr />
 
 <h2 id="3-word-embeddings-dense-meaningful-vectors">3. Word embeddings: dense, meaningful vectors</h2>
@@ -581,12 +598,12 @@ Embedding size  = D (e.g. 300 dimensions)
 Embedding matrix E has shape (V, D)
 </code></pre></div></div>
 
-<p>When the network sees word index <code class="language-plaintext highlighter-rouge">i</code>, it grabs row <code class="language-plaintext highlighter-rouge">i</code> from the matrix:</p>
+<p>The tokenizer first uses its fixed vocabulary mapping to turn a token into an ID <code class="language-plaintext highlighter-rouge">i</code>. The embedding layer then grabs row <code class="language-plaintext highlighter-rouge">i</code> from the matrix:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>word "cat" → index 42 → E[42] = [0.25, -0.71, 0.33, ...]
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>token "cat" → vocabulary ID 42 → E[42] = [0.25, -0.71, 0.33, ...]
 </code></pre></div></div>
 
-<p>During training, the numbers in <code class="language-plaintext highlighter-rouge">E</code> are updated by backpropagation, just like any other weights.</p>
+<p>The ID <code class="language-plaintext highlighter-rouge">42</code> is only the row address; it does not describe the meaning of “cat.” During training, the vocabulary-to-ID mapping stays fixed, while the numbers in <code class="language-plaintext highlighter-rouge">E</code> are updated by backpropagation just like any other weights.</p>
 
 <h3 id="pytorch-example">PyTorch example</h3>
 
