@@ -469,6 +469,8 @@ Sub-step 3:  Add them together + bias   →  result + b          (addition)
 Sub-step 4:  Squash to [-1, +1]         →  tanh(result)        (activation)
 ```
 
+The activation function runs at **every step**. The value saved as the new hidden state `h_t` is the result *after* `tanh`, so the memory passed to the next step is already squashed into the `[-1, +1]` range.
+
 #### Why matrix multiplication and not just addition?
 
 Plain addition would just pile numbers on top of each other — the encoder would have no control over **which parts** of the word or memory matter. Matrix multiplication is like a set of **knobs and dials**: each weight in the matrix controls how much one input number influences one output number. This lets the encoder learn things like "pay a lot of attention to verbs but less to articles."
@@ -570,7 +572,7 @@ The weight matrices decide **how much** of the old memory to keep and **how much
 | `W_h` | A weight matrix for the memory | Controls how the old memory is transformed |
 | `b` | A bias term | A small adjustment (like a default starting point) |
 | `tanh` | An activation function | Squashes the result to stay between −1 and +1 |
-| `h_t` | The new hidden state | The encoder's updated memory after reading this word |
+| `h_t` | The new hidden state | The encoder's updated memory **after tanh**; these post-activation values become the memory for the next step |
 
 The weight matrices `W_x` and `W_h` are **learned during training**. The network figures out for itself how to best combine new words with existing memory.
 
