@@ -82,7 +82,21 @@ Suppose the decoder query is:
 Q = [2, 0, 1]
 ```
 
-### Step 1: raw scores
+### What is the decoder doing right now?
+
+In a real model this `Q` comes from the decoder's hidden state. It represents what the decoder is currently trying to figure out — for example, "what is the next word I should produce?"
+
+Think of the decoder as a student who is writing the next word of a translation. The student has already read the source sentence and made three notes:
+
+- note 1 = `"I"` (h1)
+- note 2 = `"love"` (h2)
+- note 3 = `"cats"` (h3)
+
+The query `Q = [2, 0, 1]` is like the student's current question: *"which of my notes is most useful for the word I am about to write?"*
+
+Because the question has a high number in the first and third positions, the student expects notes 1 and 3 to be more useful than note 2. The math below makes that precise.
+
+### Step 1: raw scores — ask each note how relevant it is
 
 The score is the dot product:
 
@@ -96,7 +110,9 @@ scores = [2, 0, 1]
 
 The query matches `"I"` best, then `"cats"`, then `"love"`.
 
-### Step 2: scale
+In plain English: note 1 (`"I"`) answers the question best, note 3 (`"cats"`) is somewhat relevant, and note 2 (`"love"`) is not relevant at all.
+
+### Step 2: scale — keep the numbers friendly
 
 The vectors have dimension `d = 3`, so we divide by `√d ≈ 1.732`:
 
@@ -105,9 +121,9 @@ scaled scores = [2/1.732, 0/1.732, 1/1.732]
               = [1.155, 0.000, 0.577]
 ```
 
-Scaling keeps the numbers from growing too large when we use long vectors.
+Why? Because real vectors are long (e.g. 512 dimensions), and their dot products can become huge. Huge scores make the next step lopsided. Scaling keeps everything in a comfortable range, like turning a volume knob down so the speakers do not distort.
 
-### Step 3: softmax turns scores into weights
+### Step 3: softmax — turn scores into percentages
 
 Softmax converts any list of numbers into percentages that add up to 1:
 
@@ -128,7 +144,9 @@ weights = [3.174/5.955, 1.000/5.955, 1.781/5.955]
 
 Check: `0.533 + 0.168 + 0.299 = 1.000`.
 
-### Step 4: weighted sum of values
+In plain English: the student decides to trust note 1 for 53%, note 3 for 30%, note 2 for 17%, and 0% for everything else. These percentages always add up to 100%.
+
+### Step 4: weighted sum — build the final answer
 
 ```text
 c = 0.533 × V1 + 0.168 × V2 + 0.299 × V3
@@ -137,6 +155,21 @@ c = 0.533 × V1 + 0.168 × V2 + 0.299 × V3
 ```
 
 The final **context vector** is `[0.533, 0.168, 0.299]`. It is a blend of all three source words, with most weight on `"I"`.
+
+In plain English: the student now has a custom summary of the source sentence that is tuned to the exact word they are trying to produce. This summary is passed back into the decoder to help it make the prediction.
+
+### What happens for the next word?
+
+The decoder does not stop. After it produces one word, it updates its own hidden state and creates a new query. Then it runs the same four steps again:
+
+1. compare the new query with every key,
+2. scale,
+3. softmax,
+4. weighted sum.
+
+Because the query is different, the weights are different. The decoder gets a new, custom context vector for the second word, the third word, and so on.
+
+That is why attention is powerful: the decoder does not use one fixed summary of the source sentence. It builds a fresh summary for every word it writes.
 
 ---
 
@@ -201,6 +234,26 @@ s_i = f(s_{i-1}, y_{i-1}, c_i)
 ```
 
 The previous decoder state `s_{i-1}` and the previous output word `y_{i-1}` stay the same. The context is rebuilt each time because the query changes.
+
+### A concrete walkthrough
+
+Translating English → French:
+
+```text
+Source: The   cat    sat
+Target: Le    chat   s'est   assis
+```
+
+Here is what happens inside the decoder:
+
+| Step | Target word so far | What the decoder does | Context vector focus |
+|---|---|---|---|
+| 1 | (nothing) | Uses its initial hidden state as the query. Asks attention, "which source word helps me produce `Le`?" | Mostly on "The" |
+| 2 | Le | Updates its hidden state after producing `Le`. New query asks, "which source word helps me produce `chat`?" | Mostly on "cat" |
+| 3 | Le chat | Updates again. New query asks, "which source word helps me produce `s'est`?" | Mostly on "sat" |
+| 4 | Le chat s'est | Updates again. New query asks, "which source word helps me produce `assis`?" | Mostly on "sat" |
+
+Each row is the same four-step recipe: **query → scores → softmax → weighted sum**. Only the query changes, so the context vector changes with it.
 
 ---
 
