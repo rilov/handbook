@@ -312,6 +312,126 @@ German:   Ich   habe    ihn     gesehen
 
 The English verb phrase "have seen" becomes "habe ... gesehen", with the participle jumping to the end of the sentence. The model must learn to attend to "seen" when generating "gesehen", even though the words are in different positions. No fixed mapping works, so the alignment function must be learned from data.
 
+### Full numerical example: three decoder steps
+
+Here is a fully worked numerical example. We use tiny 3-dimensional vectors and dot-product attention, so every step is visible.
+
+**Source states (keys and values):**
+
+```text
+h_I    = [1, 0, 0]   (encoder state for "I")
+h_love = [0, 1, 0]   (encoder state for "love")
+h_cats = [0, 0, 1]   (encoder state for "cats")
+```
+
+Because each state is an axis-aligned unit vector, the dot product `q · h` simply picks out the corresponding coordinate of `q`.
+
+**Decoder queries at three steps:**
+
+```text
+q1 = [2.0,  0.5, -0.3]   (about to generate "I")
+q2 = [0.2,  1.5,  0.4]   (about to generate "love")
+q3 = [-0.4, 0.3,  1.8]   (about to generate "cats")
+```
+
+Dimension `d = 3`, so the scaling factor is `√d ≈ 1.732`.
+
+#### Step 1
+
+```text
+scores      = [q1·h_I, q1·h_love, q1·h_cats]
+            = [2.0, 0.5, -0.3]
+
+scaled      = scores / √3
+            = [1.155, 0.289, -0.173]
+
+softmax     = [0.593, 0.250, 0.157]
+
+c_1         = 0.593 × h_I + 0.250 × h_love + 0.157 × h_cats
+            = [0.593, 0.250, 0.157]
+```
+
+The first step focuses mostly on "I" (59%), with some attention on "love" and "cats".
+
+#### Step 2
+
+```text
+scores      = [0.2, 1.5, 0.4]
+scaled      = [0.115, 0.866, 0.231]
+softmax     = [0.236, 0.500, 0.265]
+
+c_2         = [0.236, 0.500, 0.265]
+```
+
+Now the attention peak is on "love" (50%).
+
+#### Step 3
+
+```text
+scores      = [-0.4, 0.3, 1.8]
+scaled      = [-0.231, 0.173, 1.039]
+softmax     = [0.165, 0.247, 0.588]
+
+c_3         = [0.165, 0.247, 0.588]
+```
+
+The final step focuses mostly on "cats" (59%).
+
+| Step | Query | Attention on "I" | Attention on "love" | Attention on "cats" | Context vector `c_i` |
+|---|---|---:|---:|---:|---|
+| 1 | generate "I" | 0.593 | 0.250 | 0.157 | `[0.59, 0.25, 0.16]` |
+| 2 | generate "love" | 0.236 | 0.500 | 0.265 | `[0.24, 0.50, 0.27]` |
+| 3 | generate "cats" | 0.165 | 0.247 | 0.588 | `[0.17, 0.25, 0.59]` |
+
+You can verify that each row of attention weights adds to exactly 1, so every `c_i` is a valid convex combination of the source states.
+
+### What would happen without attention?
+
+If the decoder had to use the **same** fixed context vector at every step, the simplest choice would be the average of the source states:
+
+```text
+c_fixed = (h_I + h_love + h_cats) / 3 = [0.33, 0.33, 0.33]
+```
+
+Then the decoder would receive `[0.33, 0.33, 0.33]` at step 1, step 2, and step 3. It would lose the word-specific signal that attention provides. The table above shows why attention is powerful: the context is rebuilt for every step.
+
+### Reproduce it in NumPy
+
+```python
+import numpy as np
+
+def softmax(x):
+    e = np.exp(x - np.max(x))  # subtract max for numerical stability
+    return e / e.sum()
+
+# Source states: one vector per word
+H = np.eye(3)
+
+# Three decoder queries
+Q = np.array([
+    [2.0,  0.5, -0.3],   # step 1: focus on "I"
+    [0.2,  1.5,  0.4],   # step 2: focus on "love"
+    [-0.4, 0.3,  1.8],   # step 3: focus on "cats"
+])
+
+d = 3
+for i, q in enumerate(Q, start=1):
+    scores = q @ H.T                 # dot products with each source state
+    weights = softmax(scores / np.sqrt(d))
+    c = weights @ H                  # weighted sum of source states
+    print(f"Step {i}: weights = {weights.round(3)}, c = {c.round(3)}")
+```
+
+Output:
+
+```text
+Step 1: weights = [0.593 0.25  0.157], c = [0.593 0.25  0.157]
+Step 2: weights = [0.236 0.5   0.265], c = [0.236 0.5   0.265]
+Step 3: weights = [0.165 0.247 0.588], c = [0.165 0.247 0.588]
+```
+
+In real models the queries and source states are produced by learned weight matrices and have hundreds of dimensions, but the arithmetic is exactly the same.
+
 ---
 
 ## 8. Where do the scores come from? A learnable alignment function
