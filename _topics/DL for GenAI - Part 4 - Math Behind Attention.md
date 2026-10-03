@@ -649,7 +649,142 @@ Because the decoder state matched the embedding for "love", the model assigns th
 
 ---
 
-## 14. Summary
+## 15. Full PyTorch seq2seq network with attention
+
+The `Attention` module from the previous section is only one piece. Here is a complete, runnable encoder-decoder network that uses it. The example is tiny (three source words, three target words) so every tensor shape is visible.
+
+### Vocabulary
+
+```python
+to_src = {'<pad>': 0, 'I': 1, 'love': 2, 'cats': 3}
+to_tgt = {'<pad>': 0, '<sos>': 1, '<eos>': 2, 'J': 3, 'aime': 4, 'chats': 5}
+```
+
+### Encoder
+
+```python
+class Encoder(nn.Module):
+    def __init__(self, vocab_size, embed_dim, hidden_dim):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.gru = nn.GRU(embed_dim, hidden_dim, batch_first=True)
+
+    def forward(self, src):
+        embedded = self.embedding(src)              # (batch, src_len, embed_dim)
+        outputs, hidden = self.gru(embedded)        # outputs: (batch, src_len, hidden)
+        return outputs, hidden
+```
+
+### Decoder with attention
+
+```python
+class Decoder(nn.Module):
+    def __init__(self, vocab_size, embed_dim, hidden_dim):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.attention = Attention(hidden_dim)
+        self.gru = nn.GRU(embed_dim + hidden_dim, hidden_dim, batch_first=True)
+        self.out = nn.Linear(hidden_dim, vocab_size)
+
+    def forward_step(self, input_token, hidden, encoder_outputs):
+        embedded = self.embedding(input_token)      # (batch, 1, embed_dim)
+        query = hidden.permute(1, 0, 2)             # (batch, 1, hidden)
+        context, weights = self.attention(query, encoder_outputs)
+
+        gru_input = torch.cat([embedded, context], dim=-1)
+        output, hidden = self.gru(gru_input, hidden)
+        prediction = self.out(output)               # (batch, 1, vocab_size)
+        return prediction, hidden, weights
+```
+
+### Full seq2seq model
+
+```python
+class Seq2Seq(nn.Module):
+    def __init__(self, encoder, decoder):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, src, tgt):
+        encoder_outputs, hidden = self.encoder(src)
+
+        batch_size, tgt_len = tgt.size()
+        outputs, attentions = [], []
+
+        input_token = tgt[:, 0:1]  # <sos>
+        for t in range(1, tgt_len):
+            output, hidden, weights = self.decoder.forward_step(
+                input_token, hidden, encoder_outputs
+            )
+            outputs.append(output)
+            attentions.append(weights)
+            input_token = tgt[:, t:t+1]  # teacher forcing
+
+        outputs = torch.cat(outputs, dim=1)
+        attentions = torch.cat(attentions, dim=2)
+        return outputs, attentions
+```
+
+### Train on one example
+
+```python
+embed_dim = 8
+hidden_dim = 16
+
+encoder = Encoder(len(to_src), embed_dim, hidden_dim)
+decoder = Decoder(len(to_tgt), embed_dim, hidden_dim)
+model = Seq2Seq(encoder, decoder)
+
+criterion = nn.CrossEntropyLoss(ignore_index=to_tgt['<pad>'])
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+src = torch.tensor([[to_src[w] for w in ["I", "love", "cats"]]])
+tgt = torch.tensor([[to_tgt[w] for w in ["<sos>", "J", "aime", "chats", "<eos>"]]])
+
+# Train on this single sentence 100 times (a toy demo)
+for epoch in range(100):
+    optimizer.zero_grad()
+    outputs, _ = model(src, tgt)
+    loss = criterion(outputs.reshape(-1, len(to_tgt)), tgt[:, 1:].reshape(-1))
+    loss.backward()
+    optimizer.step()
+```
+
+### What the attention learns
+
+Before training, attention weights are roughly uniform. After training, the model learns to focus on the right source word for the first target step:
+
+```text
+Before training:
+  step 1 (J    ): 0.335 0.322 0.343   <- almost uniform
+  step 2 (aime ): 0.335 0.322 0.343
+  step 3 (chats): 0.335 0.322 0.343
+  step 4 (<eos>): 0.334 0.323 0.343
+
+After training:
+  step 1 (J    ): 0.918 0.060 0.022   <- strongly on "I"
+  step 2 (aime ): 0.334 0.424 0.242
+  step 3 (chats): 0.408 0.303 0.289
+  step 4 (<eos>): 0.146 0.515 0.339
+```
+
+In a real system, training data contains millions of sentence pairs, the hidden dimension is 256–1024, and the alignment becomes much sharper across all positions.
+
+### Why this matters
+
+This code shows the full picture:
+
+1. The **encoder** builds one hidden state per source word.
+2. The **decoder** generates one target word at a time.
+3. The **attention** module decides which source word to look at before each prediction.
+4. The **loss** compares predicted words to true words; backpropagation updates the attention weights so the model learns to align languages automatically.
+
+The attention mechanism is not magic — it is a small, differentiable scoring function placed between two RNNs.
+
+---
+
+## 16. Summary
 
 - Attention uses three players: **Query** (what am I looking for?), **Key** (what does each word offer?), **Value** (the actual content).
 - The **dot product** `Q · K` measures how similar a query is to each key.
