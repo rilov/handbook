@@ -47,51 +47,204 @@
   <section class="topic-body">
     <h1 id="deep-learning-for-generative-ai--part-19-multimodal-models-and-vision-transformers">Deep Learning for Generative AI — Part 19: Multimodal Models and Vision Transformers</h1>
 
-<p>Generative models are no longer limited to one modality. Systems like Stable Diffusion, DALL-E, and GPT-4o can read a prompt, look at an image, or listen to audio, and produce a response that mixes these sources. This is possible because different kinds of data are mapped into a <strong>shared geometric space</strong>.</p>
+<p>By <a href="/handbook/topics/dl-genai-diffusion-models/">Part 18</a> we had a powerful generator: start from noise, denoise step by step, and produce a realistic image. But a generator that only produces random images is only half useful. The real power comes when the model listens to a prompt, an image, a layout, or several signals at once.</p>
+
+<p>This part is about two connected ideas:</p>
+
+<ol>
+  <li><strong>Conditioning</strong> — how a generative model uses an external signal to guide its output.</li>
+  <li><strong>Multimodal alignment</strong> — how text, images, and other data are placed into a shared geometric space so they can be compared, searched, and combined.</li>
+</ol>
 
 <hr />
 
-<h2 id="1-the-core-idea-one-space-many-modalities">1. The core idea: one space, many modalities</h2>
+<h2 id="1-from-unconditional-to-conditional-generation">1. From unconditional to conditional generation</h2>
 
-<p>A multimodal model learns a single embedding space where:</p>
+<p>An unconditional model learns <code class="language-plaintext highlighter-rouge">p(x)</code>: “what does this kind of data look like?” A conditional model learns <code class="language-plaintext highlighter-rouge">p(x | c)</code>: “what does this kind of data look like, given this condition?”</p>
 
-<ul>
-  <li>an image of a cat,</li>
-  <li>the sentence “a cat sitting on a chair”, and</li>
-  <li>perhaps the sound of a meow</li>
-</ul>
-
-<p>all live near each other.</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cat image        ← close in the shared embedding space →   "cat sitting on a chair"
-        ↑                                                        ↑
-   image encoder                                          text encoder
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Unconditional:  z  →  Generator  →  random face
+Conditional:  z + "a smiling child with a red hat"  →  Generator  →  matching image
 </code></pre></div></div>
 
-<p>Once this alignment exists, you can:</p>
+<p>The condition <code class="language-plaintext highlighter-rouge">c</code> can be:</p>
 
 <ul>
-  <li>search images with text,</li>
-  <li>generate images from text prompts,</li>
-  <li>answer questions about images,</li>
-  <li>guide a diffusion model by pulling its latent codes toward the text direction.</li>
+  <li>a text prompt,</li>
+  <li>another image,</li>
+  <li>a class label,</li>
+  <li>a sketch or segmentation map,</li>
+  <li>multiple signals combined.</li>
 </ul>
+
+<p>The generator still produces data, but its path is steered by <code class="language-plaintext highlighter-rouge">c</code>.</p>
 
 <hr />
 
-<h2 id="2-clip-learning-image-text-alignment">2. CLIP: learning image-text alignment</h2>
+<h2 id="2-how-conditioning-is-injected">2. How conditioning is injected</h2>
 
-<p>CLIP (Contrastive Language-Image Pre-training) was one of the first broadly successful alignment models. It is trained on millions of image-caption pairs with a contrastive loss:</p>
+<p>In modern systems the actual generation usually happens in a <strong>latent space</strong>, not in raw pixels. Conditioning is injected into that latent space so the external signal influences every refinement step.</p>
+
+<h3 id="step-1-encode-the-condition">Step 1: encode the condition</h3>
+
+<p>A text prompt, for example, is turned into embeddings by a Transformer-based text encoder. The output can be:</p>
 
 <ul>
-  <li>The image encoder and text encoder each produce an embedding.</li>
-  <li>For a matching pair, the embeddings are pulled together.</li>
-  <li>For a non-matching pair, the embeddings are pushed apart.</li>
+  <li>a <strong>pooled sentence embedding</strong> that captures the whole prompt, or</li>
+  <li>a sequence of <strong>token-level embeddings</strong> that carry word-by-word meaning.</li>
 </ul>
 
-<p>After training, CLIP can do <strong>zero-shot classification</strong>: give it an image and a list of candidate labels written as sentences, rank which text embedding is closest to the image embedding, and pick the best one — with no task-specific training.</p>
+<h3 id="step-2-inject-it-into-the-generator">Step 2: inject it into the generator</h3>
 
-<h3 id="a-hands-on-clip-sketch">A hands-on CLIP sketch</h3>
+<p>The most common mechanism is <strong>cross-attention</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image features  →  queries
+Text embeddings →  keys + values
+
+At each image location, the model asks: "which words are relevant here?"
+</code></pre></div></div>
+
+<p>This is the same cross-attention idea used in machine-translation decoders, but here one side is an image and the other side is text.</p>
+
+<h3 id="step-3-balance-guidance-and-diversity">Step 3: balance guidance and diversity</h3>
+
+<p><strong>Classifier-free guidance</strong> lets us control how strictly the model follows the prompt. In diffusion models, it mixes a conditional prediction with an unconditional one:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>guided_noise = unconditional_noise + scale × (conditional_noise - unconditional_noise)
+</code></pre></div></div>
+
+<p>A larger <code class="language-plaintext highlighter-rouge">scale</code> makes the output more faithful to the prompt but can reduce variety.</p>
+
+<hr />
+
+<h2 id="3-prompts-are-soft-constraints-not-orders">3. Prompts are soft constraints, not orders</h2>
+
+<p>Conditioning gives control, but it is not as precise as a programming language.</p>
+
+<h3 id="prompt-sensitivity">Prompt sensitivity</h3>
+
+<p>Generative models attend to individual tokens, not a single “meaning” of the sentence. Changing the wording, order, or emphasis changes the attention weights at every denoising step, so the final image shifts too.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"a red car on a road"  →  emphasises "red" and "car"
+"a car on a red road"  →  might put the redness on the road instead
+</code></pre></div></div>
+
+<h3 id="ambiguity">Ambiguity</h3>
+
+<p>If a prompt can mean several things, the model picks the most statistically common interpretation from its training data, which may not be the one you intended.</p>
+
+<h3 id="bias">Bias</h3>
+
+<p>The training data contains human stereotypes. Prompts like “a nurse” or “a CEO” may produce skewed demographics because the model learned those patterns from the internet.</p>
+
+<h3 id="compositionality">Compositionality</h3>
+
+<p>Models are good at individual concepts but weaker at combining many precise constraints:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"three red spheres and two blue cubes, left to right"
+</code></pre></div></div>
+
+<p>Counting, exact spatial relationships, and multi-attribute binding remain hard because cross-attention distributes influence statistically rather than enforcing symbolic rules.</p>
+
+<p>Understanding these limits matters in practice: prompts are a way of steering probability, not writing code.</p>
+
+<hr />
+
+<h2 id="4-multimodal-alignment-putting-different-worlds-on-the-same-map">4. Multimodal alignment: putting different worlds on the same map</h2>
+
+<p>Before vision and language can guide each other, they must be made comparable. Multimodal alignment places image and text representations into a <strong>shared embedding space</strong>.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>image of a dog  ──┐
+                ├→  close together in embedding space
+"a dog running" ──┘
+</code></pre></div></div>
+
+<p>In this space, <strong>similarity is geometric</strong>. You can measure distance, rank results, and even do arithmetic.</p>
+
+<h3 id="alignment-is-not-equivalence">Alignment is not equivalence</h3>
+
+<p>This is a crucial distinction.</p>
+
+<ul>
+  <li><strong>Alignment</strong> means related concepts are near each other.</li>
+  <li><strong>Equivalence</strong> would mean an image and its caption carry exactly the same information — they do not.</li>
+</ul>
+
+<p>An image contains colour, texture, viewpoint, and background details that the caption may never mention. A caption contains abstract relationships and intentions that are not visible. Each modality compresses the world differently, so aligned embeddings are compatible, not identical.</p>
+
+<h3 id="explicit-vs-implicit-alignment">Explicit vs implicit alignment</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>How it is learned</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Explicit alignment</strong></td>
+      <td>Directly optimise similarity between paired image–text samples.</td>
+      <td>CLIP</td>
+    </tr>
+    <tr>
+      <td><strong>Implicit alignment</strong></td>
+      <td>Correspondence emerges while solving another task, such as image captioning or text-to-image generation.</td>
+      <td>Stable Diffusion cross-attention</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Explicit alignment gives you a clean similarity score. Implicit alignment shapes behaviour without necessarily producing a shared comparison space.</p>
+
+<hr />
+
+<h2 id="5-why-image-and-text-embeddings-diverge">5. Why image and text embeddings diverge</h2>
+
+<p>Even after alignment, the two encoders see different things:</p>
+
+<ul>
+  <li><strong>Image encoder:</strong> pixels, edges, colours, shapes, spatial layout.</li>
+  <li><strong>Text encoder:</strong> tokens, grammar, abstract concepts, relationships.</li>
+</ul>
+
+<p>This creates several bottlenecks:</p>
+
+<ul>
+  <li><strong>Global alignment.</strong> Most contrastive objectives match whole images with whole captions. They do not learn which part of the image corresponds to which word.</li>
+  <li><strong>Different omissions.</strong> An image may show a sunset in the background; the caption might not mention it. A caption might say “happy family”; the image cannot directly show “happy.”</li>
+  <li><strong>Dataset biases.</strong> Visual style, lighting, and camera viewpoint affect image embeddings. Linguistic frequency and phrasing affect text embeddings.</li>
+</ul>
+
+<p>These divergences mean retrieval and generation can produce matches that are semantically close but not exactly what you wanted.</p>
+
+<hr />
+
+<h2 id="6-clip-explicit-alignment-in-practice">6. CLIP: explicit alignment in practice</h2>
+
+<p>CLIP (Contrastive Language–Image Pre-training) is the classic explicit alignment model. It has two separate encoders:</p>
+
+<ul>
+  <li>an <strong>image encoder</strong> (Vision Transformer or ResNet),</li>
+  <li>a <strong>text encoder</strong> (Transformer language model).</li>
+</ul>
+
+<p>Both produce vectors in the same space. During training, true image–caption pairs are pulled together and mismatched pairs are pushed apart.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>image ──image encoder──→ embedding ──┐
+                                     ├→ cosine similarity
+"a photo of a cat" ──text encoder──→ embedding ──┘
+</code></pre></div></div>
+
+<p>CLIP is not generative. It compares. But because it can compare, it enables:</p>
+
+<ul>
+  <li><strong>zero-shot classification</strong> — no task-specific training needed,</li>
+  <li><strong>cross-modal retrieval</strong> — find images for a caption or captions for an image,</li>
+  <li><strong>prompt-based scoring</strong> — rate how well a generated image matches a prompt.</li>
+</ul>
+
+<h3 id="a-hands-on-clip-zero-shot-example">A hands-on CLIP zero-shot example</h3>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">CLIPProcessor</span><span class="p">,</span> <span class="n">CLIPModel</span>
 <span class="kn">from</span> <span class="n">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
@@ -100,93 +253,122 @@
 <span class="n">processor</span> <span class="o">=</span> <span class="n">CLIPProcessor</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="sh">"</span><span class="s">openai/clip-vit-base-patch32</span><span class="sh">"</span><span class="p">)</span>
 
 <span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="p">.</span><span class="nf">open</span><span class="p">(</span><span class="sh">"</span><span class="s">cat.jpg</span><span class="sh">"</span><span class="p">)</span>
-<span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">a cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">a dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">a car</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">a bowl of fruit</span><span class="sh">"</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s">a cat</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">a dog</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">a car</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">a bowl of fruit</span><span class="sh">"</span><span class="p">]</span>
 
-<span class="n">inputs</span> <span class="o">=</span> <span class="nf">processor</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">candidates</span><span class="p">,</span> <span class="n">images</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="nf">processor</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">images</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 <span class="n">outputs</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">)</span>
 
-<span class="n">logits_per_image</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">.</span><span class="n">logits_per_image</span>
-<span class="n">probs</span> <span class="o">=</span> <span class="n">logits_per_image</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-<span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="n">probs</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+<span class="n">probs</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">.</span><span class="n">logits_per_image</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">probs</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
     <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">p</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="o">%</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
 
-<p>The model never saw a “cat vs dog” classifier head. It simply measures geometric distance between the image and each text description in the shared space.</p>
+<p>The model never saw a “cat vs dog” classifier. It simply measures geometric distance between the image and each text description in the shared CLIP space, then turns those distances into probabilities.</p>
+
+<p>CLIP paper: <a href="https://arxiv.org/abs/2103.00020">Radford et al., 2021</a></p>
 
 <hr />
 
-<h2 id="3-prompts-as-steering-vectors">3. Prompts as steering vectors</h2>
+<h2 id="7-vision-language-models-beyond-alignment-to-reasoning">7. Vision-Language Models: beyond alignment to reasoning</h2>
 
-<p>In text-to-image generation, a prompt is not a rigid instruction. It is converted into an embedding that acts as a <strong>direction</strong> in latent space.</p>
+<p>CLIP aligns whole images with whole captions. Vision-Language Models (VLMs) go further: they allow <strong>token-level interaction</strong> between vision and language, which is needed for tasks like visual question answering, image captioning, and multimodal instruction following.</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"a raccoon wearing an astronaut helmet"
-        ↓
-   text encoder  →  text embedding
-        ↓
-   diffusion U-Net pulls the denoising path toward this embedding
-</code></pre></div></div>
+<p>A typical VLM has three pieces:</p>
 
-<p>The diffusion model still starts from random noise, but each denoising step is biased by the prompt embedding. Negative prompts work the same way: they push generation away from unwanted concepts.</p>
+<ol>
+  <li><strong>Vision encoder</strong> — converts the image into visual tokens (often a Vision Transformer).</li>
+  <li><strong>Language backbone</strong> — a large language model that reasons with text.</li>
+  <li><strong>Fusion mechanism</strong> — how visual and text tokens talk to each other.</li>
+</ol>
 
-<p>Because text and images share a space, you can also do arithmetic:</p>
+<h3 id="fusion-mechanisms">Fusion mechanisms</h3>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"king" - "man" + "woman"  ≈  "queen"      (in text embeddings)
-"photo of a forest in autumn" + "snowy"  ≈  "photo of a forest in winter"
-</code></pre></div></div>
+<table>
+  <thead>
+    <tr>
+      <th>Mechanism</th>
+      <th>How it works</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Cross-attention</strong></td>
+      <td>Text tokens query visual tokens, attending to relevant image regions.</td>
+    </tr>
+    <tr>
+      <td><strong>Prefix / token injection</strong></td>
+      <td>Visual embeddings are projected and inserted into the language model’s input sequence as extra tokens.</td>
+    </tr>
+    <tr>
+      <td><strong>Unified multimodal transformer</strong></td>
+      <td>Visual and text tokens are concatenated into one sequence and processed by shared self-attention layers.</td>
+    </tr>
+  </tbody>
+</table>
 
-<p>The model did not learn these rules explicitly. It learned a geometry where related concepts cluster and meaningful directions exist.</p>
+<h3 id="fusion-depth">Fusion depth</h3>
 
-<hr />
+<table>
+  <thead>
+    <tr>
+      <th>Depth</th>
+      <th>When fusion happens</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Early fusion</strong></td>
+      <td>From the first layers; modalities share a single sequence.</td>
+      <td>Strongest grounding, but computationally expensive.</td>
+    </tr>
+    <tr>
+      <td><strong>Intermediate fusion</strong></td>
+      <td>Each modality is encoded separately at low levels, then merged at chosen layers.</td>
+      <td>Balance between efficiency and interaction.</td>
+    </tr>
+    <tr>
+      <td><strong>Late fusion</strong></td>
+      <td>Streams stay separate until final scoring or generation.</td>
+      <td>Cheapest, but weaker cross-modal reasoning.</td>
+    </tr>
+  </tbody>
+</table>
 
-<h2 id="4-cross-attention-where-modalities-meet">4. Cross-attention: where modalities meet</h2>
+<h3 id="training-objectives">Training objectives</h3>
 
-<p>How does a text prompt influence an image model? Usually through <strong>cross-attention</strong> inside the diffusion U-Net.</p>
-
-<p>In self-attention, each token attends to every other token in the same sequence. In cross-attention, tokens from one modality attend to tokens from another:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>image patch tokens  ──cross-attention──→  text token embeddings
-       ↓                                           ↓
-   "this region                     "what should appear here?"
-    should contain..."
-</code></pre></div></div>
-
-<p>Each region of the image model can query the prompt and update its own representation based on what the text says. This is the same mechanism that lets a Transformer decoder attend to encoder outputs in machine translation.</p>
-
-<hr />
-
-<h2 id="5-vision-transformers-images-as-patch-sequences">5. Vision Transformers: images as patch sequences</h2>
-
-<p>Before Vision Transformers (ViTs), the standard way to process images was with convolutional neural networks. ViTs instead cut an image into patches and treat the patches as a sequence of tokens — exactly like words in a sentence.</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Image:        224 × 224 pixels
-Patch size:   16 × 16
-Number of patches:  (224 / 16)² = 196
-
-image  →  196 patch embeddings  +  [CLASS] token  +  position embeddings
-              ↓
-          Transformer encoder
-              ↓
-         image representation
-</code></pre></div></div>
-
-<p>Each patch is flattened and projected to an embedding vector. A special <code class="language-plaintext highlighter-rouge">[CLASS]</code> token is added for classification tasks, and position embeddings tell the model where each patch was in the original image.</p>
-
-<p>After that, the same Transformer encoder from Parts 6–8 runs self-attention over the patches. No convolutions. Just attention, layer by layer.</p>
-
-<h3 id="why-this-matters">Why this matters</h3>
+<p>VLMs are trained with more than contrastive alignment:</p>
 
 <ul>
-  <li>It proves the Transformer architecture from NLP generalises directly to vision.</li>
-  <li>It unifies the building blocks of language and vision models, making multimodal training simpler.</li>
-  <li>It scales well with data and model size, which is why large vision-language models often use ViT backbones.</li>
+  <li><strong>Image-text matching:</strong> predict whether an image and caption belong together.</li>
+  <li><strong>Masked multimodal modelling:</strong> predict missing visual or text tokens.</li>
+  <li><strong>Generative captioning:</strong> produce a caption given an image.</li>
+  <li><strong>Instruction tuning:</strong> follow multimodal instructions with human feedback.</li>
 </ul>
+
+<p>These objectives force the model to actually <strong>use visual evidence</strong> when producing language, not just rely on text priors.</p>
 
 <hr />
 
-<h2 id="6-putting-it-together-a-multimodal-generation-stack">6. Putting it together: a multimodal generation stack</h2>
+<h2 id="8-vision-transformers-images-as-token-sequences">8. Vision Transformers: images as token sequences</h2>
 
-<p>A modern text-to-image system like Stable Diffusion combines several ideas from this module:</p>
+<p>Many of these systems use a <strong>Vision Transformer (ViT)</strong> as the image encoder. Instead of convolutions, a ViT splits the image into patches and treats each patch as a token.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>224 × 224 image
+patch size 16 × 16
+→ 14 × 14 = 196 patch tokens
+→ each patch flattened and embedded
+→ add a [CLASS] token and position embeddings
+→ run a standard Transformer encoder
+</code></pre></div></div>
+
+<p>This unifies the building blocks of language and vision. Once images are tokens, the same attention machinery from Parts 6–10 can process them, making multimodal fusion much simpler.</p>
+
+<hr />
+
+<h2 id="9-putting-it-together-a-modern-text-to-image-system">9. Putting it together: a modern text-to-image system</h2>
+
+<p>A system like Stable Diffusion combines many ideas from this module:</p>
 
 <table>
   <thead>
@@ -200,54 +382,106 @@ image  →  196 patch embeddings  +  [CLASS] token  +  position embeddings
     <tr>
       <td>Text encoder</td>
       <td>CLIP-style training</td>
-      <td>Turn the prompt into a steering vector</td>
+      <td>Turn the prompt into a steering vector.</td>
     </tr>
     <tr>
       <td>Image autoencoder</td>
       <td>VAE-style</td>
-      <td>Compress images into a latent space</td>
+      <td>Compress images into a latent space.</td>
     </tr>
     <tr>
       <td>Diffusion U-Net</td>
       <td>Diffusion models</td>
-      <td>Denoise in latent space, guided by text</td>
+      <td>Denoise in latent space.</td>
     </tr>
     <tr>
       <td>Cross-attention</td>
-      <td>Transformer decoder</td>
-      <td>Let image regions attend to text tokens</td>
+      <td>VLMs / Transformers</td>
+      <td>Let image regions attend to text tokens.</td>
+    </tr>
+    <tr>
+      <td>Classifier-free guidance</td>
+      <td>Conditional diffusion</td>
+      <td>Strengthen or loosen prompt adherence.</td>
     </tr>
     <tr>
       <td>Vision Transformer</td>
       <td>ViT</td>
-      <td>Encode images for understanding tasks</td>
+      <td>Encode images for understanding tasks.</td>
     </tr>
   </tbody>
 </table>
 
-<p>The result: type a sentence, and the model generates a brand-new image that matches the sentence.</p>
+<p>The result: type a sentence, and the model generates a brand-new image matching that sentence.</p>
 
 <hr />
 
-<h2 id="7-summary">7. Summary</h2>
+<h2 id="10-summary">10. Summary</h2>
 
-<ul>
-  <li>Multimodal models place text, images, and other data into a <strong>shared embedding space</strong> so they can be compared, searched, and combined.</li>
-  <li><strong>CLIP</strong> learns this alignment with a contrastive loss on image-caption pairs, enabling zero-shot image classification.</li>
-  <li><strong>Prompts</strong> are not commands — they are vectors that steer generation in latent space.</li>
-  <li><strong>Cross-attention</strong> lets a model in one modality query another, which is how image regions attend to text during generation.</li>
-  <li><strong>Vision Transformers</strong> treat image patches as tokens, unifying the architecture of language and vision models.</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>One-sentence takeaway</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Conditional generation</strong></td>
+      <td>Learn <code class="language-plaintext highlighter-rouge">p(x \| c)</code> instead of <code class="language-plaintext highlighter-rouge">p(x)</code>, where <code class="language-plaintext highlighter-rouge">c</code> can be text, images, labels, or layouts.</td>
+    </tr>
+    <tr>
+      <td><strong>Cross-attention</strong></td>
+      <td>Image features ask text embeddings which words matter at each location.</td>
+    </tr>
+    <tr>
+      <td><strong>Prompt sensitivity</strong></td>
+      <td>Small wording changes alter token-level attention and the final output.</td>
+    </tr>
+    <tr>
+      <td><strong>Bias &amp; ambiguity</strong></td>
+      <td>Models inherit training-data stereotypes and resolve ambiguous prompts statistically.</td>
+    </tr>
+    <tr>
+      <td><strong>Compositionality limits</strong></td>
+      <td>Cross-attention steers generation but cannot enforce precise symbolic rules.</td>
+    </tr>
+    <tr>
+      <td><strong>Multimodal alignment</strong></td>
+      <td>Place images and text in a shared embedding space so related concepts are close.</td>
+    </tr>
+    <tr>
+      <td><strong>Alignment ≠ equivalence</strong></td>
+      <td>Images and captions compress the world differently; they can be compatible without being identical.</td>
+    </tr>
+    <tr>
+      <td><strong>CLIP</strong></td>
+      <td>Dual-encoder contrastive model for explicit image–text alignment and zero-shot tasks.</td>
+    </tr>
+    <tr>
+      <td><strong>VLMs</strong></td>
+      <td>Allow token-level vision–language interaction for reasoning, captioning, and instruction following.</td>
+    </tr>
+    <tr>
+      <td><strong>Fusion depth</strong></td>
+      <td>Early, intermediate, or late fusion trades off grounding strength and computation.</td>
+    </tr>
+    <tr>
+      <td><strong>Vision Transformer</strong></td>
+      <td>Treat image patches as tokens so the same Transformer blocks handle vision and language.</td>
+    </tr>
+  </tbody>
+</table>
 
-<p>Generative models are converging on a small set of shared ideas: attention, latent spaces, probability, and alignment across modalities. The parts in this module — VAEs, GANs, diffusion, and multimodal alignment — are the tools that make modern text-to-image, image-to-text, and multimodal chat systems possible.</p>
+<p>Multimodal systems are not one model; they are a stack of aligned representations, conditioning mechanisms, and fusion strategies. They connect the generative models from earlier parts with the real world of text, images, and other modalities.</p>
 
-<p><strong>This concludes the Generative AI model-building track.</strong> For the practical side of building applications with these models — prompts, chains, retrieval, agents, and observability — see the <a href="/handbook/categories/generative-ai/">LangChain / LLM Application Development</a> series.</p>
+<p>This completes the <strong>Multimodal Generative Architectures</strong> track. For the practical side of building applications with these models — prompts, chains, retrieval, agents, and observability — see the <a href="/handbook/categories/generative-ai/">LangChain / LLM Application Development</a> series.</p>
 
   </section>
 
   
   <footer class="topic-footer">
-    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">multimodal</span>, <span class="tag">clip</span>, <span class="tag">vision-transformer</span>, <span class="tag">cross-attention</span>, <span class="tag">generative-models</span>, <span class="tag">hands-on</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">multimodal</span>, <span class="tag">clip</span>, <span class="tag">vision-transformer</span>, <span class="tag">vlm</span>, <span class="tag">cross-attention</span>, <span class="tag">alignment</span>, <span class="tag">generative-models</span>, <span class="tag">hands-on</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
   </footer>
   
 </article>
