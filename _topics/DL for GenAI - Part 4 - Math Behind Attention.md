@@ -44,6 +44,23 @@ Think of a library search:
 
 The decoder writes a query. It compares the query to every key. The better the match, the more of that value it keeps.
 
+### Where do these vectors come from?
+
+In the encoder-decoder setup we saw in [Part 3]({{ site.baseurl }}/topics/dl-genai-attention-encoder-decoder/):
+
+- **Keys and Values** come from the **encoder**. After reading the source sentence, the encoder produces one hidden state per source word. Those hidden states become the keys and the values.
+- **Query** comes from the **decoder**. At each decoding step, the decoder produces a hidden state. That hidden state becomes the query for that step.
+
+```text
+Source sentence  →  Encoder  →  hidden states  →  Keys + Values
+
+Decoder state at step i  →  Query
+```
+
+In the worked example of section 4, the vectors `h1`, `h2`, `h3` are the encoder hidden states. They are used as both keys and values. The query `Q = [2, 0, 1]` represents the decoder's state at some step.
+
+In a Transformer, the process is slightly different: every input token is multiplied by three learned weight matrices (`W_Q`, `W_K`, `W_V`) to create the query, key, and value vectors. We cover that in [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/). For now, the important point is the same — keys and values describe the source, and the query describes what the decoder currently needs.
+
 ---
 
 ## 3. The three-step recipe
