@@ -44,6 +44,45 @@ Think of a library search:
 
 The decoder writes a query. It compares the query to every key. The better the match, the more of that value it keeps.
 
+### First, the encoder turns each source word into a memory
+
+Before the decoder can use attention, the **encoder** must read the source sentence.
+
+Take the source sentence:
+
+```text
+I    love   cats
+```
+
+Each word is first turned into an embedding vector:
+
+```text
+"I"    →  e1
+"love" →  e2
+"cats" →  e3
+```
+
+The encoder then processes these vectors one by one. In a simple recurrent encoder, this looks like:
+
+```text
+hidden_0 = zero vector
+hidden_1 = RNN(e1, hidden_0) = h1   (memory of "I")
+hidden_2 = RNN(e2, hidden_1) = h2   (memory of "I love")
+hidden_3 = RNN(e3, hidden_2) = h3   (memory of "I love cats")
+```
+
+So after reading the whole sentence, the encoder has produced three hidden states:
+
+```text
+h1 = memory of "I"
+h2 = memory of "I love"
+h3 = memory of "I love cats"
+```
+
+These hidden states are used as the **Keys** and **Values** for attention. Each one is a compact summary of what the encoder has read up to that point.
+
+Now the decoder can start generating the translation.
+
 ### What does the decoder actually do with them?
 
 Here is the attention call in plain English. Imagine we are translating:
