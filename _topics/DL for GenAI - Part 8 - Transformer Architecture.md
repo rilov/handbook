@@ -101,6 +101,29 @@ Each head produces its own answer. The answers are joined side by side and mixed
 
 > The heads above are illustrative. In a real model **nobody assigns the topics**. Each head discovers its own focus during training.
 
+#### How the dimensions work
+
+Multi-head attention splits the job, it does not add a separate full-sized attention for every head. Suppose the desired output size is **D2 = 8** and we use **4 heads**. Each head only has to produce **D2 ÷ heads = 2** numbers per word:
+
+```text
+Input X:                    N × 4   (each word starts as 4 numbers)
+W_Q / W_K / W_V per head:   4 × 2   (one set for each head)
+Output of one head:         N × 2
+
+Head 1 output:  N × 2
+Head 2 output:  N × 2
+Head 3 output:  N × 2
+Head 4 output:  N × 2
+
+Concatenate side by side:   N × 8
+Projection W_O:             8 × 8
+Final multi-head output:    N × 8
+```
+
+The final `N × 8` matrix has the same size as a single-head attention output, but each of its 8 components came from a different discussion. The extra projection matrix `W_O` mixes those separate discussions into one coherent vector.
+
+The original Transformer uses `d_model = 512` and `8 heads`, so each head produces `512 ÷ 8 = 64` numbers.
+
 ### Add & Norm (keep your notes, then tidy up)
 
 After attention, two small housekeeping steps happen:
