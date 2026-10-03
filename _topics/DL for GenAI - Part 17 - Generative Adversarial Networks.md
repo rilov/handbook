@@ -185,79 +185,207 @@ Both networks receive the condition:
 
 This is how you can ask a GAN to generate “a handwritten digit 7” or “a photo of a sunset.”
 
-### Paired data for image-to-image translation
+### Paired image-to-image translation: pix2pix
 
-Many conditional tasks use **paired** examples:
+When you have **paired** input–output examples, the conditional GAN idea becomes image-to-image translation. The classic model for this is **pix2pix**.
 
 ```text
 grayscale image  →  colour image
+street map       →  aerial satellite photo
+sketch           →  realistic photo
 low-resolution image  →  high-resolution image
-sketch  →  photograph
 ```
 
-The discriminator compares the generated output directly against the ground-truth target under the same input condition. This gives a strong supervised signal.
+pix2pix uses:
 
-But paired data is not always available. That limitation leads to unpaired translation methods like CycleGAN.
+- a **U-Net generator**, so the input structure is preserved while the output style is changed;
+- a **PatchGAN discriminator**, which classifies each small patch as real or fake instead of judging the whole image at once. This encourages local realism and sharper edges.
+
+Because the training data already contains matching pairs, the generator gets direct feedback: “given this input, your output should look like the known target.”
 
 ---
 
-## 9. CycleGAN: translating without paired examples
+### Unpaired image-to-image translation
 
-CycleGAN solves the problem: “I have a pile of horse photos and a pile of zebra photos, but no picture of the same horse as a zebra.”
-
-It learns two generators:
-
-- **G:** horse → zebra
-- **F:** zebra → horse
-
-The clever part is the **cycle consistency loss**: if you convert a horse to a zebra and back, you should land close to the original horse.
+Many interesting translations do **not** have paired examples:
 
 ```text
-horse  →  G  →  zebra  →  F  →  horse' ≈ horse
+horse  ↔  zebra          (the same animal cannot be both at once)
+summer scene  ↔  winter scene
+photograph  ↔  Monet painting
+sunny day  ↔  foggy day
 ```
 
-This stops the generator from ignoring the input and producing random zebras. The same loss runs in the opposite direction:
+For these cases we only have two separate collections of images. The challenge is to learn a mapping without knowing which image in domain A corresponds to which image in domain B.
 
-```text
-zebra  →  F  →  horse  →  G  →  zebra' ≈ zebra
-```
-
-Together with the usual adversarial losses, CycleGAN learns a meaningful mapping between two unpaired collections of images.
+This is where CycleGAN comes in.
 
 ---
 
-## 10. A tiny code sketch
+## 9. CycleGAN: two generators, two discriminators, and three losses
 
-Here is a conceptual PyTorch snippet that shows the alternating update pattern. It is not a full runnable model, but it captures the loop clearly.
+CycleGAN learns two mappings at the same time:
+
+- **G_AB:** domain A → domain B (e.g. horse → zebra)
+- **G_BA:** domain B → domain A (e.g. zebra → horse)
+
+Each domain has its own discriminator:
+
+- **D_A:** tells real A images from translated A images.
+- **D_B:** tells real B images from translated B images.
+
+### 1. Adversarial loss
+
+Each generator–discriminator pair plays a normal GAN game:
+
+```text
+real A images  →  D_A says "real"
+G_BA(fake B)   →  D_A says "fake"
+real B images  →  D_B says "real"
+G_AB(fake A)   →  D_B says "fake"
+```
+
+This ensures that translated images look realistic in the target domain.
+
+### 2. Cycle consistency loss
+
+The adversarial loss alone is not enough. A generator could ignore the input and produce any plausible target image, as long as it fools the discriminator. The cycle loss fixes this.
+
+If you translate a horse to a zebra and back, you should end up close to the original horse:
+
+```text
+horse  →  G_AB  →  zebra  →  G_BA  →  horse' ≈ horse
+```
+
+The same must work in the other direction:
+
+```text
+zebra  →  G_BA  →  horse  →  G_AB  →  zebra' ≈ zebra
+```
+
+This is a **self-supervised** constraint: the model does not need paired labels, only the requirement that round-trip translations preserve structure.
+
+### 3. Identity loss
+
+The identity loss is a regulariser. If you feed an image that already belongs to the target domain into the generator, it should change very little:
+
+```text
+zebra  →  G_AB  →  zebra   (G_AB maps A→B, so a B input should stay a B input)
+```
+
+This prevents the model from unnecessarily altering colours and textures, and helps preserve the input's overall look.
+
+### Why patch-level discriminators?
+
+CycleGAN discriminators often operate on small image patches. This has the same effect as pix2pix's PatchGAN: it focuses on local texture and structure rather than memorising the whole image, which matters when the overall layout must stay the same and only the style should change.
+
+### Limitations
+
+CycleGAN assumes both domains share the same geometry and content. If you ask it to turn a horse into a zebra, it assumes the horse shape is preserved and only the texture changes. When domains differ in shape or semantics, it can distort objects or hallucinate details.
+
+- CycleGAN project page: <https://junyanz.github.io/CycleGAN/>
+- Original paper: [Zhu et al., 2017](https://arxiv.org/pdf/1703.10593)
+
+---
+
+## 10. Latent-space arithmetic with DCGAN
+
+A well-trained GAN learns a meaningful latent space. You can treat latent vectors like word vectors and do arithmetic on them.
+
+A classic face-GAN example:
+
+```text
+smiling_woman  -  neutral_woman  +  neutral_man  ≈  smiling_man
+```
+
+How does this work?
+
+1. Find latent vectors that the generator turns into images in each category.
+2. Average several examples per category to get a stable centre.
+3. Subtract the “woman” direction and add the “man” direction to the “smiling woman” direction.
+4. Feed the result into the generator.
+
+The generator has disentangled concepts like “smiling” and “gender” into different directions in latent space. This shows that the model has learned semantic structure, not just memorised training images.
+
+---
+
+## 11. A simple GAN on Fashion MNIST
+
+Here is a compact TensorFlow/Keras sketch that trains a simple GAN on the Fashion MNIST dataset. The goal is not production code; it is to see the generator and discriminator shapes and the alternating update pattern.
+
+### Generator
 
 ```python
-for real_data in dataloader:
-    noise = torch.randn(batch_size, latent_dim)
-    fake_data = generator(noise)
+latent_dim = 100
 
-    # --- Train discriminator ---
-    d_real = discriminator(real_data)
-    d_fake = discriminator(fake_data.detach())  # detach so generator is not trained here
-
-    d_loss = binary_cross_entropy(d_real, real_labels) \
-           + binary_cross_entropy(d_fake, fake_labels)
-
-    d_loss.backward()
-    optimizer_D.step()
-
-    # --- Train generator ---
-    d_fake = discriminator(fake_data)
-    g_loss = binary_cross_entropy(d_fake, real_labels)  # wants to be called real
-
-    g_loss.backward()
-    optimizer_G.step()
+generator = keras.Sequential([
+    layers.Dense(7 * 7 * 128, input_shape=(latent_dim,)),
+    layers.Reshape((7, 7, 128)),
+    layers.BatchNormalization(),
+    layers.Conv2DTranspose(64, 5, strides=2, padding="same", activation="relu"),
+    layers.BatchNormalization(),
+    layers.Conv2DTranspose(1, 5, strides=2, padding="same", activation="sigmoid"),
+], name="generator")
 ```
 
-The discriminator learns from real and fake data. The generator learns only through the discriminator's scores.
+The generator turns a 100-dimensional noise vector into a 28×28 grayscale image.
+
+### Discriminator
+
+```python
+discriminator = keras.Sequential([
+    layers.Conv2D(64, 5, strides=2, padding="same", input_shape=[28, 28, 1]),
+    layers.LeakyReLU(0.2),
+    layers.Conv2D(128, 5, strides=2, padding="same"),
+    layers.LeakyReLU(0.2),
+    layers.Flatten(),
+    layers.Dense(1, activation="sigmoid"),
+], name="discriminator")
+```
+
+The discriminator receives either a real Fashion MNIST image or a generated image, and outputs a single probability.
+
+### Training loop
+
+```python
+g_optimizer = keras.optimizers.Adam(1e-4)
+d_optimizer = keras.optimizers.Adam(1e-4)
+cross_entropy = keras.losses.BinaryCrossentropy()
+
+@tf.function
+def train_step(real_images):
+    noise = tf.random.normal([batch_size, latent_dim])
+
+    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+        generated_images = generator(noise, training=True)
+
+        real_output = discriminator(real_images, training=True)
+        fake_output = discriminator(generated_images, training=True)
+
+        # Generator wants discriminator to think fakes are real
+        gen_loss = cross_entropy(tf.ones_like(fake_output), fake_output)
+
+        # Discriminator wants to label real as 1 and fake as 0
+        real_loss = cross_entropy(tf.ones_like(real_output), real_output)
+        fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
+        disc_loss = real_loss + fake_loss
+
+    gen_gradients = gen_tape.gradient(gen_loss, generator.trainable_variables)
+    disc_gradients = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+
+    g_optimizer.apply_gradients(zip(gen_gradients, generator.trainable_variables))
+    d_optimizer.apply_gradients(zip(disc_gradients, discriminator.trainable_variables))
+```
+
+After many epochs, random noise fed into the generator starts producing recognisable clothing-like shapes.
+
+### A note on DCGAN
+
+The demonstration above uses transposed convolutions and batch normalisation, which are the core ideas of **DCGAN**. Replacing the dense layers at the start with a fully convolutional architecture and following DCGAN guidelines usually makes image GANs more stable.
 
 ---
 
-## 11. Summary
+## 12. Summary
 
 | Idea | In one sentence |
 |---|---|
@@ -268,7 +396,9 @@ The discriminator learns from real and fake data. The generator learns only thro
 | **Failure modes** | Mode collapse, discriminator domination, and oscillation come from the game dynamics. |
 | **Stabilisation** | Feature matching, minibatch discrimination, historical averaging, and architecture variants help keep training healthy. |
 | **Conditional GAN** | Add a condition `y` to both networks so generation becomes controllable. |
-| **CycleGAN** | Use two generators and cycle consistency to translate between unpaired domains. |
+| **pix2pix** | Paired image-to-image translation with a U-Net generator and PatchGAN discriminator. |
+| **CycleGAN** | Unpaired image-to-image translation using two generators, two discriminators, cycle consistency, and identity loss. |
+| **Latent arithmetic** | In a trained GAN, semantic concepts become directions in the noise space. |
 
 The original GAN paper: [Goodfellow et al., 2014](https://arxiv.org/pdf/1406.2661).
 
