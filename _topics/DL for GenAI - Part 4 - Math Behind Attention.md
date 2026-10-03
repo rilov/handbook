@@ -44,6 +44,67 @@ Think of a library search:
 
 The decoder writes a query. It compares the query to every key. The better the match, the more of that value it keeps.
 
+### What does the decoder actually do with them?
+
+Here is the attention call in plain English. Imagine we are translating:
+
+```text
+Source: I    love   cats
+Target: J'aime chats
+```
+
+When the decoder is about to produce the first target word, it asks itself: *"What do I need from the source sentence right now?"*
+
+Its current hidden state becomes the **Query**:
+
+```text
+Query = "I am looking for the subject of the sentence"
+```
+
+It then compares this query with every source-word memory:
+
+```text
+Key 1 = "I"          → matches well
+Key 2 = "love"       → matches a little
+Key 3 = "cats"       → matches less
+```
+
+After softmax, the weights might look like:
+
+```text
+weights on ["I", "love", "cats"] = [0.75, 0.15, 0.10]
+```
+
+The decoder builds a custom summary:
+
+```text
+context = 0.75 × Value("I")
+        + 0.15 × Value("love")
+        + 0.10 × Value("cats")
+```
+
+It uses this summary to predict the first word: `J'`.
+
+For the next word, the decoder updates its hidden state and asks a new question:
+
+```text
+Query = "I am looking for the verb now"
+```
+
+This time the weights might shift to `[0.10, 0.80, 0.10]`, so the context focuses on `"love"`. The decoder predicts `aime`.
+
+So the decoder is basically calling a function like this at every step:
+
+```text
+context_i = attention(
+    query = decoder_state_i,
+    keys  = [encoder_state_1, encoder_state_2, encoder_state_3],
+    values = [encoder_state_1, encoder_state_2, encoder_state_3]
+)
+```
+
+The query changes at every step, so the answer changes too.
+
 ### Where do these vectors come from?
 
 In the encoder-decoder setup we saw in [Part 3]({{ site.baseurl }}/topics/dl-genai-attention-encoder-decoder/):
