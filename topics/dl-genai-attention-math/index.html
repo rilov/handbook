@@ -767,7 +767,138 @@ Context vector: [0.3101, 0.3797, 0.3101, 0.0]
 
 <hr />
 
-<h2 id="14-summary">14. Summary</h2>
+<h2 id="15-full-pytorch-seq2seq-network-with-attention">15. Full PyTorch seq2seq network with attention</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">Attention</code> module from the previous section is only one piece. Here is a complete, runnable encoder-decoder network that uses it. The example is tiny (three source words, three target words) so every tensor shape is visible.</p>
+
+<h3 id="vocabulary">Vocabulary</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">to_src</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">&lt;pad&gt;</span><span class="sh">'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">'</span><span class="s">I</span><span class="sh">'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+<span class="n">to_tgt</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">&lt;pad&gt;</span><span class="sh">'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="sh">'</span><span class="s">&lt;sos&gt;</span><span class="sh">'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="sh">'</span><span class="s">&lt;eos&gt;</span><span class="sh">'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="sh">'</span><span class="s">J</span><span class="sh">'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="sh">'</span><span class="s">aime</span><span class="sh">'</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="sh">'</span><span class="s">chats</span><span class="sh">'</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="encoder">Encoder</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Encoder</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">,</span> <span class="n">embed_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">vocab_size</span><span class="p">,</span> <span class="n">embed_dim</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">gru</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">GRU</span><span class="p">(</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">src</span><span class="p">):</span>
+        <span class="n">embedded</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>              <span class="c1"># (batch, src_len, embed_dim)
+</span>        <span class="n">outputs</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">gru</span><span class="p">(</span><span class="n">embedded</span><span class="p">)</span>        <span class="c1"># outputs: (batch, src_len, hidden)
+</span>        <span class="k">return</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">hidden</span>
+</code></pre></div></div>
+
+<h3 id="decoder-with-attention">Decoder with attention</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Decoder</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">,</span> <span class="n">embed_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Embedding</span><span class="p">(</span><span class="n">vocab_size</span><span class="p">,</span> <span class="n">embed_dim</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">attention</span> <span class="o">=</span> <span class="nc">Attention</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">gru</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">GRU</span><span class="p">(</span><span class="n">embed_dim</span> <span class="o">+</span> <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">out</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward_step</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">input_token</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="n">encoder_outputs</span><span class="p">):</span>
+        <span class="n">embedded</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">embedding</span><span class="p">(</span><span class="n">input_token</span><span class="p">)</span>      <span class="c1"># (batch, 1, embed_dim)
+</span>        <span class="n">query</span> <span class="o">=</span> <span class="n">hidden</span><span class="p">.</span><span class="nf">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>             <span class="c1"># (batch, 1, hidden)
+</span>        <span class="n">context</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">attention</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">encoder_outputs</span><span class="p">)</span>
+
+        <span class="n">gru_input</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">cat</span><span class="p">([</span><span class="n">embedded</span><span class="p">,</span> <span class="n">context</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">output</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">gru</span><span class="p">(</span><span class="n">gru_input</span><span class="p">,</span> <span class="n">hidden</span><span class="p">)</span>
+        <span class="n">prediction</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">out</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>               <span class="c1"># (batch, 1, vocab_size)
+</span>        <span class="k">return</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="n">weights</span>
+</code></pre></div></div>
+
+<h3 id="full-seq2seq-model">Full seq2seq model</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Seq2Seq</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">encoder</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">decoder</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">tgt</span><span class="p">):</span>
+        <span class="n">encoder_outputs</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">encoder</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+
+        <span class="n">batch_size</span><span class="p">,</span> <span class="n">tgt_len</span> <span class="o">=</span> <span class="n">tgt</span><span class="p">.</span><span class="nf">size</span><span class="p">()</span>
+        <span class="n">outputs</span><span class="p">,</span> <span class="n">attentions</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+        <span class="n">input_token</span> <span class="o">=</span> <span class="n">tgt</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># &lt;sos&gt;
+</span>        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">tgt_len</span><span class="p">):</span>
+            <span class="n">output</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">decoder</span><span class="p">.</span><span class="nf">forward_step</span><span class="p">(</span>
+                <span class="n">input_token</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="n">encoder_outputs</span>
+            <span class="p">)</span>
+            <span class="n">outputs</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+            <span class="n">attentions</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+            <span class="n">input_token</span> <span class="o">=</span> <span class="n">tgt</span><span class="p">[:,</span> <span class="n">t</span><span class="p">:</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># teacher forcing
+</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">cat</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">attentions</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">cat</span><span class="p">(</span><span class="n">attentions</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">attentions</span>
+</code></pre></div></div>
+
+<h3 id="train-on-one-example">Train on one example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">embed_dim</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">hidden_dim</span> <span class="o">=</span> <span class="mi">16</span>
+
+<span class="n">encoder</span> <span class="o">=</span> <span class="nc">Encoder</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">to_src</span><span class="p">),</span> <span class="n">embed_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+<span class="n">decoder</span> <span class="o">=</span> <span class="nc">Decoder</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">to_tgt</span><span class="p">),</span> <span class="n">embed_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="nc">Seq2Seq</span><span class="p">(</span><span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">)</span>
+
+<span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">CrossEntropyLoss</span><span class="p">(</span><span class="n">ignore_index</span><span class="o">=</span><span class="n">to_tgt</span><span class="p">[</span><span class="sh">'</span><span class="s">&lt;pad&gt;</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">optim</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="nf">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="n">src</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">to_src</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">"</span><span class="s">I</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">love</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cats</span><span class="sh">"</span><span class="p">]]])</span>
+<span class="n">tgt</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="n">to_tgt</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="p">[</span><span class="sh">"</span><span class="s">&lt;sos&gt;</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">J</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">aime</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">chats</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">&lt;eos&gt;</span><span class="sh">"</span><span class="p">]]])</span>
+
+<span class="c1"># Train on this single sentence 100 times (a toy demo)
+</span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>
+    <span class="n">outputs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">tgt</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nf">criterion</span><span class="p">(</span><span class="n">outputs</span><span class="p">.</span><span class="nf">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nf">len</span><span class="p">(</span><span class="n">to_tgt</span><span class="p">)),</span> <span class="n">tgt</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:].</span><span class="nf">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+    <span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h3 id="what-the-attention-learns">What the attention learns</h3>
+
+<p>Before training, attention weights are roughly uniform. After training, the model learns to focus on the right source word for the first target step:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Before training:
+  step 1 (J    ): 0.335 0.322 0.343   &lt;- almost uniform
+  step 2 (aime ): 0.335 0.322 0.343
+  step 3 (chats): 0.335 0.322 0.343
+  step 4 (&lt;eos&gt;): 0.334 0.323 0.343
+
+After training:
+  step 1 (J    ): 0.918 0.060 0.022   &lt;- strongly on "I"
+  step 2 (aime ): 0.334 0.424 0.242
+  step 3 (chats): 0.408 0.303 0.289
+  step 4 (&lt;eos&gt;): 0.146 0.515 0.339
+</code></pre></div></div>
+
+<p>In a real system, training data contains millions of sentence pairs, the hidden dimension is 256–1024, and the alignment becomes much sharper across all positions.</p>
+
+<h3 id="why-this-matters">Why this matters</h3>
+
+<p>This code shows the full picture:</p>
+
+<ol>
+  <li>The <strong>encoder</strong> builds one hidden state per source word.</li>
+  <li>The <strong>decoder</strong> generates one target word at a time.</li>
+  <li>The <strong>attention</strong> module decides which source word to look at before each prediction.</li>
+  <li>The <strong>loss</strong> compares predicted words to true words; backpropagation updates the attention weights so the model learns to align languages automatically.</li>
+</ol>
+
+<p>The attention mechanism is not magic — it is a small, differentiable scoring function placed between two RNNs.</p>
+
+<hr />
+
+<h2 id="16-summary">16. Summary</h2>
 
 <ul>
   <li>Attention uses three players: <strong>Query</strong> (what am I looking for?), <strong>Key</strong> (what does each word offer?), <strong>Value</strong> (the actual content).</li>
