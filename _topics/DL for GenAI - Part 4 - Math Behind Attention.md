@@ -32,7 +32,7 @@ The weights are not fixed. They are recomputed at every decoder step.
 
 ---
 
-## 2. Three roles: Query, Key, Value
+## 2. The three roles and how they work together
 
 Think of a library search:
 
@@ -44,7 +44,7 @@ Think of a library search:
 
 The decoder writes a query. It compares the query to every key. The better the match, the more of that value it keeps.
 
-### First, the encoder turns each source word into a memory
+### Step 1: the encoder turns each source word into a memory
 
 Before the decoder can use attention, the **encoder** must read the source sentence.
 
@@ -71,7 +71,7 @@ hidden_2 = RNN(e2, hidden_1) = h2   (memory of "I love")
 hidden_3 = RNN(e3, hidden_2) = h3   (memory of "I love cats")
 ```
 
-So after reading the whole sentence, the encoder has produced three hidden states:
+After reading the whole sentence, the encoder has produced three hidden states:
 
 ```text
 h1 = memory of "I"
@@ -79,13 +79,11 @@ h2 = memory of "I love"
 h3 = memory of "I love cats"
 ```
 
-These hidden states are used as the **Keys** and **Values** for attention. Each one is a compact summary of what the encoder has read up to that point.
+These hidden states are the **Keys** and **Values** for attention. Each one is a compact summary of what the encoder has read up to that point.
 
-Now the decoder can start generating the translation.
+### Step 2: the decoder asks a question
 
-### What does the decoder actually do with them?
-
-Here is the attention call in plain English. Imagine we are translating:
+Now the decoder starts generating the translation. Imagine we are translating:
 
 ```text
 Source: I    love   cats
@@ -100,7 +98,7 @@ Its current hidden state becomes the **Query**:
 Query = "I am looking for the subject of the sentence"
 ```
 
-It then compares this query with every source-word memory:
+It compares this query with every source-word memory:
 
 ```text
 Key 1 = "I"          → matches well
@@ -132,128 +130,26 @@ Query = "I am looking for the verb now"
 
 This time the weights might shift to `[0.10, 0.80, 0.10]`, so the context focuses on `"love"`. The decoder predicts `aime`.
 
-So the decoder is basically calling a function like this at every step:
+### The attention call
+
+So the decoder is calling a function like this at every step:
 
 ```text
 context_i = attention(
-    query = decoder_state_i,
-    keys  = [encoder_state_1, encoder_state_2, encoder_state_3],
+    query  = decoder_state_i,
+    keys   = [encoder_state_1, encoder_state_2, encoder_state_3],
     values = [encoder_state_1, encoder_state_2, encoder_state_3]
 )
 ```
 
 The query changes at every step, so the answer changes too.
 
-### Where do these vectors come from?
+### Where the vectors come from
 
-In the encoder-decoder setup we saw in [Part 3]({{ site.baseurl }}/topics/dl-genai-attention-encoder-decoder/):
+- **Keys and Values** come from the **encoder** hidden states.
+- **Query** comes from the **decoder** hidden state at the current step.
 
-- **Keys and Values** come from the **encoder**. After reading the source sentence, the encoder produces one hidden state per source word. Those hidden states become the keys and the values.
-- **Query** comes from the **decoder**. At each decoding step, the decoder produces a hidden state. That hidden state becomes the query for that step.
-
-```text
-Source sentence  →  Encoder  →  hidden states  →  Keys + Values
-
-Decoder state at step i  →  Query
-```
-
-In the worked example of section 4, the vectors `h1`, `h2`, `h3` are the encoder hidden states. They are used as both keys and values. The query `Q = [2, 0, 1]` represents the decoder's state at some step.
-
-In a Transformer, the process is slightly different: every input token is multiplied by three learned weight matrices (`W_Q`, `W_K`, `W_V`) to create the query, key, and value vectors. We cover that in [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/). For now, the important point is the same — keys and values describe the source, and the query describes what the decoder currently needs.
-
-### Step-by-step: how the words become vectors and queries
-
-Let us trace a real sentence through the encoder and decoder. We will use English → French:
-
-```text
-Source: The   cat    sat
-Target: Le    chat   s'est   assis
-```
-
-#### 1. The encoder reads the source sentence
-
-First, each word is turned into an embedding vector:
-
-```text
-"The" → e1
-"cat" → e2
-"sat" → e3
-```
-
-The encoder processes these embeddings one by one. For a recurrent encoder, this looks like:
-
-```text
-hidden_0 = zero vector
-hidden_1 = RNN(e1, hidden_0) = h1   (memory of "The")
-hidden_2 = RNN(e2, hidden_1) = h2   (memory of "The cat")
-hidden_3 = RNN(e3, hidden_2) = h3   (memory of "The cat sat")
-```
-
-After the encoder finishes, we have three states:
-
-```text
-h1 = memory of "The"
-h2 = memory of "The cat"
-h3 = memory of "The cat sat"
-```
-
-These states become the **Keys** and **Values** for attention.
-
-#### 2. The decoder starts with a special token
-
-The decoder begins with a `<sos>` (start-of-sentence) token and an initial hidden state. In a simple RNN setup, that initial state is often the last encoder state `h3`.
-
-For the first output word, the decoder's hidden state `s0` becomes the first query:
-
-```text
-Q1 = s0
-```
-
-Attention compares `Q1` with `h1`, `h2`, `h3` and produces a context vector `c1`. The decoder then uses `c1`, `s0`, and the `<sos>` token to predict:
-
-```text
-first predicted word = "Le"
-```
-
-#### 3. The decoder keeps going
-
-For the second word, the decoder updates its state using the previous output:
-
-```text
-s1 = RNN_decoder("Le", s0, c1)
-Q2 = s1
-```
-
-Attention runs again with `Q2` to produce `c2`, and the decoder predicts:
-
-```text
-second predicted word = "chat"
-```
-
-This repeats:
-
-```text
-s2 = RNN_decoder("chat", s1, c2)
-Q3 = s2  →  attention  →  c3  →  predict "s'est"
-
-s3 = RNN_decoder("s'est", s2, c3)
-Q4 = s3  →  attention  →  c4  →  predict "assis"
-```
-
-The decoder stops when it predicts `<eos>` (end-of-sentence).
-
-#### The full picture
-
-```text
-Source words → Encoder → hidden states h1, h2, h3 (keys + values)
-                                          ↓
-Decoder step 1:  Q1 = s0  →  attention  →  c1  →  "Le"
-Decoder step 2:  Q2 = s1  →  attention  →  c2  →  "chat"
-Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
-Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
-```
-
-At every step the attention block runs the same four-step math from section 4. The only thing that changes is the **query**, which is the decoder's current hidden state. That is why the context vector is fresh at every step.
+In a Transformer, Q/K/V are produced by learned weight matrices (`W_Q`, `W_K`, `W_V`), but the idea is the same: keys and values describe the source, and the query describes what the decoder currently needs. We cover that in [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/).
 
 ---
 
@@ -279,7 +175,7 @@ h2 = [0, 1, 0]  → encoder state for "love"
 h3 = [0, 0, 1]  → encoder state for "cats"
 ```
 
-In this example, the keys are the encoder states and the values are also the encoder states:
+The keys and values are the same as the encoder states:
 
 ```text
 K1 = V1 = h1 = [1, 0, 0]
@@ -293,21 +189,9 @@ Suppose the decoder query is:
 Q = [2, 0, 1]
 ```
 
-### What is the decoder doing right now?
+This query is like the decoder saying: *"I am interested in the first and third source words right now."*
 
-In a real model this `Q` comes from the decoder's hidden state. It represents what the decoder is currently trying to figure out — for example, "what is the next word I should produce?"
-
-Think of the decoder as a student who is writing the next word of a translation. The student has already read the source sentence and made three notes:
-
-- note 1 = `"I"` (h1)
-- note 2 = `"love"` (h2)
-- note 3 = `"cats"` (h3)
-
-The query `Q = [2, 0, 1]` is like the student's current question: *"which of my notes is most useful for the word I am about to write?"*
-
-Because the question has a high number in the first and third positions, the student expects notes 1 and 3 to be more useful than note 2. The math below makes that precise.
-
-### Step 1: raw scores — ask each note how relevant it is
+### Step 1: raw scores — ask each memory how relevant it is
 
 The score is the dot product:
 
@@ -321,8 +205,6 @@ scores = [2, 0, 1]
 
 The query matches `"I"` best, then `"cats"`, then `"love"`.
 
-In plain English: note 1 (`"I"`) answers the question best, note 3 (`"cats"`) is somewhat relevant, and note 2 (`"love"`) is not relevant at all.
-
 ### Step 2: scale — keep the numbers friendly
 
 The vectors have dimension `d = 3`, so we divide by `√d ≈ 1.732`:
@@ -332,15 +214,11 @@ scaled scores = [2/1.732, 0/1.732, 1/1.732]
               = [1.155, 0.000, 0.577]
 ```
 
-Why? Because real vectors are long (e.g. 512 dimensions), and their dot products can become huge. Huge scores make the next step lopsided. Scaling keeps everything in a comfortable range, like turning a volume knob down so the speakers do not distort.
+Scaling keeps the numbers from growing too large when we use long vectors.
 
-### Step 3: softmax — turn scores into percentages
+### Step 3: softmax — turn scores into weights
 
 Softmax converts any list of numbers into percentages that add up to 1:
-
-```text
-softmax([1.155, 0.000, 0.577])
-```
 
 ```text
 e^1.155 ≈ 3.174
@@ -355,8 +233,6 @@ weights = [3.174/5.955, 1.000/5.955, 1.781/5.955]
 
 Check: `0.533 + 0.168 + 0.299 = 1.000`.
 
-In plain English: the student decides to trust note 1 for 53%, note 3 for 30%, note 2 for 17%, and 0% for everything else. These percentages always add up to 100%.
-
 ### Step 4: weighted sum — build the final answer
 
 ```text
@@ -367,20 +243,9 @@ c = 0.533 × V1 + 0.168 × V2 + 0.299 × V3
 
 The final **context vector** is `[0.533, 0.168, 0.299]`. It is a blend of all three source words, with most weight on `"I"`.
 
-In plain English: the student now has a custom summary of the source sentence that is tuned to the exact word they are trying to produce. This summary is passed back into the decoder to help it make the prediction.
-
 ### What happens for the next word?
 
-The decoder does not stop. After it produces one word, it updates its own hidden state and creates a new query. Then it runs the same four steps again:
-
-1. compare the new query with every key,
-2. scale,
-3. softmax,
-4. weighted sum.
-
-Because the query is different, the weights are different. The decoder gets a new, custom context vector for the second word, the third word, and so on.
-
-That is why attention is powerful: the decoder does not use one fixed summary of the source sentence. It builds a fresh summary for every word it writes.
+After producing one word, the decoder updates its hidden state and creates a new query. Then it runs the same four steps again. Because the query is different, the weights are different, and the decoder gets a fresh context vector for the next word.
 
 ---
 
@@ -466,27 +331,16 @@ Here is what happens inside the decoder:
 
 Each row is the same four-step recipe: **query → scores → softmax → weighted sum**. Only the query changes, so the context vector changes with it.
 
----
-
-## 9. A real-language example
-
-Consider translating English → French:
+The full picture:
 
 ```text
-Source: The   cat    sat
-Target: Le    chat   s'est   assis
+Source words → Encoder → hidden states h1, h2, h3 (keys + values)
+                                          ↓
+Decoder step 1:  Q1 = s0  →  attention  →  c1  →  "Le"
+Decoder step 2:  Q2 = s1  →  attention  →  c2  →  "chat"
+Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
+Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
 ```
-
-At each decoder step the model looks at the source words with different weights:
-
-| Target step | Word | Attention on "The" | Attention on "cat" | Attention on "sat" |
-|---|---|---:|---:|---:|
-| 1 | Le | 0.70 | 0.20 | 0.10 |
-| 2 | chat | 0.15 | 0.75 | 0.10 |
-| 3 | s'est | 0.10 | 0.25 | 0.65 |
-| 4 | assis | 0.05 | 0.10 | 0.85 |
-
-At step 1 the decoder mostly reads "The". At step 2 it shifts to "cat". At step 4 it focuses on "sat". The same encoder states are reused, but the blend is different every time.
 
 ### What if the word order changes?
 
@@ -501,7 +355,7 @@ The English verb phrase "have seen" becomes "habe ... gesehen", with the second 
 
 ---
 
-## 10. Where do the scores come from?
+## 9. Where do the scores come from?
 
 The scores are not hand-coded. They come from a small learnable function:
 
@@ -515,7 +369,7 @@ The simplest version uses a dot product. A richer version, called **Bahdanau (ad
 
 ---
 
-## 11. A tiny PyTorch check
+## 10. A tiny PyTorch check
 
 Here is the whole recipe in code:
 
@@ -547,7 +401,7 @@ The numbers match the hand calculation from section 4.
 
 ---
 
-## 12. Summary
+## 11. Summary
 
 | Idea | In plain words |
 |---|---|
