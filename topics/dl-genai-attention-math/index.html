@@ -63,7 +63,7 @@
 
 <hr />
 
-<h2 id="2-three-roles-query-key-value">2. Three roles: Query, Key, Value</h2>
+<h2 id="2-the-three-roles-and-how-they-work-together">2. The three roles and how they work together</h2>
 
 <p>Think of a library search:</p>
 
@@ -96,7 +96,7 @@
 
 <p>The decoder writes a query. It compares the query to every key. The better the match, the more of that value it keeps.</p>
 
-<h3 id="first-the-encoder-turns-each-source-word-into-a-memory">First, the encoder turns each source word into a memory</h3>
+<h3 id="step-1-the-encoder-turns-each-source-word-into-a-memory">Step 1: the encoder turns each source word into a memory</h3>
 
 <p>Before the decoder can use attention, the <strong>encoder</strong> must read the source sentence.</p>
 
@@ -120,20 +120,18 @@ hidden_2 = RNN(e2, hidden_1) = h2   (memory of "I love")
 hidden_3 = RNN(e3, hidden_2) = h3   (memory of "I love cats")
 </code></pre></div></div>
 
-<p>So after reading the whole sentence, the encoder has produced three hidden states:</p>
+<p>After reading the whole sentence, the encoder has produced three hidden states:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h1 = memory of "I"
 h2 = memory of "I love"
 h3 = memory of "I love cats"
 </code></pre></div></div>
 
-<p>These hidden states are used as the <strong>Keys</strong> and <strong>Values</strong> for attention. Each one is a compact summary of what the encoder has read up to that point.</p>
+<p>These hidden states are the <strong>Keys</strong> and <strong>Values</strong> for attention. Each one is a compact summary of what the encoder has read up to that point.</p>
 
-<p>Now the decoder can start generating the translation.</p>
+<h3 id="step-2-the-decoder-asks-a-question">Step 2: the decoder asks a question</h3>
 
-<h3 id="what-does-the-decoder-actually-do-with-them">What does the decoder actually do with them?</h3>
-
-<p>Here is the attention call in plain English. Imagine we are translating:</p>
+<p>Now the decoder starts generating the translation. Imagine we are translating:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: I    love   cats
 Target: J'aime chats
@@ -146,7 +144,7 @@ Target: J'aime chats
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query = "I am looking for the subject of the sentence"
 </code></pre></div></div>
 
-<p>It then compares this query with every source-word memory:</p>
+<p>It compares this query with every source-word memory:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Key 1 = "I"          → matches well
 Key 2 = "love"       → matches a little
@@ -174,118 +172,27 @@ Key 3 = "cats"       → matches less
 
 <p>This time the weights might shift to <code class="language-plaintext highlighter-rouge">[0.10, 0.80, 0.10]</code>, so the context focuses on <code class="language-plaintext highlighter-rouge">"love"</code>. The decoder predicts <code class="language-plaintext highlighter-rouge">aime</code>.</p>
 
-<p>So the decoder is basically calling a function like this at every step:</p>
+<h3 id="the-attention-call">The attention call</h3>
+
+<p>So the decoder is calling a function like this at every step:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>context_i = attention(
-    query = decoder_state_i,
-    keys  = [encoder_state_1, encoder_state_2, encoder_state_3],
+    query  = decoder_state_i,
+    keys   = [encoder_state_1, encoder_state_2, encoder_state_3],
     values = [encoder_state_1, encoder_state_2, encoder_state_3]
 )
 </code></pre></div></div>
 
 <p>The query changes at every step, so the answer changes too.</p>
 
-<h3 id="where-do-these-vectors-come-from">Where do these vectors come from?</h3>
-
-<p>In the encoder-decoder setup we saw in <a href="/handbook/topics/dl-genai-attention-encoder-decoder/">Part 3</a>:</p>
+<h3 id="where-the-vectors-come-from">Where the vectors come from</h3>
 
 <ul>
-  <li><strong>Keys and Values</strong> come from the <strong>encoder</strong>. After reading the source sentence, the encoder produces one hidden state per source word. Those hidden states become the keys and the values.</li>
-  <li><strong>Query</strong> comes from the <strong>decoder</strong>. At each decoding step, the decoder produces a hidden state. That hidden state becomes the query for that step.</li>
+  <li><strong>Keys and Values</strong> come from the <strong>encoder</strong> hidden states.</li>
+  <li><strong>Query</strong> comes from the <strong>decoder</strong> hidden state at the current step.</li>
 </ul>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source sentence  →  Encoder  →  hidden states  →  Keys + Values
-
-Decoder state at step i  →  Query
-</code></pre></div></div>
-
-<p>In the worked example of section 4, the vectors <code class="language-plaintext highlighter-rouge">h1</code>, <code class="language-plaintext highlighter-rouge">h2</code>, <code class="language-plaintext highlighter-rouge">h3</code> are the encoder hidden states. They are used as both keys and values. The query <code class="language-plaintext highlighter-rouge">Q = [2, 0, 1]</code> represents the decoder’s state at some step.</p>
-
-<p>In a Transformer, the process is slightly different: every input token is multiplied by three learned weight matrices (<code class="language-plaintext highlighter-rouge">W_Q</code>, <code class="language-plaintext highlighter-rouge">W_K</code>, <code class="language-plaintext highlighter-rouge">W_V</code>) to create the query, key, and value vectors. We cover that in <a href="/handbook/topics/dl-genai-self-attention-math/">Part 9</a>. For now, the important point is the same — keys and values describe the source, and the query describes what the decoder currently needs.</p>
-
-<h3 id="step-by-step-how-the-words-become-vectors-and-queries">Step-by-step: how the words become vectors and queries</h3>
-
-<p>Let us trace a real sentence through the encoder and decoder. We will use English → French:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: The   cat    sat
-Target: Le    chat   s'est   assis
-</code></pre></div></div>
-
-<h4 id="1-the-encoder-reads-the-source-sentence">1. The encoder reads the source sentence</h4>
-
-<p>First, each word is turned into an embedding vector:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The" → e1
-"cat" → e2
-"sat" → e3
-</code></pre></div></div>
-
-<p>The encoder processes these embeddings one by one. For a recurrent encoder, this looks like:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hidden_0 = zero vector
-hidden_1 = RNN(e1, hidden_0) = h1   (memory of "The")
-hidden_2 = RNN(e2, hidden_1) = h2   (memory of "The cat")
-hidden_3 = RNN(e3, hidden_2) = h3   (memory of "The cat sat")
-</code></pre></div></div>
-
-<p>After the encoder finishes, we have three states:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h1 = memory of "The"
-h2 = memory of "The cat"
-h3 = memory of "The cat sat"
-</code></pre></div></div>
-
-<p>These states become the <strong>Keys</strong> and <strong>Values</strong> for attention.</p>
-
-<h4 id="2-the-decoder-starts-with-a-special-token">2. The decoder starts with a special token</h4>
-
-<p>The decoder begins with a <code class="language-plaintext highlighter-rouge">&lt;sos&gt;</code> (start-of-sentence) token and an initial hidden state. In a simple RNN setup, that initial state is often the last encoder state <code class="language-plaintext highlighter-rouge">h3</code>.</p>
-
-<p>For the first output word, the decoder’s hidden state <code class="language-plaintext highlighter-rouge">s0</code> becomes the first query:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q1 = s0
-</code></pre></div></div>
-
-<p>Attention compares <code class="language-plaintext highlighter-rouge">Q1</code> with <code class="language-plaintext highlighter-rouge">h1</code>, <code class="language-plaintext highlighter-rouge">h2</code>, <code class="language-plaintext highlighter-rouge">h3</code> and produces a context vector <code class="language-plaintext highlighter-rouge">c1</code>. The decoder then uses <code class="language-plaintext highlighter-rouge">c1</code>, <code class="language-plaintext highlighter-rouge">s0</code>, and the <code class="language-plaintext highlighter-rouge">&lt;sos&gt;</code> token to predict:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>first predicted word = "Le"
-</code></pre></div></div>
-
-<h4 id="3-the-decoder-keeps-going">3. The decoder keeps going</h4>
-
-<p>For the second word, the decoder updates its state using the previous output:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s1 = RNN_decoder("Le", s0, c1)
-Q2 = s1
-</code></pre></div></div>
-
-<p>Attention runs again with <code class="language-plaintext highlighter-rouge">Q2</code> to produce <code class="language-plaintext highlighter-rouge">c2</code>, and the decoder predicts:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>second predicted word = "chat"
-</code></pre></div></div>
-
-<p>This repeats:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s2 = RNN_decoder("chat", s1, c2)
-Q3 = s2  →  attention  →  c3  →  predict "s'est"
-
-s3 = RNN_decoder("s'est", s2, c3)
-Q4 = s3  →  attention  →  c4  →  predict "assis"
-</code></pre></div></div>
-
-<p>The decoder stops when it predicts <code class="language-plaintext highlighter-rouge">&lt;eos&gt;</code> (end-of-sentence).</p>
-
-<h4 id="the-full-picture">The full picture</h4>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source words → Encoder → hidden states h1, h2, h3 (keys + values)
-                                          ↓
-Decoder step 1:  Q1 = s0  →  attention  →  c1  →  "Le"
-Decoder step 2:  Q2 = s1  →  attention  →  c2  →  "chat"
-Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
-Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
-</code></pre></div></div>
-
-<p>At every step the attention block runs the same four-step math from section 4. The only thing that changes is the <strong>query</strong>, which is the decoder’s current hidden state. That is why the context vector is fresh at every step.</p>
+<p>In a Transformer, Q/K/V are produced by learned weight matrices (<code class="language-plaintext highlighter-rouge">W_Q</code>, <code class="language-plaintext highlighter-rouge">W_K</code>, <code class="language-plaintext highlighter-rouge">W_V</code>), but the idea is the same: keys and values describe the source, and the query describes what the decoder currently needs. We cover that in <a href="/handbook/topics/dl-genai-self-attention-math/">Part 9</a>.</p>
 
 <hr />
 
@@ -309,7 +216,7 @@ h2 = [0, 1, 0]  → encoder state for "love"
 h3 = [0, 0, 1]  → encoder state for "cats"
 </code></pre></div></div>
 
-<p>In this example, the keys are the encoder states and the values are also the encoder states:</p>
+<p>The keys and values are the same as the encoder states:</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>K1 = V1 = h1 = [1, 0, 0]
 K2 = V2 = h2 = [0, 1, 0]
@@ -321,23 +228,9 @@ K3 = V3 = h3 = [0, 0, 1]
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q = [2, 0, 1]
 </code></pre></div></div>
 
-<h3 id="what-is-the-decoder-doing-right-now">What is the decoder doing right now?</h3>
+<p>This query is like the decoder saying: <em>“I am interested in the first and third source words right now.”</em></p>
 
-<p>In a real model this <code class="language-plaintext highlighter-rouge">Q</code> comes from the decoder’s hidden state. It represents what the decoder is currently trying to figure out — for example, “what is the next word I should produce?”</p>
-
-<p>Think of the decoder as a student who is writing the next word of a translation. The student has already read the source sentence and made three notes:</p>
-
-<ul>
-  <li>note 1 = <code class="language-plaintext highlighter-rouge">"I"</code> (h1)</li>
-  <li>note 2 = <code class="language-plaintext highlighter-rouge">"love"</code> (h2)</li>
-  <li>note 3 = <code class="language-plaintext highlighter-rouge">"cats"</code> (h3)</li>
-</ul>
-
-<p>The query <code class="language-plaintext highlighter-rouge">Q = [2, 0, 1]</code> is like the student’s current question: <em>“which of my notes is most useful for the word I am about to write?”</em></p>
-
-<p>Because the question has a high number in the first and third positions, the student expects notes 1 and 3 to be more useful than note 2. The math below makes that precise.</p>
-
-<h3 id="step-1-raw-scores--ask-each-note-how-relevant-it-is">Step 1: raw scores — ask each note how relevant it is</h3>
+<h3 id="step-1-raw-scores--ask-each-memory-how-relevant-it-is">Step 1: raw scores — ask each memory how relevant it is</h3>
 
 <p>The score is the dot product:</p>
 
@@ -350,8 +243,6 @@ scores = [2, 0, 1]
 
 <p>The query matches <code class="language-plaintext highlighter-rouge">"I"</code> best, then <code class="language-plaintext highlighter-rouge">"cats"</code>, then <code class="language-plaintext highlighter-rouge">"love"</code>.</p>
 
-<p>In plain English: note 1 (<code class="language-plaintext highlighter-rouge">"I"</code>) answers the question best, note 3 (<code class="language-plaintext highlighter-rouge">"cats"</code>) is somewhat relevant, and note 2 (<code class="language-plaintext highlighter-rouge">"love"</code>) is not relevant at all.</p>
-
 <h3 id="step-2-scale--keep-the-numbers-friendly">Step 2: scale — keep the numbers friendly</h3>
 
 <p>The vectors have dimension <code class="language-plaintext highlighter-rouge">d = 3</code>, so we divide by <code class="language-plaintext highlighter-rouge">√d ≈ 1.732</code>:</p>
@@ -360,14 +251,11 @@ scores = [2, 0, 1]
               = [1.155, 0.000, 0.577]
 </code></pre></div></div>
 
-<p>Why? Because real vectors are long (e.g. 512 dimensions), and their dot products can become huge. Huge scores make the next step lopsided. Scaling keeps everything in a comfortable range, like turning a volume knob down so the speakers do not distort.</p>
+<p>Scaling keeps the numbers from growing too large when we use long vectors.</p>
 
-<h3 id="step-3-softmax--turn-scores-into-percentages">Step 3: softmax — turn scores into percentages</h3>
+<h3 id="step-3-softmax--turn-scores-into-weights">Step 3: softmax — turn scores into weights</h3>
 
 <p>Softmax converts any list of numbers into percentages that add up to 1:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>softmax([1.155, 0.000, 0.577])
-</code></pre></div></div>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>e^1.155 ≈ 3.174
  e^0    = 1.000
@@ -381,8 +269,6 @@ weights = [3.174/5.955, 1.000/5.955, 1.781/5.955]
 
 <p>Check: <code class="language-plaintext highlighter-rouge">0.533 + 0.168 + 0.299 = 1.000</code>.</p>
 
-<p>In plain English: the student decides to trust note 1 for 53%, note 3 for 30%, note 2 for 17%, and 0% for everything else. These percentages always add up to 100%.</p>
-
 <h3 id="step-4-weighted-sum--build-the-final-answer">Step 4: weighted sum — build the final answer</h3>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c = 0.533 × V1 + 0.168 × V2 + 0.299 × V3
@@ -392,22 +278,9 @@ weights = [3.174/5.955, 1.000/5.955, 1.781/5.955]
 
 <p>The final <strong>context vector</strong> is <code class="language-plaintext highlighter-rouge">[0.533, 0.168, 0.299]</code>. It is a blend of all three source words, with most weight on <code class="language-plaintext highlighter-rouge">"I"</code>.</p>
 
-<p>In plain English: the student now has a custom summary of the source sentence that is tuned to the exact word they are trying to produce. This summary is passed back into the decoder to help it make the prediction.</p>
-
 <h3 id="what-happens-for-the-next-word">What happens for the next word?</h3>
 
-<p>The decoder does not stop. After it produces one word, it updates its own hidden state and creates a new query. Then it runs the same four steps again:</p>
-
-<ol>
-  <li>compare the new query with every key,</li>
-  <li>scale,</li>
-  <li>softmax,</li>
-  <li>weighted sum.</li>
-</ol>
-
-<p>Because the query is different, the weights are different. The decoder gets a new, custom context vector for the second word, the third word, and so on.</p>
-
-<p>That is why attention is powerful: the decoder does not use one fixed summary of the source sentence. It builds a fresh summary for every word it writes.</p>
+<p>After producing one word, the decoder updates its hidden state and creates a new query. Then it runs the same four steps again. Because the query is different, the weights are different, and the decoder gets a fresh context vector for the next word.</p>
 
 <hr />
 
@@ -522,61 +395,15 @@ Target: Le    chat   s'est   assis
 
 <p>Each row is the same four-step recipe: <strong>query → scores → softmax → weighted sum</strong>. Only the query changes, so the context vector changes with it.</p>
 
-<hr />
+<p>The full picture:</p>
 
-<h2 id="9-a-real-language-example">9. A real-language example</h2>
-
-<p>Consider translating English → French:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: The   cat    sat
-Target: Le    chat   s'est   assis
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source words → Encoder → hidden states h1, h2, h3 (keys + values)
+                                          ↓
+Decoder step 1:  Q1 = s0  →  attention  →  c1  →  "Le"
+Decoder step 2:  Q2 = s1  →  attention  →  c2  →  "chat"
+Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
+Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
 </code></pre></div></div>
-
-<p>At each decoder step the model looks at the source words with different weights:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Target step</th>
-      <th>Word</th>
-      <th style="text-align: right">Attention on “The”</th>
-      <th style="text-align: right">Attention on “cat”</th>
-      <th style="text-align: right">Attention on “sat”</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>1</td>
-      <td>Le</td>
-      <td style="text-align: right">0.70</td>
-      <td style="text-align: right">0.20</td>
-      <td style="text-align: right">0.10</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>chat</td>
-      <td style="text-align: right">0.15</td>
-      <td style="text-align: right">0.75</td>
-      <td style="text-align: right">0.10</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>s’est</td>
-      <td style="text-align: right">0.10</td>
-      <td style="text-align: right">0.25</td>
-      <td style="text-align: right">0.65</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td>assis</td>
-      <td style="text-align: right">0.05</td>
-      <td style="text-align: right">0.10</td>
-      <td style="text-align: right">0.85</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>At step 1 the decoder mostly reads “The”. At step 2 it shifts to “cat”. At step 4 it focuses on “sat”. The same encoder states are reused, but the blend is different every time.</p>
 
 <h3 id="what-if-the-word-order-changes">What if the word order changes?</h3>
 
@@ -590,7 +417,7 @@ German:  Ich   habe    ihn     gesehen
 
 <hr />
 
-<h2 id="10-where-do-the-scores-come-from">10. Where do the scores come from?</h2>
+<h2 id="9-where-do-the-scores-come-from">9. Where do the scores come from?</h2>
 
 <p>The scores are not hand-coded. They come from a small learnable function:</p>
 
@@ -603,7 +430,7 @@ German:  Ich   habe    ihn     gesehen
 
 <hr />
 
-<h2 id="11-a-tiny-pytorch-check">11. A tiny PyTorch check</h2>
+<h2 id="10-a-tiny-pytorch-check">10. A tiny PyTorch check</h2>
 
 <p>Here is the whole recipe in code:</p>
 
@@ -634,7 +461,7 @@ German:  Ich   habe    ihn     gesehen
 
 <hr />
 
-<h2 id="12-summary">12. Summary</h2>
+<h2 id="11-summary">11. Summary</h2>
 
 <table>
   <thead>
