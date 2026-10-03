@@ -570,7 +570,86 @@ print("Context:", context)    # tensor([[0.72, 0.54, 0.72, 0.45]])
 
 ---
 
-## 13. Summary
+## 13. PyTorch: Bahdanau (additive) attention with 3 words
+
+Section 11 introduced Bahdanau attention. Here is a tiny, complete PyTorch example with exactly three source words so you can see the scores, weights, and context vector step by step.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class Attention(nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.W1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.W2 = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.v = nn.Linear(hidden_dim, 1, bias=False)
+
+    def forward(self, decoder_state, encoder_outputs):
+        # decoder_state:    (batch, 1, hidden)
+        # encoder_outputs:  (batch, src_len, hidden)
+
+        # score for every encoder position
+        score = self.v(
+            torch.tanh(self.W1(decoder_state) + self.W2(encoder_outputs))
+        )  # (batch, src_len, 1)
+
+        weights = F.softmax(score, dim=1)              # (batch, src_len, 1)
+        context = (weights * encoder_outputs).sum(dim=1, keepdim=True)
+        return context, weights
+
+
+hidden_dim = 4
+attention = Attention(hidden_dim)
+
+# Three source words: "I", "love", "cats"
+encoder_outputs = torch.tensor(
+    [[[1.0, 0.0, 0.0, 0.0],   # "I"
+      [0.0, 1.0, 0.0, 0.0],   # "love"
+      [0.0, 0.0, 1.0, 0.0]]], # "cats"
+    dtype=torch.float32
+)  # shape: (1, 3, 4)
+
+# Pretend the decoder is about to produce "love"
+decoder_state = torch.tensor(
+    [[[0.0, 1.0, 0.0, 0.0]]],
+    dtype=torch.float32
+)  # shape: (1, 1, 4)
+
+# For the demo, make the matrices simple:
+# W1 and W2 copy their input; v picks the second dimension.
+with torch.no_grad():
+    attention.W1.weight.copy_(torch.eye(hidden_dim))
+    attention.W2.weight.copy_(torch.eye(hidden_dim))
+    attention.v.weight.copy_(torch.tensor([[0.0, 1.0, 0.0, 0.0]]))
+
+context, weights = attention(decoder_state, encoder_outputs)
+
+print("Attention weights on ['I', 'love', 'cats']:")
+for word, w in zip(["I", "love", "cats"], weights.squeeze().tolist()):
+    print(f"  {word:6s}: {w:.4f}")
+
+print(f"Sum of weights: {weights.sum().item():.4f}")
+print(f"Context vector: {context.squeeze().tolist()}")
+```
+
+Output:
+
+```text
+Attention weights on ['I', 'love', 'cats']:
+  I     : 0.3101
+  love  : 0.3797
+  cats  : 0.3101
+Sum of weights: 1.0000
+Context vector: [0.3101, 0.3797, 0.3101, 0.0]
+```
+
+Because the decoder state matched the embedding for "love", the model assigns the largest weight to "love". In a real model, `W1`, `W2`, and `v` are learned from data so the model figures out these alignments automatically.
+
+---
+
+## 14. Summary
 
 - Attention uses three players: **Query** (what am I looking for?), **Key** (what does each word offer?), **Value** (the actual content).
 - The **dot product** `Q · K` measures how similar a query is to each key.
