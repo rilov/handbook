@@ -130,7 +130,23 @@ K3 = V3 = h3 = [0, 0, 1]
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q = [2, 0, 1]
 </code></pre></div></div>
 
-<h3 id="step-1-raw-scores">Step 1: raw scores</h3>
+<h3 id="what-is-the-decoder-doing-right-now">What is the decoder doing right now?</h3>
+
+<p>In a real model this <code class="language-plaintext highlighter-rouge">Q</code> comes from the decoder’s hidden state. It represents what the decoder is currently trying to figure out — for example, “what is the next word I should produce?”</p>
+
+<p>Think of the decoder as a student who is writing the next word of a translation. The student has already read the source sentence and made three notes:</p>
+
+<ul>
+  <li>note 1 = <code class="language-plaintext highlighter-rouge">"I"</code> (h1)</li>
+  <li>note 2 = <code class="language-plaintext highlighter-rouge">"love"</code> (h2)</li>
+  <li>note 3 = <code class="language-plaintext highlighter-rouge">"cats"</code> (h3)</li>
+</ul>
+
+<p>The query <code class="language-plaintext highlighter-rouge">Q = [2, 0, 1]</code> is like the student’s current question: <em>“which of my notes is most useful for the word I am about to write?”</em></p>
+
+<p>Because the question has a high number in the first and third positions, the student expects notes 1 and 3 to be more useful than note 2. The math below makes that precise.</p>
+
+<h3 id="step-1-raw-scores--ask-each-note-how-relevant-it-is">Step 1: raw scores — ask each note how relevant it is</h3>
 
 <p>The score is the dot product:</p>
 
@@ -143,7 +159,9 @@ scores = [2, 0, 1]
 
 <p>The query matches <code class="language-plaintext highlighter-rouge">"I"</code> best, then <code class="language-plaintext highlighter-rouge">"cats"</code>, then <code class="language-plaintext highlighter-rouge">"love"</code>.</p>
 
-<h3 id="step-2-scale">Step 2: scale</h3>
+<p>In plain English: note 1 (<code class="language-plaintext highlighter-rouge">"I"</code>) answers the question best, note 3 (<code class="language-plaintext highlighter-rouge">"cats"</code>) is somewhat relevant, and note 2 (<code class="language-plaintext highlighter-rouge">"love"</code>) is not relevant at all.</p>
+
+<h3 id="step-2-scale--keep-the-numbers-friendly">Step 2: scale — keep the numbers friendly</h3>
 
 <p>The vectors have dimension <code class="language-plaintext highlighter-rouge">d = 3</code>, so we divide by <code class="language-plaintext highlighter-rouge">√d ≈ 1.732</code>:</p>
 
@@ -151,9 +169,9 @@ scores = [2, 0, 1]
               = [1.155, 0.000, 0.577]
 </code></pre></div></div>
 
-<p>Scaling keeps the numbers from growing too large when we use long vectors.</p>
+<p>Why? Because real vectors are long (e.g. 512 dimensions), and their dot products can become huge. Huge scores make the next step lopsided. Scaling keeps everything in a comfortable range, like turning a volume knob down so the speakers do not distort.</p>
 
-<h3 id="step-3-softmax-turns-scores-into-weights">Step 3: softmax turns scores into weights</h3>
+<h3 id="step-3-softmax--turn-scores-into-percentages">Step 3: softmax — turn scores into percentages</h3>
 
 <p>Softmax converts any list of numbers into percentages that add up to 1:</p>
 
@@ -172,7 +190,9 @@ weights = [3.174/5.955, 1.000/5.955, 1.781/5.955]
 
 <p>Check: <code class="language-plaintext highlighter-rouge">0.533 + 0.168 + 0.299 = 1.000</code>.</p>
 
-<h3 id="step-4-weighted-sum-of-values">Step 4: weighted sum of values</h3>
+<p>In plain English: the student decides to trust note 1 for 53%, note 3 for 30%, note 2 for 17%, and 0% for everything else. These percentages always add up to 100%.</p>
+
+<h3 id="step-4-weighted-sum--build-the-final-answer">Step 4: weighted sum — build the final answer</h3>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c = 0.533 × V1 + 0.168 × V2 + 0.299 × V3
   = 0.533 × [1, 0, 0] + 0.168 × [0, 1, 0] + 0.299 × [0, 0, 1]
@@ -180,6 +200,23 @@ weights = [3.174/5.955, 1.000/5.955, 1.781/5.955]
 </code></pre></div></div>
 
 <p>The final <strong>context vector</strong> is <code class="language-plaintext highlighter-rouge">[0.533, 0.168, 0.299]</code>. It is a blend of all three source words, with most weight on <code class="language-plaintext highlighter-rouge">"I"</code>.</p>
+
+<p>In plain English: the student now has a custom summary of the source sentence that is tuned to the exact word they are trying to produce. This summary is passed back into the decoder to help it make the prediction.</p>
+
+<h3 id="what-happens-for-the-next-word">What happens for the next word?</h3>
+
+<p>The decoder does not stop. After it produces one word, it updates its own hidden state and creates a new query. Then it runs the same four steps again:</p>
+
+<ol>
+  <li>compare the new query with every key,</li>
+  <li>scale,</li>
+  <li>softmax,</li>
+  <li>weighted sum.</li>
+</ol>
+
+<p>Because the query is different, the weights are different. The decoder gets a new, custom context vector for the second word, the third word, and so on.</p>
+
+<p>That is why attention is powerful: the decoder does not use one fixed summary of the source sentence. It builds a fresh summary for every word it writes.</p>
 
 <hr />
 
@@ -244,6 +281,55 @@ weights = [3.174/5.955, 1.000/5.955, 1.781/5.955]
 </code></pre></div></div>
 
 <p>The previous decoder state <code class="language-plaintext highlighter-rouge">s_{i-1}</code> and the previous output word <code class="language-plaintext highlighter-rouge">y_{i-1}</code> stay the same. The context is rebuilt each time because the query changes.</p>
+
+<h3 id="a-concrete-walkthrough">A concrete walkthrough</h3>
+
+<p>Translating English → French:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: The   cat    sat
+Target: Le    chat   s'est   assis
+</code></pre></div></div>
+
+<p>Here is what happens inside the decoder:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Target word so far</th>
+      <th>What the decoder does</th>
+      <th>Context vector focus</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>(nothing)</td>
+      <td>Uses its initial hidden state as the query. Asks attention, “which source word helps me produce <code class="language-plaintext highlighter-rouge">Le</code>?”</td>
+      <td>Mostly on “The”</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Le</td>
+      <td>Updates its hidden state after producing <code class="language-plaintext highlighter-rouge">Le</code>. New query asks, “which source word helps me produce <code class="language-plaintext highlighter-rouge">chat</code>?”</td>
+      <td>Mostly on “cat”</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Le chat</td>
+      <td>Updates again. New query asks, “which source word helps me produce <code class="language-plaintext highlighter-rouge">s'est</code>?”</td>
+      <td>Mostly on “sat”</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Le chat s’est</td>
+      <td>Updates again. New query asks, “which source word helps me produce <code class="language-plaintext highlighter-rouge">assis</code>?”</td>
+      <td>Mostly on “sat”</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each row is the same four-step recipe: <strong>query → scores → softmax → weighted sum</strong>. Only the query changes, so the context vector changes with it.</p>
 
 <hr />
 
