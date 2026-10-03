@@ -114,6 +114,90 @@ Decoder state at step i  →  Query
 
 <p>In a Transformer, the process is slightly different: every input token is multiplied by three learned weight matrices (<code class="language-plaintext highlighter-rouge">W_Q</code>, <code class="language-plaintext highlighter-rouge">W_K</code>, <code class="language-plaintext highlighter-rouge">W_V</code>) to create the query, key, and value vectors. We cover that in <a href="/handbook/topics/dl-genai-self-attention-math/">Part 9</a>. For now, the important point is the same — keys and values describe the source, and the query describes what the decoder currently needs.</p>
 
+<h3 id="step-by-step-how-the-words-become-vectors-and-queries">Step-by-step: how the words become vectors and queries</h3>
+
+<p>Let us trace a real sentence through the encoder and decoder. We will use English → French:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: The   cat    sat
+Target: Le    chat   s'est   assis
+</code></pre></div></div>
+
+<h4 id="1-the-encoder-reads-the-source-sentence">1. The encoder reads the source sentence</h4>
+
+<p>First, each word is turned into an embedding vector:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"The" → e1
+"cat" → e2
+"sat" → e3
+</code></pre></div></div>
+
+<p>The encoder processes these embeddings one by one. For a recurrent encoder, this looks like:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hidden_0 = zero vector
+hidden_1 = RNN(e1, hidden_0) = h1   (memory of "The")
+hidden_2 = RNN(e2, hidden_1) = h2   (memory of "The cat")
+hidden_3 = RNN(e3, hidden_2) = h3   (memory of "The cat sat")
+</code></pre></div></div>
+
+<p>After the encoder finishes, we have three states:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h1 = memory of "The"
+h2 = memory of "The cat"
+h3 = memory of "The cat sat"
+</code></pre></div></div>
+
+<p>These states become the <strong>Keys</strong> and <strong>Values</strong> for attention.</p>
+
+<h4 id="2-the-decoder-starts-with-a-special-token">2. The decoder starts with a special token</h4>
+
+<p>The decoder begins with a <code class="language-plaintext highlighter-rouge">&lt;sos&gt;</code> (start-of-sentence) token and an initial hidden state. In a simple RNN setup, that initial state is often the last encoder state <code class="language-plaintext highlighter-rouge">h3</code>.</p>
+
+<p>For the first output word, the decoder’s hidden state <code class="language-plaintext highlighter-rouge">s0</code> becomes the first query:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q1 = s0
+</code></pre></div></div>
+
+<p>Attention compares <code class="language-plaintext highlighter-rouge">Q1</code> with <code class="language-plaintext highlighter-rouge">h1</code>, <code class="language-plaintext highlighter-rouge">h2</code>, <code class="language-plaintext highlighter-rouge">h3</code> and produces a context vector <code class="language-plaintext highlighter-rouge">c1</code>. The decoder then uses <code class="language-plaintext highlighter-rouge">c1</code>, <code class="language-plaintext highlighter-rouge">s0</code>, and the <code class="language-plaintext highlighter-rouge">&lt;sos&gt;</code> token to predict:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>first predicted word = "Le"
+</code></pre></div></div>
+
+<h4 id="3-the-decoder-keeps-going">3. The decoder keeps going</h4>
+
+<p>For the second word, the decoder updates its state using the previous output:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s1 = RNN_decoder("Le", s0, c1)
+Q2 = s1
+</code></pre></div></div>
+
+<p>Attention runs again with <code class="language-plaintext highlighter-rouge">Q2</code> to produce <code class="language-plaintext highlighter-rouge">c2</code>, and the decoder predicts:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>second predicted word = "chat"
+</code></pre></div></div>
+
+<p>This repeats:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>s2 = RNN_decoder("chat", s1, c2)
+Q3 = s2  →  attention  →  c3  →  predict "s'est"
+
+s3 = RNN_decoder("s'est", s2, c3)
+Q4 = s3  →  attention  →  c4  →  predict "assis"
+</code></pre></div></div>
+
+<p>The decoder stops when it predicts <code class="language-plaintext highlighter-rouge">&lt;eos&gt;</code> (end-of-sentence).</p>
+
+<h4 id="the-full-picture">The full picture</h4>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source words → Encoder → hidden states h1, h2, h3 (keys + values)
+                                          ↓
+Decoder step 1:  Q1 = s0  →  attention  →  c1  →  "Le"
+Decoder step 2:  Q2 = s1  →  attention  →  c2  →  "chat"
+Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
+Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
+</code></pre></div></div>
+
+<p>At every step the attention block runs the same four-step math from section 4. The only thing that changes is the <strong>query</strong>, which is the decoder’s current hidden state. That is why the context vector is fresh at every step.</p>
+
 <hr />
 
 <h2 id="3-the-three-step-recipe">3. The three-step recipe</h2>
