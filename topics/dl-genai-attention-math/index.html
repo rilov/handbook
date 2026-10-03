@@ -300,6 +300,92 @@ with:  0 ≤ α_ij ≤ 1   and   α_i1 + α_i2 + α_i3 = 1
   <li><strong>The denominator normalises.</strong> Dividing by the sum of all exponentials guarantees the weights add up to exactly 1.</li>
 </ul>
 
+<h3 id="a-concrete-example-attention-changes-at-every-decoder-step">A concrete example: attention changes at every decoder step</h3>
+
+<p>So far we have computed one context vector for one query. In a real translation model the decoder runs for several steps, and the attention weights change at every step.</p>
+
+<p>Consider a simple English → French translation:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source:  The   cat    sat
+         h1    h2     h3
+
+Target:  Le    chat   s'est   assis
+         y1    y2     y3      y4
+</code></pre></div></div>
+
+<p>At each decoder step the model builds a fresh context vector <code class="language-plaintext highlighter-rouge">c_i</code>. The table below shows plausible attention weights — not real numbers, but the right intuition:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Decoder step</th>
+      <th style="text-align: right">Word being generated</th>
+      <th style="text-align: right">Attention on “The”</th>
+      <th style="text-align: right">Attention on “cat”</th>
+      <th style="text-align: right">Attention on “sat”</th>
+      <th>What the model is doing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td style="text-align: right">Le</td>
+      <td style="text-align: right">0.70</td>
+      <td style="text-align: right">0.20</td>
+      <td style="text-align: right">0.10</td>
+      <td>Just starting; focus on the first source word.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td style="text-align: right">chat</td>
+      <td style="text-align: right">0.15</td>
+      <td style="text-align: right">0.75</td>
+      <td style="text-align: right">0.10</td>
+      <td>“Le” is the article; now look for the noun.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td style="text-align: right">s’est</td>
+      <td style="text-align: right">0.10</td>
+      <td style="text-align: right">0.25</td>
+      <td style="text-align: right">0.65</td>
+      <td>Noun done; now look for the verb.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td style="text-align: right">assis</td>
+      <td style="text-align: right">0.05</td>
+      <td style="text-align: right">0.10</td>
+      <td style="text-align: right">0.85</td>
+      <td>Confirm the verb and its past tense.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>At step 1 the context vector is roughly:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c_1 ≈ 0.70 × h_The + 0.20 × h_cat + 0.10 × h_sat
+</code></pre></div></div>
+
+<p>At step 3 it is:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c_3 ≈ 0.10 × h_The + 0.25 × h_cat + 0.65 × h_sat
+</code></pre></div></div>
+
+<p>The same three encoder states are reused, but the <strong>blend</strong> changes. That is why attention is powerful: the decoder can look at a different part of the source sentence at every output step.</p>
+
+<h3 id="why-hard-coding-would-fail">Why hard-coding would fail</h3>
+
+<p>You might ask: could we just write rules like “step 1 looks at word 1, step 2 looks at word 2”? Real languages do not line up one-to-one. In English → German:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>English:  I     have    seen    him
+German:   Ich   habe    ihn     gesehen
+                  ↑               ↑
+                  └─── verb splits ───┘
+</code></pre></div></div>
+
+<p>The English verb phrase “have seen” becomes “habe … gesehen”, with the participle jumping to the end of the sentence. The model must learn to attend to “seen” when generating “gesehen”, even though the words are in different positions. No fixed mapping works, so the alignment function must be learned from data.</p>
+
 <hr />
 
 <h2 id="8-where-do-the-scores-come-from-a-learnable-alignment-function">8. Where do the scores come from? A learnable alignment function</h2>
