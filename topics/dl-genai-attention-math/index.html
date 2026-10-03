@@ -96,6 +96,60 @@
 
 <p>The decoder writes a query. It compares the query to every key. The better the match, the more of that value it keeps.</p>
 
+<h3 id="what-does-the-decoder-actually-do-with-them">What does the decoder actually do with them?</h3>
+
+<p>Here is the attention call in plain English. Imagine we are translating:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: I    love   cats
+Target: J'aime chats
+</code></pre></div></div>
+
+<p>When the decoder is about to produce the first target word, it asks itself: <em>“What do I need from the source sentence right now?”</em></p>
+
+<p>Its current hidden state becomes the <strong>Query</strong>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query = "I am looking for the subject of the sentence"
+</code></pre></div></div>
+
+<p>It then compares this query with every source-word memory:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Key 1 = "I"          → matches well
+Key 2 = "love"       → matches a little
+Key 3 = "cats"       → matches less
+</code></pre></div></div>
+
+<p>After softmax, the weights might look like:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>weights on ["I", "love", "cats"] = [0.75, 0.15, 0.10]
+</code></pre></div></div>
+
+<p>The decoder builds a custom summary:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>context = 0.75 × Value("I")
+        + 0.15 × Value("love")
+        + 0.10 × Value("cats")
+</code></pre></div></div>
+
+<p>It uses this summary to predict the first word: <code class="language-plaintext highlighter-rouge">J'</code>.</p>
+
+<p>For the next word, the decoder updates its hidden state and asks a new question:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query = "I am looking for the verb now"
+</code></pre></div></div>
+
+<p>This time the weights might shift to <code class="language-plaintext highlighter-rouge">[0.10, 0.80, 0.10]</code>, so the context focuses on <code class="language-plaintext highlighter-rouge">"love"</code>. The decoder predicts <code class="language-plaintext highlighter-rouge">aime</code>.</p>
+
+<p>So the decoder is basically calling a function like this at every step:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>context_i = attention(
+    query = decoder_state_i,
+    keys  = [encoder_state_1, encoder_state_2, encoder_state_3],
+    values = [encoder_state_1, encoder_state_2, encoder_state_3]
+)
+</code></pre></div></div>
+
+<p>The query changes at every step, so the answer changes too.</p>
+
 <h3 id="where-do-these-vectors-come-from">Where do these vectors come from?</h3>
 
 <p>In the encoder-decoder setup we saw in <a href="/handbook/topics/dl-genai-attention-encoder-decoder/">Part 3</a>:</p>
