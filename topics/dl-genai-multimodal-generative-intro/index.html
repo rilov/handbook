@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 15: Introduction to Multimodal Generative Architectures</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 15: Introduction to Multimodal Generative Architectures</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-15-introduction-to-multimodal-generative-architectures">Deep Learning for Generative AI — Part 15: Introduction to Multimodal Generative Architectures</h1>
+
+<p>So far in this track we have seen how Transformers learn to <strong>transform</strong> one sequence into another: English → French, text → code, questions → answers. Those are powerful models, but they are still trained as deterministic input–output mappings.</p>
+
+<p>This part shifts the focus to models that learn the <strong>data distribution itself</strong>. Once a model knows how data is produced, it can generate new, realistic samples, reason about uncertainty, and blend information from more than one modality — text, images, audio, or structured data.</p>
+
+<hr />
+
+<h2 id="1-three-kinds-of-models">1. Three kinds of models</h2>
+
+<p>Machine-learning tasks are usually described in one of three ways:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Question it answers</th>
+      <th>Input → output</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Prediction</strong></td>
+      <td>“Given x, what is y?”</td>
+      <td>email → spam/not spam</td>
+      <td>classification, regression</td>
+    </tr>
+    <tr>
+      <td><strong>Transformation</strong></td>
+      <td>“What is the structured counterpart of x?”</td>
+      <td>English sentence → French sentence</td>
+      <td>translation, denoising, speech-to-text</td>
+    </tr>
+    <tr>
+      <td><strong>Generation</strong></td>
+      <td>“What does this kind of data look like?”</td>
+      <td>noise or prompt → new sample</td>
+      <td>images, music, text, molecules</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Prediction and transformation are about <strong>boundaries</strong> or <strong>mappings</strong>. Generation is about <strong>probability distributions</strong>: the model learns what values, structures, and combinations are likely, then samples from that distribution.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Prediction:     P(y | x)      → a label
+Transformation: P(y | x)    → a paired output
+Generation:     P(data)     → a brand-new sample
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="2-discriminative-vs-generative-models">2. Discriminative vs generative models</h2>
+
+<p>A <strong>discriminative</strong> model learns the boundary between classes. It is great at saying “this is a cat” but it cannot draw a cat.</p>
+
+<p>A <strong>generative</strong> model learns what cats look like. It can:</p>
+
+<ul>
+  <li>generate a new cat image,</li>
+  <li>tell you whether a new image looks like a cat,</li>
+  <li>fill in missing parts of a cat photo,</li>
+  <li>smoothly morph between a cat and a dog.</li>
+</ul>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Discriminative:  "Does this look like a cat?"  → decision boundary
+Generative:      "What do cats look like?"     → probability distribution over images
+</code></pre></div></div>
+
+<p>The same idea applies to text, audio, tabular data, or anything with structure.</p>
+
+<hr />
+
+<h2 id="3-conditional-and-unconditional-generation">3. Conditional and unconditional generation</h2>
+
+<p>Generation can be free-form or guided:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Unconditional</th>
+      <th>Conditional</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Input</td>
+      <td>None (or random noise)</td>
+      <td>A class label, text prompt, partial image, etc.</td>
+    </tr>
+    <tr>
+      <td>Output</td>
+      <td>A random plausible sample</td>
+      <td>A sample matching the condition</td>
+    </tr>
+    <tr>
+      <td>Example</td>
+      <td>Random face</td>
+      <td>“A photo of a raccoon wearing an astronaut helmet”</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Modern systems like Stable Diffusion or DALL-E are <strong>conditional</strong> image generators: they learn the distribution of images <em>given a text prompt</em>.</p>
+
+<hr />
+
+<h2 id="4-the-autoencoder-trap">4. The autoencoder trap</h2>
+
+<p>An autoencoder looks like a generative model at first glance:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>input → encoder → latent code → decoder → reconstructed input
+</code></pre></div></div>
+
+<p>It learns to compress and reconstruct data, and the latent code often captures meaningful structure. But a standard autoencoder is <strong>not a true generative model</strong>.</p>
+
+<p>Why?</p>
+
+<ul>
+  <li>Each input becomes <strong>one deterministic point</strong> in latent space.</li>
+  <li>The model learns to decode only the points the encoder actually produced.</li>
+  <li>Random points in the latent space usually decode into <strong>garbage</strong> because the latent space is sparse and irregular.</li>
+  <li>A reconstruction loss like mean squared error averages plausible alternatives, producing <strong>blurry</strong> outputs.</li>
+</ul>
+
+<p>In short: autoencoders <strong>compress</strong> and <strong>reconstruct</strong>, but they do not learn a smooth, probabilistic distribution they can safely sample from.</p>
+
+<hr />
+
+<h2 id="5-what-makes-a-model-truly-generative">5. What makes a model truly generative?</h2>
+
+<p>A generative model needs two things:</p>
+
+<ol>
+  <li><strong>A structured, probabilistic latent space</strong> — nearby points should decode to similar, realistic outputs.</li>
+  <li><strong>A way to sample from it</strong> — starting from noise or a prior distribution, the model should produce new, high-quality data.</li>
+</ol>
+
+<p>The next few parts introduce the main families that achieve this:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Family</th>
+      <th>Core idea</th>
+      <th>Strength</th>
+      <th>Classic example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>VAE</strong></td>
+      <td>Encode each input as a distribution, regularise it toward a simple prior</td>
+      <td>Smooth latent space, principled probability</td>
+      <td>Kingma &amp; Welling VAE</td>
+    </tr>
+    <tr>
+      <td><strong>GAN</strong></td>
+      <td>Train a generator and a discriminator in a two-player game</td>
+      <td>Sharp, realistic samples</td>
+      <td>DCGAN, StyleGAN</td>
+    </tr>
+    <tr>
+      <td><strong>Diffusion</strong></td>
+      <td>Learn to reverse a gradual noising process</td>
+      <td>Stable training, strong likelihoods</td>
+      <td>DDPM, Stable Diffusion</td>
+    </tr>
+    <tr>
+      <td><strong>Autoregressive</strong></td>
+      <td>Predict one piece at a time</td>
+      <td>Exact likelihood, flexible</td>
+      <td>GPT, PixelCNN</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Transformers like GPT are autoregressive generative models over sequences. The next parts focus on the visual side — images — but the same principles show up everywhere.</p>
+
+<hr />
+
+<h2 id="6-roadmap-for-the-next-parts">6. Roadmap for the next parts</h2>
+
+<ol>
+  <li><strong>Part 16</strong> — Autoencoders vs VAEs: why the latent space must become probabilistic.</li>
+  <li><strong>Part 17</strong> — Generative Adversarial Networks: generator vs discriminator.</li>
+  <li><strong>Part 18</strong> — Diffusion models and Stable Diffusion: reversing noise step by step.</li>
+  <li><strong>Part 19</strong> — Multimodal models, CLIP-style alignment, and Vision Transformers.</li>
+</ol>
+
+<p>Along the way we will keep one idea in mind: generative models do not memorise training examples. They learn the <strong>statistical rules</strong> behind the data, then use those rules to create things that never existed before.</p>
+
+<p><strong>Next up:</strong> dive into the autoencoder trap and how Variational Autoencoders escape it in <a href="/handbook/topics/dl-genai-autoencoders-and-vaes/">Part 16: Autoencoders and Variational Autoencoders</a>.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">generative-models</span>, <span class="tag">autoencoders</span>, <span class="tag">vae</span>, <span class="tag">gans</span>, <span class="tag">diffusion</span>, <span class="tag">multimodal</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
