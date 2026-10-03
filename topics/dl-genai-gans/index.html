@@ -277,77 +277,207 @@ Conditional:    z + y    → G → face of age y, wearing glasses y, etc.
 
 <p>This is how you can ask a GAN to generate “a handwritten digit 7” or “a photo of a sunset.”</p>
 
-<h3 id="paired-data-for-image-to-image-translation">Paired data for image-to-image translation</h3>
+<h3 id="paired-image-to-image-translation-pix2pix">Paired image-to-image translation: pix2pix</h3>
 
-<p>Many conditional tasks use <strong>paired</strong> examples:</p>
+<p>When you have <strong>paired</strong> input–output examples, the conditional GAN idea becomes image-to-image translation. The classic model for this is <strong>pix2pix</strong>.</p>
 
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>grayscale image  →  colour image
+street map       →  aerial satellite photo
+sketch           →  realistic photo
 low-resolution image  →  high-resolution image
-sketch  →  photograph
 </code></pre></div></div>
 
-<p>The discriminator compares the generated output directly against the ground-truth target under the same input condition. This gives a strong supervised signal.</p>
-
-<p>But paired data is not always available. That limitation leads to unpaired translation methods like CycleGAN.</p>
-
-<hr />
-
-<h2 id="9-cyclegan-translating-without-paired-examples">9. CycleGAN: translating without paired examples</h2>
-
-<p>CycleGAN solves the problem: “I have a pile of horse photos and a pile of zebra photos, but no picture of the same horse as a zebra.”</p>
-
-<p>It learns two generators:</p>
+<p>pix2pix uses:</p>
 
 <ul>
-  <li><strong>G:</strong> horse → zebra</li>
-  <li><strong>F:</strong> zebra → horse</li>
+  <li>a <strong>U-Net generator</strong>, so the input structure is preserved while the output style is changed;</li>
+  <li>a <strong>PatchGAN discriminator</strong>, which classifies each small patch as real or fake instead of judging the whole image at once. This encourages local realism and sharper edges.</li>
 </ul>
 
-<p>The clever part is the <strong>cycle consistency loss</strong>: if you convert a horse to a zebra and back, you should land close to the original horse.</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>horse  →  G  →  zebra  →  F  →  horse' ≈ horse
-</code></pre></div></div>
-
-<p>This stops the generator from ignoring the input and producing random zebras. The same loss runs in the opposite direction:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zebra  →  F  →  horse  →  G  →  zebra' ≈ zebra
-</code></pre></div></div>
-
-<p>Together with the usual adversarial losses, CycleGAN learns a meaningful mapping between two unpaired collections of images.</p>
+<p>Because the training data already contains matching pairs, the generator gets direct feedback: “given this input, your output should look like the known target.”</p>
 
 <hr />
 
-<h2 id="10-a-tiny-code-sketch">10. A tiny code sketch</h2>
+<h3 id="unpaired-image-to-image-translation">Unpaired image-to-image translation</h3>
 
-<p>Here is a conceptual PyTorch snippet that shows the alternating update pattern. It is not a full runnable model, but it captures the loop clearly.</p>
+<p>Many interesting translations do <strong>not</strong> have paired examples:</p>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="n">real_data</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
-    <span class="n">noise</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">)</span>
-    <span class="n">fake_data</span> <span class="o">=</span> <span class="nf">generator</span><span class="p">(</span><span class="n">noise</span><span class="p">)</span>
-
-    <span class="c1"># --- Train discriminator ---
-</span>    <span class="n">d_real</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">real_data</span><span class="p">)</span>
-    <span class="n">d_fake</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">fake_data</span><span class="p">.</span><span class="nf">detach</span><span class="p">())</span>  <span class="c1"># detach so generator is not trained here
-</span>
-    <span class="n">d_loss</span> <span class="o">=</span> <span class="nf">binary_cross_entropy</span><span class="p">(</span><span class="n">d_real</span><span class="p">,</span> <span class="n">real_labels</span><span class="p">)</span> \
-           <span class="o">+</span> <span class="nf">binary_cross_entropy</span><span class="p">(</span><span class="n">d_fake</span><span class="p">,</span> <span class="n">fake_labels</span><span class="p">)</span>
-
-    <span class="n">d_loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
-    <span class="n">optimizer_D</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
-
-    <span class="c1"># --- Train generator ---
-</span>    <span class="n">d_fake</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">fake_data</span><span class="p">)</span>
-    <span class="n">g_loss</span> <span class="o">=</span> <span class="nf">binary_cross_entropy</span><span class="p">(</span><span class="n">d_fake</span><span class="p">,</span> <span class="n">real_labels</span><span class="p">)</span>  <span class="c1"># wants to be called real
-</span>
-    <span class="n">g_loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
-    <span class="n">optimizer_G</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>horse  ↔  zebra          (the same animal cannot be both at once)
+summer scene  ↔  winter scene
+photograph  ↔  Monet painting
+sunny day  ↔  foggy day
 </code></pre></div></div>
 
-<p>The discriminator learns from real and fake data. The generator learns only through the discriminator’s scores.</p>
+<p>For these cases we only have two separate collections of images. The challenge is to learn a mapping without knowing which image in domain A corresponds to which image in domain B.</p>
+
+<p>This is where CycleGAN comes in.</p>
 
 <hr />
 
-<h2 id="11-summary">11. Summary</h2>
+<h2 id="9-cyclegan-two-generators-two-discriminators-and-three-losses">9. CycleGAN: two generators, two discriminators, and three losses</h2>
+
+<p>CycleGAN learns two mappings at the same time:</p>
+
+<ul>
+  <li><strong>G_AB:</strong> domain A → domain B (e.g. horse → zebra)</li>
+  <li><strong>G_BA:</strong> domain B → domain A (e.g. zebra → horse)</li>
+</ul>
+
+<p>Each domain has its own discriminator:</p>
+
+<ul>
+  <li><strong>D_A:</strong> tells real A images from translated A images.</li>
+  <li><strong>D_B:</strong> tells real B images from translated B images.</li>
+</ul>
+
+<h3 id="1-adversarial-loss">1. Adversarial loss</h3>
+
+<p>Each generator–discriminator pair plays a normal GAN game:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>real A images  →  D_A says "real"
+G_BA(fake B)   →  D_A says "fake"
+real B images  →  D_B says "real"
+G_AB(fake A)   →  D_B says "fake"
+</code></pre></div></div>
+
+<p>This ensures that translated images look realistic in the target domain.</p>
+
+<h3 id="2-cycle-consistency-loss">2. Cycle consistency loss</h3>
+
+<p>The adversarial loss alone is not enough. A generator could ignore the input and produce any plausible target image, as long as it fools the discriminator. The cycle loss fixes this.</p>
+
+<p>If you translate a horse to a zebra and back, you should end up close to the original horse:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>horse  →  G_AB  →  zebra  →  G_BA  →  horse' ≈ horse
+</code></pre></div></div>
+
+<p>The same must work in the other direction:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zebra  →  G_BA  →  horse  →  G_AB  →  zebra' ≈ zebra
+</code></pre></div></div>
+
+<p>This is a <strong>self-supervised</strong> constraint: the model does not need paired labels, only the requirement that round-trip translations preserve structure.</p>
+
+<h3 id="3-identity-loss">3. Identity loss</h3>
+
+<p>The identity loss is a regulariser. If you feed an image that already belongs to the target domain into the generator, it should change very little:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zebra  →  G_AB  →  zebra   (G_AB maps A→B, so a B input should stay a B input)
+</code></pre></div></div>
+
+<p>This prevents the model from unnecessarily altering colours and textures, and helps preserve the input’s overall look.</p>
+
+<h3 id="why-patch-level-discriminators">Why patch-level discriminators?</h3>
+
+<p>CycleGAN discriminators often operate on small image patches. This has the same effect as pix2pix’s PatchGAN: it focuses on local texture and structure rather than memorising the whole image, which matters when the overall layout must stay the same and only the style should change.</p>
+
+<h3 id="limitations">Limitations</h3>
+
+<p>CycleGAN assumes both domains share the same geometry and content. If you ask it to turn a horse into a zebra, it assumes the horse shape is preserved and only the texture changes. When domains differ in shape or semantics, it can distort objects or hallucinate details.</p>
+
+<ul>
+  <li>CycleGAN project page: <a href="https://junyanz.github.io/CycleGAN/">https://junyanz.github.io/CycleGAN/</a></li>
+  <li>Original paper: <a href="https://arxiv.org/pdf/1703.10593">Zhu et al., 2017</a></li>
+</ul>
+
+<hr />
+
+<h2 id="10-latent-space-arithmetic-with-dcgan">10. Latent-space arithmetic with DCGAN</h2>
+
+<p>A well-trained GAN learns a meaningful latent space. You can treat latent vectors like word vectors and do arithmetic on them.</p>
+
+<p>A classic face-GAN example:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smiling_woman  -  neutral_woman  +  neutral_man  ≈  smiling_man
+</code></pre></div></div>
+
+<p>How does this work?</p>
+
+<ol>
+  <li>Find latent vectors that the generator turns into images in each category.</li>
+  <li>Average several examples per category to get a stable centre.</li>
+  <li>Subtract the “woman” direction and add the “man” direction to the “smiling woman” direction.</li>
+  <li>Feed the result into the generator.</li>
+</ol>
+
+<p>The generator has disentangled concepts like “smiling” and “gender” into different directions in latent space. This shows that the model has learned semantic structure, not just memorised training images.</p>
+
+<hr />
+
+<h2 id="11-a-simple-gan-on-fashion-mnist">11. A simple GAN on Fashion MNIST</h2>
+
+<p>Here is a compact TensorFlow/Keras sketch that trains a simple GAN on the Fashion MNIST dataset. The goal is not production code; it is to see the generator and discriminator shapes and the alternating update pattern.</p>
+
+<h3 id="generator">Generator</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">latent_dim</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="n">generator</span> <span class="o">=</span> <span class="n">keras</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">([</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Dense</span><span class="p">(</span><span class="mi">7</span> <span class="o">*</span> <span class="mi">7</span> <span class="o">*</span> <span class="mi">128</span><span class="p">,</span> <span class="n">input_shape</span><span class="o">=</span><span class="p">(</span><span class="n">latent_dim</span><span class="p">,)),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Reshape</span><span class="p">((</span><span class="mi">7</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">128</span><span class="p">)),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">BatchNormalization</span><span class="p">(),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Conv2DTranspose</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">strides</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="sh">"</span><span class="s">same</span><span class="sh">"</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="sh">"</span><span class="s">relu</span><span class="sh">"</span><span class="p">),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">BatchNormalization</span><span class="p">(),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Conv2DTranspose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">strides</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="sh">"</span><span class="s">same</span><span class="sh">"</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="sh">"</span><span class="s">sigmoid</span><span class="sh">"</span><span class="p">),</span>
+<span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">generator</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The generator turns a 100-dimensional noise vector into a 28×28 grayscale image.</p>
+
+<h3 id="discriminator">Discriminator</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">discriminator</span> <span class="o">=</span> <span class="n">keras</span><span class="p">.</span><span class="nc">Sequential</span><span class="p">([</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Conv2D</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">strides</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="sh">"</span><span class="s">same</span><span class="sh">"</span><span class="p">,</span> <span class="n">input_shape</span><span class="o">=</span><span class="p">[</span><span class="mi">28</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">LeakyReLU</span><span class="p">(</span><span class="mf">0.2</span><span class="p">),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Conv2D</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">strides</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="sh">"</span><span class="s">same</span><span class="sh">"</span><span class="p">),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">LeakyReLU</span><span class="p">(</span><span class="mf">0.2</span><span class="p">),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Flatten</span><span class="p">(),</span>
+    <span class="n">layers</span><span class="p">.</span><span class="nc">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="sh">"</span><span class="s">sigmoid</span><span class="sh">"</span><span class="p">),</span>
+<span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">discriminator</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The discriminator receives either a real Fashion MNIST image or a generated image, and outputs a single probability.</p>
+
+<h3 id="training-loop">Training loop</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">g_optimizer</span> <span class="o">=</span> <span class="n">keras</span><span class="p">.</span><span class="n">optimizers</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">)</span>
+<span class="n">d_optimizer</span> <span class="o">=</span> <span class="n">keras</span><span class="p">.</span><span class="n">optimizers</span><span class="p">.</span><span class="nc">Adam</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">)</span>
+<span class="n">cross_entropy</span> <span class="o">=</span> <span class="n">keras</span><span class="p">.</span><span class="n">losses</span><span class="p">.</span><span class="nc">BinaryCrossentropy</span><span class="p">()</span>
+
+<span class="nd">@tf.function</span>
+<span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="n">real_images</span><span class="p">):</span>
+    <span class="n">noise</span> <span class="o">=</span> <span class="n">tf</span><span class="p">.</span><span class="n">random</span><span class="p">.</span><span class="nf">normal</span><span class="p">([</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">])</span>
+
+    <span class="k">with</span> <span class="n">tf</span><span class="p">.</span><span class="nc">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">gen_tape</span><span class="p">,</span> <span class="n">tf</span><span class="p">.</span><span class="nc">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">disc_tape</span><span class="p">:</span>
+        <span class="n">generated_images</span> <span class="o">=</span> <span class="nf">generator</span><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="n">real_output</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">real_images</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">fake_output</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">generated_images</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c1"># Generator wants discriminator to think fakes are real
+</span>        <span class="n">gen_loss</span> <span class="o">=</span> <span class="nf">cross_entropy</span><span class="p">(</span><span class="n">tf</span><span class="p">.</span><span class="nf">ones_like</span><span class="p">(</span><span class="n">fake_output</span><span class="p">),</span> <span class="n">fake_output</span><span class="p">)</span>
+
+        <span class="c1"># Discriminator wants to label real as 1 and fake as 0
+</span>        <span class="n">real_loss</span> <span class="o">=</span> <span class="nf">cross_entropy</span><span class="p">(</span><span class="n">tf</span><span class="p">.</span><span class="nf">ones_like</span><span class="p">(</span><span class="n">real_output</span><span class="p">),</span> <span class="n">real_output</span><span class="p">)</span>
+        <span class="n">fake_loss</span> <span class="o">=</span> <span class="nf">cross_entropy</span><span class="p">(</span><span class="n">tf</span><span class="p">.</span><span class="nf">zeros_like</span><span class="p">(</span><span class="n">fake_output</span><span class="p">),</span> <span class="n">fake_output</span><span class="p">)</span>
+        <span class="n">disc_loss</span> <span class="o">=</span> <span class="n">real_loss</span> <span class="o">+</span> <span class="n">fake_loss</span>
+
+    <span class="n">gen_gradients</span> <span class="o">=</span> <span class="n">gen_tape</span><span class="p">.</span><span class="nf">gradient</span><span class="p">(</span><span class="n">gen_loss</span><span class="p">,</span> <span class="n">generator</span><span class="p">.</span><span class="n">trainable_variables</span><span class="p">)</span>
+    <span class="n">disc_gradients</span> <span class="o">=</span> <span class="n">disc_tape</span><span class="p">.</span><span class="nf">gradient</span><span class="p">(</span><span class="n">disc_loss</span><span class="p">,</span> <span class="n">discriminator</span><span class="p">.</span><span class="n">trainable_variables</span><span class="p">)</span>
+
+    <span class="n">g_optimizer</span><span class="p">.</span><span class="nf">apply_gradients</span><span class="p">(</span><span class="nf">zip</span><span class="p">(</span><span class="n">gen_gradients</span><span class="p">,</span> <span class="n">generator</span><span class="p">.</span><span class="n">trainable_variables</span><span class="p">))</span>
+    <span class="n">d_optimizer</span><span class="p">.</span><span class="nf">apply_gradients</span><span class="p">(</span><span class="nf">zip</span><span class="p">(</span><span class="n">disc_gradients</span><span class="p">,</span> <span class="n">discriminator</span><span class="p">.</span><span class="n">trainable_variables</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>After many epochs, random noise fed into the generator starts producing recognisable clothing-like shapes.</p>
+
+<h3 id="a-note-on-dcgan">A note on DCGAN</h3>
+
+<p>The demonstration above uses transposed convolutions and batch normalisation, which are the core ideas of <strong>DCGAN</strong>. Replacing the dense layers at the start with a fully convolutional architecture and following DCGAN guidelines usually makes image GANs more stable.</p>
+
+<hr />
+
+<h2 id="12-summary">12. Summary</h2>
 
 <table>
   <thead>
@@ -386,8 +516,16 @@ sketch  →  photograph
       <td>Add a condition <code class="language-plaintext highlighter-rouge">y</code> to both networks so generation becomes controllable.</td>
     </tr>
     <tr>
+      <td><strong>pix2pix</strong></td>
+      <td>Paired image-to-image translation with a U-Net generator and PatchGAN discriminator.</td>
+    </tr>
+    <tr>
       <td><strong>CycleGAN</strong></td>
-      <td>Use two generators and cycle consistency to translate between unpaired domains.</td>
+      <td>Unpaired image-to-image translation using two generators, two discriminators, cycle consistency, and identity loss.</td>
+    </tr>
+    <tr>
+      <td><strong>Latent arithmetic</strong></td>
+      <td>In a trained GAN, semantic concepts become directions in the noise space.</td>
     </tr>
   </tbody>
 </table>
