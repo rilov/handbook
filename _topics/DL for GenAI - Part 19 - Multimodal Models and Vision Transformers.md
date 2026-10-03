@@ -310,4 +310,4 @@ The result: type a sentence, and the model generates a brand-new image matching 
 
 Multimodal systems are not one model; they are a stack of aligned representations, conditioning mechanisms, and fusion strategies. They connect the generative models from earlier parts with the real world of text, images, and other modalities.
 
-This completes the **Multimodal Generative Architectures** track. For the practical side of building applications with these models — prompts, chains, retrieval, agents, and observability — see the [LangChain / LLM Application Development]({{ site.baseurl }}/categories/generative-ai/) series.
+This completes the core **Multimodal Generative Architectures** track. Next, see how the same ideas are implemented in code by building a Vision Transformer from scratch and running a pre-trained ViT in [Part 20: Vision Transformers in Code (Hands-On)]({{ site.baseurl }}/topics/dl-genai-vision-transformers-code/). After that, the [LangChain / LLM Application Development]({{ site.baseurl }}/categories/generative-ai/) series covers prompts, chains, retrieval, agents, and observability.

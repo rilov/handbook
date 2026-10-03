@@ -41,6 +41,7 @@ Learn about LLMs, LangChain, RAG, agents, and building AI-powered applications �
 17. **[Generative Adversarial Networks]({{ site.baseurl }}/topics/dl-genai-gans/)** — Generator vs discriminator, the minimax game, conditional GANs, CycleGAN and cycle consistency.
 18. **[Diffusion Models and Stable Diffusion]({{ site.baseurl }}/topics/dl-genai-diffusion-models/)** — Forward noising and reverse denoising, time conditioning, classifier-free guidance, and latent diffusion in Stable Diffusion.
 19. **[Multimodal Models and Vision Transformers]({{ site.baseurl }}/topics/dl-genai-multimodal-models/)** — CLIP-style image-text alignment, prompts as steering vectors, cross-attention, Vision Transformers, and how modern text-to-image systems combine these pieces.
+20. **[Vision Transformers in Code (Hands-On)]({{ site.baseurl }}/topics/dl-genai-vision-transformers-code/)** — Build a ViT from scratch in TensorFlow/Keras (patch extraction, encoding, transformer blocks), visualise image patches, and run Google's pre-trained ViT from Hugging Face.
 
 **Short on time? Read the one-sitting recap instead (or first):**
 
