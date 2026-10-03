@@ -386,6 +386,151 @@ German:   Ich   habe    ihn     gesehen
 
 <p>The English verb phrase “have seen” becomes “habe … gesehen”, with the participle jumping to the end of the sentence. The model must learn to attend to “seen” when generating “gesehen”, even though the words are in different positions. No fixed mapping works, so the alignment function must be learned from data.</p>
 
+<h3 id="full-numerical-example-three-decoder-steps">Full numerical example: three decoder steps</h3>
+
+<p>Here is a fully worked numerical example. We use tiny 3-dimensional vectors and dot-product attention, so every step is visible.</p>
+
+<p><strong>Source states (keys and values):</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h_I    = [1, 0, 0]   (encoder state for "I")
+h_love = [0, 1, 0]   (encoder state for "love")
+h_cats = [0, 0, 1]   (encoder state for "cats")
+</code></pre></div></div>
+
+<p>Because each state is an axis-aligned unit vector, the dot product <code class="language-plaintext highlighter-rouge">q · h</code> simply picks out the corresponding coordinate of <code class="language-plaintext highlighter-rouge">q</code>.</p>
+
+<p><strong>Decoder queries at three steps:</strong></p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>q1 = [2.0,  0.5, -0.3]   (about to generate "I")
+q2 = [0.2,  1.5,  0.4]   (about to generate "love")
+q3 = [-0.4, 0.3,  1.8]   (about to generate "cats")
+</code></pre></div></div>
+
+<p>Dimension <code class="language-plaintext highlighter-rouge">d = 3</code>, so the scaling factor is <code class="language-plaintext highlighter-rouge">√d ≈ 1.732</code>.</p>
+
+<h4 id="step-1">Step 1</h4>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scores      = [q1·h_I, q1·h_love, q1·h_cats]
+            = [2.0, 0.5, -0.3]
+
+scaled      = scores / √3
+            = [1.155, 0.289, -0.173]
+
+softmax     = [0.593, 0.250, 0.157]
+
+c_1         = 0.593 × h_I + 0.250 × h_love + 0.157 × h_cats
+            = [0.593, 0.250, 0.157]
+</code></pre></div></div>
+
+<p>The first step focuses mostly on “I” (59%), with some attention on “love” and “cats”.</p>
+
+<h4 id="step-2">Step 2</h4>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scores      = [0.2, 1.5, 0.4]
+scaled      = [0.115, 0.866, 0.231]
+softmax     = [0.236, 0.500, 0.265]
+
+c_2         = [0.236, 0.500, 0.265]
+</code></pre></div></div>
+
+<p>Now the attention peak is on “love” (50%).</p>
+
+<h4 id="step-3">Step 3</h4>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scores      = [-0.4, 0.3, 1.8]
+scaled      = [-0.231, 0.173, 1.039]
+softmax     = [0.165, 0.247, 0.588]
+
+c_3         = [0.165, 0.247, 0.588]
+</code></pre></div></div>
+
+<p>The final step focuses mostly on “cats” (59%).</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Query</th>
+      <th style="text-align: right">Attention on “I”</th>
+      <th style="text-align: right">Attention on “love”</th>
+      <th style="text-align: right">Attention on “cats”</th>
+      <th>Context vector <code class="language-plaintext highlighter-rouge">c_i</code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>generate “I”</td>
+      <td style="text-align: right">0.593</td>
+      <td style="text-align: right">0.250</td>
+      <td style="text-align: right">0.157</td>
+      <td><code class="language-plaintext highlighter-rouge">[0.59, 0.25, 0.16]</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>generate “love”</td>
+      <td style="text-align: right">0.236</td>
+      <td style="text-align: right">0.500</td>
+      <td style="text-align: right">0.265</td>
+      <td><code class="language-plaintext highlighter-rouge">[0.24, 0.50, 0.27]</code></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>generate “cats”</td>
+      <td style="text-align: right">0.165</td>
+      <td style="text-align: right">0.247</td>
+      <td style="text-align: right">0.588</td>
+      <td><code class="language-plaintext highlighter-rouge">[0.17, 0.25, 0.59]</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>You can verify that each row of attention weights adds to exactly 1, so every <code class="language-plaintext highlighter-rouge">c_i</code> is a valid convex combination of the source states.</p>
+
+<h3 id="what-would-happen-without-attention">What would happen without attention?</h3>
+
+<p>If the decoder had to use the <strong>same</strong> fixed context vector at every step, the simplest choice would be the average of the source states:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c_fixed = (h_I + h_love + h_cats) / 3 = [0.33, 0.33, 0.33]
+</code></pre></div></div>
+
+<p>Then the decoder would receive <code class="language-plaintext highlighter-rouge">[0.33, 0.33, 0.33]</code> at step 1, step 2, and step 3. It would lose the word-specific signal that attention provides. The table above shows why attention is powerful: the context is rebuilt for every step.</p>
+
+<h3 id="reproduce-it-in-numpy">Reproduce it in NumPy</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="k">def</span> <span class="nf">softmax</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">exp</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">np</span><span class="p">.</span><span class="nf">max</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>  <span class="c1"># subtract max for numerical stability
+</span>    <span class="k">return</span> <span class="n">e</span> <span class="o">/</span> <span class="n">e</span><span class="p">.</span><span class="nf">sum</span><span class="p">()</span>
+
+<span class="c1"># Source states: one vector per word
+</span><span class="n">H</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># Three decoder queries
+</span><span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span>  <span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.3</span><span class="p">],</span>   <span class="c1"># step 1: focus on "I"
+</span>    <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span>  <span class="mf">1.5</span><span class="p">,</span>  <span class="mf">0.4</span><span class="p">],</span>   <span class="c1"># step 2: focus on "love"
+</span>    <span class="p">[</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span>  <span class="mf">1.8</span><span class="p">],</span>   <span class="c1"># step 3: focus on "cats"
+</span><span class="p">])</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">q</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">scores</span> <span class="o">=</span> <span class="n">q</span> <span class="o">@</span> <span class="n">H</span><span class="p">.</span><span class="n">T</span>                 <span class="c1"># dot products with each source state
+</span>    <span class="n">weights</span> <span class="o">=</span> <span class="nf">softmax</span><span class="p">(</span><span class="n">scores</span> <span class="o">/</span> <span class="n">np</span><span class="p">.</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">weights</span> <span class="o">@</span> <span class="n">H</span>                  <span class="c1"># weighted sum of source states
+</span>    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Step </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s">: weights = </span><span class="si">{</span><span class="n">weights</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s">, c = </span><span class="si">{</span><span class="n">c</span><span class="p">.</span><span class="nf">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Output:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step 1: weights = [0.593 0.25  0.157], c = [0.593 0.25  0.157]
+Step 2: weights = [0.236 0.5   0.265], c = [0.236 0.5   0.265]
+Step 3: weights = [0.165 0.247 0.588], c = [0.165 0.247 0.588]
+</code></pre></div></div>
+
+<p>In real models the queries and source states are produced by learned weight matrices and have hundreds of dimensions, but the arithmetic is exactly the same.</p>
+
 <hr />
 
 <h2 id="8-where-do-the-scores-come-from-a-learnable-alignment-function">8. Where do the scores come from? A learnable alignment function</h2>
