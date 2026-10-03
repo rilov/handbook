@@ -47,116 +47,287 @@
   <section class="topic-body">
     <h1 id="deep-learning-for-generative-ai--part-17-generative-adversarial-networks">Deep Learning for Generative AI — Part 17: Generative Adversarial Networks</h1>
 
-<p><a href="/handbook/topics/dl-genai-autoencoders-and-vaes/">Part 16</a> showed how Variational Autoencoders make generation possible by learning a probabilistic latent space. GANs take a very different route: instead of writing down a likelihood and optimising it, they turn generation into a <strong>competition</strong> between two networks.</p>
+<p><a href="/handbook/topics/dl-genai-autoencoders-and-vaes/">Part 16</a> showed how Variational Autoencoders make generation possible by learning a smooth, probabilistic latent space. The price is often <strong>blurriness</strong>: VAEs average plausible alternatives because their loss encourages reconstruction plus a KL penalty.</p>
+
+<p>GANs take a completely different route. They do not ask, “How likely is this data?” Instead they ask, <strong>“Can you tell this sample is fake?”</strong> Generation becomes a competition between two networks.</p>
 
 <hr />
 
-<h2 id="1-the-core-idea-a-forger-and-a-detective">1. The core idea: a forger and a detective</h2>
+<h2 id="1-the-players-forger-and-detective">1. The players: forger and detective</h2>
 
-<p>A GAN has two players:</p>
+<p>A GAN has two neural networks:</p>
 
 <ul>
-  <li><strong>Generator (G):</strong> the forger. It takes random noise and tries to create fake samples that look real.</li>
-  <li><strong>Discriminator (D):</strong> the detective. It looks at both real data and the generator’s fakes, and tries to tell them apart.</li>
+  <li><strong>Generator (G):</strong> the forger. It takes random noise <code class="language-plaintext highlighter-rouge">z</code> and tries to create a fake sample that looks real.</li>
+  <li><strong>Discriminator (D):</strong> the detective. It receives both real training data and the generator’s fakes, and tries to tell which is which.</li>
 </ul>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Real data  ────────────────────────────────┐
-                                           ├──→ Discriminator → "real" or "fake"
-Noise  →  Generator  →  Fake sample  ──────┘
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Noise z  →  Generator  →  Fake sample
+                                  ↘
+Real data  ─────────────────────→ Discriminator → "real" or "fake"
+                                  ↗
 </code></pre></div></div>
 
-<p>The generator wants to fool the discriminator. The discriminator wants to avoid being fooled. They train together.</p>
+<p>The generator wants the discriminator to say “real.” The discriminator wants to avoid being fooled. They train together, each improving in response to the other.</p>
 
 <hr />
 
-<h2 id="2-the-minimax-game">2. The minimax game</h2>
+<h2 id="2-the-minimax-objective-in-plain-words">2. The minimax objective in plain words</h2>
 
-<p>Training is a minimax problem:</p>
+<p>Training is a <strong>minimax game</strong>. The discriminator tries to maximise its own success; the generator tries to minimise the discriminator’s success.</p>
+
+<p>In symbols, the original GAN objective looks like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>min_G max_D  E[log D(real)] + E[log(1 - D(fake))]
+</code></pre></div></div>
+
+<p>Do not worry about the notation. It is just two rewards written together:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>Who wants it high?</th>
+      <th>What it means</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">E[log D(real)]</code></td>
+      <td>Discriminator</td>
+      <td>Real data should get a score close to <strong>1</strong>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">E[log(1 - D(fake))]</code></td>
+      <td>Discriminator</td>
+      <td>Fake data should get a score close to <strong>0</strong>.</td>
+    </tr>
+    <tr>
+      <td>Same second term, from generator’s view</td>
+      <td>Generator</td>
+      <td>Fakes should get a score close to <strong>1</strong>, so this term shrinks.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>So the discriminator is trained like a normal binary classifier on a mix of real and fake examples. The generator is trained to make the discriminator misclassify its fakes as real.</p>
+
+<h3 id="alternating-updates">Alternating updates</h3>
+
+<p>One training step looks like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Freeze generator. Update discriminator on real + fake samples.
+2. Freeze discriminator. Update generator using the discriminator's feedback.
+</code></pre></div></div>
+
+<p>Notice the asymmetry: the discriminator sees real data; the generator does not. The generator learns only through the discriminator’s judgement.</p>
+
+<hr />
+
+<h2 id="3-nash-equilibrium-when-neither-player-can-win">3. Nash equilibrium: when neither player can win</h2>
+
+<p>In theory, training reaches a <strong>Nash equilibrium</strong>: the generator’s distribution exactly matches the real data distribution, so the discriminator can do no better than random guessing.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>At equilibrium:
+D(real) ≈ 0.5
+D(fake) ≈ 0.5
+</code></pre></div></div>
+
+<p>At that point the discriminator is maximally confused, and the generator is producing samples that are, from the discriminator’s point of view, indistinguishable from real data.</p>
+
+<p>This equilibrium idea is elegant, but reaching it in practice is hard because the two networks are constantly changing each other’s task.</p>
+
+<hr />
+
+<h2 id="4-why-gans-produce-sharper-images-than-vaes">4. Why GANs produce sharper images than VAEs</h2>
+
+<p>VAEs optimise a reconstruction loss plus a KL term. When several outputs are plausible, the model is pushed toward their average, which looks blurry.</p>
+
+<p>GANs do not optimise pixel similarity. They optimise for <strong>fooling a critic</strong>. The discriminator cares about perceptual realism, so the generator is rewarded for sharp edges, textures, and details that make an image look real. This is why GAN outputs often look crisp and photographic.</p>
+
+<p>The trade-off is that the game is harder to train.</p>
+
+<hr />
+
+<h2 id="5-failure-modes-when-the-game-breaks">5. Failure modes: when the game breaks</h2>
+
+<p>GAN failure modes are not bugs in the code; they come from the minimax setup itself.</p>
+
+<h3 id="mode-collapse">Mode collapse</h3>
+
+<p>The generator may find a small set of samples that reliably fool the discriminator and keep producing them. It gets high realism scores, but it ignores most of the data distribution.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Bad behaviour:  noise_1 → face A
+                noise_2 → face A (again)
+                noise_3 → face A (again)
+</code></pre></div></div>
+
+<p>The model produces beautiful faces, but always the same face. The objective rewards realism, not diversity.</p>
+
+<h3 id="discriminator-too-strong">Discriminator too strong</h3>
+
+<p>If the discriminator becomes perfect at spotting fakes, the generator receives almost no gradient signal and stops learning. There is no useful feedback telling it how to improve.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>D(fake) ≈ 0  →  gradient for generator ≈ 0  →  no progress
+</code></pre></div></div>
+
+<h3 id="generator-too-strong">Generator too strong</h3>
+
+<p>If the generator races ahead, the discriminator cannot provide meaningful direction either. Training oscillates or collapses.</p>
+
+<h3 id="non-stationary-landscape">Non-stationary landscape</h3>
+
+<p>Unlike a normal supervised loss that steadily decreases, the GAN objective keeps changing because the opponent keeps changing. This makes learning rates, architectures, and regularisation especially important.</p>
+
+<hr />
+
+<h2 id="6-stabilisation-tricks">6. Stabilisation tricks</h2>
+
+<p>Researchers have developed several practical fixes that do not change the core game but make it more playable.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Technique</th>
+      <th>What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Feature matching</strong></td>
+      <td>The generator is rewarded for matching intermediate layer statistics of real data, not just final realism scores. This encourages broader coverage.</td>
+    </tr>
+    <tr>
+      <td><strong>Minibatch discrimination</strong></td>
+      <td>The discriminator looks at several samples at once, making it easier to spot mode collapse because all samples look identical.</td>
+    </tr>
+    <tr>
+      <td><strong>Historical averaging</strong></td>
+      <td>Parameter updates are smoothed with moving averages, reducing oscillations.</td>
+    </tr>
+    <tr>
+      <td><strong>One-sided label smoothing</strong></td>
+      <td>Real labels are slightly less than 1, so the discriminator does not become overconfident too quickly.</td>
+    </tr>
+    <tr>
+      <td><strong>Careful learning rates</strong></td>
+      <td>Usually the generator and discriminator use different update frequencies or learning rates so neither dominates.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These interventions make GAN training more reliable without removing the adversarial pressure.</p>
+
+<hr />
+
+<h2 id="7-important-gan-variants">7. Important GAN variants</h2>
+
+<p>Several well-known variants improve stability, quality, or controllability.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variant</th>
+      <th>Key change</th>
+      <th>Why it helps</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>DCGAN</strong></td>
+      <td>Convolutional layers, strided convolutions, batch normalisation, no fully connected layers</td>
+      <td>Gives stable architectural rules for image GANs.</td>
+    </tr>
+    <tr>
+      <td><strong>WGAN / WGAN-GP</strong></td>
+      <td>Replace the original loss with the Wasserstein distance; add a gradient penalty</td>
+      <td>Smoother gradients and a more meaningful training curve.</td>
+    </tr>
+    <tr>
+      <td><strong>LSGAN</strong></td>
+      <td>Use least-squares loss instead of cross-entropy</td>
+      <td>Less extreme gradients when the discriminator is very confident.</td>
+    </tr>
+    <tr>
+      <td><strong>StyleGAN</strong></td>
+      <td>Inject learned style vectors at multiple generator layers</td>
+      <td>Fine-grained control over pose, texture, lighting, etc.; very high-quality faces.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These all keep the generator-vs-discriminator idea, but change the rules of the game or the architecture to make it easier to train.</p>
+
+<hr />
+
+<h2 id="8-conditional-gans-steering-the-output">8. Conditional GANs: steering the output</h2>
+
+<p>A plain GAN learns <code class="language-plaintext highlighter-rouge">p(x)</code> — the overall data distribution — and produces random samples. A <strong>conditional GAN</strong> learns <code class="language-plaintext highlighter-rouge">p(x | y)</code>, where <code class="language-plaintext highlighter-rouge">y</code> is extra information such as a class label, text, or another image.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Unconditional:  z        → G → random face
+Conditional:    z + y    → G → face of age y, wearing glasses y, etc.
+</code></pre></div></div>
+
+<p>Both networks receive the condition:</p>
 
 <ul>
-  <li>The discriminator tries to <strong>maximise</strong> its accuracy at spotting fakes.</li>
-  <li>The generator tries to <strong>minimise</strong> the discriminator’s success — i.e., it tries to make the discriminator call its samples real.</li>
+  <li><code class="language-plaintext highlighter-rouge">G(z, y)</code> generates a sample consistent with <code class="language-plaintext highlighter-rouge">y</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">D(x, y)</code> judges whether the sample is realistic <strong>given</strong> <code class="language-plaintext highlighter-rouge">y</code>.</li>
 </ul>
 
-<p>In its simplest form the objective looks like:</p>
+<p>This is how you can ask a GAN to generate “a handwritten digit 7” or “a photo of a sunset.”</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>D wants:  high score for real data, low score for fake data
-G wants:  high score for fake data
+<h3 id="paired-data-for-image-to-image-translation">Paired data for image-to-image translation</h3>
+
+<p>Many conditional tasks use <strong>paired</strong> examples:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>grayscale image  →  colour image
+low-resolution image  →  high-resolution image
+sketch  →  photograph
 </code></pre></div></div>
 
-<p>This is usually written with a binary cross-entropy loss. The discriminator is trained on a mix of real and fake samples, and the generator is trained to make the discriminator assign high “realness” scores to its outputs.</p>
+<p>The discriminator compares the generated output directly against the ground-truth target under the same input condition. This gives a strong supervised signal.</p>
 
-<p>The two networks are locked in a race:</p>
-
-<ol>
-  <li>Better fakes force the discriminator to improve.</li>
-  <li>A better discriminator forces the generator to improve.</li>
-  <li>At equilibrium, the generator produces samples that the discriminator cannot distinguish from real data.</li>
-</ol>
+<p>But paired data is not always available. That limitation leads to unpaired translation methods like CycleGAN.</p>
 
 <hr />
 
-<h2 id="3-why-gans-produce-sharper-images-than-vaes">3. Why GANs produce sharper images than VAEs</h2>
+<h2 id="9-cyclegan-translating-without-paired-examples">9. CycleGAN: translating without paired examples</h2>
 
-<p>VAEs learn a smooth distribution and sometimes pay for it with blur, because the KL term and the reconstruction loss encourage averaging. GANs do not directly optimise pixel-wise similarity. Instead, they optimise for “fooling a critic.” This often produces <strong>sharper, more realistic-looking</strong> images.</p>
+<p>CycleGAN solves the problem: “I have a pile of horse photos and a pile of zebra photos, but no picture of the same horse as a zebra.”</p>
 
-<p>The trade-off is training stability. Because the two networks are competing, GAN training can be finicky:</p>
-
-<ul>
-  <li>The generator may collapse and produce the same output over and over (<strong>mode collapse</strong>).</li>
-  <li>One network may dominate, leaving the other with no useful gradient.</li>
-  <li>Careful architecture choices (batch normalisation, proper learning rates, alternate update schedules) help keep the game balanced.</li>
-</ul>
-
-<hr />
-
-<h2 id="4-conditional-gans-steering-the-generator">4. Conditional GANs: steering the generator</h2>
-
-<p>A plain GAN generates random samples. A <strong>conditional GAN (cGAN)</strong> gives the generator extra information so it produces samples of a particular kind.</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>noise + label "cat"  →  Generator  →  image of a cat
-</code></pre></div></div>
-
-<p>The discriminator also receives the label, so its job becomes: “Is this a real image <strong>of a cat</strong>, or a fake image of a cat?”</p>
-
-<p>This turns unconditional generation into a controllable process. Condition labels can be class labels, text embeddings, sketches, segmentation maps, or even another image.</p>
-
-<hr />
-
-<h2 id="5-cyclegan-translating-between-domains-without-paired-examples">5. CycleGAN: translating between domains without paired examples</h2>
-
-<p>CycleGAN solves a clever problem: convert images from one domain to another when you do <strong>not</strong> have paired examples.</p>
-
-<p>For example, you might have a pile of horse photos and a pile of zebra photos, but no photo of the same horse as a zebra. CycleGAN learns:</p>
+<p>It learns two generators:</p>
 
 <ul>
   <li><strong>G:</strong> horse → zebra</li>
   <li><strong>F:</strong> zebra → horse</li>
 </ul>
 
-<p>The key idea is <strong>cycle consistency</strong>: if you turn a horse into a zebra and back again, you should get something close to the original horse.</p>
+<p>The clever part is the <strong>cycle consistency loss</strong>: if you convert a horse to a zebra and back, you should land close to the original horse.</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>horse  →  G  →  zebra  →  F  →  horse-like image
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>horse  →  G  →  zebra  →  F  →  horse' ≈ horse
 </code></pre></div></div>
 
-<p>This cycle loss stops the generator from ignoring the input and producing random zebras. Together with the usual adversarial losses, it learns a meaningful mapping between two unpaired collections of images.</p>
+<p>This stops the generator from ignoring the input and producing random zebras. The same loss runs in the opposite direction:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zebra  →  F  →  horse  →  G  →  zebra' ≈ zebra
+</code></pre></div></div>
+
+<p>Together with the usual adversarial losses, CycleGAN learns a meaningful mapping between two unpaired collections of images.</p>
 
 <hr />
 
-<h2 id="6-a-tiny-code-sketch">6. A tiny code sketch</h2>
+<h2 id="10-a-tiny-code-sketch">10. A tiny code sketch</h2>
 
-<p>Here is a conceptual PyTorch snippet showing the training loop shape. It is not a full runnable model, but it captures the GAN idea clearly.</p>
+<p>Here is a conceptual PyTorch snippet that shows the alternating update pattern. It is not a full runnable model, but it captures the loop clearly.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="n">real_data</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
-    <span class="c1"># Sample random noise
-</span>    <span class="n">noise</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">)</span>
-
-    <span class="c1"># Generator makes fakes
-</span>    <span class="n">fake_data</span> <span class="o">=</span> <span class="nf">generator</span><span class="p">(</span><span class="n">noise</span><span class="p">)</span>
+    <span class="n">noise</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">)</span>
+    <span class="n">fake_data</span> <span class="o">=</span> <span class="nf">generator</span><span class="p">(</span><span class="n">noise</span><span class="p">)</span>
 
     <span class="c1"># --- Train discriminator ---
 </span>    <span class="n">d_real</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">real_data</span><span class="p">)</span>
-    <span class="n">d_fake</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">fake_data</span><span class="p">.</span><span class="nf">detach</span><span class="p">())</span>  <span class="c1"># don't train generator here
+    <span class="n">d_fake</span> <span class="o">=</span> <span class="nf">discriminator</span><span class="p">(</span><span class="n">fake_data</span><span class="p">.</span><span class="nf">detach</span><span class="p">())</span>  <span class="c1"># detach so generator is not trained here
 </span>
     <span class="n">d_loss</span> <span class="o">=</span> <span class="nf">binary_cross_entropy</span><span class="p">(</span><span class="n">d_real</span><span class="p">,</span> <span class="n">real_labels</span><span class="p">)</span> \
            <span class="o">+</span> <span class="nf">binary_cross_entropy</span><span class="p">(</span><span class="n">d_fake</span><span class="p">,</span> <span class="n">fake_labels</span><span class="p">)</span>
@@ -172,60 +343,66 @@ G wants:  high score for fake data
     <span class="n">optimizer_G</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p>Notice the asymmetry: the discriminator is trained on real and fake data, while the generator is trained only through the discriminator’s feedback.</p>
+<p>The discriminator learns from real and fake data. The generator learns only through the discriminator’s scores.</p>
 
 <hr />
 
-<h2 id="7-strengths-and-limitations">7. Strengths and limitations</h2>
+<h2 id="11-summary">11. Summary</h2>
 
 <table>
   <thead>
     <tr>
-      <th>Strength</th>
-      <th>Limitation</th>
+      <th>Idea</th>
+      <th>In one sentence</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Often produces sharp, realistic samples</td>
-      <td>Training can be unstable and requires tuning</td>
+      <td><strong>GAN</strong></td>
+      <td>Two networks play a game: a generator creates fakes, a discriminator detects them.</td>
     </tr>
     <tr>
-      <td>No need to define an explicit likelihood</td>
-      <td>Hard to evaluate — “realistic” is subjective</td>
+      <td><strong>Minimax</strong></td>
+      <td>Discriminator maximises realism scores for real data and minimises them for fakes; generator does the opposite.</td>
     </tr>
     <tr>
-      <td>Easy to condition on labels, text, or images</td>
-      <td>Mode collapse: generator may ignore parts of the data distribution</td>
+      <td><strong>Equilibrium</strong></td>
+      <td>At the ideal point, the discriminator cannot tell real from fake.</td>
     </tr>
     <tr>
-      <td>CycleGAN handles unpaired domain translation</td>
-      <td>Convergence is not guaranteed like VAE ELBO optimisation</td>
+      <td><strong>Sharpness</strong></td>
+      <td>GANs optimise for perceptual realism, not pixel-wise reconstruction, so they tend to produce crisp outputs.</td>
+    </tr>
+    <tr>
+      <td><strong>Failure modes</strong></td>
+      <td>Mode collapse, discriminator domination, and oscillation come from the game dynamics.</td>
+    </tr>
+    <tr>
+      <td><strong>Stabilisation</strong></td>
+      <td>Feature matching, minibatch discrimination, historical averaging, and architecture variants help keep training healthy.</td>
+    </tr>
+    <tr>
+      <td><strong>Conditional GAN</strong></td>
+      <td>Add a condition <code class="language-plaintext highlighter-rouge">y</code> to both networks so generation becomes controllable.</td>
+    </tr>
+    <tr>
+      <td><strong>CycleGAN</strong></td>
+      <td>Use two generators and cycle consistency to translate between unpaired domains.</td>
     </tr>
   </tbody>
 </table>
 
-<hr />
+<p>The original GAN paper: <a href="https://arxiv.org/pdf/1406.2661">Goodfellow et al., 2014</a>.</p>
 
-<h2 id="8-summary">8. Summary</h2>
+<p>GANs were the dominant image-generation approach for years and remain central to editing, super-resolution, and domain translation. Their adversarial idea also inspired techniques used in diffusion models and other modern systems.</p>
 
-<ul>
-  <li>GANs frame generation as a two-player game: a <strong>generator</strong> creates samples and a <strong>discriminator</strong> judges them.</li>
-  <li>The discriminator maximises its ability to detect fakes; the generator minimises it.</li>
-  <li>This adversarial pressure often leads to sharper samples than likelihood-based models like VAEs.</li>
-  <li><strong>Conditional GANs</strong> guide generation with extra inputs such as class labels or text.</li>
-  <li><strong>CycleGAN</strong> learns unpaired image-to-image translation by enforcing cycle consistency.</li>
-</ul>
-
-<p>GANs were the dominant generative-image approach for several years. They remain influential, especially for image editing, style transfer, and domain translation. Later models such as StyleGAN pushed realism further, but diffusion models have recently taken over for high-quality text-to-image generation — the topic of the next part.</p>
-
-<p><strong>Next up:</strong> models that learn generation by reversing a gradual noising process — <a href="/handbook/topics/dl-genai-diffusion-models/">Part 18: Diffusion Models and Stable Diffusion</a>.</p>
+<p><strong>Next up:</strong> the third major generative family — models that learn by reversing a gradual noising process — in <a href="/handbook/topics/dl-genai-diffusion-models/">Part 18: Diffusion Models and Stable Diffusion</a>.</p>
 
   </section>
 
   
   <footer class="topic-footer">
-    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">gans</span>, <span class="tag">generative-models</span>, <span class="tag">conditional-gan</span>, <span class="tag">cyclegan</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">gans</span>, <span class="tag">generative-models</span>, <span class="tag">conditional-gan</span>, <span class="tag">cyclegan</span>, <span class="tag">wgan</span>, <span class="tag">dcgan</span>, <span class="tag">stylegan</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
   </footer>
   
 </article>
