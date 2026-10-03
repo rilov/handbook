@@ -89,6 +89,24 @@ The weights start as **random numbers** — at that point the network produces g
 
 **Nobody programs the translation rules by hand.** The network discovers them by seeing millions of translated sentence pairs and slowly adjusting its weights.
 
+### What you need before training: parallel examples
+
+All of this depends on having a **dataset of input–output pairs**. For translation, each example is one sentence in the source language paired with its translation in the target language:
+
+```text
+Input:  "I love cats"
+Output: "J'aime les chats"
+```
+
+The same idea works for other tasks. An English-to-Python pair might look like:
+
+```text
+Input:  "Python program to print Hello World"
+Output: print("Hello World")
+```
+
+The model learns by comparing its attempt with the correct output. Higher-quality, larger datasets give better translations — the model can only learn patterns that appear in the data it sees.
+
 ### Keep this in mind for the rest of the article
 
 Everything that follows builds on these three facts:

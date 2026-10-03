@@ -211,6 +211,29 @@ After self-attention:    "bank" = enriched vector, blended with "river"'s value
                          (now clearly the river bank)
 ```
 
+### A concrete example: what does "it" mean?
+
+Self-attention is especially good at resolving words whose meaning depends on other words. Take this sentence:
+
+```text
+"The animal did not cross the street because it was too tired."
+```
+
+What does "it" refer to? To a human it is obviously **the animal**. But the starting vector for "it" is just a generic placeholder — it does not know it is an animal, a street, or anything else.
+
+After self-attention, the vector for "it" becomes a weighted blend of the other words. In a trained model the attention weights might look roughly like this:
+
+```text
+it →  animal  (0.70)  ← strongest: "it" is the animal
+       tired   (0.15)
+       street  (0.08)
+       cross   (0.04)
+       because (0.02)
+       the     (0.01)
+```
+
+The model did not learn English grammar explicitly. It learned that, in this kind of sentence, "it" usually points back to a noun like "animal," so it borrows most of "animal"'s meaning when building "it"'s representation. This is the famous attention-visual effect: the vector for one word is "baked together" from the words it attends to.
+
 ---
 
 ## 5. Why this beats the RNN: the sequential group project
