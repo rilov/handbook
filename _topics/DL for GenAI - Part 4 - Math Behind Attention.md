@@ -262,6 +262,56 @@ Two things the exponential does for us:
 - **Negative scores become positive.** `exp(-2) = 0.14` — still a valid (small) weight. Without this, a negative score would break the "weights between 0 and 1" requirement.
 - **The denominator normalises.** Dividing by the sum of all exponentials guarantees the weights add up to exactly 1.
 
+### A concrete example: attention changes at every decoder step
+
+So far we have computed one context vector for one query. In a real translation model the decoder runs for several steps, and the attention weights change at every step.
+
+Consider a simple English → French translation:
+
+```text
+Source:  The   cat    sat
+         h1    h2     h3
+
+Target:  Le    chat   s'est   assis
+         y1    y2     y3      y4
+```
+
+At each decoder step the model builds a fresh context vector `c_i`. The table below shows plausible attention weights — not real numbers, but the right intuition:
+
+| Decoder step | Word being generated | Attention on "The" | Attention on "cat" | Attention on "sat" | What the model is doing |
+|---|---:|---:|---:|---:|---|
+| 1 | Le | 0.70 | 0.20 | 0.10 | Just starting; focus on the first source word. |
+| 2 | chat | 0.15 | 0.75 | 0.10 | "Le" is the article; now look for the noun. |
+| 3 | s'est | 0.10 | 0.25 | 0.65 | Noun done; now look for the verb. |
+| 4 | assis | 0.05 | 0.10 | 0.85 | Confirm the verb and its past tense. |
+
+At step 1 the context vector is roughly:
+
+```text
+c_1 ≈ 0.70 × h_The + 0.20 × h_cat + 0.10 × h_sat
+```
+
+At step 3 it is:
+
+```text
+c_3 ≈ 0.10 × h_The + 0.25 × h_cat + 0.65 × h_sat
+```
+
+The same three encoder states are reused, but the **blend** changes. That is why attention is powerful: the decoder can look at a different part of the source sentence at every output step.
+
+### Why hard-coding would fail
+
+You might ask: could we just write rules like “step 1 looks at word 1, step 2 looks at word 2”? Real languages do not line up one-to-one. In English → German:
+
+```text
+English:  I     have    seen    him
+German:   Ich   habe    ihn     gesehen
+                  ↑               ↑
+                  └─── verb splits ───┘
+```
+
+The English verb phrase "have seen" becomes "habe ... gesehen", with the participle jumping to the end of the sentence. The model must learn to attend to "seen" when generating "gesehen", even though the words are in different positions. No fixed mapping works, so the alignment function must be learned from data.
+
 ---
 
 ## 8. Where do the scores come from? A learnable alignment function
