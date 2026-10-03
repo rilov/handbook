@@ -61,6 +61,100 @@ In the worked example of section 4, the vectors `h1`, `h2`, `h3` are the encoder
 
 In a Transformer, the process is slightly different: every input token is multiplied by three learned weight matrices (`W_Q`, `W_K`, `W_V`) to create the query, key, and value vectors. We cover that in [Part 9]({{ site.baseurl }}/topics/dl-genai-self-attention-math/). For now, the important point is the same — keys and values describe the source, and the query describes what the decoder currently needs.
 
+### Step-by-step: how the words become vectors and queries
+
+Let us trace a real sentence through the encoder and decoder. We will use English → French:
+
+```text
+Source: The   cat    sat
+Target: Le    chat   s'est   assis
+```
+
+#### 1. The encoder reads the source sentence
+
+First, each word is turned into an embedding vector:
+
+```text
+"The" → e1
+"cat" → e2
+"sat" → e3
+```
+
+The encoder processes these embeddings one by one. For a recurrent encoder, this looks like:
+
+```text
+hidden_0 = zero vector
+hidden_1 = RNN(e1, hidden_0) = h1   (memory of "The")
+hidden_2 = RNN(e2, hidden_1) = h2   (memory of "The cat")
+hidden_3 = RNN(e3, hidden_2) = h3   (memory of "The cat sat")
+```
+
+After the encoder finishes, we have three states:
+
+```text
+h1 = memory of "The"
+h2 = memory of "The cat"
+h3 = memory of "The cat sat"
+```
+
+These states become the **Keys** and **Values** for attention.
+
+#### 2. The decoder starts with a special token
+
+The decoder begins with a `<sos>` (start-of-sentence) token and an initial hidden state. In a simple RNN setup, that initial state is often the last encoder state `h3`.
+
+For the first output word, the decoder's hidden state `s0` becomes the first query:
+
+```text
+Q1 = s0
+```
+
+Attention compares `Q1` with `h1`, `h2`, `h3` and produces a context vector `c1`. The decoder then uses `c1`, `s0`, and the `<sos>` token to predict:
+
+```text
+first predicted word = "Le"
+```
+
+#### 3. The decoder keeps going
+
+For the second word, the decoder updates its state using the previous output:
+
+```text
+s1 = RNN_decoder("Le", s0, c1)
+Q2 = s1
+```
+
+Attention runs again with `Q2` to produce `c2`, and the decoder predicts:
+
+```text
+second predicted word = "chat"
+```
+
+This repeats:
+
+```text
+s2 = RNN_decoder("chat", s1, c2)
+Q3 = s2  →  attention  →  c3  →  predict "s'est"
+
+s3 = RNN_decoder("s'est", s2, c3)
+Q4 = s3  →  attention  →  c4  →  predict "assis"
+```
+
+The decoder stops when it predicts `<eos>` (end-of-sentence).
+
+#### The full picture
+
+```text
+Source words → Encoder → hidden states h1, h2, h3 (keys + values)
+                                          ↓
+Decoder step 1:  Q1 = s0  →  attention  →  c1  →  "Le"
+Decoder step 2:  Q2 = s1  →  attention  →  c2  →  "chat"
+Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
+Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
+```
+
+At every step the attention block runs the same four-step math from section 4. The only thing that changes is the **query**, which is the decoder's current hidden state. That is why the context vector is fresh at every step.
+
 ---
 
 ## 3. The three-step recipe
