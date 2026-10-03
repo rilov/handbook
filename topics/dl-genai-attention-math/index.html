@@ -690,7 +690,84 @@ Step 4: · V      →  (seq_len_decoder, d)                 context vectors
 
 <hr />
 
-<h2 id="13-summary">13. Summary</h2>
+<h2 id="13-pytorch-bahdanau-additive-attention-with-3-words">13. PyTorch: Bahdanau (additive) attention with 3 words</h2>
+
+<p>Section 11 introduced Bahdanau attention. Here is a tiny, complete PyTorch example with exactly three source words so you can see the scores, weights, and context vector step by step.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torch.nn</span> <span class="k">as</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="n">torch.nn.functional</span> <span class="k">as</span> <span class="n">F</span>
+
+<span class="k">class</span> <span class="nc">Attention</span><span class="p">(</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">().</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">W1</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">W2</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">decoder_state</span><span class="p">,</span> <span class="n">encoder_outputs</span><span class="p">):</span>
+        <span class="c1"># decoder_state:    (batch, 1, hidden)
+</span>        <span class="c1"># encoder_outputs:  (batch, src_len, hidden)
+</span>
+        <span class="c1"># score for every encoder position
+</span>        <span class="n">score</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">v</span><span class="p">(</span>
+            <span class="n">torch</span><span class="p">.</span><span class="nf">tanh</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nc">W1</span><span class="p">(</span><span class="n">decoder_state</span><span class="p">)</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="nc">W2</span><span class="p">(</span><span class="n">encoder_outputs</span><span class="p">))</span>
+        <span class="p">)</span>  <span class="c1"># (batch, src_len, 1)
+</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>              <span class="c1"># (batch, src_len, 1)
+</span>        <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="n">encoder_outputs</span><span class="p">).</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">context</span><span class="p">,</span> <span class="n">weights</span>
+
+
+<span class="n">hidden_dim</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">attention</span> <span class="o">=</span> <span class="nc">Attention</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">)</span>
+
+<span class="c1"># Three source words: "I", "love", "cats"
+</span><span class="n">encoder_outputs</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span>
+    <span class="p">[[[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>   <span class="c1"># "I"
+</span>      <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>   <span class="c1"># "love"
+</span>      <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]]],</span> <span class="c1"># "cats"
+</span>    <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span>
+<span class="p">)</span>  <span class="c1"># shape: (1, 3, 4)
+</span>
+<span class="c1"># Pretend the decoder is about to produce "love"
+</span><span class="n">decoder_state</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span>
+    <span class="p">[[[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]]],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">float32</span>
+<span class="p">)</span>  <span class="c1"># shape: (1, 1, 4)
+</span>
+<span class="c1"># For the demo, make the matrices simple:
+# W1 and W2 copy their input; v picks the second dimension.
+</span><span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">attention</span><span class="p">.</span><span class="n">W1</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="nf">copy_</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">eye</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">))</span>
+    <span class="n">attention</span><span class="p">.</span><span class="n">W2</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="nf">copy_</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">eye</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">))</span>
+    <span class="n">attention</span><span class="p">.</span><span class="n">v</span><span class="p">.</span><span class="n">weight</span><span class="p">.</span><span class="nf">copy_</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]]))</span>
+
+<span class="n">context</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="nf">attention</span><span class="p">(</span><span class="n">decoder_state</span><span class="p">,</span> <span class="n">encoder_outputs</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Attention weights on [</span><span class="sh">'</span><span class="s">I</span><span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="s">love</span><span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="s">cats</span><span class="sh">'</span><span class="s">]:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">([</span><span class="sh">"</span><span class="s">I</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">love</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">cats</span><span class="sh">"</span><span class="p">],</span> <span class="n">weights</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">().</span><span class="nf">tolist</span><span class="p">()):</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  </span><span class="si">{</span><span class="n">word</span><span class="si">:</span><span class="mi">6</span><span class="n">s</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">w</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sum of weights: </span><span class="si">{</span><span class="n">weights</span><span class="p">.</span><span class="nf">sum</span><span class="p">().</span><span class="nf">item</span><span class="p">()</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Context vector: </span><span class="si">{</span><span class="n">context</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">().</span><span class="nf">tolist</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Output:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Attention weights on ['I', 'love', 'cats']:
+  I     : 0.3101
+  love  : 0.3797
+  cats  : 0.3101
+Sum of weights: 1.0000
+Context vector: [0.3101, 0.3797, 0.3101, 0.0]
+</code></pre></div></div>
+
+<p>Because the decoder state matched the embedding for “love”, the model assigns the largest weight to “love”. In a real model, <code class="language-plaintext highlighter-rouge">W1</code>, <code class="language-plaintext highlighter-rouge">W2</code>, and <code class="language-plaintext highlighter-rouge">v</code> are learned from data so the model figures out these alignments automatically.</p>
+
+<hr />
+
+<h2 id="14-summary">14. Summary</h2>
 
 <ul>
   <li>Attention uses three players: <strong>Query</strong> (what am I looking for?), <strong>Key</strong> (what does each word offer?), <strong>Value</strong> (the actual content).</li>
