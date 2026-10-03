@@ -34,6 +34,14 @@ Learn about LLMs, LangChain, RAG, agents, and building AI-powered applications �
 13. **[Sentence Embeddings with Sentence Transformers (Hands-On)]({{ site.baseurl }}/topics/dl-genai-sentence-transformers/)** — Turn whole sentences into vectors with all-mpnet-base-v2, then reuse the same embeddings for semantic search, document similarity, and k-means clustering — no training needed.
 14. **[Translation and Question Answering with Pre-Trained Models (Hands-On)]({{ site.baseurl }}/topics/dl-genai-translation-qa-pretrained/)** — Use pre-trained MarianMT for machine translation and T5 for question answering, without training from scratch.
 
+**Multimodal Generative Architectures:**
+
+15. **[Introduction to Multimodal Generative Architectures]({{ site.baseurl }}/topics/dl-genai-multimodal-generative-intro/)** — Prediction vs transformation vs generation, discriminative vs generative models, conditional and unconditional generation, and why autoencoders reconstruct but cannot generate.
+16. **[Autoencoders and Variational Autoencoders]({{ site.baseurl }}/topics/dl-genai-autoencoders-and-vaes/)** — Why deterministic autoencoders fail at generation, the VAE probabilistic latent space, reparameterisation trick, ELBO objective, and a TensorFlow/Keras VAE on Fashion MNIST.
+17. **[Generative Adversarial Networks]({{ site.baseurl }}/topics/dl-genai-gans/)** — Generator vs discriminator, the minimax game, conditional GANs, CycleGAN and cycle consistency.
+18. **[Diffusion Models and Stable Diffusion]({{ site.baseurl }}/topics/dl-genai-diffusion-models/)** — Forward noising and reverse denoising, time conditioning, classifier-free guidance, and latent diffusion in Stable Diffusion.
+19. **[Multimodal Models and Vision Transformers]({{ site.baseurl }}/topics/dl-genai-multimodal-models/)** — CLIP-style image-text alignment, prompts as steering vectors, cross-attention, Vision Transformers, and how modern text-to-image systems combine these pieces.
+
 **Short on time? Read the one-sitting recap instead (or first):**
 
 - **[The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/)** — The whole Transformer in one sitting with zero math: reading, writing one word at a time, training with cross-entropy loss, and what the "context limit" means inside each layer. Works as a standalone introduction or as a recap of Parts 6–11.

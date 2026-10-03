@@ -240,4 +240,4 @@ Long inputs are silently cut off at `max_length` or `max_position_embeddings`. F
 - **T5** is a generalist: the same architecture handles many tasks once you phrase them as text-to-text.
 - Both reuse the encoder-decoder machinery from Parts 6–8: read the input, then write the output one token at a time with cross-attention to the input.
 
-**Next up:** see the whole Transformer story in one sitting with zero math in [The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/).
+**Next up:** the Generative AI track continues with generative models beyond Transformers — starting with the difference between prediction, transformation, and true generation in [Part 15: Introduction to Multimodal Generative Architectures]({{ site.baseurl }}/topics/dl-genai-multimodal-generative-intro/).
