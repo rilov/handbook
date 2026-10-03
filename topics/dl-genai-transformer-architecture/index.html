@@ -147,6 +147,28 @@ Output (code):     print ( "Hello World" )
   <p>The heads above are illustrative. In a real model <strong>nobody assigns the topics</strong>. Each head discovers its own focus during training.</p>
 </blockquote>
 
+<h4 id="how-the-dimensions-work">How the dimensions work</h4>
+
+<p>Multi-head attention splits the job, it does not add a separate full-sized attention for every head. Suppose the desired output size is <strong>D2 = 8</strong> and we use <strong>4 heads</strong>. Each head only has to produce <strong>D2 ÷ heads = 2</strong> numbers per word:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input X:                    N × 4   (each word starts as 4 numbers)
+W_Q / W_K / W_V per head:   4 × 2   (one set for each head)
+Output of one head:         N × 2
+
+Head 1 output:  N × 2
+Head 2 output:  N × 2
+Head 3 output:  N × 2
+Head 4 output:  N × 2
+
+Concatenate side by side:   N × 8
+Projection W_O:             8 × 8
+Final multi-head output:    N × 8
+</code></pre></div></div>
+
+<p>The final <code class="language-plaintext highlighter-rouge">N × 8</code> matrix has the same size as a single-head attention output, but each of its 8 components came from a different discussion. The extra projection matrix <code class="language-plaintext highlighter-rouge">W_O</code> mixes those separate discussions into one coherent vector.</p>
+
+<p>The original Transformer uses <code class="language-plaintext highlighter-rouge">d_model = 512</code> and <code class="language-plaintext highlighter-rouge">8 heads</code>, so each head produces <code class="language-plaintext highlighter-rouge">512 ÷ 8 = 64</code> numbers.</p>
+
 <h3 id="add--norm-keep-your-notes-then-tidy-up">Add &amp; Norm (keep your notes, then tidy up)</h3>
 
 <p>After attention, two small housekeeping steps happen:</p>
