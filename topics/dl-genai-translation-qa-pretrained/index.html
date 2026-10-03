@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Learning for Generative AI — Part 14: Translation and Question Answering with Pre-Trained Models (Hands-On)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/handbook/assets/img/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/handbook/assets/css/style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <div class="site-brand">
+          <a href="/handbook/" class="brand-link">
+            <img src="/handbook/assets/img/logo.svg" alt="Handbook logo" width="36" height="36" />
+          </a>
+          <div>
+            <h1><a href="/handbook/">Handbook</a></h1>
+            <p class="site-desc">Quick tech ticks and comparisons</p>
+          </div>
+        </div>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/handbook/">Home</a>
+          <a href="/handbook/#categories">Categories</a>
+          <a href="/handbook/about">About</a>
+          <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="topic">
+  <header>
+    <nav class="breadcrumb small">
+      <a href="/handbook/">Home</a> &mdash;
+      <a href="/handbook/categories/generative-ai">Generative AI</a> &mdash;
+    </nav>
+    <h2>Deep Learning for Generative AI — Part 14: Translation and Question Answering with Pre-Trained Models (Hands-On)</h2>
+    
+      
+      <p class="meta">Category: <a href="/handbook/categories/generative-ai">Generative AI</a></p>
+    
+  </header>
+
+  <section class="topic-body">
+    <h1 id="deep-learning-for-generative-ai--part-14-translation-and-question-answering-with-pre-trained-models-hands-on">Deep Learning for Generative AI — Part 14: Translation and Question Answering with Pre-Trained Models (Hands-On)</h1>
+
+<p><a href="/handbook/topics/dl-genai-transformer-variants/">Part 11</a> introduced three Transformer families. <a href="/handbook/topics/dl-genai-bert-sequence-classification/">Part 12</a> showed how to put an encoder-only model to work by fine-tuning BERT. Now we will put the full <strong>encoder-decoder</strong> family to work — without any training at all.</p>
+
+<p>Two classic transformation tasks are perfect for this architecture:</p>
+
+<ol>
+  <li><strong>Machine translation:</strong> one language → another language.</li>
+  <li><strong>Question answering (extractive/generative):</strong> a question + a passage → an answer.</li>
+</ol>
+
+<p>We will use Hugging Face pre-trained models. The models already know a lot about language; we just load them and feed them text.</p>
+
+<hr />
+
+<h2 id="1-why-pre-trained-encoder-decoder-models">1. Why pre-trained encoder-decoder models?</h2>
+
+<p>Training a Transformer from scratch needs huge datasets and serious compute. Most practical work today reuses a pre-trained model:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pre-training  (weeks, huge parallel text)  →  the model already knows language
+Using it      (seconds, your sentence)    →  it translates or answers immediately
+</code></pre></div></div>
+
+<p>You can fine-tune later if you have a specialised domain, but for many tasks the pre-trained version is already good enough.</p>
+
+<hr />
+
+<h2 id="2-what-you-need">2. What you need</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>transformers torch sentencepiece
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">transformers</code> — the model and tokenizer zoo.</li>
+  <li><code class="language-plaintext highlighter-rouge">torch</code> — runs the computations.</li>
+  <li><code class="language-plaintext highlighter-rouge">sentencepiece</code> — many seq2seq tokenizers need it under the hood.</li>
+</ul>
+
+<hr />
+
+<h2 id="3-task-a-machine-translation-with-marianmt">3. Task A: machine translation with MarianMT</h2>
+
+<p>MarianMT models are specialised: each checkpoint handles one language pair. They are encoder-decoder Transformers trained on parallel text.</p>
+
+<p>Here we translate English → Spanish.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">MarianTokenizer</span><span class="p">,</span> <span class="n">MarianMTModel</span>
+
+<span class="n">model_name</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Helsinki-NLP/opus-mt-en-es</span><span class="sh">"</span>
+<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">MarianTokenizer</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MarianMTModel</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">text</span> <span class="o">=</span> <span class="sh">"</span><span class="s">The library is quiet today, and the coffee is excellent.</span><span class="sh">"</span>
+
+<span class="n">inputs</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">translated_ids</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">generate</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+<span class="n">translation</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="p">.</span><span class="nf">decode</span><span class="p">(</span><span class="n">translated_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">translation</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>La biblioteca está tranquila hoy, y el café es excelente.
+</code></pre></div></div>
+
+<p>What just happened?</p>
+
+<ol>
+  <li>The tokenizer split the English sentence into subword tokens and added special markers.</li>
+  <li>The <strong>encoder</strong> read the whole English sentence.</li>
+  <li>The <strong>decoder</strong> generated Spanish tokens one at a time, using cross-attention to look back at the English encoder outputs.</li>
+  <li><code class="language-plaintext highlighter-rouge">skip_special_tokens=True</code> strips the padding and end-of-sequence markers so we get readable text.</li>
+</ol>
+
+<h3 id="a-reusable-translation-function">A reusable translation function</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">translate_en_to_es</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">generate</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tokenizer</span><span class="p">.</span><span class="nf">decode</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="p">[</span>
+    <span class="sh">"</span><span class="s">Where is the nearest train station?</span><span class="sh">"</span><span class="p">,</span>
+    <span class="sh">"</span><span class="s">She finished the report before lunch.</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">]:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">EN: </span><span class="si">{</span><span class="n">sentence</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">ES: </span><span class="si">{</span><span class="nf">translate_en_to_es</span><span class="p">(</span><span class="n">sentence</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>MarianMT models are fast and small because they are task-specific: one model, one language pair.</p>
+
+<hr />
+
+<h2 id="4-task-b-question-answering-with-t5">4. Task B: question answering with T5</h2>
+
+<p>T5 is an encoder-decoder model trained with a text-to-text objective: every task is rewritten as “input text → output text”. For question answering, the input is a formatted string that combines the question and a context passage.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">T5Tokenizer</span><span class="p">,</span> <span class="n">T5ForConditionalGeneration</span>
+
+<span class="n">model_name</span> <span class="o">=</span> <span class="sh">"</span><span class="s">t5-small</span><span class="sh">"</span>
+<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">T5Tokenizer</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">T5ForConditionalGeneration</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">context</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sh">"</span><span class="s">Marie Curie was a Polish-born physicist and chemist. </span><span class="sh">"</span>
+    <span class="sh">"</span><span class="s">She won the Nobel Prize in Physics in 1903 for her work on radioactivity, </span><span class="sh">"</span>
+    <span class="sh">"</span><span class="s">and the Nobel Prize in Chemistry in 1911 for the discovery of radium and polonium.</span><span class="sh">"</span>
+<span class="p">)</span>
+<span class="n">question</span> <span class="o">=</span> <span class="sh">"</span><span class="s">Which two elements did Marie Curie discover?</span><span class="sh">"</span>
+
+<span class="n">input_text</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">question: </span><span class="si">{</span><span class="n">question</span><span class="si">}</span><span class="s"> context: </span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="sh">"</span>
+
+<span class="n">inputs</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span><span class="n">input_text</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">answer_ids</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">generate</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">answer</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="p">.</span><span class="nf">decode</span><span class="p">(</span><span class="n">answer_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="n">answer</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>radium and polonium
+</code></pre></div></div>
+
+<p>Notice the format:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>question: Which two elements did Marie Curie discover? context: Marie Curie was...
+</code></pre></div></div>
+
+<p>T5 was trained with this style of prefix, so the model recognises that it should answer the question using the context. The encoder reads the combined text bidirectionally; the decoder writes the answer one token at a time.</p>
+
+<h3 id="a-reusable-qa-function">A reusable QA function</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">answer_question</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">question: </span><span class="si">{</span><span class="n">question</span><span class="si">}</span><span class="s"> context: </span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="sh">"</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="nf">tokenizer</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">generate</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tokenizer</span><span class="p">.</span><span class="nf">decode</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sh">"</span><span class="s">The Pacific Ocean is the largest ocean on Earth, covering more than </span><span class="sh">"</span>
+    <span class="sh">"</span><span class="s">one-third of its surface. The Mariana Trench, the deepest part of the world, </span><span class="sh">"</span>
+    <span class="sh">"</span><span class="s">lies in the western Pacific.</span><span class="sh">"</span>
+<span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="nf">answer_question</span><span class="p">(</span><span class="sh">"</span><span class="s">Where is the Mariana Trench?</span><span class="sh">"</span><span class="p">,</span> <span class="n">context</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>western Pacific
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-marianmt-vs-t5-specialised-vs-multi-task">5. MarianMT vs T5: specialised vs multi-task</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>MarianMT</th>
+      <th>T5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Architecture</td>
+      <td>Encoder-decoder Transformer</td>
+      <td>Encoder-decoder Transformer</td>
+    </tr>
+    <tr>
+      <td>Specialisation</td>
+      <td>One language pair per model</td>
+      <td>Many tasks with one model</td>
+    </tr>
+    <tr>
+      <td>How you ask it</td>
+      <td>Plain sentence in source language</td>
+      <td>Prefixed task string, e.g. <code class="language-plaintext highlighter-rouge">question: ... context: ...</code></td>
+    </tr>
+    <tr>
+      <td>Strength</td>
+      <td>Fast, high-quality translation</td>
+      <td>Flexible: translation, summarisation, QA, classification</td>
+    </tr>
+    <tr>
+      <td>When to pick it</td>
+      <td>You know the language pair up front</td>
+      <td>You want one model to do several text-to-text tasks</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Both use the same underlying idea from Parts 6–8: an encoder builds a rich representation of the input, a decoder generates the output word by word, and cross-attention lets the decoder focus on the right parts of the input.</p>
+
+<hr />
+
+<h2 id="6-practical-details-to-watch">6. Practical details to watch</h2>
+
+<h3 id="tokenizer-and-model-must-match">Tokenizer and model must match</h3>
+
+<p>Always load the tokenizer from the same checkpoint as the model. The tokenizer owns the vocabulary; the model expects exactly those token IDs.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Good: same checkpoint
+</span><span class="n">tokenizer</span> <span class="o">=</span> <span class="n">MarianTokenizer</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="sh">"</span><span class="s">Helsinki-NLP/opus-mt-en-es</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">model</span>     <span class="o">=</span> <span class="n">MarianMTModel</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="sh">"</span><span class="s">Helsinki-NLP/opus-mt-en-es</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="use-torchno_grad-in-production">Use <code class="language-plaintext highlighter-rouge">torch.no_grad()</code> in production</h3>
+
+<p>During inference you are not training, so you do not need gradients. Wrapping generation in <code class="language-plaintext highlighter-rouge">torch.no_grad()</code> saves memory and speeds things up:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+
+<span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">generate</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="control-generation-with-a-few-knobs">Control generation with a few knobs</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">max_new_tokens</code> — how many new tokens the decoder may produce.</li>
+  <li><code class="language-plaintext highlighter-rouge">num_beams</code> — beam search; larger values usually give better but slower outputs.</li>
+  <li><code class="language-plaintext highlighter-rouge">early_stopping</code> — stop once the model emits the end-of-sequence token.</li>
+</ul>
+
+<h3 id="truncation-matters">Truncation matters</h3>
+
+<p>Long inputs are silently cut off at <code class="language-plaintext highlighter-rouge">max_length</code> or <code class="language-plaintext highlighter-rouge">max_position_embeddings</code>. For QA, if your document is longer than the model can read, split it into chunks and run the model on each chunk.</p>
+
+<hr />
+
+<h2 id="7-summary">7. Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Translation</th>
+      <th>Question Answering</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Load tokenizer</td>
+      <td><code class="language-plaintext highlighter-rouge">MarianTokenizer</code></td>
+      <td><code class="language-plaintext highlighter-rouge">T5Tokenizer</code></td>
+    </tr>
+    <tr>
+      <td>Load model</td>
+      <td><code class="language-plaintext highlighter-rouge">MarianMTModel</code></td>
+      <td><code class="language-plaintext highlighter-rouge">T5ForConditionalGeneration</code></td>
+    </tr>
+    <tr>
+      <td>Prepare input</td>
+      <td>Plain source sentence</td>
+      <td><code class="language-plaintext highlighter-rouge">question: ... context: ...</code></td>
+    </tr>
+    <tr>
+      <td>Generate</td>
+      <td><code class="language-plaintext highlighter-rouge">model.generate(**inputs)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">model.generate(**inputs)</code></td>
+    </tr>
+    <tr>
+      <td>Decode</td>
+      <td><code class="language-plaintext highlighter-rouge">tokenizer.decode(..., skip_special_tokens=True)</code></td>
+      <td><code class="language-plaintext highlighter-rouge">tokenizer.decode(..., skip_special_tokens=True)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<ul>
+  <li><strong>MarianMT</strong> is a specialist: one checkpoint per language pair, excellent at that one job.</li>
+  <li><strong>T5</strong> is a generalist: the same architecture handles many tasks once you phrase them as text-to-text.</li>
+  <li>Both reuse the encoder-decoder machinery from Parts 6–8: read the input, then write the output one token at a time with cross-attention to the input.</li>
+</ul>
+
+<p><strong>Next up:</strong> see the whole Transformer story in one sitting with zero math in <a href="/handbook/topics/transformer-friendly-guide/">The Transformer - A Friendly Guide</a>.</p>
+
+  </section>
+
+  
+  <footer class="topic-footer">
+    <p>Tags: <span class="tag">generative-ai</span>, <span class="tag">deep-learning</span>, <span class="tag">transformer</span>, <span class="tag">seq2seq</span>, <span class="tag">translation</span>, <span class="tag">question-answering</span>, <span class="tag">hugging-face</span>, <span class="tag">t5</span>, <span class="tag">marianmt</span>, <span class="tag">hands-on</span>, <span class="tag">beginners</span>, <span class="tag">friendly</span></p>
+  </footer>
+  
+</article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p class="footer-author">Created by <strong>Rilov Paloly Kulankara</strong></p>
+          <div class="footer-links">
+            <a href="https://www.linkedin.com/in/rilov/" target="_blank" rel="noopener">LinkedIn</a>
+            <span class="footer-divider">·</span>
+            <a href="https://github.com/rilov" target="_blank" rel="noopener">GitHub</a>
+            <span class="footer-divider">·</span>
+            <a href="/handbook/about">About</a>
+          </div>
+          <p class="footer-copyright">&copy; 2026 Handbook</p>
+        </div>
+      </div>
+    </footer>
+    <script src="/handbook/assets/js/filter.js"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.15/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e0e7ff',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#fff',
+          fontSize: '16px',
+          fontFamily: 'Source Sans 3, system-ui, sans-serif'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        },
+        sequence: {
+          useMaxWidth: true,
+          wrap: true
+        }
+      });
+    </script>
+  </body>
+</html>
