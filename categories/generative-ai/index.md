@@ -32,6 +32,7 @@ Learn about LLMs, LangChain, RAG, agents, and building AI-powered applications �
 11. **[Transformer Variants — Encoder-Only, Decoder-Only, Encoder-Decoder]({{ site.baseurl }}/topics/dl-genai-transformer-variants/)** — Why the industry split the Transformer into three families: BERT for understanding, GPT for generating, T5 for transforming — and how to pick the right one.
 12. **[Sequence Classification with BERT (Hands-On)]({{ site.baseurl }}/topics/dl-genai-bert-sequence-classification/)** — Load a pre-trained BERT from Hugging Face, tokenize properly, fine-tune for sentiment classification with a plain PyTorch loop, and interpret the outputs.
 13. **[Sentence Embeddings with Sentence Transformers (Hands-On)]({{ site.baseurl }}/topics/dl-genai-sentence-transformers/)** — Turn whole sentences into vectors with all-mpnet-base-v2, then reuse the same embeddings for semantic search, document similarity, and k-means clustering — no training needed.
+14. **[Translation and Question Answering with Pre-Trained Models (Hands-On)]({{ site.baseurl }}/topics/dl-genai-translation-qa-pretrained/)** — Use pre-trained MarianMT for machine translation and T5 for question answering, without training from scratch.
 
 **Short on time? Read the one-sitting recap instead (or first):**
 

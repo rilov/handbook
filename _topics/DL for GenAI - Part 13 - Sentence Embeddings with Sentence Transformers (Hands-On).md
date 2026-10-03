@@ -321,4 +321,4 @@ Compare with Part 12: BERT classification needed labelled examples and a fine-tu
 - The same embeddings are **computed once and reused** for all three tasks — no model training happens at any point.
 - These are exactly the embeddings that power the vector store in [RAG]({{ site.baseurl }}/topics/langchain-rag-basics/) — this part is the "how does retrieval actually work" behind it.
 
-**Next up:** see the whole Transformer again in one sitting, with zero math, in [The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/) — including how training works and what the "context limit" means inside each layer.
+**Next up:** put the full encoder-decoder Transformer to work without training — translate English to Spanish with MarianMT and answer questions with T5 in [Part 14: Translation and Question Answering with Pre-Trained Models (Hands-On)]({{ site.baseurl }}/topics/dl-genai-translation-qa-pretrained/). After that, see the whole Transformer story in one sitting, with zero math, in [The Transformer - A Friendly Guide]({{ site.baseurl }}/topics/transformer-friendly-guide/).
