@@ -405,6 +405,39 @@ Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
 Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
 </code></pre></div></div>
 
+<h3 id="how-does-the-decoder-know-how-many-words-to-produce">How does the decoder know how many words to produce?</h3>
+
+<p>It does <strong>not</strong> know in advance. The decoder generates one word at a time and stops when it predicts a special <strong>end-of-sentence token</strong>, usually written <code class="language-plaintext highlighter-rouge">&lt;eos&gt;</code>.</p>
+
+<p>During training, the target sentence is already known:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Target: Le    chat   s'est   assis   &lt;eos&gt;
+</code></pre></div></div>
+
+<p>The decoder is fed the true previous word at every step (this is called <strong>teacher forcing</strong>). It produces one output for each position in the target, including <code class="language-plaintext highlighter-rouge">&lt;eos&gt;</code>. The loss is computed at every position, so the model learns to predict the right word and, eventually, when to emit <code class="language-plaintext highlighter-rouge">&lt;eos&gt;</code>.</p>
+
+<p>At inference time, when there is no target sentence available, the process looks like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:  &lt;sos&gt;
+Output: "Le"
+
+Input:  "Le"
+Output: "chat"
+
+Input:  "chat"
+Output: "s'est"
+
+Input:  "s'est"
+Output: "assis"
+
+Input:  "assis"
+Output: "&lt;eos&gt;"   ← stop here
+</code></pre></div></div>
+
+<p>The previous output becomes the next input. The decoder keeps going until it either produces <code class="language-plaintext highlighter-rouge">&lt;eos&gt;</code> or reaches a maximum length limit.</p>
+
+<p>So the decoder decides the sentence length itself. It does not get a fixed number of words from the encoder.</p>
+
 <h3 id="what-if-the-word-order-changes">What if the word order changes?</h3>
 
 <p>English → German:</p>
