@@ -178,6 +178,8 @@ context_i = attention(
 
 The query changes at every step, so the answer changes too.
 
+> **Why are keys and values the same list?** In this encoder-decoder attention setup, both keys and values come from the same source — the encoder hidden states. The key is used to decide *which* source state is relevant, and the value is the actual content that gets blended. Because the encoder states are good for both jobs, we use them twice. In self-attention (inside a Transformer) the Q/K/V are usually produced by three different learned matrices, but the encoder-decoder attention you see in translation typically reuses the encoder states for keys and values.
+
 ### Where the vectors come from
 
 - **Keys and Values** come from the **encoder** hidden states.
