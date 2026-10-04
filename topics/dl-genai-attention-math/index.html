@@ -137,40 +137,69 @@ h3 = memory of "I love cats"
 Target: J'aime chats
 </code></pre></div></div>
 
-<p>When the decoder is about to produce the first target word, it asks itself: <em>“What do I need from the source sentence right now?”</em></p>
+<p>The query is <strong>not a sentence</strong>. It is a vector that comes from the decoder’s current hidden state. To make this concrete, we will use the same 3-dimensional hidden states from the encoder:</p>
 
-<p>Its current hidden state becomes the <strong>Query</strong>:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query = "I am looking for the subject of the sentence"
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>h1 = [1, 0, 0]  → "I"
+h2 = [0, 1, 0]  → "love"
+h3 = [0, 0, 1]  → "cats"
 </code></pre></div></div>
 
-<p>It compares this query with every source-word memory:</p>
+<h3 id="first-target-word-j">First target word: J’</h3>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Key 1 = "I"          → matches well
-Key 2 = "love"       → matches a little
-Key 3 = "cats"       → matches less
+<p>At the first step, suppose the decoder’s hidden state happens to be:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q1 = [2, 0, 1]
 </code></pre></div></div>
 
-<p>After softmax, the weights might look like:</p>
+<p>This vector is the <strong>query</strong>. It represents what the decoder is currently looking for. In this toy example, the high numbers in positions 1 and 3 mean the decoder is interested in “I” and “cats”.</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>weights on ["I", "love", "cats"] = [0.75, 0.15, 0.10]
+<p>Compare the query with each key using the dot product:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q1 · h1 = 2×1 + 0×0 + 1×0 = 2
+Q1 · h2 = 2×0 + 0×1 + 1×0 = 0
+Q1 · h3 = 2×0 + 0×0 + 1×1 = 1
+
+scores = [2, 0, 1]
 </code></pre></div></div>
 
-<p>The decoder builds a custom summary:</p>
+<p>After scaling by <code class="language-plaintext highlighter-rouge">√3</code> and applying softmax, the weights become:</p>
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>context = 0.75 × Value("I")
-        + 0.15 × Value("love")
-        + 0.10 × Value("cats")
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>weights = [0.533, 0.168, 0.299]
 </code></pre></div></div>
 
-<p>It uses this summary to predict the first word: <code class="language-plaintext highlighter-rouge">J'</code>.</p>
+<p>The context vector is mostly built from <code class="language-plaintext highlighter-rouge">"I"</code>:</p>
 
-<p>For the next word, the decoder updates its hidden state and asks a new question:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query = "I am looking for the verb now"
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>context = 0.533 × [1, 0, 0]   (I)
+        + 0.168 × [0, 1, 0]   (love)
+        + 0.299 × [0, 0, 1]   (cats)
 </code></pre></div></div>
 
-<p>This time the weights might shift to <code class="language-plaintext highlighter-rouge">[0.10, 0.80, 0.10]</code>, so the context focuses on <code class="language-plaintext highlighter-rouge">"love"</code>. The decoder predicts <code class="language-plaintext highlighter-rouge">aime</code>.</p>
+<p>The decoder uses this context to predict the first target word: <code class="language-plaintext highlighter-rouge">J'</code>.</p>
+
+<h3 id="second-target-word-aime">Second target word: aime</h3>
+
+<p>After producing <code class="language-plaintext highlighter-rouge">J'</code>, the decoder updates its hidden state. Its new query is now different because it has already generated one word and is looking for the next part of the sentence:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q2 = [0, 2, 1]
+</code></pre></div></div>
+
+<p>Compare again:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q2 · h1 = 0×1 + 2×0 + 1×0 = 0
+Q2 · h2 = 0×0 + 2×1 + 1×0 = 2
+Q2 · h3 = 0×0 + 2×0 + 1×1 = 1
+
+scores = [0, 2, 1]
+</code></pre></div></div>
+
+<p>After softmax, the weights shift toward <code class="language-plaintext highlighter-rouge">"love"</code>:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>weights = [0.168, 0.533, 0.299]
+</code></pre></div></div>
+
+<p>Now the context vector focuses on <code class="language-plaintext highlighter-rouge">"love"</code>, and the decoder predicts <code class="language-plaintext highlighter-rouge">aime</code>.</p>
+
+<p>The point is simple: the query is a vector, and when that vector changes, the attention weights change with it. The decoder does not think in English sentences — it just has a new hidden-state vector at every step.</p>
 
 <h3 id="the-attention-call">The attention call</h3>
 
