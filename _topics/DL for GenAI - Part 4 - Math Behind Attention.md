@@ -162,6 +162,8 @@ Now the context vector focuses on `"love"`, and the decoder predicts `aime`.
 
 The point is simple: the query is a vector, and when that vector changes, the attention weights change with it. The decoder does not think in English sentences — it just has a new hidden-state vector at every step.
 
+> **One decoder vector per step, not one per source word.** The decoder is also a recurrent network, so it has **one** hidden-state vector at each step — just like the encoder had one hidden-state vector after each source word. That single decoder vector becomes the query for attention. It is compared against all the encoder states at once, and the result is one context vector for that step.
+
 ### The attention call
 
 So the decoder is calling a function like this at every step:
