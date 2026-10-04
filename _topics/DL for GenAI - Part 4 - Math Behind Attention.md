@@ -345,6 +345,20 @@ s_i = f(s_{i-1}, y_{i-1}, c_i)
 
 The previous decoder state `s_{i-1}` and the previous output word `y_{i-1}` stay the same. The context is rebuilt each time because the query changes.
 
+### One decoder hidden state at a time
+
+The decoder does not hold many hidden states at once. Like any recurrent network, it has **one** hidden-state vector at each timestep:
+
+```text
+step 1:  s0  →  produces word 1
+step 2:  s1  →  produces word 2
+step 3:  s2  →  produces word 3
+```
+
+At step `i` only `s_i` exists. It is used as the query, attention returns `c_i`, and then `s_i` plus `c_i` plus the previous output `y_{i-1}` are used to compute the next hidden state `s_{i+1}`.
+
+So the decoder has one hidden state at a time, but that hidden state is different at every step.
+
 ### A concrete walkthrough
 
 Translating English → French:
