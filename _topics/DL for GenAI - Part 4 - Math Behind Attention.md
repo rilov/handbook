@@ -343,6 +343,52 @@ The result is a single row of `n` scores — one score for each key. That is why
 
 The output is the context vector `c`.
 
+### What is matrix multiplication actually doing here? A kid-friendly view
+
+If we strip away the big words, matrix multiplication is just a way to do many multiplications and additions at once.
+
+Imagine you have three toy boxes:
+
+- Box 1: 2 red blocks, 1 blue block
+- Box 2: 0 red blocks, 3 blue blocks
+- Box 3: 1 red block, 1 blue block
+
+Your wish list is **2 red blocks and 1 blue block**. Which box matches best?
+
+You multiply matching colors and add them up:
+
+```text
+Box 1: 2×2 + 1×1 = 5
+Box 2: 2×0 + 1×3 = 3
+Box 3: 2×1 + 1×1 = 3
+```
+
+Box 1 gets the biggest number, so it is the best match. That is exactly what a dot product does.
+
+In attention, `Q · K^T` does the same thing for every key at the same time:
+
+```text
+Q = [2, 1]       (my wish list)
+
+K1 = [2, 1]      (Box 1)
+K2 = [0, 3]      (Box 2)
+K3 = [1, 1]      (Box 3)
+
+scores = [5, 3, 3]   ← tells us how well each box matches
+```
+
+Softmax turns those scores into percentages — for example, mostly Box 1 and a little bit of the others.
+
+Then `· V` mixes the boxes using those percentages. If Box 1, Box 2, and Box 3 are also your values, the final answer is mostly Box 1 with small amounts of the other boxes mixed in.
+
+So matrix multiplication is just a fast way of saying:
+
+1. Check every key.
+2. Score every match.
+3. Mix the values using the scores.
+
+That is all the scary-looking formula is doing.
+
 ---
 
 ## 8. What changes in the decoder?
