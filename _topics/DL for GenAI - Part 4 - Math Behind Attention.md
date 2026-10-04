@@ -325,6 +325,22 @@ Read it from left to right:
 3. `softmax(...)` — turn scores into weights.
 4. `· V` — blend the values with those weights.
 
+### Why `K^T`?
+
+`Q` is one vector with shape `(1, d)` — one query of size `d`. `K` is a matrix with shape `(n, d)` — `n` keys, each of size `d`.
+
+To compare the query with every key, we need the dot product `Q · K1`, `Q · K2`, ..., `Q · Kn`. Mathematically that is the same as multiplying `Q` by the transpose of `K`:
+
+```text
+Q shape   = (1, d)
+K shape   = (n, d)
+K^T shape = (d, n)
+
+Q · K^T   = (1, d) · (d, n) = (1, n)
+```
+
+The result is a single row of `n` scores — one score for each key. That is why the formula writes `Q · K^T` instead of `Q · K`.
+
 The output is the context vector `c`.
 
 ---
