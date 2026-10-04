@@ -90,45 +90,77 @@ Source: I    love   cats
 Target: J'aime chats
 ```
 
-When the decoder is about to produce the first target word, it asks itself: *"What do I need from the source sentence right now?"*
-
-Its current hidden state becomes the **Query**:
+The query is **not a sentence**. It is a vector that comes from the decoder's current hidden state. To make this concrete, we will use the same 3-dimensional hidden states from the encoder:
 
 ```text
-Query = "I am looking for the subject of the sentence"
+h1 = [1, 0, 0]  → "I"
+h2 = [0, 1, 0]  → "love"
+h3 = [0, 0, 1]  → "cats"
 ```
 
-It compares this query with every source-word memory:
+### First target word: J'
+
+At the first step, suppose the decoder's hidden state happens to be:
 
 ```text
-Key 1 = "I"          → matches well
-Key 2 = "love"       → matches a little
-Key 3 = "cats"       → matches less
+Q1 = [2, 0, 1]
 ```
 
-After softmax, the weights might look like:
+This vector is the **query**. It represents what the decoder is currently looking for. In this toy example, the high numbers in positions 1 and 3 mean the decoder is interested in "I" and "cats".
+
+Compare the query with each key using the dot product:
 
 ```text
-weights on ["I", "love", "cats"] = [0.75, 0.15, 0.10]
+Q1 · h1 = 2×1 + 0×0 + 1×0 = 2
+Q1 · h2 = 2×0 + 0×1 + 1×0 = 0
+Q1 · h3 = 2×0 + 0×0 + 1×1 = 1
+
+scores = [2, 0, 1]
 ```
 
-The decoder builds a custom summary:
+After scaling by `√3` and applying softmax, the weights become:
 
 ```text
-context = 0.75 × Value("I")
-        + 0.15 × Value("love")
-        + 0.10 × Value("cats")
+weights = [0.533, 0.168, 0.299]
 ```
 
-It uses this summary to predict the first word: `J'`.
-
-For the next word, the decoder updates its hidden state and asks a new question:
+The context vector is mostly built from `"I"`:
 
 ```text
-Query = "I am looking for the verb now"
+context = 0.533 × [1, 0, 0]   (I)
+        + 0.168 × [0, 1, 0]   (love)
+        + 0.299 × [0, 0, 1]   (cats)
 ```
 
-This time the weights might shift to `[0.10, 0.80, 0.10]`, so the context focuses on `"love"`. The decoder predicts `aime`.
+The decoder uses this context to predict the first target word: `J'`.
+
+### Second target word: aime
+
+After producing `J'`, the decoder updates its hidden state. Its new query is now different because it has already generated one word and is looking for the next part of the sentence:
+
+```text
+Q2 = [0, 2, 1]
+```
+
+Compare again:
+
+```text
+Q2 · h1 = 0×1 + 2×0 + 1×0 = 0
+Q2 · h2 = 0×0 + 2×1 + 1×0 = 2
+Q2 · h3 = 0×0 + 2×0 + 1×1 = 1
+
+scores = [0, 2, 1]
+```
+
+After softmax, the weights shift toward `"love"`:
+
+```text
+weights = [0.168, 0.533, 0.299]
+```
+
+Now the context vector focuses on `"love"`, and the decoder predicts `aime`.
+
+The point is simple: the query is a vector, and when that vector changes, the attention weights change with it. The decoder does not think in English sentences — it just has a new hidden-state vector at every step.
 
 ### The attention call
 
