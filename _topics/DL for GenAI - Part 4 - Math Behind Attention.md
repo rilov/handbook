@@ -342,6 +342,41 @@ Decoder step 3:  Q3 = s2  →  attention  →  c3  →  "s'est"
 Decoder step 4:  Q4 = s3  →  attention  →  c4  →  "assis"
 ```
 
+### How does the decoder know how many words to produce?
+
+It does **not** know in advance. The decoder generates one word at a time and stops when it predicts a special **end-of-sentence token**, usually written `<eos>`.
+
+During training, the target sentence is already known:
+
+```text
+Target: Le    chat   s'est   assis   <eos>
+```
+
+The decoder is fed the true previous word at every step (this is called **teacher forcing**). It produces one output for each position in the target, including `<eos>`. The loss is computed at every position, so the model learns to predict the right word and, eventually, when to emit `<eos>`.
+
+At inference time, when there is no target sentence available, the process looks like this:
+
+```text
+Input:  <sos>
+Output: "Le"
+
+Input:  "Le"
+Output: "chat"
+
+Input:  "chat"
+Output: "s'est"
+
+Input:  "s'est"
+Output: "assis"
+
+Input:  "assis"
+Output: "<eos>"   ← stop here
+```
+
+The previous output becomes the next input. The decoder keeps going until it either produces `<eos>` or reaches a maximum length limit.
+
+So the decoder decides the sentence length itself. It does not get a fixed number of words from the encoder.
+
 ### What if the word order changes?
 
 English → German:
